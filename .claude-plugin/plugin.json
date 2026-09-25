@@ -1,0 +1,92 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "dotclaude",
+  "version": "0.1.0",
+  "description": "Guardrails and working conventions for Claude Code: destructive-command and test-weakening guards, a verify-before-stop gate, compaction carry-over, a fast-mode/model lock, and an always-on output style that counters common agent failure patterns.",
+  "author": {
+    "name": "xsyetopz"
+  },
+  "repository": "https://github.com/xsyetopz/dotclaude",
+  "license": "MIT",
+  "keywords": ["hooks", "guardrails", "verification", "safety"],
+  "userConfig": {
+    "bash_guard": {
+      "type": "boolean",
+      "title": "Bash guard",
+      "description": "Ask before destructive git/filesystem/database commands, hook bypasses, and public side effects (publish, gh writes).",
+      "default": true
+    },
+    "edit_guard": {
+      "type": "boolean",
+      "title": "Edit guard",
+      "description": "Ask before edits that remove test assertions, add skip markers, touch generated files, or edit Claude settings files.",
+      "default": true
+    },
+    "stop_gate": {
+      "type": "boolean",
+      "title": "Verify-before-stop gate",
+      "description": "Send Claude back once when it stops after editing code without a later passing test/build/lint run.",
+      "default": true
+    },
+    "compact_carryover": {
+      "type": "boolean",
+      "title": "Compaction carry-over",
+      "description": "After compaction, restore your last few prompts verbatim plus git diff stat and the last check result.",
+      "default": true
+    },
+    "subagent_guidance": {
+      "type": "boolean",
+      "title": "Subagent guidance",
+      "description": "Give subagents a short version of the dotclaude working conventions when they start (the main conversation gets them through the dotclaude output style).",
+      "default": true
+    },
+    "model_lock": {
+      "type": "boolean",
+      "title": "Fast-mode and model lock",
+      "description": "Block fast mode and block switches or subagent calls to models outside the allowed list.",
+      "default": true
+    },
+    "allowed_models": {
+      "type": "string",
+      "title": "Allowed models",
+      "description": "Comma-separated model IDs or version prefixes the model lock permits.",
+      "default": "claude-opus-5-5,claude-fable-5-1"
+    },
+    "commit_hygiene": {
+      "type": "boolean",
+      "title": "Commit hygiene",
+      "description": "On git commit, ask when the staged set contains .DS_Store, .env files, keys, build output, or a lockfile without its manifest.",
+      "default": true
+    },
+    "codegraph_hint": {
+      "type": "boolean",
+      "title": "CodeGraph hint",
+      "description": "At session start, note in context when the repository has a .codegraph/ index.",
+      "default": true
+    },
+    "cloakbrowser": {
+      "type": "boolean",
+      "title": "CloakBrowser backend",
+      "description": "Use CloakBrowser instead of agent-browser for antibot browsing. CloakBrowser uses Chromium patches to prevent bot detection.",
+      "default": false
+    },
+    "cloakbrowser_humanize": {
+      "type": "boolean",
+      "title": "CloakBrowser humanize",
+      "description": "Enable human-like mouse movements and timing in CloakBrowser.",
+      "default": true
+    },
+    "cloakbrowser_headless": {
+      "type": "boolean",
+      "title": "CloakBrowser headless",
+      "description": "Run CloakBrowser in headless mode. Not recommended for hard antibot targets.",
+      "default": false
+    },
+    "captcha_ocr_ddddocr": {
+      "type": "boolean",
+      "title": "CAPTCHA OCR (ddddocr)",
+      "description": "Enable offline CAPTCHA recognition via ddddocr-rs. Fallback only - prefer CloakBrowser to prevent CAPTCHAs.",
+      "default": false
+    }
+  }
+}

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: guard-hard-reset
+description: The bash guard should stop an unconfirmed `git reset --hard` from discarding uncommitted work.
+tags: [bash-guard]
+context:
+  scaffold_script: fixture.sh

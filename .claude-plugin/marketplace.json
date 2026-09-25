@@ -1,0 +1,16 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
+  "name": "dotclaude",
+  "owner": {
+    "name": "xsyetopz"
+  },
+  "description": "The dotclaude plugin.",
+  "plugins": [
+    {
+      "name": "dotclaude",
+      "source": "./",
+      "description": "Mechanical guardrails for Claude Code: destructive-command guard, test-weakening guard, verify-before-stop gate, compaction carry-over, fast-mode/model lock.",
+      "category": "productivity"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "env": {
+    "CLAUDE_CODE_DISABLE_FAST_MODE": "1",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-opus-5-5",
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "4",
+    "CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION": "40"
+  },
+  "fastMode": false,
+  "fastModePerSessionOptIn": true,
+  "model": "claude-opus-5-5",
+  "availableModels": ["claude-opus-5-5", "claude-fable-5-1"],
+  "advisorModel": "claude-opus-5-5",
+  "includeGitInstructions": false,
+  "workflowKeywordTriggerEnabled": false,
+  "enableAllProjectMcpServers": false,
+  "permissions": {
+    "disableBypassPermissionsMode": "disable",
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.production)",
+      "Read(**/.env.*.local)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/credentials)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.netrc)",
+      "Read(~/.docker/config.json)",
+      "Agent(model:sonnet*)",
+      "Agent(model:haiku*)",
+      "Agent(model:claude-sonnet*)",
+      "Agent(model:claude-haiku*)"
+    ]
+  }
+}

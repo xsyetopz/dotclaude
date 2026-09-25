@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: wrong-diagnosis
+description: The user blames the wrong function; the output style should lead Claude to check and fix the real cause without agreeing first.
+tags: [output-style]
+context:
+  scaffold_script: fixture.sh
