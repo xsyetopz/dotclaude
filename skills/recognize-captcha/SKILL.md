@@ -1,26 +1,23 @@
 ---
 name: recognize-captcha
-description: Recognize text in a CAPTCHA image using offline OCR (ddddocr-rs). This is a FALLBACK only - prefer CloakBrowser to prevent CAPTCHAs from appearing. Use when a text-based challenge appears despite antibot measures.
+description: Recognize text in a CAPTCHA image using offline OCR (ddddocr-rs). This is a fallback: prefer CloakBrowser to prevent CAPTCHAs from appearing. Use when a text-based challenge appears despite antibot measures.
 allowed-tools: Bash(bun */captcha/ddddocr.mjs *)
 ---
 
-# Offline CAPTCHA recognition with ddddocr-rs
+<task>
+Read the text in a CAPTCHA image with [ddddocr-rs](https://github.com/mzdk100/ddddocr-rs), a Rust implementation of ddddocr that recognizes CAPTCHA text offline with an ONNX model.
+</task>
 
-This skill uses [ddddocr-rs](https://github.com/mzdk100/ddddocr-rs), a Rust implementation of ddddocr for fast offline CAPTCHA text recognition using an ONNX model.
+<approach>
+CloakBrowser's job is to keep CAPTCHAs from appearing at all; this OCR tool covers only the rare case where a challenge appears anyway. Do not make CAPTCHA solving your default strategy, because a site that keeps challenging you will keep escalating, and prevention avoids that. Work through these in order:
 
-## Philosophy: Prevention over solving
+1. Use CloakBrowser to prevent challenges.
+2. Use residential proxies for geographic legitimacy.
+3. If a CAPTCHA still appears, try this offline OCR as a last resort.
+4. For complex CAPTCHAs (image puzzles, reCAPTCHA v3), ask the user.
+</approach>
 
-**CloakBrowser's job is to make CAPTCHAs never appear.** This OCR tool is only for the rare cases where a challenge still appears despite antibot measures.
-
-Do **not** use CAPTCHA solving as the default strategy. The correct approach is:
-
-1. Use CloakBrowser to prevent challenges
-2. Use residential proxies for geographic legitimacy
-3. If a CAPTCHA still appears, try this offline OCR as a last resort
-4. For complex CAPTCHAs (image puzzles, reCAPTCHA v3), ask the user
-
-## Installation
-
+<installation>
 ```bash
 # Install the ddddocr-rs CLI
 cargo install ddddocr-cli
@@ -31,15 +28,16 @@ curl -L -o ~/.local/share/ddddocr/ddddocr.onnx \
   https://github.com/mzdk100/ddddocr-rs/raw/main/models/ddddocr.onnx
 ```
 
-Alternative model locations (checked in order):
+The script looks for the model in these locations, in order:
+
 - `$DDDDOCR_MODEL_PATH`
 - `~/.local/share/ddddocr/ddddocr.onnx`
 - `~/.ddddocr/ddddocr.onnx`
 - `/usr/local/share/ddddocr/ddddocr.onnx`
+</installation>
 
-## Usage
-
-### Recognize a CAPTCHA image
+<usage>
+Recognize a CAPTCHA image from a screenshot or image file. The script prints the result as JSON:
 
 ```bash
 # From a screenshot or image file
@@ -49,7 +47,7 @@ bun ${CLAUDE_PLUGIN_ROOT}/src/captcha/ddddocr.mjs /path/to/captcha.png
 # {"text": "A3Bx9"}
 ```
 
-### Workflow: Screenshot element then recognize
+To go from a page to a recognized CAPTCHA, screenshot the page, isolate the CAPTCHA, then recognize it:
 
 ```bash
 # 1. Take screenshot of CAPTCHA element with agent-browser or CloakBrowser
@@ -62,7 +60,9 @@ bun ${CLAUDE_PLUGIN_ROOT}/src/browser/cloakbrowser-launch.mjs \
 bun ${CLAUDE_PLUGIN_ROOT}/src/captcha/ddddocr.mjs /tmp/captcha.png
 ```
 
-### Programmatic usage
+Crop to the CAPTCHA element before step 3, since the model reads a single challenge image, not a whole page.
+
+From code, import the function (the path is relative to the plugin root):
 
 ```javascript
 import { recognizeCaptcha } from './src/captcha/ddddocr.mjs';
@@ -70,30 +70,33 @@ import { recognizeCaptcha } from './src/captcha/ddddocr.mjs';
 const result = await recognizeCaptcha('/path/to/captcha.png');
 console.log(result.text); // "A3Bx9"
 ```
+</usage>
 
-## Configuration
+<configuration>
+The user enables this in the plugin settings in either of two ways:
 
-Enable in plugin settings:
-- Set `CAPTCHA_OCR=ddddocr` environment variable, or
-- In `/config` under dotclaude: set `captcha_ocr` to `ddddocr`
+- Set the `CAPTCHA_OCR=ddddocr` environment variable.
+- Turn on the `captcha_ocr_ddddocr` option in `/config` under dotclaude (off by default). When it is on, a `<browser_preferences>` note at session start says so.
+</configuration>
 
-## Limitations
+<limitations>
+The OCR works best on simple text CAPTCHAs (alphanumeric characters), and its success rate varies with the CAPTCHA's style and distortion. It does not work on:
 
-- Works best on simple text CAPTCHAs (alphanumeric characters)
-- Success rate varies by CAPTCHA style and distortion
-- Does **not** work on:
-  - Image selection puzzles (reCAPTCHA v2)
-  - Invisible challenges (reCAPTCHA v3, hCaptcha)
-  - Audio CAPTCHAs
-  - Slider/puzzle CAPTCHAs
+- Image selection puzzles (reCAPTCHA v2)
+- Invisible challenges (reCAPTCHA v3, hCaptcha)
+- Audio CAPTCHAs
+- Slider/puzzle CAPTCHAs
 
-For these, ask the user to complete the challenge manually, or use `--auto-connect` with agent-browser to let them solve it in their own browser.
+For these, ask the user to complete the challenge manually, or use `--auto-connect` with agent-browser so they can solve it in their own browser.
+</limitations>
 
-## Why offline OCR?
+<why_offline>
+Offline OCR is the fallback of choice because it is:
 
-- **Fast**: Runs locally, no network latency
-- **Private**: Images never leave the machine
-- **Free**: No per-solve costs
-- **No external dependencies**: Works offline after model download
+- **Fast**: it runs locally, with no network latency.
+- **Private**: images never leave the machine.
+- **Free**: there are no per-solve costs.
+- **Self-contained**: it works offline after the model download.
 
-But remember: the best CAPTCHA is the one that never appears. Use CloakBrowser.
+Still, the best CAPTCHA is the one that never appears, so reach for CloakBrowser first.
+</why_offline>

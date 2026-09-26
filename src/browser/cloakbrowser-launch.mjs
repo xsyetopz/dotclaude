@@ -19,6 +19,7 @@ import { parseArgs } from "node:util";
 
 const { values: opts, positionals } = parseArgs({
   allowPositionals: true,
+  allowNegative: true, // --no-humanize, --no-geoip
   options: {
     headless: { type: "boolean", default: false },
     humanize: { type: "boolean", default: true },
