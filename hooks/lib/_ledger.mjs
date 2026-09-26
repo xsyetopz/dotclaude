@@ -82,11 +82,12 @@ const CHECK = [
   /^(pytest|py\.test|tox|nox|nose2|mypy|pyright|basedpyright|ruff check|ruff|pylint|flake8)\b/,
   /^python[0-9.]* -m (pytest|unittest|mypy|ruff|pyright|compileall|tox)\b/,
   /^(uv|poetry|pdm|hatch|rye) run (pytest|mypy|ruff|pyright|tox|python -m pytest)\b/,
-  /^(npm|pnpm|yarn|bun) (run )?(test|build|lint|check|typecheck|type-check|tsc|verify|ci|e2e|test:\S+|lint:\S+|build:\S+)\b/,
+  /^(npm|pnpm|yarn|bun) (run )?(test|build|lint|check|typecheck|type-check|tsc|verify|validate|ci|e2e|test:\S+|lint:\S+|build:\S+)\b/,
   /^(npm|pnpm|yarn) (t|tst)$/,
   /^bun test\b/,
-  /^(npx|pnpx|bunx|pnpm exec|yarn exec|pnpm dlx) (jest|vitest|tsc|eslint|biome|oxlint|playwright|mocha|ava|prettier --check|cypress run)\b/,
-  /^(jest|vitest|mocha|ava|tsc|eslint|biome|oxlint|playwright test|cypress run)\b/,
+  /^(npx|pnpx|bunx|pnpm exec|yarn exec|pnpm dlx) (jest|vitest|tsc|eslint|biome|oxlint|playwright|mocha|ava|prettier --check|cypress run|markdownlint(?:-cli2)?)\b/,
+  /^(jest|vitest|mocha|ava|tsc|eslint|biome|oxlint|playwright test|cypress run|markdownlint(?:-cli2)?)\b/,
+  /^claude plugin validate\b/,
   /^cargo (test|build|check|clippy|nextest|fmt --check|fmt -- --check)\b/,
   /^go (test|build|vet)\b/,
   /^(golangci-lint|staticcheck) run\b/,
@@ -126,24 +127,46 @@ export function outputShowsFailure(text) {
 // Shell commands that write files without the edit tools: redirects, tee,
 // in-place editors, and interpreter code that opens a file for writing.
 const IN_PLACE = /^(sed|gsed|perl)$/;
-const INLINE_WRITE =
-  /\bopen\([^)]*,\s*["'][wax]b?\+?["']|\.write_(text|bytes)\(|writeFileSync|fs\.writeFile|fs\.promises\.writeFile|Bun\.write\(|File\.write\(|os\.WriteFile|ioutil\.WriteFile/;
-const STRING_LIT = /'([^'\\\n]*)'|"([^"\\\n]*)"/g;
 const INTERPRETER = /^(python[0-9.]*|node|bun|deno|ruby|perl)$/;
+// Write calls in inline interpreter code whose first argument is a string
+// literal: `open('f', 'w')`, `Path('f').write_text(`, `writeFileSync('f'`.
+// The path argument: a plain, raw, or bytes string literal, or a variable that
+// a simple assignment in the same code sets to one. f-strings and other
+// computed paths are skipped, since their value is unknown.
+const LITERAL = String.raw`\s*(?:[rRbBuU]?'([^'\\\n]*)'|[rRbBuU]?"([^"\\\n]*)"|([A-Za-z_]\w*)(?=\s*[,)]))`;
+const ASSIGN =
+  /(?:^|[\s;(])(?:const\s+|let\s+|var\s+)?([A-Za-z_]\w*)\s*=\s*[rRbBuU]?(?:'([^'\\\n]*)'|"([^"\\\n]*)")/gm;
+const WRITE_CALLS = [
+  [String.raw`\bopen\(`, String.raw`\s*,\s*(?:mode\s*=\s*)?["'][wax]`],
+  [String.raw`\bPath\(`, String.raw`\s*\)\.write_(?:text|bytes)\(`],
+  [String.raw`\bwriteFileSync\(`, ""],
+  [String.raw`\bfs\.(?:promises\.)?writeFile\(`, ""],
+  [String.raw`\bBun\.write\(`, ""],
+  [String.raw`\bFile\.write\(`, ""],
+  [String.raw`\b(?:os|ioutil)\.WriteFile\(`, ""],
+].map(([call, rest]) => new RegExp(call + LITERAL + rest, "g"));
+
+function inlineWrites(code) {
+  const vars = new Map();
+  for (const m of code.matchAll(ASSIGN)) vars.set(m[1], m[2] ?? m[3]);
+  return WRITE_CALLS.flatMap((re) =>
+    [...code.matchAll(re)].map((m) => m[1] ?? m[2] ?? vars.get(m[3])),
+  ).filter((target) => target !== undefined);
+}
+
+const home = (p) => p.replace(/^~(?=\/|$)/, process.env.HOME ?? "~");
 
 /**
  * Paths (relative to the project) of code files a Bash command writes, in
- * order, without duplicates. For inline interpreter code that writes files,
- * the string literals naming project paths stand in for the targets.
+ * order, without duplicates. For inline interpreter code, the string-literal
+ * path arguments of its write calls stand in for the targets. Relative targets
+ * resolve against the directory an earlier `cd` in the command moved to.
  */
 export function shellWrites(command, root, cwd = root) {
-  const inProject = (target) => {
+  const inProject = (target, base) => {
     if (!target || target.includes("$") || target.startsWith("/dev/"))
       return null;
-    const abs = path.resolve(
-      cwd,
-      target.replace(/^~(?=\/)/, process.env.HOME ?? "~"),
-    );
+    const abs = path.resolve(base, home(target));
     const rel = path.relative(root, abs);
     if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) return null;
     if (NON_CODE.test(rel) || rel.startsWith(".claude/")) return null;
@@ -156,13 +179,18 @@ export function shellWrites(command, root, cwd = root) {
     return [];
   }
   const out = new Set();
-  const add = (targets) => {
-    for (const t of targets) {
-      const rel = inProject(t);
-      if (rel) out.add(rel);
-    }
-  };
   for (const cmd of parsed.commands) {
+    // An unresolvable `cd $DIR` leaves the base at cwd, as the bash guard does.
+    const base =
+      cmd.cwdHint && !cmd.cwdHint.includes("$")
+        ? path.resolve(cwd, home(cmd.cwdHint))
+        : cwd;
+    const add = (targets) => {
+      for (const t of targets) {
+        const rel = inProject(t, base);
+        if (rel) out.add(rel);
+      }
+    };
     add(cmd.writes);
     const operands = cmd.args.filter((a) => a && !a.startsWith("-"));
     if (
@@ -175,24 +203,16 @@ export function shellWrites(command, root, cwd = root) {
       add(
         operands
           .slice(scriptGiven ? 0 : 1)
-          .filter((a) => fs.existsSync(path.resolve(cwd, a))),
+          .filter((a) => fs.existsSync(path.resolve(base, a))),
       );
     }
     if (cmd.name === "sd") add(operands.slice(2));
     if (cmd.name === "tee") add(operands);
     if (["mv", "cp", "install"].includes(cmd.name) && operands.length > 1)
       add(operands.slice(-1));
-    if (INTERPRETER.test(cmd.name)) {
-      const code = [cmd.heredoc ?? "", ...cmd.args].join("\n");
-      // Count it only when a path-like string in the code lands in the
-      // project; scratch files in /tmp are not edits.
-      if (INLINE_WRITE.test(code))
-        add(
-          [...code.matchAll(STRING_LIT)]
-            .map((m) => m[1] ?? m[2] ?? "")
-            .filter((lit) => /^[^\s]+$/.test(lit) && /[/.]/.test(lit)),
-        );
-    }
+    // Scratch files outside the project, such as in /tmp, are not edits.
+    if (INTERPRETER.test(cmd.name))
+      add(inlineWrites([cmd.heredoc ?? "", ...cmd.args].join("\n")));
   }
   return [...out];
 }

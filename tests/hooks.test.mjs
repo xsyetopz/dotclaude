@@ -208,6 +208,49 @@ test("inline scripts that write only scratch files are not edits", () => {
   );
 });
 
+test("inline scripts record only the path arguments of their write calls", () => {
+  const edited = (command) => {
+    const sid = session();
+    checkRun(sid, command);
+    try {
+      return JSON.parse(
+        fs.readFileSync(path.join(data, "sessions", `${sid}.json`), "utf8"),
+      ).edited;
+    } catch {
+      return undefined;
+    }
+  };
+  const none = (value) => assert.ok(!value?.length, JSON.stringify(value));
+  none(
+    edited(
+      `python3 -c "import re; s = open('in.html').read(); t = re.sub(r'<script.*?</script>|<style.*?</style>', '', s); open('x.txt','w').write(t)"`,
+    ),
+  );
+  none(
+    edited(
+      `python3 -c "s = open('src/in.py').read(); open('/tmp/dotclaude-out.txt', 'w').write(s)"`,
+    ),
+  );
+  none(edited(`cd /tmp/x && python3 -c "open('src/app.py','w')"`));
+  assert.deepEqual(edited(`python3 -c "open('src/app.py','w')"`), [
+    "src/app.py",
+  ]);
+  assert.deepEqual(
+    edited(`node -e "require('fs').writeFileSync('src/gen.js', '')"`),
+    ["src/gen.js"],
+  );
+  // A path held in a variable set from a literal, and a raw-string literal.
+  assert.deepEqual(
+    edited(`python3 -c "p = 'src/var.py'; open(p, 'w').write('1')"`),
+    ["src/var.py"],
+  );
+  assert.deepEqual(edited(`python3 -c "open(r'src/raw.py', 'w')"`), [
+    "src/raw.py",
+  ]);
+  none(edited(`python3 -c "p = 'src/read.py'; print(open(p).read())"`));
+  none(edited(`python3 -c "open(f'src/{n}.py', 'w')"`));
+});
+
 test("subagent stop checks the subagent's own ledger", () => {
   const sid = session();
   hook("post-tool-use/record-edits-and-checks.mjs", {
@@ -379,9 +422,23 @@ test("session start warns about incomplete setup and notes a CodeGraph index", (
     { CLAUDE_CODE_DISABLE_FAST_MODE: "" },
   );
   assert.match(warn.systemMessage, /fast mode/);
+  const home = (settings) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-home-"));
+    fs.mkdirSync(path.join(dir, ".claude"));
+    fs.writeFileSync(
+      path.join(dir, ".claude", "settings.json"),
+      JSON.stringify(settings),
+    );
+    return dir;
+  };
   const current = {
     ANTHROPIC_DEFAULT_HAIKU_MODEL: "claude-haiku-4-5",
     CLAUDE_CODE_EFFORT_LEVEL: "",
+    CLAUDE_CONFIG_DIR: "",
+    HOME: home({ maxEffortLevel: "xhigh" }),
+    DOTCLAUDE_MANAGED_DIR: fs.mkdtempSync(
+      path.join(os.tmpdir(), "dotclaude-managed-"),
+    ),
   };
   const start = (env) =>
     hook(
@@ -397,6 +454,32 @@ test("session start warns about incomplete setup and notes a CodeGraph index", (
   assert.match(
     start({ CLAUDE_CODE_EFFORT_LEVEL: "max" }).systemMessage,
     /CLAUDE_CODE_EFFORT_LEVEL=max/,
+  );
+  const oldProfile = home({ model: "opus" });
+  assert.match(
+    start({ HOME: oldProfile }).systemMessage,
+    /out of date: the effort cap \(maxEffortLevel\)/,
+  );
+  const both = start({
+    HOME: oldProfile,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: "",
+  }).systemMessage;
+  assert.equal(both.match(/out of date/g).length, 1, both);
+  // The cap applied at local scope, or locked in a managed drop-in, counts too.
+  const local = path.join(repo, ".claude", "settings.local.json");
+  fs.mkdirSync(path.dirname(local), { recursive: true });
+  fs.writeFileSync(local, JSON.stringify({ maxEffortLevel: "xhigh" }));
+  assert.equal(start({ HOME: oldProfile }), null);
+  fs.rmSync(local);
+  const managed = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-managed-"));
+  fs.mkdirSync(path.join(managed, "managed-settings.d"));
+  fs.writeFileSync(
+    path.join(managed, "managed-settings.d", "50-dotclaude.json"),
+    JSON.stringify({ maxEffortLevel: "xhigh" }),
+  );
+  assert.equal(
+    start({ HOME: oldProfile, DOTCLAUDE_MANAGED_DIR: managed }),
+    null,
   );
   fs.mkdirSync(path.join(repo, ".codegraph"), { recursive: true });
   const note = hook("session-start/note-codegraph-index.mjs", {
@@ -566,57 +649,11 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   );
 });
 
-test("codegraph prompt context runs for typed prompts only, when enabled", () => {
-  const bin = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-bin-"));
-  const fake = path.join(bin, "codegraph");
-  fs.writeFileSync(fake, "#!/bin/sh\ncat >/dev/null\necho CODEGRAPH-CONTEXT\n");
-  fs.chmodSync(fake, 0o755);
-  fs.mkdirSync(path.join(repo, ".codegraph"), { recursive: true });
-  const env = {
-    PATH: `${bin}${path.delimiter}${process.env.PATH}`,
-    CLAUDE_PLUGIN_OPTION_CODEGRAPH_PROMPT_CONTEXT: "true",
-  };
-  const prompt = (text, extra = env) => {
-    const res = spawnSync(
-      "bun",
-      [path.join(HOOKS, "user-prompt-submit/codegraph-context.mjs")],
-      {
-        input: JSON.stringify({ cwd: repo, prompt: text }),
-        encoding: "utf8",
-        env: { ...process.env, CLAUDE_PROJECT_DIR: repo, ...extra },
-      },
-    );
-    assert.equal(res.status, 0, res.stderr);
-    return res.stdout.trim();
-  };
-  assert.equal(
-    prompt("how does the parser split commands?"),
-    "CODEGRAPH-CONTEXT",
-  );
-  assert.equal(
-    prompt(
-      "<task-notification>\n<task-id>t1</task-id>\n<result>done</result>\n</task-notification>",
-    ),
-    "",
-  );
-  assert.equal(
-    prompt("[SYSTEM NOTIFICATION - NOT USER INPUT] agent finished"),
-    "",
-  );
-  assert.equal(
-    prompt("how does the parser split commands?", {
-      ...env,
-      CLAUDE_PLUGIN_OPTION_CODEGRAPH_PROMPT_CONTEXT: "false",
-    }),
-    "",
-  );
-});
-
 test("Fable sessions get the Fable adjustments; Opus sessions get nothing", () => {
-  const start = (model) =>
+  const start = (model, source = "startup") =>
     hook("session-start/add-session-notes.mjs", {
       hook_event_name: "SessionStart",
-      source: "startup",
+      source,
       model,
     });
   assert.match(
@@ -624,6 +661,85 @@ test("Fable sessions get the Fable adjustments; Opus sessions get nothing", () =
     /fable_adjustments/,
   );
   assert.equal(start("claude-opus-5-5"), null);
+  assert.equal(start("claude-fable-5-1", "resume"), null);
+});
+
+test("a switch to Fable adds its adjustments and a switch away retracts them", () => {
+  const sw = (from_model, to_model) =>
+    hook("post-model-switch/add-model-notes.mjs", {
+      hook_event_name: "PostModelSwitch",
+      from_model,
+      to_model,
+      source: "command",
+    });
+  const toFable = sw("claude-opus-5-5", "claude-fable-5-1").hookSpecificOutput;
+  assert.equal(toFable.hookEventName, "PostModelSwitch");
+  assert.match(toFable.additionalContext, /<fable_adjustments>/);
+  const away = sw("claude-fable-5-1", "claude-opus-5-5").hookSpecificOutput;
+  assert.match(away.additionalContext, /no longer apply/);
+  assert.doesNotMatch(away.additionalContext, /<\/fable_adjustments>/);
+  assert.equal(sw("claude-sonnet-5", "claude-opus-5-5"), null);
+});
+
+test("a /dotclaude: skill typed mid-message is expanded inline", () => {
+  const expand = (prompt, env = {}) =>
+    hook(
+      "user-prompt-submit/expand-inline-skill.mjs",
+      {
+        hook_event_name: "UserPromptSubmit",
+        prompt,
+      },
+      { CLAUDE_PLUGIN_ROOT: "", ...env },
+    );
+  const inline = expand(
+    "look at the parser, then /dotclaude:challenge it",
+  ).hookSpecificOutput;
+  assert.equal(inline.hookEventName, "UserPromptSubmit");
+  assert.match(
+    inline.additionalContext,
+    /^<skill name="dotclaude:challenge">\n[\s\S]*\n<\/skill>$/,
+  );
+  assert.match(inline.additionalContext, /Idea: look at the parser, then it/);
+  assert.doesNotMatch(inline.additionalContext, /\$ARGUMENTS|^name:/m);
+  assert.equal(expand("/dotclaude:challenge the parser"), null);
+  assert.equal(expand("try /dotclaude:no-such-skill here"), null);
+  const fork = expand("before merging, /dotclaude:review-code-changes")
+    .hookSpecificOutput.additionalContext;
+  // review-code-changes forks and is user-only, so the Skill tool would refuse it.
+  assert.match(
+    fork,
+    /send it again beginning with \/dotclaude:review-code-changes/,
+  );
+  assert.doesNotMatch(fork, /<skill |Skill tool/);
+  assert.equal(
+    expand(
+      "<task-notification>\n<result>see /dotclaude:challenge</result>\n</task-notification>",
+    ),
+    null,
+  );
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-plugin-"));
+  const skill = (name, text) => {
+    fs.mkdirSync(path.join(root, "skills", name), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "skills", name, "SKILL.md"),
+      `---\nname: ${name}\n---\n${text}`,
+    );
+  };
+  skill("big", "word $ARGUMENTS ".repeat(2000));
+  skill("dynamic", "Status: !`git status --short`\nTarget: $ARGUMENTS");
+  skill("prose", "Give the command with the `!` prefix. Target: $ARGUMENTS");
+  const fixture = (prompt) =>
+    expand(prompt, { CLAUDE_PLUGIN_ROOT: root }).hookSpecificOutput
+      .additionalContext;
+  const big = fixture("please /dotclaude:big now");
+  assert.ok(big.length <= 9500, String(big.length));
+  assert.match(big, /Truncated at 9500 characters[\s\S]*<\/skill>$/);
+  assert.match(big, /word please now word/);
+  assert.match(
+    fixture("check /dotclaude:dynamic src"),
+    /Skill tool with skill "dotclaude:dynamic" and args "check src"/,
+  );
+  assert.match(fixture("see /dotclaude:prose here"), /Target: see here/);
 });
 
 test("non-default browser options reach Claude through the session notes", () => {
@@ -661,5 +777,56 @@ test("hooks.json points only at scripts that exist", () => {
     assert.match(handler.args[0], prefix);
     const script = handler.args[0].replace(prefix, "");
     assert.ok(fs.existsSync(path.join(HOOKS, script)), script);
+  }
+});
+
+test("codegraph symbols lists indexed names from typed prompts only", () => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-bin-"));
+  // A fake `codegraph query --json` that knows one symbol, parseToken.
+  fs.writeFileSync(
+    path.join(bin, "codegraph"),
+    `#!/bin/sh\nfor last; do :; done\nif [ "$last" = parseToken ]; then echo '[{"node":{"name":"parseToken","kind":"function","filePath":"src/auth.js","startLine":12}},{"node":{"name":"parseToken","kind":"import","filePath":"src/app.js","startLine":1}}]'; else echo '[]'; fi\n`,
+    { mode: 0o755 },
+  );
+  fs.mkdirSync(path.join(repo, ".codegraph"), { recursive: true });
+  const env = { PATH: `${bin}:${process.env.PATH}` };
+  const ask = (prompt, extra = {}) =>
+    hook(
+      "user-prompt-submit/codegraph-symbols.mjs",
+      { hook_event_name: "UserPromptSubmit", prompt },
+      { ...env, ...extra },
+    );
+  const out = ask("how does parseToken reach renderPage?").hookSpecificOutput
+    .additionalContext;
+  assert.match(out, /- parseToken \(function, src\/auth\.js:12\)/);
+  assert.doesNotMatch(out, /import|renderPage \(/);
+  assert.ok(out.length < 1000, out);
+  assert.equal(ask("how does the login flow work?"), null);
+  assert.equal(ask("see README.md and docs/setup.md"), null);
+  assert.equal(
+    ask(
+      "<task-notification>\n<summary>parseToken done</summary>\n</task-notification>",
+    ),
+    null,
+  );
+  assert.equal(
+    ask("how does parseToken work?", {
+      CLAUDE_PLUGIN_OPTION_CODEGRAPH_HINT: "false",
+    }),
+    null,
+  );
+});
+
+test("plugin validation and markdownlint count as check runs", () => {
+  for (const command of [
+    "bun run validate",
+    "claude plugin validate --strict .",
+    "bunx markdownlint-cli2 --config markdownlint-cli2.jsonc README.md",
+    "markdownlint-cli2 '**/*.md'",
+  ]) {
+    const sid = session();
+    edit(sid);
+    checkRun(sid, command);
+    assert.equal(stop(sid), null, command);
   }
 });

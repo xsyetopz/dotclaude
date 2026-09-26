@@ -56,7 +56,15 @@
             "type": "command",
             "command": "bun",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/codegraph-context.mjs"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/codegraph-symbols.mjs"
+            ],
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/expand-inline-skill.mjs"
             ],
             "timeout": 10
           }
@@ -198,6 +206,20 @@
             "command": "bun",
             "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/pre-model-switch/restrict-models.mjs"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostModelSwitch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/post-model-switch/add-model-notes.mjs"
             ],
             "timeout": 10
           }

@@ -57,6 +57,19 @@ export function projectRoot(data) {
   );
 }
 
+// Prompts Claude Code generates itself (background-task notifications,
+// subagent hand-backs) rather than ones the user typed.
+const GENERATED =
+  /^\s*(<task-notification>|<agent-message\b|\[SYSTEM NOTIFICATION|Another Claude session sent a message:)|<task-notification>[\s\S]*<\/task-notification>\s*$/;
+
+export function userTyped(prompt) {
+  return (
+    typeof prompt === "string" &&
+    prompt.trim() !== "" &&
+    !GENERATED.test(prompt)
+  );
+}
+
 export function emit(obj) {
   process.stdout.write(JSON.stringify(obj));
 }

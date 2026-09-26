@@ -6,10 +6,7 @@
 // Opus-tuned output style.
 
 import { emit, option, run } from "../lib/_common.mjs";
-
-const FABLE = `<fable_adjustments>
-You are running as Claude Fable 5.1, which narrates and formats less than the conventions assume. While working, give a brief update when you start a new phase or find something that changes the plan, since the user sees little else of the work. Use lists or a table when the content is multifaceted enough that they help, and plain prose otherwise. Write explanations in full sentences a reader can follow without the conversation, rather than compressed shorthand.
-</fable_adjustments>`;
+import { FABLE, isFable } from "../lib/_model-notes.mjs";
 
 function browserNotes() {
   const notes = [];
@@ -30,7 +27,10 @@ function browserNotes() {
 
 run((data) => {
   const parts = [];
-  if (/fable/i.test(String(data.model ?? ""))) parts.push(FABLE);
+  // A resumed or forked transcript already holds the note from its first
+  // session, and a model restored on resume reaches PostModelSwitch.
+  const continued = data.source === "resume" || data.source === "fork";
+  if (!continued && isFable(data.model)) parts.push(FABLE);
   const browser = browserNotes();
   if (browser.length)
     parts.push(

@@ -80,14 +80,8 @@
     "codegraph_hint": {
       "type": "boolean",
       "title": "CodeGraph hint",
-      "description": "At session start, note in context when the repository has a .codegraph/ index.",
+      "description": "When the repository has a .codegraph/ index: note it at session start, and when a prompt you type names code symbols, list where the index has them (names and file:line only).",
       "default": true
-    },
-    "codegraph_prompt_context": {
-      "type": "boolean",
-      "title": "CodeGraph prompt context",
-      "description": "Run `codegraph prompt-hook` on prompts you type (not on background-task notifications). Use instead of a global codegraph prompt-hook entry in settings.json.",
-      "default": false
     },
     "cloakbrowser": {
       "type": "boolean",
