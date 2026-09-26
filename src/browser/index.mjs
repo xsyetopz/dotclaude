@@ -2,8 +2,6 @@
 // Selects between stock Playwright, agent-browser CLI, and CloakBrowser based on config.
 
 import { spawn } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
 
 const FALSE = new Set(["0", "false", "no", "off", ""]);
 
