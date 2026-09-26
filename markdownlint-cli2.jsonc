@@ -26,10 +26,11 @@
       "ul_multi": 1,
       "ol_multi": 1
     },
-    "MD033": false,
+    "MD033": false /* MD033/no-inline-html */,
     "MD035": { "style": "---" },
     "MD036": true,
     "MD040": true,
+    "MD041": false /* MD041/first-line-heading/first-line-h1 */,
     "MD046": { "style": "fenced" },
     "MD048": { "style": "backtick" },
     "MD049": { "style": "asterisk" },
