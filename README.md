@@ -1,20 +1,6 @@
 # dotclaude
 
-A Claude Code plugin in two layers. Hooks enforce what can be checked mechanically, and an always-on output style sets working conventions for what can't.
-
-The hooks:
-
-- **Bash guard**: asks before destructive or public commands, even when they are reworded to slip past permission rules (`sudo`, `env`, `VAR=`, `bash -c '...'`, `eval`, `$(...)`, heredocs, `xargs`, interpreter one-liners).
-- **Edit guard**: asks before an edit removes test assertions, adds skip/xfail/focus markers, touches generated files or lockfiles, or shrinks a long file to a fraction of its size.
-- **Verify-before-stop gate**: when Claude ends a turn after editing code with no later test, build, or lint run, it is sent back once to run the checks or to say the change is unverified. It also catches "tests pass" after a failing run.
-- **Compaction carry-over**: after compaction, your last few messages come back verbatim, with `git diff --stat` and the last check result.
-- **Fast-mode and model lock**: fast mode stays off, and the session, subagents, and model switches stay on Opus 5.5 (Fable 5.1 allowed).
-
-The conventions: a plugin output style, forced on while dotclaude is enabled, adds working conventions to Claude Code's system prompt. They cover the failure patterns in `docs/ai_coding_agent_user_experience_dossiers_research_updated/`: therapy-speak and praise, agreeing without checking, invented requirements, speculative abstraction and compatibility layers, weakened tests, and completion claims that don't match what ran. Subagents get a short version through a `SubagentStart` hook.
-
-Plus a settings profile you apply with `/dotclaude:apply-settings-profile`, a read-only reviewer agent, and skills to review changes, write a session handoff, and drive a web browser.
-
-Context cost: about 680 tokens of skill and agent descriptions plus about 2,200 tokens of output style per session, both cached after the first request. The hooks add nothing unless they fire.
+A Claude Code plugin for software engineering with Claude Opus 5.5. Hooks enforce what can be checked mechanically, an always-on output style sets working conventions for what can't, and a set of agents and skills covers review, delegated work, research, and optional Codex workers.
 
 ## Install
 
@@ -23,178 +9,138 @@ Context cost: about 680 tokens of skill and agent descriptions plus about 2,200 
 /plugin install dotclaude@dotclaude
 ```
 
-Then run `/dotclaude:apply-settings-profile` once. A plugin cannot set permissions, environment variables, or models itself, so this step writes them into a settings file you choose, after showing you the diff and making a backup.
+Then run `/dotclaude:apply-settings-profile` and restart Claude Code. A plugin cannot set permissions, environment variables, or models itself, so this step writes them into a settings file you choose, after showing you the changes and making a backup.
 
-Requirements: Claude Code 2.1.269 or later, [Bun](https://bun.sh) 1.4.2 or later on `PATH`, and git.
+Optional integrations (CodeGraph, Headroom, the Codex CLI): ask Claude, for example "set up codegraph for this project", or run `/dotclaude:setup-integrations`.
 
-## What each part does
+Requirements: Claude Code 2.1.283 or later, [Bun](https://bun.sh) 1.4.2 or later on `PATH`, and git.
 
-### Hooks
+## Update
 
-| Hook | Event | Blocks (deny) | Asks | Says nothing about |
-| --- | --- | --- | --- | --- |
-| `pre-tool-use/block-destructive-commands.mjs` | PreToolUse Bash | `rm -r` of `/`, `~`, `$HOME`, system dirs; decoded data piped to a shell; commands that turn fast mode on or pick a disallowed model | force push, `push --delete`, `reset --hard`, `clean -f`, `checkout -- .`, `restore`, `stash drop/clear`, `branch -D`, `filter-branch`; `--no-verify`, `HUSKY=0`, `core.hooksPath`; `rm -r` of tracked files or outside the project; `find -delete`; `curl \| sh`; `gh` writes (PR, issue, release, `api -X POST`); `npm/cargo/... publish`; `DROP`/`TRUNCATE`/`DELETE` without `WHERE`; snapshot updates (`jest -u`, `insta accept`); printing secret files; commits that stage `.DS_Store`, `.env`, keys, build output, or a lockfile without its manifest | everything else, including `rm -rf node_modules`, `git push`, reads, and tests |
-| `pre-tool-use/confirm-risky-edits.mjs` | PreToolUse Edit/Write | settings edits that enable fast mode or a disallowed model | removed assertions, added skip markers, generated/lockfile edits, large Write shrink, other Claude settings edits | ordinary edits |
-| `post-tool-use/record-edits-and-checks.mjs`, `post-tool-use-failure/record-failed-checks.mjs` | PostToolUse, PostToolUseFailure | | | records edits and check runs; never prints |
-| `stop/require-verification.mjs` | Stop | | | blocks at most once per state; never re-blocks a continuation |
-| `pre-compact/save-recent-prompts.mjs`, `session-start/restore-context-after-compact.mjs`, `session-start/warn-incomplete-setup.mjs`, `session-start/note-codegraph-index.mjs` | PreCompact, SessionStart | | | restores context after compaction; one-line CodeGraph note when `.codegraph/` exists; a notice (to you, not Claude) when fast mode isn't disabled in settings or Bun is older than 1.4.2 |
-| `subagent-start/inject-working-conventions.mjs` | SubagentStart | | | gives each subagent the short conventions (skipped for `code-reviewer`, which has its own) |
-| `pre-tool-use/restrict-subagent-models.mjs`, `pre-model-switch/restrict-models.mjs`, `config-change/block-fast-mode.mjs` | PreToolUse Agent, PreModelSwitch, ConfigChange | subagent `model` outside the list; model switches outside the list; settings changes that turn fast mode on | | |
+```bash
+claude plugin marketplace update dotclaude   # fetch the latest release list
+claude plugin update dotclaude@dotclaude     # install it
+```
 
-The guards never auto-approve anything: a command that matches nothing goes through Claude Code's normal permission flow. Every hook fails open, so a bug in dotclaude cannot stop your work. When a denied command is really what you want, run it yourself with `! <command>`.
+Then, in order:
 
-The guard is a best-effort parser, not a sandbox. For hard isolation, use Claude Code's [sandbox](https://code.claude.com/docs/en/sandboxing).
+1. Restart Claude Code. Hooks, agents, and the output style load at session start, so a running session keeps the old version.
+2. Read the new version's entry in [CHANGELOG.md](CHANGELOG.md). Before 1.0, releases may change or remove behavior without a compatibility layer.
+3. Run `/dotclaude:apply-settings-profile` again. It previews every change, including any it removes, and backs up the file before writing. A notice at session start tells you when your settings are behind the plugin.
+4. If you use the Codex agents, run `/dotclaude:setup-integrations codex` again to refresh the Codex profiles.
 
-### Options
+`/plugin` inside Claude Code shows the installed version. To try an unreleased checkout instead, run `claude --plugin-dir /path/to/dotclaude`.
 
-Hooks live in one directory per event under `hooks/`, each file named after what it does, with shared code in `hooks/lib/`. Every hook can be switched off in `/config` under dotclaude, or at install time:
+## What you get
 
-| Option | Default | Controls |
+**Hooks.** Each can be turned off in `/config` under dotclaude.
+
+- **Bash guard**: asks before destructive or public commands (force push, `reset --hard`, publishing, `gh` writes, destructive SQL, `curl | sh`), even when reworded through `sudo`, `env`, `bash -c`, `eval`, `$(...)`, heredocs, or loop bodies. It denies deleting `/` or your home directory.
+- **Edit guard**: asks before an edit removes test assertions or adds skip markers to an existing test, and before edits to Claude settings, generated files, or lockfiles.
+- **Quiet in auto mode**: recoverable actions (deleting tracked files, `find` deletes, generated-file edits) ask only in attended modes, so an unattended session never waits on a prompt nobody sees. Irreversible and public actions still ask.
+- **Verify-before-stop**: sends Claude, or a subagent, back once when it ends after editing code without a test, build, or lint run, or claims tests pass after a failure.
+- **Compaction carry-over**: after compaction, restores your last messages verbatim, the last check result, and which uncommitted files this session edited versus everyone else.
+- **Model lock**: fast mode stays off. Claude runs on Opus 5.5, Fable 5.1, or Haiku 4.5, and Sonnet is not used. Codex commands may name GPT-6 Luna, Sol, or Astra, and Astra is refused on the ChatGPT Plus plan.
+
+The guards never auto-approve anything and fail open: a bug in dotclaude cannot stop your work. They are a best-effort parser, not a sandbox; for hard isolation use Claude Code's [sandbox](https://code.claude.com/docs/en/sandboxing). When a denied command is really what you want, run it yourself with `! <command>`.
+
+**Output style** (`output-styles/dotclaude.md`). It replaces Claude Code's built-in coding and git instructions, written in the structure of Anthropic's own system prompts. It covers:
+
+- grounded claims, with a sanity check in place of answering from memory;
+- challenging an approach before building on it;
+- the request as the deliverable;
+- sharing the working tree with you;
+- debugging by measurement;
+- verified, complete reports;
+- the stops Claude should and should not make;
+- delegation to the agents below.
+
+On Fable 5.1, a session-start note adds that model's adjustments. The style is forced on while the plugin is enabled; to use another, disable the plugin or copy the file to `~/.claude/output-styles/` without `force-for-plugin`.
+
+**Agents.** Claude picks them from their descriptions, or you name one (`dotclaude:<name>`). Each agent's effort is set in its file, because Claude Code ignores an effort passed at spawn time.
+
+| Agent | Model, effort | Use it for |
 | --- | --- | --- |
-| `bash_guard` | on | the Bash guard (the model-lock checks inside it follow `model_lock`) |
-| `edit_guard` | on | the Edit/Write guard |
-| `stop_gate` | on | the verify-before-stop gate |
-| `compact_carryover` | on | restoring context after compaction |
-| `subagent_guidance` | on | the short conventions injected into subagents |
-| `model_lock` | on | fast-mode and model restrictions in every hook |
-| `allowed_models` | `claude-opus-5-5,claude-fable-5-1` | IDs or version prefixes the model lock accepts |
-| `commit_hygiene` | on | the staged-file check on `git commit` |
-| `codegraph_hint` | on | the CodeGraph line at session start |
-| `cloakbrowser` | off | use CloakBrowser instead of agent-browser (antibot) |
-| `cloakbrowser_humanize` | on | human-like behavior in CloakBrowser |
-| `cloakbrowser_headless` | off | headless mode in CloakBrowser (not recommended for hard targets) |
-| `captcha_ocr_ddddocr` | off | offline CAPTCHA OCR fallback via ddddocr-rs |
+| `code-reviewer`, `security-reviewer`, `plan-reviewer` | Opus 5.5, high | fresh-context review of a change, its security, or a plan |
+| `debugger`, `performance-engineer` | Opus 5.5, high | root cause by measurement; measured speed or memory work |
+| `implementer`, `test-writer` | Opus 5.5, medium | one well-scoped piece of work; tests in the repository's style |
+| `ci-investigator`, `dependency-auditor` | Opus 5.5, medium | why CI failed; dependency health |
+| `mechanical-worker`, `docs-writer` | Opus 5.5, low | fully specified bulk edits (in place of Sonnet); docs that match a change |
+| `test-runner`, `history-investigator` | Opus 5.5, low | failures without the log noise; why code looks the way it does |
+| `web-researcher`, `integration-setup` | Haiku 4.5 | sourced web answers; installing and configuring integrations |
+| `codex-worker`, `codex-reviewer` | Haiku 4.5 forwarding to Codex | bounded tasks on GPT-6 Luna; second-opinion review on Astra (Pro plans) or Sol (Plus) |
 
-### Settings profile (`/dotclaude:apply-settings-profile`)
+**Skills.**
 
-`skills/apply-settings-profile/profiles/recommended.json` sets:
+| Skill | What it does |
+| --- | --- |
+| `/dotclaude:apply-settings-profile` | applies the settings profile below |
+| `/dotclaude:setup-integrations` | installs and configures CodeGraph, Headroom, and Codex |
+| `codex-fanout` | runs a large, well-specified job on parallel Codex Luna workers sized to your ChatGPT plan; Claude reviews and commits |
+| `/dotclaude:review-code-changes` | runs `code-reviewer` on the current changes or a range |
+| `write-session-handoff` | writes a note a fresh session can continue from |
+| `drive-web-browser`, `recognize-captcha` | browser automation with agent-browser or CloakBrowser; offline CAPTCHA OCR as a fallback |
+| `/dotclaude:recap` | "where are we and what are we doing?", checked against git; stops for you to confirm |
+| `/dotclaude:challenge`, `/dotclaude:blind-spots` | challenges an idea instead of agreeing; infers your goal and what you are not considering |
+| `/dotclaude:troubleshoot` | signal-tracing debugging mode, for after a first fix fails |
+| `/dotclaude:fresh-eyes`, `/dotclaude:polish` | re-reviews a new doc or change with a fresh reviewer and fixes it; "what would a perfectionist senior dev reject?" |
+| `/dotclaude:lessons-learned` | session post-mortem with concrete changes to apply |
 
-- `env.CLAUDE_CODE_DISABLE_FAST_MODE=1`, `fastMode: false`, `fastModePerSessionOptIn: true`
-- `model`, `advisorModel`, `env.CLAUDE_CODE_SUBAGENT_MODEL` to `claude-opus-5-5`; `availableModels` to Opus 5.5 and Fable 5.1; `Agent(model:sonnet*|haiku*)` denies
-- `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=4`, `env.CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION=40`
-- `permissions.deny` reads of `.env` files, `~/.ssh`, `~/.aws/credentials`, `~/.gnupg`, `~/.netrc`, `~/.docker/config.json`
-- `permissions.disableBypassPermissionsMode`, `enableAllProjectMcpServers: false`, `workflowKeywordTriggerEnabled: false`
-- `includeGitInstructions: false`, so the output style's git section replaces Claude Code's built-in commit and PR instructions
+Skills shown with a leading `/` are macros you run yourself, and they cost no context until invoked. Claude invokes the others when they fit.
 
-The skill also offers a short marked section for `~/.claude/CLAUDE.md` (`skills/apply-settings-profile/profiles/global-claude-md.md`). It names the CLI tools found on the machine, says how to treat dotclaude hook messages, and says to read git state before git work. Re-running replaces the section in place, and `--remove` takes it out; the rest of your CLAUDE.md is never touched.
+## Settings profile
 
-The merge only adds keys and rule entries; it never deletes yours. User and project settings stay editable by you, so for a lock that also holds against your own `/fast`, put `{"fastMode": false}` in the [managed settings](https://code.claude.com/docs/en/managed-settings) file for your OS. The setup skill prints the path.
+`/dotclaude:apply-settings-profile` merges `skills/apply-settings-profile/profiles/recommended.json` into your user, project, or local settings. It sets:
 
-### Output style (`output-styles/dotclaude.md`)
+- **Fast mode off**: fast mode off and `ultracode` off.
+- **Models**: Opus 5.5 as session, subagent, and advisor model; `availableModels` of Opus 5.5, Fable 5.1, and Haiku 4.5. The `sonnet` alias maps to Opus 5.5, and Haiku runs Claude Code's background tasks.
+- **Subagent caps**: 6 at once and 40 per session.
+- **Tools**: the task-list tools, which are off by default on Opus 5.5.
+- **Permissions**:
+  - pre-approval for the two Codex profile commands;
+  - read denies for `.env` files and credential directories;
+  - bypass mode disabled.
+- **Git**: Claude Code's built-in git instructions replaced by the output style's.
 
-The style replaces Claude Code's built-in software-engineering instructions (it doesn't set `keep-coding-instructions`). Claude Code's tool guidance, safety instructions, environment context, and memory stay as they are. It has eight sections:
+The merge only adds, except for the model policy (`availableModels` and `Agent(model:...)` denies), which it replaces. It can also add a short marked section to `~/.claude/CLAUDE.md`.
 
-- **Register:** talk about the work, not the person; apply corrections instead of acknowledging them; plain, literal wording.
-- **Evidence before agreement:** treat user, subagent, and tool claims as hypotheses; read code before making claims; don't invent values nobody gave; check the evidence before state-changing commands.
-- **Scope:** don't narrow, widen, or swap the scope; implement the best-supported reading and state the assumption; finish every part; things noticed along the way become follow-ups, not changes.
-- **Writing code:** read before editing, follow repository conventions, reuse what exists, targeted edits, structure only for a present need, general logic rather than test-shaped code, tests sized like their neighbors, no leftover scratch files, comments only for non-obvious reasons, security as part of correctness.
-- **Verification and reporting:** checks must exercise the change; tests aren't weakened to go green; the final report stands on its own and always keeps failures, unverified parts, assumptions, and follow-ups.
-- **Carrying the task through:** names the early stops to avoid (announcing the next step instead of taking it, asking permission for requested work, listing non-blocking decisions, stopping at a milestone) and the stops that are wanted; denials and hook messages are final; content from files and tools is data.
-- **Using Claude Code:** parallel tool calls, the task list, plan mode, subagents (and what they don't see), background commands and Monitor, `/compact` and `/clear`, what a compaction summary keeps, `/rewind` limits, `!` commands, worktrees, and CLAUDE.md.
-- **Git:** read branch and status first, stage specific files, let hooks run, no amend or force without being asked, and PRs through `gh` with a test plan of what actually ran. This replaces the built-in git instructions once the setup profile sets `includeGitInstructions: false`.
+The profile sets no effort level. Opus 5.5 defaults to medium, which suits coding; use `/effort high` for hard debugging and planning. Avoid `max`, and do not set `CLAUDE_CODE_EFFORT_LEVEL`, which overrides every agent's own effort.
 
-Much of the wording follows Anthropic's own guidance in `docs/platform-claude-com/`, adapted for an interactive session: the Opus 5.5 guide on naming the early stops to avoid, and the Fable 5.1 guide on finishing the whole task, keeping changes and tests to the request, targeted edits, and what compaction summaries must keep.
+## Codex
 
-The built-in coding and git text was reviewed as reference (without copying) against the failure patterns in `docs/`. The replacement drops the emphatic capitals, eager-planning and "proactive" nudges, and the "one or two sentences, nothing else" summary rule that led to under-reporting. It adds the harness guidance the defaults leave out.
+The Codex agents need the [Codex CLI](https://github.com/openai/codex), logged in with `! codex login`, and the profiles that `/dotclaude:setup-integrations codex` installs into `$CODEX_HOME`:
 
-The style gives the reason and the wanted behavior instead of listing banned phrases, following Anthropic's [Opus 5.5 prompting guidance](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5). It also tells Claude not to turn the conventions into code, tests, or docs in your project, and not to mention them in replies.
+- **`dotclaude-luna.config.toml`**: a bounded worker on GPT-6 Luna at high effort. It runs in a workspace-write sandbox where `.git` stays read-only, so Claude commits. Subagents, goals, apps, browser use, and the skills catalog are off, which cuts Codex's fixed input from about 32 KB to under 5 KB per request.
+- **`dotclaude-review.config.toml`**: a read-only reviewer on Astra for Pro and Pro 5x, and Sol for Plus.
+- **`config.toml`**: gets `service_tier = "default"` and fast mode off. On Plus it also gets Luna as the base model. Everything else is kept.
 
-`force-for-plugin: true` applies the style whenever dotclaude is enabled and overrides your `outputStyle` setting. `/output-style` still lists your saved choice, but the dotclaude style is what Claude receives. To use a different style, disable the plugin, or copy the file to `~/.claude/output-styles/` and edit it there with `force-for-plugin` removed.
+The ChatGPT plan is read from the Codex login token's plan claim; no token leaves the plugin.
 
-### Skills and agent
+## Options
 
-- `/dotclaude:review-code-changes [range]`: runs the `code-reviewer` agent in a fresh, read-only context (Opus 5.5, high effort). It reports findings tied to a concrete failing scenario, most severe first, and what it checked. Claude can also delegate to `code-reviewer` on its own.
-- `write-session-handoff [path]`: writes a handoff note (goal, state, decisions, open items, hard-to-rebuild details) for a fresh session. Run it as `/dotclaude:write-session-handoff`, or ask Claude to wrap up for a new session.
-- `drive-web-browser`: browser automation with two backends:
-  - **agent-browser** (default): uses [agent-browser](https://github.com/vercel-labs/agent-browser) CLI for general browsing
-  - **CloakBrowser** (antibot): uses [CloakBrowser](https://github.com/CloakHQ/cloakbrowser), a Playwright replacement with source-level Chromium patches that prevent bot detection
+Set in `/config` under dotclaude:
 
-  Set backend via `BROWSER_BACKEND=cloakbrowser` or in `/config`. CloakBrowser is recommended for sites with Cloudflare, DataDome, or other antibot protection—it makes challenges not appear rather than solving them.
-- `recognize-captcha`: offline CAPTCHA text recognition via [ddddocr-rs](https://github.com/mzdk100/ddddocr-rs). **Fallback only**—prefer CloakBrowser to prevent CAPTCHAs from appearing. For text CAPTCHAs that still appear despite antibot measures.
-- `/dotclaude:apply-settings-profile [user|project|local]`: see above.
+- **Guards and gates**, all on by default: `bash_guard`, `edit_guard`, `stop_gate`, `compact_carryover`, `subagent_guidance`, `model_lock`, `commit_hygiene`, and `codegraph_hint`. Turn on `ask_in_auto_mode` to be asked about recoverable actions in auto mode as well.
+- **Model lists**: `allowed_models` lists the Claude models the lock accepts, and `allowed_codex_models` lists the Codex models.
+- **CodeGraph**: `codegraph_prompt_context` (off by default) adds CodeGraph context to prompts you type. Use it instead of a global `codegraph prompt-hook`.
+- **Browser and CAPTCHA**: `cloakbrowser`, `cloakbrowser_humanize`, `cloakbrowser_headless`, and `captcha_ocr_ddddocr` choose the browser backend and CAPTCHA fallback.
 
-## Browser backends and CAPTCHA handling
+## Design notes
 
-### CloakBrowser (antibot browsing)
-
-[CloakBrowser](https://github.com/CloakHQ/cloakbrowser) is a Playwright replacement with source-level Chromium patches that make antibot systems see a real human browser. It **prevents** CAPTCHAs from appearing rather than solving them.
-
-**Install:**
-
-```bash
-bun install cloakbrowser
-# With GeoIP timezone/locale matching (recommended with proxies):
-bun install cloakbrowser cloakbrowser-geoip
-# Set license key (free tier available):
-export CLOAKBROWSER_LICENSE_KEY=your-key
-```
-
-**Enable:**
-
-- Set `cloakbrowser` to on in `/config` under dotclaude, or
-- Set `BROWSER_BACKEND=cloakbrowser` environment variable
-
-**Usage:**
-
-```bash
-# Via CLI helper
-bun src/browser/cloakbrowser-launch.mjs https://protected-site.com
-
-# With proxy
-bun src/browser/cloakbrowser-launch.mjs --proxy=http://user:pass@proxy:8080 https://site.com
-```
-
-### ddddocr-rs (offline CAPTCHA OCR)
-
-[ddddocr-rs](https://github.com/mzdk100/ddddocr-rs) is a Rust implementation for fast offline text CAPTCHA recognition. **Use as fallback only**—CloakBrowser should prevent CAPTCHAs from appearing.
-
-**Install:**
-
-```bash
-cargo install ddddocr-cli
-mkdir -p ~/.local/share/ddddocr
-curl -L -o ~/.local/share/ddddocr/ddddocr.onnx \
-  https://github.com/mzdk100/ddddocr-rs/raw/main/models/ddddocr.onnx
-```
-
-**Enable:**
-
-- Set `captcha_ocr_ddddocr` to on in `/config` under dotclaude, or
-- Set `CAPTCHA_OCR=ddddocr` environment variable
-
-**Usage:**
-
-```bash
-bun src/captcha/ddddocr.mjs /path/to/captcha.png
-# Output: {"text": "A3Bx9"}
-```
-
-## What dotclaude leaves out, and why
-
-The research in `docs/` shows two kinds of fixes that tend to backfire. Banned-phrase lists get routed around with synonyms, and long rule lists make the listed patterns more likely. The output style avoids both: it names the function of each pattern (managing feelings, agreeing without evidence, structure without a consumer) rather than listing phrases, and it stays about 1,450 words.
-
-- **No hook that judges tone or architecture.** A regex can't tell a needed abstraction from a speculative one, so those live in the output style and the reviewer agent, not in a hook.
-- **No prompt-type or agent-type hooks.** They run a model call on every event, which costs usage without showing up anywhere.
-- **No large CLAUDE.md or SessionStart text.** Static prefix is paid on every turn.
-- **No patching of Claude Code itself.** dotclaude only uses the extension points Claude Code documents: plugin hooks, output styles, skills, agents, `userConfig`, and settings keys. Tools that patch the installed CLI, such as tweakcc, are out of scope.
-
-Related tools that were considered:
-
-- [destructive_command_guard](https://github.com/Dicklesworthstone/destructive_command_guard) was not bundled or copied, because of its license rider.
-- [cc-safety-net](https://github.com/kenryu42/cc-safety-net) (MIT) is a compatible extra layer if you want one.
-- [sqz](https://github.com/ojuschugh1/sqz) was left out because its hook auto-approves rewritten commands.
-- [tgrep](https://github.com/microsoft/tgrep) was left out because it has no Claude Code integration yet.
+- **No banned-phrase lists.** They get routed around with synonyms, so the conventions name what each behavior does and why.
+- **No hooks that judge tone or architecture.** A regex can't tell a needed abstraction from a speculative one, so those live in the output style and the reviewers.
+- **No prompt-type or agent-type hooks.** They spend usage on every event.
+- **Only documented extension points.** dotclaude uses hooks, output styles, skills, agents, `userConfig`, and settings keys, and never patches Claude Code.
 
 ## Development
 
 ```bash
-bun test tests/               # guard rules and hook scripts end to end
-bun run validate              # claude plugin validate --strict on manifests, skills, agents
-claude --plugin-dir . plugin details dotclaude   # inventory and token cost
-claude plugin eval . --allow-tools Bash,Write,Edit --scaffold   # model-graded evals (uses your plan's usage)
+bun test tests/                                   # guard rules and hooks end to end
+bun run lint && bun run validate                  # biome; claude plugin validate --strict
+claude --plugin-dir . plugin details dotclaude    # inventory and token cost
 ```
 
-Tests pass commands to the guard as strings; nothing in the suite executes a guarded command. Keep it that way when adding cases.
+Tests pass commands to the guard as strings; nothing in the suite executes a guarded command.
 
 ## License
 

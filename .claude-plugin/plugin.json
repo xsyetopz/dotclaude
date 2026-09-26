@@ -1,20 +1,33 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.1.0",
-  "description": "Guardrails and working conventions for Claude Code: destructive-command and test-weakening guards, a verify-before-stop gate, compaction carry-over, a fast-mode/model lock, and an always-on output style that counters common agent failure patterns.",
+  "version": "0.2.0",
+  "description": "Guardrails, working conventions, and a set of task agents for Claude Code: destructive-command and test-weakening guards that stay quiet on recoverable actions in auto mode, a verify-before-stop gate for the session and its subagents, compaction carry-over, a fast-mode/model lock (Opus 5.5, Fable 5.1, Haiku 4.5), reviewers, workers, and researchers on tiered models and effort, optional Codex delegation, and an always-on output style.",
   "author": {
     "name": "xsyetopz"
   },
   "repository": "https://github.com/xsyetopz/dotclaude",
   "license": "MIT",
-  "keywords": ["hooks", "guardrails", "verification", "safety"],
+  "keywords": [
+    "hooks",
+    "guardrails",
+    "verification",
+    "safety",
+    "agents",
+    "subagents"
+  ],
   "userConfig": {
     "bash_guard": {
       "type": "boolean",
       "title": "Bash guard",
       "description": "Ask before destructive git/filesystem/database commands, hook bypasses, and public side effects (publish, gh writes).",
       "default": true
+    },
+    "ask_in_auto_mode": {
+      "type": "boolean",
+      "title": "Ask about recoverable actions in auto mode",
+      "description": "In auto mode, the guards stay quiet about recoverable actions (deleting git-tracked files, find/fd deletes, generated-file edits) and let the auto mode classifier decide. Turn on to be asked anyway.",
+      "default": false
     },
     "edit_guard": {
       "type": "boolean",
@@ -50,7 +63,13 @@
       "type": "string",
       "title": "Allowed models",
       "description": "Comma-separated model IDs or version prefixes the model lock permits.",
-      "default": "claude-opus-5-5,claude-fable-5-1"
+      "default": "claude-opus-5-5,claude-fable-5-1,claude-haiku-4-5"
+    },
+    "allowed_codex_models": {
+      "type": "string",
+      "title": "Allowed Codex models",
+      "description": "Comma-separated OpenAI model IDs that `codex` commands may name (-m, --model, -c model=). Others are denied under the model lock.",
+      "default": "gpt-6-luna,gpt-6-sol,gpt-6-astra"
     },
     "commit_hygiene": {
       "type": "boolean",
@@ -63,6 +82,12 @@
       "title": "CodeGraph hint",
       "description": "At session start, note in context when the repository has a .codegraph/ index.",
       "default": true
+    },
+    "codegraph_prompt_context": {
+      "type": "boolean",
+      "title": "CodeGraph prompt context",
+      "description": "Run `codegraph prompt-hook` on prompts you type (not on background-task notifications). Use instead of a global codegraph prompt-hook entry in settings.json.",
+      "default": false
     },
     "cloakbrowser": {
       "type": "boolean",

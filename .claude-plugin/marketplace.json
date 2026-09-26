@@ -9,7 +9,7 @@
     {
       "name": "dotclaude",
       "source": "./",
-      "description": "Mechanical guardrails for Claude Code: destructive-command guard, test-weakening guard, verify-before-stop gate, compaction carry-over, fast-mode/model lock.",
+      "description": "Guardrails, working conventions, and tiered task agents for Claude Code: destructive-command and test-weakening guards, a verify-before-stop gate, compaction carry-over, a fast-mode/model lock, reviewer/worker/researcher agents, and optional Codex delegation.",
       "category": "productivity"
     }
   ]
