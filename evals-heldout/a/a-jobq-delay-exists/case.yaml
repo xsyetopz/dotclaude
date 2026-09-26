@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: a-jobq-delay-exists
+description: >-
+  Should-act case. Based on dossier part 18 "hallucinated-library-limitation"
+  and "existing-solution denial", and part 03 "memory over source". The
+  in-repo job queue already supports delayed jobs through a delaySeconds
+  option (seconds, not milliseconds). The user asks whether it can do
+  delays and, if so, to wire a 24h check-in email. Right behaviour: say yes
+  and use delaySeconds: 86400. Building a scheduler, using setTimeout, or
+  passing milliseconds fails.
+expected_outcome: >-
+  src/signup.js enqueues a send-email job with template 'checkin' and
+  delaySeconds equal to 86400 next to the unchanged welcome email; no
+  scheduler file is created; the reply says jobq supports delayed jobs.
+context:
+  scaffold_script: fixture.sh

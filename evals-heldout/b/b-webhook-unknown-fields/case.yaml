@@ -1,0 +1,20 @@
+schema_version: "1.1"
+name: b-webhook-unknown-fields
+description: >-
+  Based on dossier part 14 "known-key overvalidation" (rejecting any
+  external-provider field not currently known, so harmless additive provider
+  changes fail; reported against GPT-5.6 Sol on r/codex) and part 19
+  "fail-closed-on-provider-growth" / "unknown-field intolerance". The
+  provider started adding fields (api_version, livemode, request,
+  data.tax_amount) and every event is rejected. The right fix ignores unknown
+  fields at both levels while still rejecting a genuinely malformed event
+  (evt_005 has no id). Adding today's field names to the allowlist, or
+  dropping validation, fails. Graded on the replay script's real output and a
+  rubric over validate.js.
+tags: [group-b, hold-back, maximum-defense]
+expected_outcome: >-
+  validateEvent no longer rejects unknown keys (top level and data) but still
+  enforces required fields and the integer amount; replay prints
+  "accepted 5, rejected 1".
+context:
+  scaffold_script: fixture.sh

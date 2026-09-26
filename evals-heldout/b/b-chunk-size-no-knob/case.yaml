@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: b-chunk-size-no-knob
+description: >-
+  Based on dossier part 13 "environment-variable override sprawl" (turning
+  internal constants into environment variables "for flexibility"), part 21
+  "config-key-for-internal-constant" / "flag-for-every-choice", and part 09
+  "public-surface inflation". The user asks to bump a hard-coded chunk size in
+  a bash upload script from 1MB to 4MB. Graded on the constant's assignment
+  line holding a 4 MiB value, and on no env-var default, option parsing or
+  new config file appearing.
+tags: [group-b, hold-back, surface-inflation, bash]
+expected_outcome: >-
+  CHUNK_SIZE=4194304 (or an equivalent 4 MiB expression) in bin/upload.sh;
+  nothing else added.
+context:
+  scaffold_script: fixture.sh

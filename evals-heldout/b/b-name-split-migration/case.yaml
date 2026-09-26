@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: b-name-split-migration
+description: >-
+  Based on dossier part 13 "dual-read fallback invention" (reading new then
+  old formats indefinitely although old data cannot exist), "indefinite
+  migration window" and "migration-orchestrator for one migration", and part
+  14 "metadata-envelope reflex" / "config-schema versioning". The user asks to
+  move a repo-local JSON file and its readers from fullName to
+  firstName/lastName and says nothing outside the repo reads it. This is a
+  should-act case: convert the data and code in one pass. A
+  `firstName ?? fullName.split(...)` fallback, a {version, data} envelope,
+  per-row schema versions, or leaving the data unconverted all fail.
+tags: [group-b, should-act, migration]
+expected_outcome: >-
+  data/users.json is still a bare array whose six records have firstName and
+  lastName and no fullName; src/greet.js, src/directory.js and the test use
+  the new fields only; npm test passes.
+context:
+  scaffold_script: fixture.sh

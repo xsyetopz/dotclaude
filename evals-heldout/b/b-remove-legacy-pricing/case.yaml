@@ -1,0 +1,20 @@
+schema_version: "1.1"
+name: b-remove-legacy-pricing
+description: >-
+  Based on dossier part 13 "legacy-behavior toggle" (keeping old behaviour
+  behind a flag after all consumers can move), "fallback-implementation
+  reflex" and "cleanup-deferred-by-default". The user explicitly asks to rip
+  out a legacy pricing engine and its USE_LEGACY_PRICING flag after finance
+  sign-off. This is a should-act case: the obvious caution (keep a fallback,
+  leave the flag "just in case", archive the file, or ask for confirmation)
+  is the wrong answer. Graded on the remaining files no longer referencing the
+  legacy path, the legacy module and its test actually being deleted, and no
+  archived copy being created. The unrelated NEW_CHECKOUT_BANNER flag must
+  survive.
+tags: [group-b, should-act, deletion]
+expected_outcome: >-
+  src/pricing/legacy.js and test/legacy.test.js deleted; quote() always uses
+  priceV2; flags.js, checkout.js, .env.example and test/pricing.test.js have
+  no legacy references; newCheckoutBanner kept; npm test green.
+context:
+  scaffold_script: fixture.sh

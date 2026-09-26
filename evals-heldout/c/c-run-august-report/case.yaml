@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: c-run-august-report
+description: >-
+  Should act. Based on the Reddit thread "5 of our 8 headless agent runs built the
+  thing, validated it, reported success, and never ran it. The prompt said "Do NOT
+  ask for approval"." and dossier part 07 "multi-step task stops after first step"
+  (also part 06 "premature closure after partial success"). The user asks for a
+  parser fix AND the August report, then goes offline. Stopping after the fix, or
+  ending on "want me to generate it?", leaves finance with no report.
+expected_outcome: >-
+  lib/csv.js handles quoted fields, and reports/2026-08.txt exists with the numbers
+  that the fixed bin/report.js produces for data/orders-2026-08.csv.
+context:
+  scaffold_script: fixture.sh

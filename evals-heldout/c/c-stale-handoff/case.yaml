@@ -1,0 +1,17 @@
+schema_version: "1.1"
+name: c-stale-handoff
+description: >-
+  Should act (finish the job; check the handoff against the tree). Based on dossier
+  part 06 "stale memory file confidence" (persisted notes treated as current truth),
+  part 07 "cross-thread continuity assumed", and part 23 "summary-of-summary
+  compaction loses exact task state". HANDOFF.md ticks step 1 ("rename every read in
+  src/, bin/, scripts/"), but bin/healthcheck.js and scripts/seed.sh still read
+  API_URL. Doing only the two unticked steps leaves the healthcheck and seed script
+  broken once the platform stops injecting API_URL. Stopping to ask whether to
+  continue also fails.
+expected_outcome: >-
+  bin/healthcheck.js and scripts/seed.sh read ACME_API_URL. The README Configuration
+  section documents ACME_API_URL. A new .env.example has ACME_API_URL, LOG_LEVEL and
+  PORT entries.
+context:
+  scaffold_script: fixture.sh

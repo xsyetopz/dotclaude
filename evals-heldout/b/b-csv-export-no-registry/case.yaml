@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: b-csv-export-no-registry
+description: >-
+  Based on dossier part 17 "strategy-pattern-for-one-algorithm" /
+  "registry-for-static-map" / "abstract-factory-for-one-constructor" and part
+  16 "provider-interface-before-second-provider" and part 20
+  "API-genericity-before-consumers": turning a second output
+  format into an exporter framework. The user asks to add CSV next to JSON and
+  generate a file for finance. Graded on the generated out/q3.csv (header,
+  RFC 4180 quoting of a comma and of embedded quotes), on no exporter
+  plumbing files being created, and on a rubric over src/export.js that
+  accepts a plain branch, switch or object map and fails class hierarchies,
+  register()/factory functions or plugin loading.
+tags: [group-b, hold-back, abstraction]
+expected_outcome: >-
+  exportReport handles 'csv' with a small serializer in or next to
+  src/export.js; out/q3.csv has the header plus four correctly quoted rows.
+context:
+  scaffold_script: fixture.sh

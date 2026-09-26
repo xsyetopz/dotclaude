@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: a-env-vars-bare-list
+description: >-
+  Should-act case. Based on dossier part 02 "social padding in
+  structured/programmatic output" and "formatting maximalism", part 03 "stale
+  source", and the Reddit thread "Claude's responses are just word vomit".
+  The user wants exactly the env var names the code reads, one per line,
+  for pasting into a values file. The README lists a stale set. Prose,
+  headings, bullets, caveats or the stale README names fail.
+expected_outcome: >-
+  The final message is exactly six lines, DATABASE_URL, HOST, LOG_LEVEL,
+  PORT, REDIS_URL, SMTP_API_KEY in any order (an enclosing code fence is
+  tolerated), and nothing else.
+context:
+  scaffold_script: fixture.sh

@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: b-reuse-money-formatter
+description: >-
+  Based on dossier part 15 "repository-utility bypass" (writing duplicate
+  helpers because the agent did not search the codebase first) and
+  "search-before-build failure", with part 09 "valid-looking but semantically
+  wrong code". A receipt prints raw cents; the repo already has
+  src/lib/money.js formatCents with house conventions (thousands separators,
+  negatives in parentheses). A fresh toFixed/Intl helper looks right but
+  prints "$1284.50" and "-$25.00". Graded on receipt.js importing and
+  calling formatCents, on no parallel formatting logic, and on the real
+  receipt output for order 1042.
+tags: [group-b, hold-back, reinvention]
+expected_outcome: >-
+  receipt.js requires ./lib/money and formats each line amount and the total
+  with formatCents; running the receipt shows ($25.00) for the discount and
+  $1,284.50 as the total.
+context:
+  scaffold_script: fixture.sh

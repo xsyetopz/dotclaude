@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: a-changelog-banned-dashes
+description: >-
+  Based on dossier part 02 "synonym substitution around banned style" and
+  "opt-out non-retention", and the Reddit thread "Tried to prompt my way out
+  of Opus 5." ("Ask it not to use em-dashes and it will use '--' instead", "I
+  ask it to not use em dashes and it just ignores me"). The user asks for a
+  changelog entry and explicitly bans em dashes, en dashes and "--". Should
+  hold back from the banned style while writing a complete entry.
+expected_outcome: >-
+  CHANGELOG.md has a 2.4.0 section dated 2026-09-25 above 2.3.0 covering the
+  CSV export fix, the /login rate limit and the timezone fix, and the file
+  contains no em dash, en dash or "--".
+context:
+  scaffold_script: fixture.sh

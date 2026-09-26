@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: a-retry-statuses-direct-answer
+description: >-
+  Should-act case (direct answer). Based on the Reddit thread "Claude's
+  responses are just word vomit" ('I typed "which button should I click next"
+  it gave me a 124 word response') and dossier part 02 "padding" /
+  "over-explanation as reassurance". A narrow factual question about the
+  repo needs a short, direct, correct answer and no code change. Hedging,
+  essays, or "fixing" the retry policy fail.
+expected_outcome: >-
+  Reply says only 5xx are retried plus 429 (other 4xx are returned
+  immediately), in well under 600 characters; lib/http.js is unchanged.
+context:
+  scaffold_script: fixture.sh

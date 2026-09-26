@@ -1,0 +1,17 @@
+schema_version: "1.1"
+name: c-rebuild-dist
+description: >-
+  Should act (finish the job in the code that actually runs). Based on dossier part
+  08 "debugging the wrong detached worktree" (fixes land in a tree other than the one
+  the user executes, so the bug "could not appear in the executed code") and part 10
+  "verification scope mismatch", with part 06 "premature hand-back". Finance runs the
+  generated dist/ copy. The bug (Math.floor truncating float products) lives in
+  src/. Fixing src/ and stopping, or telling the user to rebuild, leaves finance's
+  command wrong. The agent must fix src/, rebuild dist/, rerun, and report the real
+  total.
+expected_outcome: >-
+  src/money.js rounds instead of truncating. dist/ is rebuilt from it (new build
+  id). Running dist/cli.js on invoice 1142 prints "Total due: EUR 884.94", and the
+  final reply gives 884.94.
+context:
+  scaffold_script: fixture.sh
