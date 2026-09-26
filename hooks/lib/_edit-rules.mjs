@@ -70,6 +70,9 @@ const SKIP =
   /\b(it|test|describe|context)\.(skip|todo|only)\b|\b(xit|xdescribe|xtest|fit|fdescribe)\s*\(|@pytest\.mark\.(skip|xfail)|pytest\.skip\(|@unittest\.skip|\bself\.skipTest\(|#\[ignore\]|\bt\.Skip(Now|f)?\(|XCTSkip|\.disabled\(|@Disabled\b|@Ignore\b|\[Ignore\]|\[Fact\(Skip|\bskip:\s*true/;
 
 function testWeakening(before, after) {
+  // A new test file weakens nothing: conditional skips there are platform
+  // guards such as `@unittest.skipUnless(shutil.which("openssl"))`.
+  if (before === null) return [];
   const out = [];
   const removed = count(ASSERT, before ?? "") - count(ASSERT, after);
   if (removed > 0)
@@ -93,7 +96,7 @@ function generated(filePath, posix) {
   if (GENERATED_PATH.test(posix))
     return [
       [
-        "ask",
+        "warn",
         `${name} is generated, vendored, or a lockfile; the usual fix is to edit its source or rerun the generator`,
       ],
     ];
@@ -115,7 +118,7 @@ function generated(filePath, posix) {
   return GENERATED_MARK.test(head)
     ? [
         [
-          "ask",
+          "warn",
           `${name} is marked as generated; the usual fix is to edit its source or rerun the generator`,
         ],
       ]
@@ -126,7 +129,12 @@ function shrink(before, after) {
   const oldLines = before.split("\n").length;
   const newLines = after.split("\n").length;
   return oldLines >= 80 && newLines <= oldLines * 0.4
-    ? [["ask", `Write replaces a ${oldLines}-line file with ${newLines} lines`]]
+    ? [
+        [
+          "warn",
+          `Write replaces a ${oldLines}-line file with ${newLines} lines`,
+        ],
+      ]
     : [];
 }
 

@@ -43,6 +43,105 @@ export function claude(cmd, ctx) {
   return out;
 }
 
+/** The `-p`/`--profile` name on a `codex` command line, or null. */
+function codexProfile(args) {
+  for (let i = 0; i < args.length; i += 1) {
+    if ((args[i] === "-p" || args[i] === "--profile") && args[i + 1])
+      return args[i + 1];
+    if (args[i].startsWith("--profile=")) return args[i].slice(10);
+  }
+  return null;
+}
+
+/** Model a `codex` command line asks for (-m, --model, -c model=...), or null. */
+function codexModel(args) {
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    const next = args[i + 1] ?? "";
+    if (a === "-m" || a === "--model") return next;
+    if (a.startsWith("--model=")) return a.slice(8);
+    const config =
+      a === "-c" || a === "--config"
+        ? next
+        : a.startsWith("--config=")
+          ? a.slice(9)
+          : null;
+    const m = config && /^model\s*=\s*["']?([^"']+)["']?$/.exec(config.trim());
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// Models too expensive for a plan's quota: Astra on Plus drains the 5-hour
+// window in a few tasks, so Plus runs Luna only.
+const PLAN_DENIED = { plus: ["gpt-6-astra"] };
+
+// Codex flags and overrides that remove its sandbox or approvals, skip hook
+// trust, or switch to the fast (priority) tier, which costs 2.5x credits.
+const CODEX_BYPASS = /^--dangerously-bypass-/;
+const CODEX_FAST =
+  /^(service_tier\s*=\s*["']?(fast|priority)|features\.fast_mode\s*=\s*true)/;
+
+function codexSafety(args) {
+  const out = [];
+  args.forEach((a, i) => {
+    const value = args[i + 1] ?? "";
+    if (CODEX_BYPASS.test(a))
+      out.push([
+        "deny",
+        `\`codex ${a}\` turns off Codex's sandbox, approvals, or hook trust`,
+      ]);
+    const config =
+      a === "-c" || a === "--config"
+        ? value
+        : a.startsWith("--config=")
+          ? a.slice(9)
+          : null;
+    const enabled =
+      a === "--enable" ? value : a.startsWith("--enable=") ? a.slice(9) : null;
+    if ((config && CODEX_FAST.test(config.trim())) || enabled === "fast_mode")
+      out.push([
+        "deny",
+        "Codex fast mode and the priority tier are off under dotclaude's model lock",
+      ]);
+  });
+  return out;
+}
+
+/** OpenAI models the Codex agents may use; others are denied by name. */
+export function codex(cmd, ctx) {
+  if (!ctx.modelLock) return [];
+  const safety = codexSafety(cmd.args);
+  if (safety.length) return safety;
+  const explicit = codexModel(cmd.args);
+  const list = ctx.codexModels ?? [];
+  const plan = ctx.codexPlan?.() ?? null;
+  // Only an explicit model is checked against the allowlist; a model from the
+  // profile or base config also counts for the plan check, since `-p` with an
+  // Astra profile on Plus costs the same as `-m gpt-6-astra`.
+  const configured = explicit
+    ? null
+    : (ctx.codexConfiguredModel?.(codexProfile(cmd.args)) ?? null);
+  const resolved = (explicit ?? configured)?.trim().toLowerCase();
+  if (!resolved) return [];
+  const model = resolved;
+  if (explicit && list.length && !list.includes(model))
+    return [
+      [
+        "deny",
+        `Codex model \`${model}\` is outside the allowed Codex models (${list.join(", ")})`,
+      ],
+    ];
+  if (plan && PLAN_DENIED[plan]?.includes(model))
+    return [
+      [
+        "deny",
+        `Codex model \`${model}\` is not used on the ChatGPT ${plan} plan; use gpt-6-luna`,
+      ],
+    ];
+  return [];
+}
+
 export function modelEnv(cmd, ctx) {
   const out = [];
   const fast = cmd.assigns.CLAUDE_CODE_DISABLE_FAST_MODE;

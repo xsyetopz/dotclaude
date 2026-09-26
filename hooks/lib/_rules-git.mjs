@@ -127,11 +127,20 @@ export function gitRule(cmd, ctx) {
         out.push(["ask", `\`git reflog ${args[0]}\` removes recovery points`]);
       break;
     case "worktree":
-      if (args[0] === "remove" && hasFlag(args, ["--force"], "f"))
-        out.push([
-          "ask",
-          "`git worktree remove --force` deletes a worktree with changes",
-        ]);
+      if (args[0] === "remove" && hasFlag(args, ["--force"], "f")) {
+        const target = positional(args.slice(1))[0];
+        const dirty = target
+          ? git(path.resolve(gitCwd(globals, ctx), target), [
+              "status",
+              "--porcelain",
+            ])
+          : null;
+        if (dirty?.trim())
+          out.push([
+            "ask",
+            `\`git worktree remove --force\` deletes uncommitted changes in ${target}`,
+          ]);
+      }
       break;
     case "config":
       if (

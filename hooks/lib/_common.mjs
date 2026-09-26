@@ -71,6 +71,41 @@ export function preToolDecision(decision, reason) {
   });
 }
 
+// Modes where nobody is watching for a prompt: an "ask" there stalls the
+// session (or is auto-denied), so recoverable "warn" findings stay silent and
+// the mode's own classifier or rules decide.
+const UNATTENDED = new Set(["auto", "dontAsk", "bypassPermissions"]);
+
+/**
+ * Turn guard findings into one PreToolUse decision. `label` names what was
+ * checked ("command", "edit"). Deny wins; then ask; "warn" asks only when the
+ * session is in an attended permission mode or `ask_in_auto_mode` is on.
+ */
+export function decide(findings, data, label) {
+  const denied = findings.filter(([level]) => level === "deny");
+  if (denied.length) {
+    preToolDecision(
+      "deny",
+      `dotclaude blocked this ${label}: ${denied.map(([, r]) => r).join("; ")}.${
+        label === "command"
+          ? " If the user wants it run, they can run it themselves with `! <command>`."
+          : ""
+      }`,
+    );
+    return;
+  }
+  const quiet =
+    UNATTENDED.has(data.permission_mode) && !option("ask_in_auto_mode", false);
+  const asks = findings.filter(
+    ([level]) => level === "ask" || (level === "warn" && !quiet),
+  );
+  if (asks.length)
+    preToolDecision(
+      "ask",
+      `dotclaude: ${asks.map(([, reason]) => reason).join("; ")}`,
+    );
+}
+
 export async function run(body) {
   try {
     await body(readInput());

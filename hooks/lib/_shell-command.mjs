@@ -59,6 +59,7 @@ class Command {
     this.pipedFrom = null;
     this.heredoc = null;
     this.cwdHint = null;
+    this.writes = [];
   }
 
   get name() {
@@ -70,10 +71,24 @@ class Command {
   }
 }
 
+// Reserved words that can precede a simple command (`do rm -rf x`,
+// `then env -u X swift test`); the command after them is what runs.
+const RESERVED = new Set([
+  "do",
+  "then",
+  "else",
+  "elif",
+  "if",
+  "while",
+  "until",
+  "!",
+]);
+
 export function unwrap(input) {
   const assigns = {};
   let argv = [...input];
   while (argv.length) {
+    while (argv.length && RESERVED.has(argv[0])) argv.shift();
     while (argv.length && ASSIGN.test(argv[0])) {
       const [key, ...rest] = argv.shift().split("=");
       assigns[key] = rest.join("=");

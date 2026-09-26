@@ -7,24 +7,24 @@ import { option, projectRoot, run } from "../lib/_common.mjs";
 import {
   isCheckCommand,
   load,
+  NON_CODE,
   outputShowsFailure,
   save,
+  shellWrites,
 } from "../lib/_ledger.mjs";
 
-const NON_CODE =
-  /\.(md|mdx|markdown|txt|rst|adoc|org|csv|tsv|svg|png|jpe?g|gif|webp|ico|pdf)$/i;
-
 /** Path of a code edit relative to the project, or null when it doesn't count. */
-function codeEdit(data) {
+/** Project-relative path an edit tool wrote, or null. */
+function editedPath(data) {
   if (data.hook_event_name === "PostToolUseFailure") return null;
   const input = data.tool_input ?? {};
   const file = input.file_path || input.notebook_path || "";
   const rel = path.relative(projectRoot(data), file);
-  const outside = rel.startsWith("..") || path.isAbsolute(rel);
-  if (!file || NON_CODE.test(file) || outside || rel.startsWith(".claude/"))
-    return null;
+  if (!file || rel.startsWith("..") || path.isAbsolute(rel)) return null;
   return rel;
 }
+
+const codeFile = (rel) => !NON_CODE.test(rel) && !rel.startsWith(".claude/");
 
 /** Result of a finished test/build/lint command, or null when it doesn't count. */
 function checkRun(data) {
@@ -46,6 +46,14 @@ function checkRun(data) {
   return { command: recorded, ok: !outputShowsFailure(output), code: 0 };
 }
 
+/** Every path this session (or subagent) wrote, so compaction can tell its
+ * changes from the user's. Bounded to keep the ledger small. */
+function recordEdited(state, rel) {
+  const list = (state.edited ?? []).filter((p) => p !== rel);
+  list.push(rel);
+  state.edited = list.slice(-300);
+}
+
 run((data) => {
   if (!option("stop_gate") && !option("compact_carryover")) return;
   const state = load(data.session_id, data.agent_id);
@@ -55,15 +63,33 @@ run((data) => {
     case "Write":
     case "MultiEdit":
     case "NotebookEdit": {
-      const rel = codeEdit(data);
+      const rel = editedPath(data);
       if (!rel) return;
-      state.lastEdit = { seq: state.seq, path: rel };
+      recordEdited(state, rel);
+      if (codeFile(rel)) state.lastEdit = { seq: state.seq, path: rel };
       break;
     }
     case "Bash": {
+      const command = data.tool_input?.command;
+      const written =
+        data.hook_event_name === "PostToolUse" && typeof command === "string"
+          ? shellWrites(
+              command,
+              projectRoot(data),
+              data.cwd || projectRoot(data),
+            )
+          : [];
+      if (written.length) {
+        state.lastEdit = { seq: state.seq, path: written[0] };
+        for (const rel of written) recordEdited(state, rel);
+      }
       const result = checkRun(data);
-      if (!result) return;
-      state.lastCheck = { seq: state.seq, ...result };
+      // A check in the same command runs after its writes (`... > f && make`).
+      if (result) {
+        if (written.length) state.seq += 1;
+        state.lastCheck = { seq: state.seq, ...result };
+      }
+      if (!written.length && !result) return;
       break;
     }
     default:

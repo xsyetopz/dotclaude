@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
-// Stop hook: send Claude back once when the turn ends after code edits with no
-// later check run, or with a failed check it reports as passing. Each ledger
+// Stop and SubagentStop hook: send Claude (or a subagent) back once when it
+// ends after code edits with no later check run, or with a failed check it
+// reports as passing. Each ledger
 // state blocks at most once, and a continuation is never blocked again.
 
 import { emit, option, run } from "../lib/_common.mjs";
@@ -19,7 +20,10 @@ run((data) => {
     )
   )
     return;
-  const state = load(data.session_id, null);
+  // SubagentStop checks the subagent's own ledger (edits it made, checks it ran).
+  const agentId =
+    data.hook_event_name === "SubagentStop" ? (data.agent_id ?? null) : null;
+  const state = load(data.session_id, agentId);
   const message = data.last_assistant_message ?? "";
   const { lastEdit, lastCheck } = state;
   let reason = null;
@@ -56,6 +60,6 @@ run((data) => {
   }
 
   if (!reason) return;
-  save(data.session_id, null, state);
+  save(data.session_id, agentId, state);
   emit({ decision: "block", reason });
 });

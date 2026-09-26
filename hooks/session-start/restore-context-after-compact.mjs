@@ -1,33 +1,36 @@
 #!/usr/bin/env bun
 // SessionStart(compact): restore the user's recent messages verbatim, the
-// uncommitted-change summary, and the last check result after compaction.
+// uncommitted files split into this session's edits and everyone else's, and
+// the last check result after compaction.
 
 import { execFileSync } from "node:child_process";
 import { emit, option, projectRoot, run } from "../lib/_common.mjs";
-import { load } from "../lib/_ledger.mjs";
+import { editedBySession, load } from "../lib/_ledger.mjs";
 import { recentPrompts } from "../lib/_transcript.mjs";
 
 const CONTEXT_BUDGET = 2500;
 
-function gitStat(root) {
+/** Uncommitted paths (tracked changes and untracked files), relative to root. */
+function changedPaths(root) {
   try {
-    const out = execFileSync("git", ["-C", root, "diff", "--stat", "HEAD"], {
-      encoding: "utf8",
-      timeout: 3000,
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    const lines = out.trim().split("\n").filter(Boolean);
-    return lines.length > 12
-      ? [
-          ...lines.slice(0, 10),
-          `... ${lines.length - 11} more files`,
-          lines.at(-1),
-        ].join("\n")
-      : lines.join("\n");
+    const out = execFileSync(
+      "git",
+      ["-C", root, "status", "--porcelain", "--untracked-files=all"],
+      { encoding: "utf8", timeout: 3000, stdio: ["ignore", "pipe", "ignore"] },
+    );
+    return out
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => line.slice(3).split(" -> ").at(-1).replace(/^"|"$/g, ""));
   } catch {
-    return "";
+    return [];
   }
 }
+
+const list = (paths) =>
+  paths.length > 15
+    ? `${paths.slice(0, 15).join(", ")}, and ${paths.length - 15} more`
+    : paths.join(", ");
 
 run((data) => {
   if (data.source !== "compact" || !option("compact_carryover")) return;
@@ -41,8 +44,20 @@ run((data) => {
       `The user's most recent messages before compaction, verbatim, oldest first:\n${prompts.map((p, i) => `${i + 1}. ${p}`).join("\n")}`,
     );
   }
-  const stat = gitStat(projectRoot(data));
-  if (stat) parts.push(`Uncommitted changes (git diff --stat HEAD):\n${stat}`);
+  // Split uncommitted changes by who made them: the transcript before
+  // compaction was the only record, and git diff mixes everyone's edits.
+  const mine = editedBySession(data.session_id);
+  const changed = changedPaths(projectRoot(data));
+  const ours = changed.filter((p) => mine.has(p));
+  const theirs = changed.filter((p) => !mine.has(p));
+  if (ours.length)
+    parts.push(
+      `Uncommitted files this session or its subagents edited: ${list(ours)}.`,
+    );
+  if (theirs.length)
+    parts.push(
+      `Uncommitted files not recorded as edited through this session's tools: ${list(theirs)}. They may be the user's or another session's work, or changes from formatters, codemods, or Codex workers this session ran. Do not revert them, and check the transcript or the diff before claiming or disclaiming them.`,
+    );
   if (state.lastCheck) {
     const c = state.lastCheck;
     const stale =

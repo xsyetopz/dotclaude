@@ -1,7 +1,8 @@
 // Rules for the Bash guard.
 //
 // check(command, ctx) returns findings shaped [level, reason] with level
-// "deny" or "ask". The guard never returns "allow": commands that match
+// "deny", "ask", or "warn" (a recoverable action that asks only outside auto
+// mode; see decide() in _common.mjs). The guard never returns "allow": commands that match
 // nothing fall through to Claude Code's normal permission flow.
 
 import { positional } from "./_bash-args.mjs";
@@ -16,13 +17,13 @@ import {
   secretRead,
 } from "./_rules-filesystem.mjs";
 import { gitRule } from "./_rules-git.mjs";
-import { claude, modelEnv, rawSettingsWrite } from "./_rules-model.mjs";
+import { claude, codex, modelEnv, rawSettingsWrite } from "./_rules-model.mjs";
 import { curl, gh, PUBLISH, publish, wget } from "./_rules-remote.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /**
- * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, commitHygiene?: boolean}} Context
- * @typedef {["deny" | "ask", string]} Finding
+ * @typedef {{root: string, cwd: string, allowedModels: string[], codexModels?: string[], modelLock?: boolean, commitHygiene?: boolean}} Context
+ * @typedef {["deny" | "ask" | "warn", string]} Finding
  */
 
 /** @returns {Finding[]} */
@@ -111,7 +112,7 @@ function interpreterInline(cmd, ctx) {
   if (!code) return [];
   const out = [];
   if (DESTRUCTIVE_CODE.test(code))
-    out.push(["ask", `inline \`${cmd.name}\` code deletes files`]);
+    out.push(["warn", `inline \`${cmd.name}\` code deletes files`]);
   if (SHELL_OUT.test(code)) {
     for (const match of code.matchAll(STRING_LIT)) {
       const literal = match[1] ?? match[2] ?? "";
@@ -188,6 +189,7 @@ const HANDLERS = {
   curl,
   wget,
   claude,
+  codex,
   yarn: publish,
   dropdb: dbReset,
   ...Object.fromEntries(Object.keys(PUBLISH).map((n) => [n, publish])),

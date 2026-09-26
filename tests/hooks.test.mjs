@@ -85,6 +85,54 @@ test("bash guard emits ask and deny decisions, and nothing for safe commands", (
   );
 });
 
+test("recoverable findings ask in default mode and stay quiet in auto mode", () => {
+  const warn = {
+    tool_name: "Bash",
+    tool_input: { command: "find . -name '*.log' -delete" },
+  };
+  const decision = (input, env) =>
+    hook("pre-tool-use/block-destructive-commands.mjs", input, env)
+      ?.hookSpecificOutput.permissionDecision ?? null;
+  assert.equal(decision({ ...warn, permission_mode: "default" }), "ask");
+  assert.equal(decision({ ...warn, permission_mode: "auto" }), null);
+  assert.equal(
+    decision(
+      { ...warn, permission_mode: "auto" },
+      { CLAUDE_PLUGIN_OPTION_ASK_IN_AUTO_MODE: "true" },
+    ),
+    "ask",
+  );
+  assert.equal(
+    decision({
+      tool_name: "Bash",
+      tool_input: { command: "git push --force" },
+      permission_mode: "auto",
+    }),
+    "ask",
+    "irreversible commands still ask in auto mode",
+  );
+  const lockfile = {
+    tool_name: "Edit",
+    tool_input: {
+      file_path: path.join(repo, "package-lock.json"),
+      old_string: "a",
+      new_string: "b",
+    },
+  };
+  assert.equal(
+    hook("pre-tool-use/confirm-risky-edits.mjs", {
+      ...lockfile,
+      permission_mode: "auto",
+    }),
+    null,
+  );
+  assert.equal(
+    hook("pre-tool-use/confirm-risky-edits.mjs", lockfile).hookSpecificOutput
+      .permissionDecision,
+    "ask",
+  );
+});
+
 test("bash guard off still enforces the model lock", () => {
   const env = { CLAUDE_PLUGIN_OPTION_BASH_GUARD: "false" };
   assert.equal(
@@ -97,7 +145,7 @@ test("bash guard off still enforces the model lock", () => {
   );
   const out = hook(
     "pre-tool-use/block-destructive-commands.mjs",
-    { tool_input: { command: "claude --model haiku -p hi" } },
+    { tool_input: { command: "claude --model claude-sonnet-5 -p hi" } },
     env,
   );
   assert.equal(out.hookSpecificOutput.permissionDecision, "deny");
@@ -120,6 +168,74 @@ test("stop gate blocks once after an unverified edit", () => {
   assert.equal(first.decision, "block");
   assert.match(first.reason, /src\/app\.js/);
   assert.equal(stop(sid), null, "same edit state does not block twice");
+});
+
+test("stop gate counts files written through Bash as edits", () => {
+  const sid = session();
+  checkRun(sid, "bun test");
+  checkRun(sid, "cat > src/gen.js <<'EOF'\nexport const x = 1;\nEOF");
+  const out = stop(sid);
+  assert.equal(out?.decision, "block");
+  assert.match(out.reason, /src\/gen\.js/);
+  const sid2 = session();
+  checkRun(sid2, "sed -n 1,5p src/gen.js > /tmp/view.txt && bun test");
+  assert.equal(stop(sid2), null, "a write outside the project is not an edit");
+});
+
+test("inline scripts that write only scratch files are not edits", () => {
+  const sid = session();
+  const bash = (command) =>
+    hook("post-tool-use/record-edits-and-checks.mjs", {
+      session_id: sid,
+      agent_id: "a2",
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      tool_input: { command },
+      tool_response: { stdout: "", stderr: "" },
+    });
+  bash(
+    "python3 - <<'EOF'\nimport json\njson.dump({}, open('/tmp/dotclaude-scratch/dec.json', 'w'))\nEOF",
+  );
+  assert.equal(
+    stop(sid, "Done.", { hook_event_name: "SubagentStop", agent_id: "a2" }),
+    null,
+  );
+  bash("python3 - <<'EOF'\nopen('src/app.py', 'w').write('x = 2')\nEOF");
+  assert.equal(
+    stop(sid, "Done.", { hook_event_name: "SubagentStop", agent_id: "a2" })
+      ?.decision,
+    "block",
+  );
+});
+
+test("subagent stop checks the subagent's own ledger", () => {
+  const sid = session();
+  hook("post-tool-use/record-edits-and-checks.mjs", {
+    session_id: sid,
+    agent_id: "a1",
+    hook_event_name: "PostToolUse",
+    tool_name: "Edit",
+    tool_input: { file_path: path.join(repo, "src/worker.js") },
+  });
+  assert.equal(stop(sid), null, "the main session made no edit");
+  const out = stop(sid, "Done.", {
+    hook_event_name: "SubagentStop",
+    agent_id: "a1",
+  });
+  assert.equal(out?.decision, "block");
+  assert.match(out.reason, /src\/worker\.js/);
+});
+
+test("a multi-file sd records every file as this session's edit", () => {
+  const sid = session();
+  fs.mkdirSync(path.join(repo, "src"), { recursive: true });
+  for (const f of ["a.js", "b.js", "c.js"])
+    fs.writeFileSync(path.join(repo, "src", f), "old\n");
+  checkRun(sid, "sd old new src/a.js src/b.js src/c.js");
+  const ledger = JSON.parse(
+    fs.readFileSync(path.join(data, "sessions", `${sid}.json`), "utf8"),
+  );
+  assert.deepEqual(ledger.edited, ["src/a.js", "src/b.js", "src/c.js"]);
 });
 
 test("stop gate passes after a passing check", () => {
@@ -221,6 +337,11 @@ test("compaction carry-over restores prompts and last check", () => {
   ];
   fs.writeFileSync(transcript, lines.map((l) => JSON.stringify(l)).join("\n"));
   checkRun(sid, "bun test");
+  fs.mkdirSync(path.join(repo, "src"), { recursive: true });
+  fs.writeFileSync(path.join(repo, "src", "mine.js"), "x\n");
+  fs.writeFileSync(path.join(repo, "src", "users.js"), "y\n");
+  edit(sid, "src/mine.js");
+  checkRun(sid, "bun test");
   hook("pre-compact/save-recent-prompts.mjs", {
     session_id: sid,
     hook_event_name: "PreCompact",
@@ -239,6 +360,15 @@ test("compaction carry-over restores prompts and last check", () => {
   );
   assert.doesNotMatch(text, /task-notification|system-reminder/);
   assert.match(text, /`bun test` passed/);
+  assert.match(
+    text,
+    /this session or its subagents edited: [^\n]*src\/mine\.js/,
+  );
+  assert.match(text, /not recorded as edited[^\n]*src\/users\.js/);
+  assert.doesNotMatch(
+    text.match(/not recorded as edited[^\n]*/)[0],
+    /src\/mine\.js/,
+  );
   assert.ok(text.length <= 2600);
 });
 
@@ -249,12 +379,24 @@ test("session start warns about incomplete setup and notes a CodeGraph index", (
     { CLAUDE_CODE_DISABLE_FAST_MODE: "" },
   );
   assert.match(warn.systemMessage, /fast mode/);
-  assert.equal(
-    hook("session-start/warn-incomplete-setup.mjs", {
-      hook_event_name: "SessionStart",
-      source: "startup",
-    }),
-    null,
+  const current = {
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: "claude-haiku-4-5",
+    CLAUDE_CODE_EFFORT_LEVEL: "",
+  };
+  const start = (env) =>
+    hook(
+      "session-start/warn-incomplete-setup.mjs",
+      { hook_event_name: "SessionStart", source: "startup" },
+      { ...current, ...env },
+    );
+  assert.equal(start({}), null);
+  assert.match(
+    start({ ANTHROPIC_DEFAULT_HAIKU_MODEL: "" }).systemMessage,
+    /out of date/,
+  );
+  assert.match(
+    start({ CLAUDE_CODE_EFFORT_LEVEL: "max" }).systemMessage,
+    /CLAUDE_CODE_EFFORT_LEVEL=max/,
   );
   fs.mkdirSync(path.join(repo, ".codegraph"), { recursive: true });
   const note = hook("session-start/note-codegraph-index.mjs", {
@@ -273,12 +415,48 @@ test("session start warns about incomplete setup and notes a CodeGraph index", (
 });
 
 test("model lock denies disallowed subagent models and switches", () => {
-  const agent = hook("pre-tool-use/restrict-subagent-models.mjs", {
-    hook_event_name: "PreToolUse",
-    tool_name: "Agent",
-    tool_input: { model: "sonnet", prompt: "x" },
-  });
+  const unmapped = { ANTHROPIC_DEFAULT_SONNET_MODEL: "" };
+  const agent = hook(
+    "pre-tool-use/restrict-subagent-models.mjs",
+    {
+      hook_event_name: "PreToolUse",
+      tool_name: "Agent",
+      tool_input: { model: "sonnet", prompt: "x" },
+    },
+    unmapped,
+  );
   assert.equal(agent.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(
+    agent.hookSpecificOutput.permissionDecisionReason,
+    /mechanical-worker/,
+  );
+  assert.equal(
+    hook(
+      "pre-tool-use/restrict-subagent-models.mjs",
+      {
+        hook_event_name: "PreToolUse",
+        tool_name: "Agent",
+        tool_input: { model: "sonnet", prompt: "x" },
+      },
+      { ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-opus-5-5" },
+    ),
+    null,
+    "the sonnet alias is allowed once the profile maps it to Opus 5.5",
+  );
+  for (const model of ["haiku", "claude-haiku-4-5"])
+    assert.equal(
+      hook(
+        "pre-tool-use/restrict-subagent-models.mjs",
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Agent",
+          tool_input: { model, prompt: "x" },
+        },
+        { ANTHROPIC_DEFAULT_HAIKU_MODEL: "" },
+      ),
+      null,
+      model,
+    );
   assert.equal(
     hook("pre-tool-use/restrict-subagent-models.mjs", {
       hook_event_name: "PreToolUse",
@@ -298,7 +476,7 @@ test("model lock denies disallowed subagent models and switches", () => {
   assert.equal(
     hook("pre-model-switch/restrict-models.mjs", {
       hook_event_name: "PreModelSwitch",
-      to_model: "claude-haiku-4-5-20251001",
+      to_model: "claude-sonnet-5",
     }).decision,
     "block",
   );
@@ -354,6 +532,23 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   });
   assert.equal(out.hookSpecificOutput.hookEventName, "SubagentStart");
   assert.match(out.hookSpecificOutput.additionalContext, /hypotheses/);
+  assert.match(
+    out.hookSpecificOutput.additionalContext,
+    /final message is the only output delivered/,
+  );
+  assert.equal(
+    hook("subagent-start/inject-working-conventions.mjs", {
+      hook_event_name: "SubagentStart",
+      agent_type: "dotclaude:codex-worker",
+    }),
+    null,
+  );
+  assert.ok(
+    hook("subagent-start/inject-working-conventions.mjs", {
+      hook_event_name: "SubagentStart",
+      agent_type: "dotclaude:implementer",
+    }),
+  );
   assert.equal(
     hook("subagent-start/inject-working-conventions.mjs", {
       hook_event_name: "SubagentStart",
@@ -369,6 +564,88 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
     ),
     null,
   );
+});
+
+test("codegraph prompt context runs for typed prompts only, when enabled", () => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-bin-"));
+  const fake = path.join(bin, "codegraph");
+  fs.writeFileSync(fake, "#!/bin/sh\ncat >/dev/null\necho CODEGRAPH-CONTEXT\n");
+  fs.chmodSync(fake, 0o755);
+  fs.mkdirSync(path.join(repo, ".codegraph"), { recursive: true });
+  const env = {
+    PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+    CLAUDE_PLUGIN_OPTION_CODEGRAPH_PROMPT_CONTEXT: "true",
+  };
+  const prompt = (text, extra = env) => {
+    const res = spawnSync(
+      "bun",
+      [path.join(HOOKS, "user-prompt-submit/codegraph-context.mjs")],
+      {
+        input: JSON.stringify({ cwd: repo, prompt: text }),
+        encoding: "utf8",
+        env: { ...process.env, CLAUDE_PROJECT_DIR: repo, ...extra },
+      },
+    );
+    assert.equal(res.status, 0, res.stderr);
+    return res.stdout.trim();
+  };
+  assert.equal(
+    prompt("how does the parser split commands?"),
+    "CODEGRAPH-CONTEXT",
+  );
+  assert.equal(
+    prompt(
+      "<task-notification>\n<task-id>t1</task-id>\n<result>done</result>\n</task-notification>",
+    ),
+    "",
+  );
+  assert.equal(
+    prompt("[SYSTEM NOTIFICATION - NOT USER INPUT] agent finished"),
+    "",
+  );
+  assert.equal(
+    prompt("how does the parser split commands?", {
+      ...env,
+      CLAUDE_PLUGIN_OPTION_CODEGRAPH_PROMPT_CONTEXT: "false",
+    }),
+    "",
+  );
+});
+
+test("Fable sessions get the Fable adjustments; Opus sessions get nothing", () => {
+  const start = (model) =>
+    hook("session-start/add-session-notes.mjs", {
+      hook_event_name: "SessionStart",
+      source: "startup",
+      model,
+    });
+  assert.match(
+    start("claude-fable-5-1").hookSpecificOutput.additionalContext,
+    /fable_adjustments/,
+  );
+  assert.equal(start("claude-opus-5-5"), null);
+});
+
+test("non-default browser options reach Claude through the session notes", () => {
+  const notes = (env) =>
+    hook(
+      "session-start/add-session-notes.mjs",
+      {
+        hook_event_name: "SessionStart",
+        source: "startup",
+        model: "claude-opus-5-5",
+      },
+      env,
+    );
+  assert.equal(notes({}), null, "defaults add nothing");
+  const text = notes({
+    CLAUDE_PLUGIN_OPTION_CLOAKBROWSER: "true",
+    CLAUDE_PLUGIN_OPTION_CLOAKBROWSER_HUMANIZE: "false",
+    CLAUDE_PLUGIN_OPTION_CAPTCHA_OCR_DDDDOCR: "true",
+  }).hookSpecificOutput.additionalContext;
+  assert.match(text, /CloakBrowser/);
+  assert.match(text, /--no-humanize/);
+  assert.match(text, /recognize-captcha/);
 });
 
 test("hooks.json points only at scripts that exist", () => {

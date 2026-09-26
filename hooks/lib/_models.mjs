@@ -2,7 +2,9 @@
 // a family alias (`opus`), a version prefix (`claude-opus-5-5` also matches
 // `claude-opus-5-5-20260901`), or a full model ID.
 
-export const DEFAULT_ALLOWED = "claude-opus-5-5,claude-fable-5-1";
+export const DEFAULT_ALLOWED =
+  "claude-opus-5-5,claude-fable-5-1,claude-haiku-4-5";
+export const DEFAULT_CODEX = "gpt-6-luna,gpt-6-sol,gpt-6-astra";
 const FAMILIES = new Set(["opus", "sonnet", "haiku", "fable", "mythos"]);
 const ALWAYS = new Set(["", "inherit", "default"]);
 
@@ -14,8 +16,19 @@ export function canonical(model) {
   return m;
 }
 
+/**
+ * The model a family alias runs as. Claude Code resolves `sonnet`, `haiku`,
+ * and friends through ANTHROPIC_DEFAULT_<FAMILY>_MODEL when it is set; the
+ * settings profile points `sonnet` at Opus 5.5, so `model: "sonnet"` is Opus.
+ */
+function resolveAlias(m) {
+  if (!FAMILIES.has(m)) return m;
+  const mapped = process.env[`ANTHROPIC_DEFAULT_${m.toUpperCase()}_MODEL`];
+  return mapped?.trim() ? canonical(mapped) : m;
+}
+
 export function allowed(model, allowlist) {
-  const m = canonical(model);
+  const m = resolveAlias(canonical(model));
   if (ALWAYS.has(m)) return true;
   const entries = allowlist.map(canonical);
   if (FAMILIES.has(m))

@@ -52,7 +52,8 @@ const GH_WRITES = {
 
 export function gh(cmd) {
   const pos = positional(cmd.args);
-  if (!pos.length) return [];
+  if (!pos.length || cmd.args.some((a) => a === "--help" || a === "-h"))
+    return [];
   if (pos[0] === "api") {
     let method = null;
     cmd.args.forEach((a, i) => {
