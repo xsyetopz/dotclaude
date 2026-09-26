@@ -16,7 +16,7 @@ Drive a real browser to see or operate a page, using one of two backends:
 Pick the backend by what the site does to automated browsers:
 
 | Scenario | Recommended backend |
-|----------|---------------------|
+| ---------- | --------------------- |
 | Local dev server, internal pages | agent-browser |
 | Sites with bot detection, Cloudflare, DataDome | CloakBrowser |
 | Login flows on protected sites | CloakBrowser |
@@ -43,6 +43,7 @@ For read-only work, `--engine lightpanda` is faster when [Lightpanda](https://gi
 CloakBrowser is a drop-in Playwright replacement with source-level fingerprint patches. It looks like a real human browser, so antibot systems do not challenge it.
 
 <installation>
+
 ```bash
 # Install CloakBrowser
 bun install -g cloakbrowser
@@ -53,6 +54,7 @@ bun install -g cloakbrowser cloakbrowser-geoip
 # Set license key (free tier available, Pro for full features)
 export CLOAKBROWSER_LICENSE_KEY=your-key
 ```
+
 </installation>
 
 <launch_helper>
@@ -84,7 +86,7 @@ bun ${CLAUDE_PLUGIN_ROOT}/src/browser/cloakbrowser-launch.mjs \
 ```
 
 | Option | Default | Description |
-|--------|---------|-------------|
+| -------- | --------- | ------------- |
 | `--headless` | false | Run headless (not recommended for hard targets) |
 | `--humanize` | true | Human-like mouse movements and timing |
 | `--geoip` | auto | Match timezone/locale to proxy IP; takes effect only with `--proxy` |
@@ -117,6 +119,7 @@ await page.goto('https://protected-site.com');
 // ... standard Playwright API from here
 await browser.close();
 ```
+
 </programmatic_usage>
 
 <why_cloakbrowser>
@@ -133,6 +136,7 @@ CloakBrowser prevents challenges from appearing; it does not solve them.
 </cloakbrowser>
 
 <prompts_and_challenges>
+
 - **Cookie banners**: click through normally, choosing the least-permissive option, since accepting more shares the user's data for no benefit to the task.
 - **Sign-ins**: use `--profile` for persistent sessions, or `--auto-connect` with agent-browser to reuse the user's Chrome and its logged-in state.
 - **CAPTCHAs that appear despite CloakBrowser**: if a text CAPTCHA still appears, use the `/dotclaude:recognize-captcha` skill as a fallback (offline OCR via ddddocr-rs). For complex challenges, ask the user to complete it manually.

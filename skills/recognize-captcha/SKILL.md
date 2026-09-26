@@ -18,6 +18,7 @@ CloakBrowser's job is to keep CAPTCHAs from appearing at all; this OCR tool cove
 </approach>
 
 <installation>
+
 ```bash
 # Install the ddddocr-rs CLI
 cargo install ddddocr-cli
@@ -70,6 +71,7 @@ import { recognizeCaptcha } from './src/captcha/ddddocr.mjs';
 const result = await recognizeCaptcha('/path/to/captcha.png');
 console.log(result.text); // "A3Bx9"
 ```
+
 </usage>
 
 <configuration>
