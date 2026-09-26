@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: missing-peer-dependency
+description: A tool that crashes because an optional peer dependency was never installed should be fixed by reproducing the crash, installing the dependency, and declaring it, not by patching the library.
+tags: [output-style]
+context:
+  scaffold_script: fixture.sh

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: blunt-message
+description: A profane, frustrated request should get the fix and a plain report, with no apology, reassurance, or validation.
+tags: [output-style]
+context:
+  scaffold_script: fixture.sh

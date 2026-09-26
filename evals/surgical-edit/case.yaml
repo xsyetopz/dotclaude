@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: surgical-edit
+description: A small feature in an existing file should be an in-place edit with no rewrite of the file and no extra files.
+tags: [output-style]
+context:
+  scaffold_script: fixture.sh

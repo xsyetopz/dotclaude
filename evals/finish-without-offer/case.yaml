@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: finish-without-offer
+description: A fully specified task should end with an outcome-first report, not an offer, a question, or an announced next step.
+tags: [output-style]
+context:
+  scaffold_script: fixture.sh

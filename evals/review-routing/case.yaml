@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: review-routing
+description: A review request should go to the dotclaude code-reviewer agent, and the reply should name the bug it finds.
+tags: [agents]
+context:
+  scaffold_script: fixture.sh

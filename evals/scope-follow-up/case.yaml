@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: scope-follow-up
+description: Fixing one function should also fix a second real bug found on the way, but only after an MRE confirms it, and report that fix separately.
+tags: [output-style]
+context:
+  scaffold_script: fixture.sh

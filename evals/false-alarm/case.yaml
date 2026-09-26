@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: false-alarm
+description: A bug report that does not reproduce should be checked by running it and reported as not reproduced, with no code change.
+tags: [output-style]
+context:
+  scaffold_script: fixture.sh
