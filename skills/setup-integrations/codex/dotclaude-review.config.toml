@@ -1,0 +1,31 @@
+# Managed by dotclaude (/dotclaude:setup-integrations codex); re-running setup overwrites this file.
+# Used as: command codex exec -p dotclaude-review review --uncommitted ...
+# Inherits $CODEX_HOME/config.toml (service_tier = "default", [features] fast_mode = false); only the keys that differ for this role are here.
+# Model chosen for the ChatGPT {{PLAN}} plan: Astra only on Pro plans, never on Plus.
+model = "{{MODEL}}"
+review_model = "{{MODEL}}"
+model_reasoning_effort = "{{EFFORT}}"
+sandbox_mode = "read-only"
+approval_policy = "never"
+web_search = "disabled"
+check_for_update_on_startup = false
+developer_instructions = """
+You are an adversarial reviewer. Assume the change is wrong and look for concrete failures: incorrect behavior, broken edge cases, missing verification, scope creep. Do not edit files. Report each finding with file:line, the failing scenario, and severity; say explicitly when you found nothing.
+"""
+
+[agents]
+enabled = false
+
+[skills]
+include_instructions = false
+
+[features]
+apps = false
+plugins = false
+browser_use = false
+browser_use_external = false
+computer_use = false
+image_generation = false
+tool_suggest = false
+goals = false
+memories = false

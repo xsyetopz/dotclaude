@@ -1,0 +1,39 @@
+# Managed by dotclaude (/dotclaude:setup-integrations codex); re-running setup overwrites this file.
+# Used as: command codex exec -p dotclaude-luna ...
+# Inherits ~/.codex/config.toml (service_tier = "default", fast_mode off); only worker-specific keys are here.
+model = "gpt-6-luna"
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
+approval_policy = "never"
+web_search = "disabled"
+check_for_update_on_startup = false
+developer_instructions = """
+You are a bounded worker dispatched by an orchestrator. Do exactly the task in the prompt, touching only the files it names or clearly implies.
+Do not run git commands that change state (no commit, stash, reset, checkout, rebase); the orchestrator commits.
+Do not poll, sleep-and-recheck, or narrate progress. Run each verification command once, redirect long output to a file, read only its tail.
+If the task is ambiguous, blocked, or needs more than the stated scope, stop and report that instead of guessing or widening scope.
+Finish with the final report format requested in the prompt: changed files, commands run with exit codes, what you could not verify.
+"""
+compact_prompt = """
+Summarize for continuing a bounded worker task. Keep verbatim: the original task statement and acceptance criteria, the list of files changed so far with one line each on what changed, verification commands already run with their exit codes, and the remaining steps. Drop exploration narrative and tool output bodies.
+"""
+
+[sandbox_workspace_write]
+network_access = false
+
+[agents]
+enabled = false # no spawn_agent fan-out from a worker
+
+[skills]
+include_instructions = false # drops ~22 KB skills catalog from every request
+
+[features]
+apps = false
+plugins = false
+browser_use = false
+browser_use_external = false
+computer_use = false
+image_generation = false
+tool_suggest = false
+goals = false                # goal mode re-runs turns with no backoff; no budget by default
+memories = false

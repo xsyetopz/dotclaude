@@ -42,6 +42,8 @@ if (!Object.hasOwn(targets, scope)) {
 const target = targets[scope];
 
 // CLI tools worth naming in CLAUDE.md, listed only when present on PATH.
+// Browser CLIs are left out: naming them here led Claude to drive them from
+// Bash without loading the drive-web-browser skill that explains them.
 const TOOLS = [
   "rg",
   "fd",
@@ -58,8 +60,6 @@ const TOOLS = [
   "difft",
   "sd",
   "codegraph",
-  "agent-browser",
-  "lightpanda",
 ];
 
 function installedTools() {

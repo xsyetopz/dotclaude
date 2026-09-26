@@ -6,7 +6,8 @@
 // Without --apply it prints the changes and writes nothing. With --apply it
 // backs the file up next to itself, then writes the merged result.
 // Merge rules: objects merge key by key, arrays gain missing entries, scalars
-// take the profile value. Nothing already in the file is removed.
+// take the profile value. The model policy (OWNED below) is replaced, not
+// merged; nothing else already in the file is removed.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -48,6 +49,14 @@ function readJson(file, fallback) {
   }
 }
 
+// The model policy is dotclaude's to set: these arrays take the profile's
+// entries (matching `owns`) instead of gaining them, so a model rule the
+// profile no longer carries does not linger.
+const OWNED = {
+  availableModels: () => true,
+  "permissions.deny": (entry) => /^Agent\(model:/.test(String(entry)),
+};
+
 const isObject = (v) =>
   v !== null && typeof v === "object" && !Array.isArray(v);
 const changes = [];
@@ -60,7 +69,16 @@ function merge(current, profile, keyPath) {
     if (isObject(value)) {
       out[key] = merge(existing, value, where);
     } else if (Array.isArray(value)) {
-      const base = Array.isArray(existing) ? existing : [];
+      const owns = OWNED[where] ?? (() => false);
+      const all = Array.isArray(existing) ? existing : [];
+      const base = all.filter((v) => !owns(v) || value.includes(v));
+      if (base.length < all.length)
+        changes.push(
+          `${where}: remove ${all
+            .filter((v) => !base.includes(v))
+            .map((v) => JSON.stringify(v))
+            .join(", ")}`,
+        );
       const added = value.filter(
         (v) => !base.some((b) => JSON.stringify(b) === JSON.stringify(v)),
       );
