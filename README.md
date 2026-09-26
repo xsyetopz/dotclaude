@@ -35,7 +35,7 @@ Then, in order:
 
 1. Restart Claude Code. Hooks, agents, and the output style load at session
    start, so a running session keeps the old version.
-1. Read the new version's entry in [CHANGELOG.md](CHANGELOG.md). Before 1.0,
+1. Read the new version's entry in [`CHANGELOG.md`](`CHANGELOG.md`). Before 1.0,
    releases may change or remove behavior without a compatibility layer.
 1. Run `/dotclaude:apply-settings-profile` again. It previews every change,
    including any it removes, and backs up the file before writing. A notice at
@@ -46,7 +46,7 @@ Then, in order:
 `/plugin` inside Claude Code shows the installed version. To try an unreleased
 checkout instead, run `claude --plugin-dir /path/to/dotclaude`.
 
-## What you get
+## What You Get
 
 **Hooks.** Each can be turned off in `/config` under dotclaude.
 
@@ -133,7 +133,7 @@ loads the skill with the rest of the message as its input. `recap`, `challenge`,
 when you ask for what they do; the rest, which edit files or run reviewers, run
 only when you name them.
 
-## Settings profile
+## Settings Profile
 
 `/dotclaude:apply-settings-profile` merges
 `skills/apply-settings-profile/profiles/recommended.json` into your user,
@@ -152,7 +152,11 @@ project, or local settings. It sets:
   a workflow run (`CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`).
   `workflowSizeGuideline: "medium"` asks Claude to aim for fewer than 10 agents
   per workflow; that one is advice, not a cap. Workflows stay on.
-- **Tools**: the task-list tools, which are off by default on Opus 5.5.
+- **Tools**: the task-list tools turned on (off by default on Opus 5.5), and
+  `AskUserQuestion` denied, which drops about 4.9 KB from every request.
+- **Feedback off**: `/feedback`, the SendFeedback tool, the session survey, and
+  error reports. Telemetry stays on, because turning it off also stops the
+  feature-flag fetch that the advisor tool and large-paste marking need.
 - **Permissions**:
   - pre-approval for the two Codex profile commands;
   - read denies for `.env` files and credential directories;
@@ -220,14 +224,16 @@ Set in `/config` under dotclaude:
 - **Guards and gates**, all on by default: `bash_guard`, `edit_guard`,
   `stop_gate`, `compact_carryover`, `subagent_guidance`, `model_lock`,
   `commit_hygiene`, and `codegraph_hint`. Turn on `ask_in_auto_mode` to be asked
-  about recoverable actions in auto mode as well.
+  about recoverable actions in auto mode as well. The dotclaude agents rely on
+  `subagent_guidance` for the shared working-tree rules, the progress log, and
+  the report format, so turning it off weakens them.
 - **Model lists**: `allowed_models` lists the Claude models the lock accepts,
   and `allowed_codex_models` lists the Codex models.
 - **Browser and CAPTCHA**: `cloakbrowser`, `cloakbrowser_humanize`,
   `cloakbrowser_headless`, and `captcha_ocr_ddddocr` choose the browser backend
   and CAPTCHA fallback.
 
-## Design notes
+## Design Notes
 
 - **No banned-phrase lists.** They get routed around with synonyms, so the
   conventions name what each behavior does and why.
@@ -247,6 +253,17 @@ bun run lint                 # biome
 bun run validate             # claude plugin validate --strict
 claude --plugin-dir . plugin details dotclaude  # inventory and token cost
 ```
+
+The behaviour evals in `evals/` run with `claude plugin eval`, which loads the
+plugin into Claude Code and repeats each case without it as a baseline.
+`bun evals/report.mjs <result.json>` reads its `--json` output and reports
+each case as trials passed out of trials run, with a 95% interval, and the
+difference with and without the plugin with its own interval. Graders marked
+`arm: with-only` are left out of that comparison.
+
+`evals-heldout/` is a second suite written without access to dotclaude's
+prompts, so it measures real reported failures rather than dotclaude's own
+wording; its README has the freeze rule and the run command.
 
 Tests pass commands to the guard as strings; nothing in the suite executes a
 guarded command.

@@ -10,6 +10,102 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-26
+
+Requires Claude Code v2.1.283 or later. After updating:
+
+1. Restart Claude Code.
+1. Re-run `/dotclaude:apply-settings-profile` for the feedback settings, the
+   `AskUserQuestion` deny, and the new global `CLAUDE.md` block.
+1. If you use the Codex agents, re-run `/dotclaude:setup-integrations codex`.
+
+`docs/evals.md` reports what the eval suites show for this release, and what
+they do not.
+
+### Added
+
+- Settings profile turns feedback off: `DISABLE_FEEDBACK_COMMAND`,
+  `CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, and `DISABLE_ERROR_REPORTING`. This
+  removes the SendFeedback tool from every request. Telemetry stays on, because
+  turning it off also stops the feature-flag fetch that the advisor tool and
+  large-paste marking need.
+- Settings profile denies `AskUserQuestion`, about 4.9 KB per request.
+- Reproduce before fixing: the output style and the SubagentStart conventions
+  treat a reported bug, and any cause it names, as unconfirmed until a minimal
+  reproducible example (MRE) shows it. The MRE and its output go in the report;
+  a report that does not reproduce is answered with the MRE tried and no code
+  change. When the MRE shows a different cause than the one named, Claude fixes
+  the confirmed cause and says the named one was wrong.
+- Confirmed bugs get fixed: a real bug found along the way, confirmed with an
+  MRE, is fixed minimally even though nobody asked, and reported separately
+  with its MRE. A large fix, or one that changes behavior callers may rely on,
+  is reported instead. Unreproduced suspicions, cleanups, and performance
+  concerns stay follow-ups. This applies to questions too: when the answer to
+  "why does this fail?" confirms a bug, Claude fixes it without waiting to be
+  asked.
+- Code items (identifiers, paths, commands, flags, environment variables,
+  config keys, values) go in single backticks, in replies and in dotclaude's
+  own prompts.
+- Eval cases for the output style, agent routing, and subagent dispatch:
+  `blunt-message`, `question-confirmed-bug`, `scope-follow-up`,
+  `commit-own-files`, `finish-without-offer`, `check-flag`, `review-routing`,
+  `surgical-edit`, `delegated-report`, `false-alarm`, and
+  `missing-peer-dependency`. The bug-fix cases
+  also check that the failure was reproduced before the first edit.
+- `evals-heldout/`: 30 cases written by `claude -p --safe-mode` sessions that
+  saw only the failure dossiers and Reddit exports, never dotclaude's prompts,
+  and frozen in a commit before any agent ran against them. About a third are
+  cases where caution is the wrong answer. Its README states when a case may
+  change.
+- `evals/report.mjs`: summarizes a `claude plugin eval --json` result as trials
+  passed per case with 95% Wilson intervals, pass^k, a suite mean with standard
+  errors clustered by case, and the paired difference with and without the
+  plugin, following Anthropic's statistical guidance for evals.
+- `docs/evals.md`: how both eval suites were built, the 0.4.0 results with
+  their intervals, what they do not show, and what the next round needs.
+- `docs/claude-code-prompt-surface.md`: what Claude Code 2.1.283 sends per
+  request, what each customization lever changes, and `policyHelper` output
+  fields the docs do not cover.
+
+### Changed
+
+- Shorter prompts with the same rules: the output style, agent and skill
+  descriptions and bodies, the SubagentStart conventions, and the global
+  `CLAUDE.md` section. Rules that Claude Code's own prompt or tool descriptions
+  already send, and rules the SubagentStart text already gives an agent, are
+  no longer repeated. The output style's closing `<tone_preference>` line is
+  gone.
+- The global `CLAUDE.md` section has no heading of its own; the script adds a
+  `# CLAUDE.md` top-level heading when the file has none.
+- Markdown headings use capitalized words.
+- `wrong-diagnosis` eval: expects the reproduced cause in `sum()` fixed and
+  `format()` left alone, instead of one exact fix.
+- `scope-follow-up` eval: expects the second bug fixed after an MRE and
+  reported separately.
+- `handoff-note` eval: the prompt carries a session's goal, state, decisions,
+  and open items, so no section is legitimately empty.
+
+### Fixed
+
+- Stop gate: a reply that mentioned an error or failure it had fixed ("fixed
+  the parser error") counted as admitting the change was unverified, so an
+  edit with no check after it ended the turn unchallenged. Only an explicit
+  "not run" or "unverified" statement counts now. When the gate sends Claude
+  back, it also asks for the complete report again, since that reply replaces
+  the earlier one as the report.
+- Edit guard: removing test assertions no longer asks when the user's latest
+  message asks for tests to be removed ("rip it out: the flag, its tests, all
+  of it"). Found by the held-out suite, where the ask, unanswerable in a
+  non-interactive run, left a requested deletion half done in 2 of 5 runs.
+  Adding a skip marker still asks.
+- CloakBrowser launcher: `cloakbrowser` declares `playwright-core` as an
+  optional peer, so neither `bun install -g cloakbrowser` nor Bun's
+  auto-install fetched it and the launcher failed with "Cannot find package
+  'playwright-core'". The launcher now loads the global install and, when
+  `playwright-core` is missing there, installs it and restarts itself. The
+  install instructions name both packages.
+- `recognize-captcha` frontmatter is valid YAML (its description is quoted).
+
 ## [0.3.0] - 2026-09-26
 
 Requires Claude Code v2.1.283 or later. After updating:
@@ -287,7 +383,11 @@ re-run `/dotclaude:apply-settings-profile`.
   `drive-web-browser`, and `recognize-captcha` skills.
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.2.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.4.0...HEAD
+[0.4.0]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.3.0...dotclaude--v0.4.0
+[0.3.0]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.2.0...dotclaude--v0.3.0
 [0.2.0]:
   https://github.com/xsyetopz/dotclaude/compare/8677d10...dotclaude--v0.2.0
 [0.1.0]: https://github.com/xsyetopz/dotclaude/commit/8677d10

@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Guardrails, working conventions, and a set of task agents for Claude Code: destructive-command and test-weakening guards that stay quiet on recoverable actions in auto mode, a verify-before-stop gate for the session and its subagents, compaction carry-over, a fast-mode/model lock (Opus 5.5, Fable 5.1, Haiku 4.5) with an xhigh effort cap, reviewers, workers, and researchers on tiered models and effort, optional Codex delegation, and an always-on output style.",
   "author": {
     "name": "xsyetopz"
@@ -50,7 +50,7 @@
     "subagent_guidance": {
       "type": "boolean",
       "title": "Subagent guidance",
-      "description": "Give subagents a short version of the dotclaude working conventions when they start (the main conversation gets them through the dotclaude output style).",
+      "description": "Give subagents a short version of the dotclaude working conventions when they start (the main conversation gets them through the dotclaude output style). dotclaude's own agents rely on it for the shared working-tree rules, the progress log, and the report format.",
       "default": true
     },
     "model_lock": {
