@@ -26,6 +26,38 @@ export function codexPlan() {
   }
 }
 
+// ChatGPT plans grouped by Codex quota (developers.openai.com/codex/pricing):
+// "none" has no Codex CLI worth delegating to; "plus" covers Plus and the
+// seats that get Plus-sized limits (Team, Standard Business, Enterprise and
+// Edu without flexible pricing, usage-based seats); "pro5x" is Pro 5x and the
+// $100 self-serve Business plan; "pro20x" is Pro 20x. Unknown plans: null.
+const TIERS = {
+  guest: "none",
+  free: "none",
+  go: "none",
+  free_workspace: "none",
+  plus: "plus",
+  team: "plus",
+  business: "plus",
+  self_serve_business_usage_based: "plus",
+  enterprise: "plus",
+  hc: "plus",
+  ent26: "plus",
+  enterprise_cbp_automation: "plus",
+  enterprise_cbp_usage_based: "plus",
+  edu: "plus",
+  education: "plus",
+  edu_plus: "plus",
+  edu_pro: "plus",
+  prolite: "pro5x",
+  self_serve_business_prolite: "pro5x",
+  pro: "pro20x",
+};
+
+export function codexTier(plan) {
+  return TIERS[String(plan ?? "").toLowerCase()] ?? null;
+}
+
 function readModel(file) {
   try {
     const value = Bun.TOML.parse(fs.readFileSync(file, "utf8")).model;

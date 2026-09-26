@@ -27,7 +27,12 @@ const DROP_IN = {
   maxEffortLevel: "xhigh",
   fastMode: false,
   fastModePerSessionOptIn: true,
-  availableModels: ["claude-opus-5-5", "claude-fable-5-1", "claude-haiku-4-5"],
+  availableModels: [
+    "claude-opus-5-5",
+    "claude-sonnet-5",
+    "claude-fable-5-1",
+    "claude-haiku-4-5",
+  ],
 };
 const content = `${JSON.stringify(DROP_IN, null, 2)}\n`;
 

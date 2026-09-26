@@ -3,7 +3,7 @@
 // `claude-opus-5-5-20260901`), or a full model ID.
 
 export const DEFAULT_ALLOWED =
-  "claude-opus-5-5,claude-fable-5-1,claude-haiku-4-5";
+  "claude-opus-5-5,claude-sonnet-5,claude-fable-5-1,claude-haiku-4-5";
 export const DEFAULT_CODEX = "gpt-6-luna,gpt-6-sol,gpt-6-astra";
 const FAMILIES = new Set(["opus", "sonnet", "haiku", "fable", "mythos"]);
 const ALWAYS = new Set(["", "inherit", "default"]);
@@ -18,8 +18,8 @@ export function canonical(model) {
 
 /**
  * The model a family alias runs as. Claude Code resolves `sonnet`, `haiku`,
- * and friends through ANTHROPIC_DEFAULT_<FAMILY>_MODEL when it is set; the
- * settings profile points `sonnet` at Opus 5.5, so `model: "sonnet"` is Opus.
+ * and friends through ANTHROPIC_DEFAULT_<FAMILY>_MODEL when it is set, so an
+ * alias mapped to another model is checked as that model.
  */
 function resolveAlias(m) {
   if (!FAMILIES.has(m)) return m;

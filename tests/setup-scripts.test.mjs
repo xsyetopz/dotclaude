@@ -72,7 +72,8 @@ function writeModelCache(dir, fetchedAt = new Date().toISOString()) {
 function run(script, home, ...args) {
   const res = spawnSync("bun", [path.join(SCRIPTS, script), ...args], {
     encoding: "utf8",
-    env: { ...process.env, HOME: home },
+    // The plan comes from the temp HOME's .claude.json, not the real one.
+    env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: "" },
   });
   assert.equal(res.status, 0, res.stderr);
   return res.stdout;
@@ -113,6 +114,35 @@ test("apply-settings previews without writing, then merges without removing user
   assert.match(run("apply-settings.mjs", home), /Already up to date/);
 });
 
+test("apply-settings keeps a user's own sonnet mapping and leaves Fable out on Pro without extra usage", () => {
+  const home = tempHome();
+  const file = path.join(home, ".claude", "settings.json");
+  fs.writeFileSync(
+    file,
+    JSON.stringify({
+      env: { ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-5" },
+    }),
+  );
+  fs.writeFileSync(
+    path.join(home, ".claude.json"),
+    JSON.stringify({
+      oauthAccount: {
+        organizationType: "claude_pro",
+        hasExtraUsageEnabled: false,
+      },
+    }),
+  );
+  assert.match(run("apply-settings.mjs", home), /leaves Fable out/);
+  run("apply-settings.mjs", home, "--apply");
+  const merged = JSON.parse(fs.readFileSync(file, "utf8"));
+  assert.deepEqual(merged.availableModels, [
+    "claude-opus-5-5",
+    "claude-sonnet-5",
+    "claude-haiku-4-5",
+  ]);
+  assert.equal(merged.env.ANTHROPIC_DEFAULT_SONNET_MODEL, "claude-sonnet-5");
+});
+
 test("apply-settings replaces the model policy: availableModels and Agent(model:) denies", () => {
   const home = tempHome();
   const file = path.join(home, ".claude", "settings.json");
@@ -120,7 +150,11 @@ test("apply-settings replaces the model policy: availableModels and Agent(model:
     file,
     JSON.stringify({
       availableModels: ["claude-opus-5-5", "claude-sonnet-5"],
-      env: { CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION: "40", KEEP_ME: "1" },
+      env: {
+        CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION: "40",
+        ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-opus-5-5",
+        KEEP_ME: "1",
+      },
       permissions: {
         deny: [
           "Read(~/.ssh/**)",
@@ -140,18 +174,21 @@ test("apply-settings replaces the model policy: availableModels and Agent(model:
   const merged = JSON.parse(fs.readFileSync(file, "utf8"));
   assert.deepEqual(merged.availableModels, [
     "claude-opus-5-5",
+    "claude-sonnet-5",
     "claude-fable-5-1",
     "claude-haiku-4-5",
   ]);
   assert.ok(merged.permissions.deny.includes("Read(~/.ssh/**)"));
-  assert.ok(merged.permissions.deny.includes("Agent(model:claude-sonnet*)"));
+  assert.ok(merged.permissions.deny.includes("Agent(model:claude-fable*)"));
   for (const gone of [
     "Agent(model:sonnet*)",
     "Agent(model:haiku*)",
+    "Agent(model:claude-sonnet*)",
     "Agent(model:claude-haiku*)",
   ])
     assert.ok(!merged.permissions.deny.includes(gone), gone);
-  assert.equal(merged.env.ANTHROPIC_DEFAULT_SONNET_MODEL, "claude-opus-5-5");
+  // The 0.4.0 mapping of `sonnet` to Opus 5.5 is taken out again.
+  assert.ok(!Object.hasOwn(merged.env, "ANTHROPIC_DEFAULT_SONNET_MODEL"));
   // A retired env key the 0.2.0 profile set is removed; the user's own stays.
   assert.ok(
     !Object.hasOwn(merged.env, "CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION"),

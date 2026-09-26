@@ -14,6 +14,9 @@ const repo = fs.realpathSync(
   fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-repo-")),
 );
 execFileSync("git", ["init", "-q", repo]);
+// No cached Claude account and no Codex login, so the machine running the
+// tests does not decide the plan.
+const noAccount = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-home-"));
 
 function hook(script, input, env = {}) {
   const res = spawnSync("bun", [path.join(HOOKS, script)], {
@@ -24,6 +27,9 @@ function hook(script, input, env = {}) {
       CLAUDE_PLUGIN_DATA: data,
       CLAUDE_PROJECT_DIR: repo,
       CLAUDE_CODE_DISABLE_FAST_MODE: "1",
+      CLAUDE_CONFIG_DIR: noAccount,
+      CODEX_HOME: noAccount,
+      ANTHROPIC_API_KEY: "",
       ...env,
     },
   });
@@ -145,7 +151,7 @@ test("bash guard off still enforces the model lock", () => {
   );
   const out = hook(
     "pre-tool-use/block-destructive-commands.mjs",
-    { tool_input: { command: "claude --model claude-sonnet-5 -p hi" } },
+    { tool_input: { command: "claude --model claude-opus-4-1 -p hi" } },
     env,
   );
   assert.equal(out.hookSpecificOutput.permissionDecision, "deny");
@@ -498,33 +504,29 @@ test("session start warns about incomplete setup and notes a CodeGraph index", (
 });
 
 test("model lock denies disallowed subagent models and switches", () => {
-  const unmapped = { ANTHROPIC_DEFAULT_SONNET_MODEL: "" };
-  const agent = hook(
-    "pre-tool-use/restrict-subagent-models.mjs",
-    {
-      hook_event_name: "PreToolUse",
-      tool_name: "Agent",
-      tool_input: { model: "sonnet", prompt: "x" },
-    },
-    unmapped,
-  );
-  assert.equal(agent.hookSpecificOutput.permissionDecision, "deny");
-  assert.match(
-    agent.hookSpecificOutput.permissionDecisionReason,
-    /mechanical-worker/,
-  );
-  assert.equal(
+  const agent = (model, env = {}) =>
     hook(
       "pre-tool-use/restrict-subagent-models.mjs",
       {
         hook_event_name: "PreToolUse",
         tool_name: "Agent",
-        tool_input: { model: "sonnet", prompt: "x" },
+        tool_input: { model, prompt: "x" },
       },
-      { ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-opus-5-5" },
-    ),
-    null,
-    "the sonnet alias is allowed once the profile maps it to Opus 5.5",
+      env,
+    );
+  for (const model of ["sonnet", "claude-sonnet-5"])
+    assert.equal(agent(model, { ANTHROPIC_DEFAULT_SONNET_MODEL: "" }), null);
+  // Fable is never a subagent model, even where the plan includes it.
+  for (const model of ["fable", "claude-fable-5-1"]) {
+    const out = agent(model, { ANTHROPIC_DEFAULT_FABLE_MODEL: "" });
+    assert.equal(out.hookSpecificOutput.permissionDecision, "deny", model);
+    assert.match(out.hookSpecificOutput.permissionDecisionReason, /2\.5x/);
+  }
+  const old = agent("claude-opus-4-1");
+  assert.equal(old.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(
+    old.hookSpecificOutput.permissionDecisionReason,
+    /mechanical-worker/,
   );
   for (const model of ["haiku", "claude-haiku-4-5"])
     assert.equal(
@@ -560,6 +562,13 @@ test("model lock denies disallowed subagent models and switches", () => {
     hook("pre-model-switch/restrict-models.mjs", {
       hook_event_name: "PreModelSwitch",
       to_model: "claude-sonnet-5",
+    }),
+    null,
+  );
+  assert.equal(
+    hook("pre-model-switch/restrict-models.mjs", {
+      hook_event_name: "PreModelSwitch",
+      to_model: "claude-opus-4-1",
     }).decision,
     "block",
   );
@@ -619,26 +628,25 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
     out.hookSpecificOutput.additionalContext,
     /Only your final message is delivered/,
   );
-  assert.equal(
+  assert.doesNotMatch(out.hookSpecificOutput.additionalContext, /turn_budget/);
+  const start = (agentType) =>
     hook("subagent-start/inject-working-conventions.mjs", {
       hook_event_name: "SubagentStart",
-      agent_type: "dotclaude:codex-worker",
-    }),
-    null,
-  );
-  assert.ok(
-    hook("subagent-start/inject-working-conventions.mjs", {
-      hook_event_name: "SubagentStart",
-      agent_type: "dotclaude:implementer",
-    }),
-  );
-  assert.equal(
-    hook("subagent-start/inject-working-conventions.mjs", {
-      hook_event_name: "SubagentStart",
-      agent_type: "dotclaude:code-reviewer",
-    }),
-    null,
-  );
+      agent_type: agentType,
+    }).hookSpecificOutput.additionalContext;
+  // Every dotclaude agent learns its turn limit; the ones with their own
+  // prompt get only that.
+  const implementer = start("dotclaude:implementer");
+  assert.match(implementer, /hypotheses/);
+  assert.match(implementer, /at most 80 turns\. When about 8 remain/);
+  for (const [agentType, limit] of [
+    ["dotclaude:code-reviewer", 40],
+    ["dotclaude:codex-worker", 12],
+  ]) {
+    const text = start(agentType);
+    assert.doesNotMatch(text, /hypotheses/, agentType);
+    assert.match(text, new RegExp(`at most ${limit} turns`), agentType);
+  }
   assert.equal(
     hook(
       "subagent-start/inject-working-conventions.mjs",
@@ -697,7 +705,7 @@ test("a /dotclaude: skill typed mid-message is expanded inline", () => {
   assert.equal(inline.hookEventName, "UserPromptSubmit");
   assert.match(
     inline.additionalContext,
-    /^<skill name="dotclaude:challenge">\n[\s\S]*\n<\/skill>$/,
+    /^\[dotclaude\] <skill name="dotclaude:challenge">\n[\s\S]*\n<\/skill>$/,
   );
   assert.match(inline.additionalContext, /Idea: look at the parser, then it/);
   assert.doesNotMatch(inline.additionalContext, /\$ARGUMENTS|^name:/m);
@@ -733,7 +741,7 @@ test("a /dotclaude: skill typed mid-message is expanded inline", () => {
       .additionalContext;
   const big = fixture("please /dotclaude:big now");
   assert.ok(big.length <= 9500, String(big.length));
-  assert.match(big, /Truncated at 9500 characters[\s\S]*<\/skill>$/);
+  assert.match(big, /Truncated at \d+ characters[\s\S]*<\/skill>$/);
   assert.match(big, /word please now word/);
   assert.match(
     fixture("check /dotclaude:dynamic src"),

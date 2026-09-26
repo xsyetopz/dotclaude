@@ -70,8 +70,27 @@ export function userTyped(prompt) {
   );
 }
 
+// Every message dotclaude shows Claude or the user starts with this tag, so
+// its origin is never in doubt.
+export const TAG = "[dotclaude]";
+
+function tagged(text) {
+  return typeof text === "string" && text && !text.startsWith(TAG)
+    ? `${TAG} ${text}`
+    : text;
+}
+
 export function emit(obj) {
-  process.stdout.write(JSON.stringify(obj));
+  const out = { ...obj };
+  for (const key of ["reason", "systemMessage", "stopReason"])
+    if (key in out) out[key] = tagged(out[key]);
+  if (out.hookSpecificOutput) {
+    const h = { ...out.hookSpecificOutput };
+    for (const key of ["permissionDecisionReason", "additionalContext"])
+      if (key in h) h[key] = tagged(h[key]);
+    out.hookSpecificOutput = h;
+  }
+  process.stdout.write(JSON.stringify(out));
 }
 
 export function preToolDecision(decision, reason) {
@@ -99,7 +118,7 @@ export function decide(findings, data, label) {
   if (denied.length) {
     preToolDecision(
       "deny",
-      `dotclaude blocked this ${label}: ${denied.map(([, r]) => r).join("; ")}.${
+      `blocked this ${label}: ${denied.map(([, r]) => r).join("; ")}.${
         label === "command"
           ? " If the user wants it run, they can run it themselves with `! <command>`."
           : ""
@@ -113,10 +132,7 @@ export function decide(findings, data, label) {
     ([level]) => level === "ask" || (level === "warn" && !quiet),
   );
   if (asks.length)
-    preToolDecision(
-      "ask",
-      `dotclaude: ${asks.map(([, reason]) => reason).join("; ")}`,
-    );
+    preToolDecision("ask", asks.map(([, reason]) => reason).join("; "));
 }
 
 export async function run(body) {
@@ -124,9 +140,7 @@ export async function run(body) {
     await body(readInput());
   } catch (err) {
     if (process.env.DOTCLAUDE_DEBUG) throw err;
-    process.stderr.write(
-      `dotclaude hook error (ignored): ${err?.stack ?? err}\n`,
-    );
+    process.stderr.write(`${TAG} hook error (ignored): ${err?.stack ?? err}\n`);
   }
   process.exitCode = 0;
 }

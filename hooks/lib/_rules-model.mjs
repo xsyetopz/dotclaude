@@ -1,12 +1,12 @@
 // Bash guard rules for the fast-mode and model lock.
 
 import { positional } from "./_bash-args.mjs";
+import { codexTier } from "./_codex.mjs";
 import { allowed } from "./_models.mjs";
 
 // --- fast mode and model lock -----------------------------------------------
 
 const FAST_ON = /["']?fastMode["']?\s*[:=]\s*true/i;
-
 const FAST_DENY = "fast mode is turned off by dotclaude's model lock";
 
 export function claude(cmd, ctx) {
@@ -72,9 +72,10 @@ function codexModel(args) {
   return null;
 }
 
-// Models too expensive for a plan's quota: Astra on Plus drains the 5-hour
-// window in a few tasks, so Plus runs Luna only.
+// Models too expensive for a plan group's quota: Astra drains a Plus-sized
+// 5-hour window in a few tasks, so those plans run Luna and Sol only.
 const PLAN_DENIED = { plus: ["gpt-6-astra"] };
+const RUNS_MODEL = new Set(["exec", "e", "review"]);
 
 // Codex flags and overrides that remove its sandbox or approvals, skip hook
 // trust, or switch to the fast (priority) tier, which costs 2.5x credits.
@@ -113,9 +114,17 @@ export function codex(cmd, ctx) {
   if (!ctx.modelLock) return [];
   const safety = codexSafety(cmd.args);
   if (safety.length) return safety;
+  const plan = ctx.codexPlan?.() ?? null;
+  const tier = codexTier(plan);
+  if (tier === "none" && RUNS_MODEL.has(positional(cmd.args)[0]))
+    return [
+      [
+        "deny",
+        `Codex delegation is off on the ChatGPT ${plan} plan: OpenAI lists it with GPT-6 Luna in the desktop app only, subject to rollout`,
+      ],
+    ];
   const explicit = codexModel(cmd.args);
   const list = ctx.codexModels ?? [];
-  const plan = ctx.codexPlan?.() ?? null;
   // Only an explicit model is checked against the allowlist; a model from the
   // profile or base config also counts for the plan check, since `-p` with an
   // Astra profile on Plus costs the same as `-m gpt-6-astra`.
@@ -132,7 +141,7 @@ export function codex(cmd, ctx) {
         `Codex model \`${model}\` is outside the allowed Codex models (${list.join(", ")})`,
       ],
     ];
-  if (plan && PLAN_DENIED[plan]?.includes(model))
+  if (PLAN_DENIED[tier]?.includes(model))
     return [
       [
         "deny",

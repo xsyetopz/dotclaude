@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // Install dotclaude's Codex profiles and base-config defaults.
 //
-//   bun configure-codex.mjs [--plan plus|prolite|pro] [--apply]
+//   bun configure-codex.mjs [--plan <chatgpt_plan_type>] [--apply]
 //
 // Writes $CODEX_HOME/dotclaude-luna.config.toml (the bounded worker),
 // $CODEX_HOME/dotclaude-review.config.toml (the reviewer, with its model
@@ -15,7 +15,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { codexHome, codexPlan } from "../../../hooks/lib/_codex.mjs";
+import { codexHome, codexPlan, codexTier } from "../../../hooks/lib/_codex.mjs";
 import {
   buildCatalogs,
   catalogPath,
@@ -29,15 +29,25 @@ const apply = args.includes("--apply");
 const at = args.indexOf("--plan");
 const plan = (at >= 0 ? args[at + 1] : codexPlan()) ?? "unknown";
 
-// Reviewer per plan. Astra drains the Plus 5-hour window in minutes, so Plus
-// (and an unknown plan) reviews with Sol; the Pro plans have no 5-hour window.
+const tier = codexTier(plan);
+if (tier === "none") {
+  console.error(
+    `ChatGPT plan: ${plan}. OpenAI lists this plan with GPT-6 Luna in the Codex desktop app only, so dotclaude does not set up Codex delegation for it. Nothing was written.`,
+  );
+  process.exit(1);
+}
+
+// Reviewer per plan group. Astra drains a Plus-sized 5-hour window in minutes,
+// so those plans (and an unknown plan) review with Sol; the Pro plans can
+// afford Astra. The older GPT-5.6 models cost about twice the credits of
+// their GPT-6 counterparts and are not used.
 const REVIEW = {
   plus: { model: "gpt-6-sol", effort: "medium" },
-  prolite: { model: "gpt-6-astra", effort: "medium" },
-  pro: { model: "gpt-6-astra", effort: "medium" },
+  pro5x: { model: "gpt-6-astra", effort: "medium" },
+  pro20x: { model: "gpt-6-astra", effort: "medium" },
   unknown: { model: "gpt-6-sol", effort: "medium" },
 };
-const review = REVIEW[plan] ?? REVIEW.unknown;
+const review = REVIEW[tier] ?? REVIEW.unknown;
 
 const home = codexHome();
 // The catalogs come first: the profiles and config.toml point at them, so a
@@ -113,10 +123,11 @@ const baseBefore = fs.existsSync(basePath)
   : "";
 let base = setTopLevel(baseBefore, "service_tier", '"default"');
 base = setTopLevel(base, "model_catalog_json", catalogValue("interactive"));
-// On Plus a bare `codex` must not fall back to Astra (the catalog's first
-// model), so pin the base model to Luna when it is unset or Astra.
+// On a Plus-sized plan a bare `codex` must not fall back to Astra (the
+// catalog's first model), so pin the base model to Luna when it is unset or
+// Astra.
 let baseModelNote = null;
-if (plan === "plus") {
+if (tier === "plus") {
   let current = null;
   try {
     current = Bun.TOML.parse(baseBefore).model ?? null;

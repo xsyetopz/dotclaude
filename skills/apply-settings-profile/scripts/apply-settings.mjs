@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { currentPlan, fableAccess } from "../../../hooks/lib/_plans.mjs";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -103,15 +104,47 @@ if (!isObject(profile)) {
   console.error(`Profile ${profilePath} not found or not an object.`);
   process.exit(1);
 }
+// A plan that runs Fable only on usage credits, with extra usage off, cannot
+// use it, so the model list leaves it out there.
+const { plan, account } = currentPlan();
+if (
+  fableAccess(plan, account) === "unavailable" &&
+  Array.isArray(profile.availableModels)
+) {
+  profile.availableModels = profile.availableModels.filter(
+    (m) => !/fable/i.test(m),
+  );
+  console.log(
+    `Claude plan: ${plan}, which runs Fable on usage credits with extra usage off; availableModels leaves Fable out.`,
+  );
+}
 const merged = merge(current, profile, "");
 
-// Keys an earlier profile set that Claude Code no longer reads. Nothing else
-// is ever deleted.
-const RETIRED = [["env", "CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION"]];
-for (const [block, key] of RETIRED) {
-  if (isObject(merged[block]) && Object.hasOwn(merged[block], key)) {
-    changes.push(`${block}.${key}: remove (no longer read by Claude Code)`);
-    merged[block] = { ...merged[block] };
+// Keys an earlier profile set and this one no longer wants: removed when they
+// still hold the value dotclaude wrote (`value`) or always (`value` unset).
+// Nothing else is ever deleted.
+const RETIRED = [
+  {
+    block: "env",
+    key: "CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION",
+    why: "no longer read by Claude Code",
+  },
+  {
+    block: "env",
+    key: "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    value: "claude-opus-5-5",
+    why: "Sonnet 5 is allowed again, so `sonnet` runs as Sonnet",
+  },
+];
+for (const { block, key, value, why } of RETIRED) {
+  const holder = merged[block];
+  if (
+    isObject(holder) &&
+    Object.hasOwn(holder, key) &&
+    (value === undefined || holder[key] === value)
+  ) {
+    changes.push(`${block}.${key}: remove (${why})`);
+    merged[block] = { ...holder };
     delete merged[block][key];
   }
 }

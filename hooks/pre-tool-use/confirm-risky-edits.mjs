@@ -3,9 +3,9 @@
 // PreToolUse hook for Edit/Write/NotebookEdit: ask before edits that weaken
 // tests or touch generated files; deny settings edits that re-enable fast mode.
 
-import { decide, option, optionList, run } from "../lib/_common.mjs";
+import { decide, option, run } from "../lib/_common.mjs";
 import { ASKS_TEST_REMOVAL, check } from "../lib/_edit-rules.mjs";
-import { DEFAULT_ALLOWED } from "../lib/_models.mjs";
+import { planAllowlist } from "../lib/_plans.mjs";
 import { recentPrompts } from "../lib/_transcript.mjs";
 
 run((data) => {
@@ -13,7 +13,7 @@ run((data) => {
   const modelLock = option("model_lock");
   if (!editGuard && !modelLock) return;
   const findings = check(data.tool_name ?? "", data.tool_input ?? {}, {
-    allowedModels: optionList("allowed_models", DEFAULT_ALLOWED),
+    allowedModels: planAllowlist().list,
     editGuard,
     modelLock,
     testRemovalRequested:

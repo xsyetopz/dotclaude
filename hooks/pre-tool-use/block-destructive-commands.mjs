@@ -14,7 +14,8 @@ import {
   projectRoot,
   run,
 } from "../lib/_common.mjs";
-import { DEFAULT_ALLOWED, DEFAULT_CODEX } from "../lib/_models.mjs";
+import { DEFAULT_CODEX } from "../lib/_models.mjs";
+import { planAllowlist } from "../lib/_plans.mjs";
 
 const LOCK_ONLY =
   /fast mode|allowed models|allowed Codex models|ChatGPT \w+ plan|Codex's sandbox/;
@@ -29,7 +30,7 @@ run((data) => {
   let findings = check(command, {
     root,
     cwd: path.resolve(data.cwd || root),
-    allowedModels: optionList("allowed_models", DEFAULT_ALLOWED),
+    allowedModels: planAllowlist().list,
     codexModels: optionList("allowed_codex_models", DEFAULT_CODEX).map((m) =>
       m.toLowerCase(),
     ),

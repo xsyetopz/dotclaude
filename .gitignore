@@ -8,3 +8,4 @@ evals-heldout/results/
 /docs/*
 !/docs/claude-code-prompt-surface.md
 !/docs/evals.md
+!/docs/subscription-tiers.md

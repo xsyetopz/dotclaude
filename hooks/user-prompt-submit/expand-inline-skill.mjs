@@ -8,9 +8,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { emit, run, userTyped } from "../lib/_common.mjs";
+import { emit, run, TAG, userTyped } from "../lib/_common.mjs";
 
-const MAX_CONTEXT = 9500;
+// The whole context, including the "[dotclaude] " tag emit() adds, stays
+// within 9500 characters.
+const MAX_CONTEXT = 9500 - TAG.length - 1;
 const TOKEN = /(^|\s)\/dotclaude:([a-z0-9-]+)(?![\w:/-])/g;
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
 const FORK = /^context:\s*["']?fork["']?\s*$/m;

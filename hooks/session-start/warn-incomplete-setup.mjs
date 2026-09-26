@@ -88,6 +88,5 @@ run((data) => {
       `its hooks need Bun ${MIN_BUN} or later, and ${Bun.version} is on PATH. Run \`bun upgrade\`.`,
     );
   }
-  if (notices.length)
-    emit({ systemMessage: `dotclaude: ${notices.join(" Also, ")}` });
+  if (notices.length) emit({ systemMessage: notices.join(" Also, ") });
 });

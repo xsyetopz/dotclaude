@@ -2,6 +2,8 @@
 // SubagentStart: give subagents the core working conventions. Output styles
 // reach only the main conversation, so subagents get this short version.
 
+import fs from "node:fs";
+import path from "node:path";
 import { emit, option, run } from "../lib/_common.mjs";
 
 const GUIDANCE = `<working_conventions source="dotclaude">
@@ -28,14 +30,51 @@ const OWN_PROMPT = new Set([
   "codex-reviewer",
 ]);
 
+/** `maxTurns` and `model` from a dotclaude agent's definition, or null. */
+function definition(agentType) {
+  if (!/^dotclaude:[a-z0-9-]+$/.test(agentType)) return null;
+  try {
+    const file = path.join(
+      import.meta.dir,
+      "..",
+      "..",
+      "agents",
+      `${agentType.slice(10)}.md`,
+    );
+    const head = fs.readFileSync(file, "utf8").split(/^---\s*$/m)[1] ?? "";
+    const n = Number(/^maxTurns:\s*(\d+)\s*$/m.exec(head)?.[1]);
+    return {
+      maxTurns: n > 0 ? n : null,
+      model: /^model:\s*(\S+)\s*$/m.exec(head)?.[1] ?? "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+// An agent cut off at its turn limit returns whatever it last wrote, so it is
+// told the limit and asked to report before reaching it.
+function budget(limit) {
+  return `<turn_budget source="dotclaude">You have at most ${limit} turns. When about ${Math.max(3, Math.round(limit / 10))} remain, start no new work: write your final report as a handoff (what is done and how it was verified, files changed, anything half-edited, what is left in order), because a fresh agent will continue from it rather than you.</turn_budget>`;
+}
+
+// Anthropic's Sonnet 5 prompting guide: it "does not silently generalize an
+// instruction from one item to another", most of all at lower effort.
+const SONNET = `<scope_note source="dotclaude">Apply each instruction in your brief to everything it covers, not only the first match or file, and name in your report anything you left out and why.</scope_note>`;
+
 run((data) => {
   if (!option("subagent_guidance")) return;
-  const type = String(data.agent_type ?? "").replace(/^dotclaude:/, "");
-  if (OWN_PROMPT.has(type)) return;
+  const agentType = String(data.agent_type ?? "");
+  const type = agentType.replace(/^dotclaude:/, "");
+  const parts = OWN_PROMPT.has(type) ? [] : [GUIDANCE];
+  const def = definition(agentType);
+  if (def?.maxTurns) parts.push(budget(def.maxTurns));
+  if (/sonnet/.test(def?.model ?? "")) parts.push(SONNET);
+  if (!parts.length) return;
   emit({
     hookSpecificOutput: {
       hookEventName: "SubagentStart",
-      additionalContext: GUIDANCE,
+      additionalContext: parts.join("\n"),
     },
   });
 });

@@ -67,9 +67,30 @@ checkout instead, run `claude --plugin-dir /path/to/dotclaude`.
 - **Compaction carry-over**: after compaction, restores your last messages
   verbatim, the last check result, and which uncommitted files this session
   edited versus everyone else.
-- **Model lock**: fast mode stays off. Claude runs on Opus 5.5, Fable 5.1, or
-  Haiku 4.5, and Sonnet is not used. Codex commands may name GPT-6 Luna, Sol, or
-  Astra, and Astra is refused on the ChatGPT Plus plan.
+- **Model lock**: fast mode stays off. Claude runs on Opus 5.5, Sonnet 5,
+  Fable 5.1, or Haiku 4.5. Fable is never a subagent model, and on Pro or a
+  standard Team seat without extra usage it is left out, since those plans run
+  it on usage credits. Codex commands may name GPT-6 Luna, Sol, or Astra; Astra
+  is refused on Plus-sized ChatGPT plans (Plus, Team, Standard Business,
+  Enterprise, Edu), and Free and Go do not delegate to Codex.
+- **Plan awareness**: dotclaude reads your Claude plan from Claude Code's
+  cached account (or the `claude_plan` option) and, at session start, notes
+  what it means for model choice: Fable's 50% weekly cap on Max, paid credits
+  on Pro, per-token prices on the API, and earlier handoffs on plans with a
+  small 5-hour window. Once Codex is set up, it points bounded tasks at
+  `codex-worker`, which spends the ChatGPT plan instead of your Claude limits.
+  `docs/subscription-tiers.md` holds the research behind these rules.
+- **Usage notes**: when Claude Code's cached usage (the same numbers as
+  `/usage`, at most an hour old) shows the session or weekly limit past 75% or
+  90%, Claude is told once per level and routes the rest of the work to
+  stretch what is left.
+- **Turn-limit handoff**: an agent that stops at its turn limit is not resumed.
+  Its context has grown with every turn, and each further turn re-reads all of
+  it. The first message to it is rewritten into a request for a handoff
+  report, later messages are blocked, and the work continues in a fresh agent
+  briefed from that report.
+- **Tagged messages**: everything dotclaude shows Claude or you starts with
+  `[dotclaude]`.
 
 The guards never auto-approve anything and fail open: a bug in dotclaude cannot
 stop your work. They are a best-effort parser, not a sandbox; for hard isolation
@@ -90,7 +111,10 @@ own system prompts. It covers:
 - delegation to the agents below.
 
 On Fable 5.1, a note adds that model's adjustments, at session start and again
-whenever `/model` switches to Fable; switching away retracts it. The style is
+whenever `/model` switches to Fable; switching away retracts it. Every dotclaude
+agent is told its turn limit at start and asked to report before reaching it,
+and agents on Sonnet 5 are reminded to apply each instruction to everything it
+covers, since Sonnet 5 follows instructions literally. The style is
 forced on while the plugin is enabled; to use another, disable the plugin or
 copy the file to `~/.claude/output-styles/` without `force-for-plugin`.
 
@@ -102,13 +126,15 @@ Code ignores an effort passed at spawn time.
 | ----------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------- |
 | `code-reviewer`, `security-reviewer`, `plan-reviewer` | Opus 5.5, high | fresh-context review of a change, its security, or a plan |
 | `debugger`, `performance-engineer` | Opus 5.5, high | root cause by measurement; measured speed or memory work |
-| `implementer`, `test-writer` | Opus 5.5, medium | one well-scoped piece of work; tests in the repository's style |
+| `implementer` | Sonnet 5, medium | one well-scoped piece of work (Claude passes `model: "opus"` for a slice that needs design judgment) |
+| `test-writer` | Opus 5.5, medium | tests in the repository's style |
 | `ci-investigator`, `dependency-auditor` | Opus 5.5, medium | why CI failed; dependency health |
-| `mechanical-worker`, `docs-writer` | Opus 5.5, low | fully specified bulk edits (in place of Sonnet); docs that match a change |
-| `test-runner`, `history-investigator` | Opus 5.5, low | failures without the log noise; why code looks the way it does |
+| `mechanical-worker`, `test-runner` | Sonnet 5, low | fully specified bulk edits; failures without the log noise |
+| `docs-writer` | Sonnet 5, medium | docs that match a change |
+| `history-investigator` | Opus 5.5, low | why code looks the way it does |
 | `web-researcher` | Opus 5.5, low | sourced web answers, read from raw pages rather than summaries |
 | `integration-setup` | Haiku 4.5 | installing and configuring integrations |
-| `codex-worker`, `codex-reviewer` | Haiku 4.5 forwarding to Codex | bounded tasks on GPT-6 Luna; second-opinion review on Astra (Pro plans) or Sol (Plus) |
+| `codex-worker`, `codex-reviewer` | Haiku 4.5 forwarding to Codex | bounded tasks on GPT-6 Luna; second-opinion review on Astra (Pro plans) or Sol (Plus-sized plans) |
 
 **Skills.**
 
@@ -145,9 +171,12 @@ project, or local settings. It sets:
   workflow stages. `max` is blocked because the claude.ai effort picker warns
   that it uses about 5.5x the usage on Opus 5.5 and 3.5x on Fable 5.1 (as of
   2026-09-26); `xhigh` stays for the rare turn where `high` was not enough.
-- **Models**: Opus 5.5 as session, subagent, and advisor model;
-  `availableModels` of Opus 5.5, Fable 5.1, and Haiku 4.5. The `sonnet` alias
-  maps to Opus 5.5, and Haiku runs Claude Code's background tasks.
+- **Models**: Opus 5.5 as session and advisor model, Sonnet 5 for built-in
+  subagents (`general-purpose` and others that set no model of their own);
+  `availableModels` of Opus 5.5, Sonnet 5, Fable 5.1, and Haiku 4.5 (without
+  Fable on Pro or a standard Team seat with extra usage off); Fable denied as a
+  subagent model. Haiku runs Claude Code's background tasks. Re-applying
+  removes the 0.4.0 mapping of `sonnet` to Opus 5.5 if it is still there.
 - **Subagent and workflow bounds**: 6 subagents at once, and 6 agents at once in
   a workflow run (`CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`).
   `workflowSizeGuideline: "medium"` asks Claude to aim for fewer than 10 agents
@@ -228,7 +257,13 @@ Set in `/config` under dotclaude:
   `subagent_guidance` for the shared working-tree rules, the progress log, and
   the report format, so turning it off weakens them.
 - **Model lists**: `allowed_models` lists the Claude models the lock accepts,
-  and `allowed_codex_models` lists the Codex models.
+  and `allowed_codex_models` lists the Codex models. The older GPT-5.6 models
+  are not in the default list: they cost about twice the Codex credits of
+  their GPT-6 counterparts.
+- **Claude plan**: `claude_plan` is `auto` by default, which reads the plan
+  from Claude Code's cached account; set `pro`, `max_5x`, `max_20x`,
+  `team_standard`, `team_premium`, `enterprise`, or `api` to override it.
+- **Limits**: `usage_notes` and `turn_limit_handoff`, both on by default.
 - **Browser and CAPTCHA**: `cloakbrowser`, `cloakbrowser_humanize`,
   `cloakbrowser_headless`, and `captcha_ocr_ddddocr` choose the browser backend
   and CAPTCHA fallback.

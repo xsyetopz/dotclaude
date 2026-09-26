@@ -262,6 +262,24 @@ test("git worktree remove --force asks only when the worktree has changes", () =
   assert.equal(level(cmd), "ask");
 });
 
+test("Codex plan groups: Plus-sized seats skip Astra, Free and Go do not delegate", () => {
+  const astra = "codex exec -m gpt-6-astra hi";
+  for (const plan of ["team", "business", "enterprise", "edu"])
+    assert.equal(level(astra, { ...ctx, codexPlan: () => plan }), "deny", plan);
+  for (const plan of ["self_serve_business_prolite", "pro"])
+    assert.equal(level(astra, { ...ctx, codexPlan: () => plan }), "pass", plan);
+  for (const plan of ["free", "go"]) {
+    const free = { ...ctx, codexPlan: () => plan };
+    assert.equal(level("codex exec -m gpt-6-luna hi", free), "deny", plan);
+    assert.equal(
+      level("command codex exec -p dotclaude-luna hi", free),
+      "deny",
+      plan,
+    );
+    assert.equal(level("codex login status", free), "pass", plan);
+  }
+});
+
 test("Codex Astra is denied on the Plus plan and allowed on Pro", () => {
   const cmd = "codex exec -m gpt-6-astra hi";
   assert.equal(level(cmd, { ...ctx, codexPlan: () => "plus" }), "deny");

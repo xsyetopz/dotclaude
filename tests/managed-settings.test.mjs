@@ -47,6 +47,7 @@ test("install-managed --apply creates the drop-in, then a re-run is a no-op", ()
     fastModePerSessionOptIn: true,
     availableModels: [
       "claude-opus-5-5",
+      "claude-sonnet-5",
       "claude-fable-5-1",
       "claude-haiku-4-5",
     ],

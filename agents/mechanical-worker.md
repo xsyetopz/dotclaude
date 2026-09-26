@@ -2,7 +2,7 @@
 name: mechanical-worker
 description: Applies fully specified mechanical changes across many files (renames, API or import migrations, codemods, one pattern at every call site, bulk config and fixture edits). Use where you would otherwise reach for a cheaper model; the change must need no design judgment. Give it the exact transformation, the scope, and the check to run.
 disallowedTools: Agent
-model: claude-opus-5-5
+model: claude-sonnet-5
 effort: low
 maxTurns: 80
 color: green
