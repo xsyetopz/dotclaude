@@ -68,17 +68,65 @@ if (!url) {
   process.exit(1);
 }
 
+// Bun's global package directory, as `bun pm ls -g` reports it on its first
+// line ("<dir> node_modules (N installed)").
+function globalDir() {
+  const res = Bun.spawnSync(["bun", "pm", "ls", "-g"]);
+  const first = res.stdout.toString().split("\n")[0] ?? "";
+  return first.replace(/ node_modules \(.*$/, "") || null;
+}
+
+// cloakbrowser declares playwright-core as an optional peer, so installing
+// cloakbrowser never pulls it in. Install it, then start this launcher again
+// in a fresh process, since this one has already cached the failed lookup.
+function ensurePlaywright(dir) {
+  try {
+    Bun.resolveSync("playwright-core", dir);
+    return;
+  } catch {}
+  console.error(
+    "playwright-core is missing; installing it with `bun install -g playwright-core`.",
+  );
+  // stdout carries this launcher's output, so the install log goes to stderr.
+  const install = Bun.spawnSync(["bun", "install", "-g", "playwright-core"], {
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+  process.stderr.write(install.stdout);
+  if (install.exitCode !== 0) {
+    console.error(
+      "Could not install playwright-core; run `bun install -g playwright-core` yourself.",
+    );
+    process.exit(1);
+  }
+  const again = Bun.spawnSync([process.execPath, ...process.argv.slice(1)], {
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  process.exit(again.exitCode ?? 1);
+}
+
 async function main() {
   let launch;
   try {
-    const mod = await import("cloakbrowser");
+    // Prefer the global install: a bare import can fall back to Bun's
+    // auto-install cache, where playwright-core never resolves.
+    let spec = "cloakbrowser";
+    const dir = globalDir();
+    let found = false;
+    try {
+      spec = Bun.resolveSync("cloakbrowser", dir);
+      found = true;
+    } catch {}
+    if (found) ensurePlaywright(dir);
+    const mod = await import(spec);
     launch = mod.launch || mod.default?.launch;
   } catch {
     console.error(`
 CloakBrowser not installed. Install with:
-  bun install cloakbrowser
+  bun install -g cloakbrowser playwright-core
   # or with GeoIP support:
-  bun install cloakbrowser cloakbrowser-geoip
+  bun install -g cloakbrowser playwright-core cloakbrowser-geoip
 
 Then set your license key:
   export CLOAKBROWSER_LICENSE_KEY=your-key
