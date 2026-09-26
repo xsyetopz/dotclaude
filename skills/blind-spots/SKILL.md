@@ -1,7 +1,6 @@
 ---
 name: blind-spots
-description: Infer what the user is trying to accomplish and tell them what they are not considering, for work where they know part of their goal but expect unknown unknowns. Run when the user types /dotclaude:blind-spots.
-disable-model-invocation: true
+description: Infer what the user is trying to accomplish and tell them what they are not considering, for work where they know part of their goal but expect unknown unknowns. Use when the user names /dotclaude:blind-spots anywhere in a message, or asks what they are missing or not considering.
 argument-hint: "[topic or goal, optional]"
 ---
 

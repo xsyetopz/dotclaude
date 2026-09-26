@@ -1,7 +1,6 @@
 ---
 name: recap
-description: Say where the session stands and what it is doing, auditing the whole conversation and correcting anything said earlier that no longer holds. Run when the user types /dotclaude:recap, typically right after a compaction or a long stretch of work.
-disable-model-invocation: true
+description: Say where the session stands and what it is doing, auditing the whole conversation and correcting anything said earlier that no longer holds. Use when the user names /dotclaude:recap anywhere in a message or asks where things stand, typically right after a compaction or a long stretch of work.
 argument-hint: "[focus, optional]"
 ---
 

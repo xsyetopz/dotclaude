@@ -1,7 +1,6 @@
 ---
 name: lessons-learned
-description: Post-mortem of the current session, covering what worked, what did not, the systemic causes, and concrete changes (CLAUDE.md lines, skills, hooks, tests, docs) that would prevent the problems next time. Run when the user types /dotclaude:lessons-learned.
-disable-model-invocation: true
+description: Post-mortem of the current session, covering what worked, what did not, the systemic causes, and concrete changes (CLAUDE.md lines, skills, hooks, tests, docs) that would prevent the problems next time. Use when the user names /dotclaude:lessons-learned anywhere in a message, or asks for a post-mortem or retrospective of the session.
 argument-hint: "[focus, optional]"
 ---
 

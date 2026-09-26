@@ -1,7 +1,6 @@
 ---
 name: challenge
-description: Discuss and challenge an idea, plan, claim, or decision instead of agreeing with it, stress-testing its assumptions, failure modes, and alternatives. Run when the user types /dotclaude:challenge.
-disable-model-invocation: true
+description: Discuss and challenge an idea, plan, claim, or decision instead of agreeing with it, stress-testing its assumptions, failure modes, and alternatives. Use when the user names /dotclaude:challenge anywhere in a message, or asks you to challenge, stress-test, or argue against an idea or plan.
 argument-hint: "[the idea or decision to challenge; defaults to the current plan]"
 ---
 
