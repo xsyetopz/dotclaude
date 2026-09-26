@@ -1,8 +1,8 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.2.0",
-  "description": "Guardrails, working conventions, and a set of task agents for Claude Code: destructive-command and test-weakening guards that stay quiet on recoverable actions in auto mode, a verify-before-stop gate for the session and its subagents, compaction carry-over, a fast-mode/model lock (Opus 5.5, Fable 5.1, Haiku 4.5), reviewers, workers, and researchers on tiered models and effort, optional Codex delegation, and an always-on output style.",
+  "version": "0.3.0",
+  "description": "Guardrails, working conventions, and a set of task agents for Claude Code: destructive-command and test-weakening guards that stay quiet on recoverable actions in auto mode, a verify-before-stop gate for the session and its subagents, compaction carry-over, a fast-mode/model lock (Opus 5.5, Fable 5.1, Haiku 4.5) with an xhigh effort cap, reviewers, workers, and researchers on tiered models and effort, optional Codex delegation, and an always-on output style.",
   "author": {
     "name": "xsyetopz"
   },
