@@ -105,6 +105,17 @@ if (!isObject(profile)) {
 }
 const merged = merge(current, profile, "");
 
+// Keys an earlier profile set that Claude Code no longer reads. Nothing else
+// is ever deleted.
+const RETIRED = [["env", "CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION"]];
+for (const [block, key] of RETIRED) {
+  if (isObject(merged[block]) && Object.hasOwn(merged[block], key)) {
+    changes.push(`${block}.${key}: remove (no longer read by Claude Code)`);
+    merged[block] = { ...merged[block] };
+    delete merged[block][key];
+  }
+}
+
 console.log(`Target: ${target} (${scope} scope)`);
 if (!changes.length) {
   console.log("Already up to date; nothing to change.");
