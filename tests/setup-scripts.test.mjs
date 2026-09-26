@@ -175,7 +175,7 @@ test("apply-claude-md appends a marked section, replaces it in place, and remove
   let text = fs.readFileSync(file, "utf8");
   assert.match(
     text,
-    /^## CodeGraph\n\nUser's own rules\.\n\n<!-- dotclaude:begin/,
+    /^# CLAUDE\.md\n\n## CodeGraph\n\nUser's own rules\.\n\n<!-- dotclaude:begin/,
   );
   assert.match(text, /First version\.\n<!-- dotclaude:end -->\n$/);
 
@@ -189,7 +189,20 @@ test("apply-claude-md appends a marked section, replaces it in place, and remove
   run("apply-claude-md.mjs", home, "--remove", "--apply");
   assert.equal(
     fs.readFileSync(file, "utf8").trim(),
-    "## CodeGraph\n\nUser's own rules.",
+    "# CLAUDE.md\n\n## CodeGraph\n\nUser's own rules.",
+  );
+});
+
+test("apply-claude-md keeps a top-level heading the file already has", () => {
+  const home = tempHome();
+  const file = path.join(home, ".claude", "CLAUDE.md");
+  const source = path.join(home, "section.md");
+  fs.writeFileSync(file, "# My rules\n\nMine.\n");
+  fs.writeFileSync(source, "Notes.");
+  run("apply-claude-md.mjs", home, "--source", source, "--apply");
+  assert.match(
+    fs.readFileSync(file, "utf8"),
+    /^# My rules\n\nMine\.\n\n<!-- dotclaude:begin/,
   );
 });
 
@@ -332,7 +345,11 @@ test("configure-codex writes a patched model catalog per audience and points eac
   const cache = writeModelCache(codexHome, "2020-01-01T00:00:00Z");
   const dry = runConfigureCodex(codexHome, "--plan", "pro");
   assert.equal(dry.status, 0, dry.stderr);
-  assert.match(dry.stdout, /more than 24 hours ago.*codex login/, "stale cache warns");
+  assert.match(
+    dry.stdout,
+    /more than 24 hours ago.*codex login/,
+    "stale cache warns",
+  );
   assert.ok(
     !fs.existsSync(path.join(codexHome, "dotclaude-catalog-worker.json")),
   );

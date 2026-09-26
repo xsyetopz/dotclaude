@@ -40,6 +40,11 @@ if (!Object.hasOwn(targets, scope)) {
   process.exit(2);
 }
 const target = targets[scope];
+// The file's top-level heading is its own name (# CLAUDE.md, # AGENTS.md).
+// A file that already opens with a top-level heading keeps its own.
+const HEADING = `# ${path.basename(target)}`;
+const withHeading = (text) =>
+  /^\s*# /.test(text) ? text : `${HEADING}\n\n${text.replace(/^\s+/, "")}`;
 
 // CLI tools worth naming in CLAUDE.md, listed only when present on PATH.
 // Browser CLIs are left out: naming them here led Claude to drive them from
@@ -79,11 +84,8 @@ if (remove) {
     .trim()
     .replace("{{TOOLS}}", installedTools());
   const block = `${BEGIN}\n${body}\n${END}\n`;
-  if (BLOCK.test(current)) next = current.replace(BLOCK, block);
-  else
-    next = current.trim()
-      ? `${current.replace(/\s*$/, "")}\n\n${block}`
-      : block;
+  if (BLOCK.test(current)) next = withHeading(current.replace(BLOCK, block));
+  else next = `${withHeading(current).replace(/\s*$/, "")}\n\n${block}`;
 }
 
 console.log(`Target: ${target} (${scope} scope)`);
@@ -99,6 +101,9 @@ console.log(
       ? "Replaces the existing dotclaude section."
       : "Appends a dotclaude section; the rest of the file is unchanged.",
 );
+if (!remove && !/^\s*# /.test(current)) {
+  console.log(`Adds the top-level heading \`${HEADING}\` at the start.`);
+}
 if (!remove) {
   console.log(
     `\n----- section -----\n${next.match(BLOCK)[0]}-------------------`,
