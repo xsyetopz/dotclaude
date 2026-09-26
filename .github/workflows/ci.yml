@@ -15,4 +15,4 @@ jobs:
           bun-version: 1.4.2
       - run: git config --global user.email ci@example.com && git config --global user.name ci
       - run: bunx @biomejs/biome@2.5.13 lint hooks tests skills
-      - run: bun test tests/
+      - run: bun test ./tests/

@@ -1,0 +1,9 @@
+// Prompt files keep one paragraph per line: models read them unwrapped, and
+// long commands, URLs, and frontmatter descriptions cannot wrap. Numbered
+// steps keep their numbers, since prompts refer to them ("before step 3").
+// A config here replaces the parent one, so it extends the shared rules.
+{
+  "extends": "../.markdownlint.jsonc",
+  "MD013": false,
+  "MD029": { "style": "ordered" }
+}

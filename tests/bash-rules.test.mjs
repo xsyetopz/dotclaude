@@ -8,6 +8,11 @@ import path from "node:path";
 import { test } from "node:test";
 import { check } from "../hooks/lib/_bash-rules.mjs";
 
+// A session with the dotclaude profile maps `sonnet` to Opus 5.5 through
+// ANTHROPIC_DEFAULT_SONNET_MODEL, which would change what these aliases resolve to.
+for (const family of ["OPUS", "SONNET", "HAIKU", "FABLE", "MYTHOS"])
+  delete process.env[`ANTHROPIC_DEFAULT_${family}_MODEL`];
+
 function makeRepo() {
   const root = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-test-")),
