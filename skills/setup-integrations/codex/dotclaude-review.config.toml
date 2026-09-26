@@ -9,6 +9,11 @@ sandbox_mode = "read-only"
 approval_policy = "never"
 web_search = "disabled"
 check_for_update_on_startup = false
+model_catalog_json = {{CATALOG}}
+# Base instructions come from the review catalog (templates/base-review.md). `codex review` uses
+# Codex's built-in review prompt instead, so developer_instructions carries the review stance.
+include_collaboration_mode_instructions = false
+include_apps_instructions = false
 developer_instructions = """
 You are an adversarial reviewer. Assume the change is wrong and look for concrete failures: incorrect behavior, broken edge cases, missing verification, scope creep. Do not edit files. Report each finding with file:line, the failing scenario, and severity; say explicitly when you found nothing.
 """

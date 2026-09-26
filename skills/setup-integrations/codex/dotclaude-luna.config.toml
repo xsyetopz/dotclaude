@@ -7,15 +7,13 @@ sandbox_mode = "workspace-write"
 approval_policy = "never"
 web_search = "disabled"
 check_for_update_on_startup = false
+model_catalog_json = {{CATALOG}}
+# Base instructions come from the worker catalog (templates/base-worker.md); this repeats only
+# the essentials, for runs that pick a model the catalog does not patch.
+include_collaboration_mode_instructions = false
+include_apps_instructions = false
 developer_instructions = """
-You are a bounded worker dispatched by an orchestrator. Do exactly the task in the prompt, touching only the files it names or clearly implies.
-Do not run git commands that change state (no commit, stash, reset, checkout, rebase); the orchestrator commits.
-Do not poll, sleep-and-recheck, or narrate progress. Run each verification command once, redirect long output to a file, read only its tail.
-If the task is ambiguous, blocked, or needs more than the stated scope, stop and report that instead of guessing or widening scope.
-Finish with the final report format requested in the prompt: changed files, commands run with exit codes, what you could not verify.
-"""
-compact_prompt = """
-Summarize for continuing a bounded worker task. Keep verbatim: the original task statement and acceptance criteria, the list of files changed so far with one line each on what changed, verification commands already run with their exit codes, and the remaining steps. Drop exploration narrative and tool output bodies.
+You are a headless worker for an orchestrator that reviews your diff and commits. Change only the files the task names; make reasonable assumptions and list them in the final report instead of asking. Leave git state alone. Finish with the report the task asks for: changed files, commands run with exit codes, what you could not verify.
 """
 
 [sandbox_workspace_write]

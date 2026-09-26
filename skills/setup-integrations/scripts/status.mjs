@@ -7,14 +7,16 @@
 //
 // Reads only: PATH, ~/.claude.json and the project's .mcp.json (MCP server
 // names, never their env or headers), $CODEX_HOME/config.toml and profile
-// files, the ChatGPT plan claim from the Codex login (never the tokens), and
-// the project's .codegraph/ directory.
+// files, which dotclaude model catalogs exist and the model cache's
+// fetched_at, the ChatGPT plan claim from the Codex login (never the tokens),
+// and the project's .codegraph/ directory.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { codexHome, codexPlan } from "../../../hooks/lib/_codex.mjs";
+import { AUDIENCES, catalogPath } from "./build-codex-catalog.mjs";
 
 const args = process.argv.slice(2);
 const at = args.indexOf("--project");
@@ -53,6 +55,17 @@ function version(bin, flag = "--version") {
   return (res.stdout || res.stderr || "").trim().split("\n")[0] || "unknown";
 }
 
+/** Which dotclaude catalogs exist, and when Codex last fetched its model list. */
+function codexCatalogs() {
+  return {
+    catalogs: Object.fromEntries(
+      AUDIENCES.map((a) => [a, fs.existsSync(catalogPath(codexHome(), a))]),
+    ),
+    models_cache_fetched_at:
+      readJson(path.join(codexHome(), "models_cache.json"))?.fetched_at ?? null,
+  };
+}
+
 function codexConfig() {
   const file = path.join(codexHome(), "config.toml");
   if (!fs.existsSync(file)) return { file, exists: false };
@@ -62,6 +75,7 @@ function codexConfig() {
       file,
       exists: true,
       model: config.model ?? null,
+      model_catalog_json: config.model_catalog_json ?? null,
       service_tier: config.service_tier ?? null,
       fast_mode: config.features?.fast_mode ?? null,
       legacy_profile_tables: Object.keys(config.profiles ?? {}),
@@ -100,6 +114,7 @@ if (args.includes("--codex")) {
       },
       service_tier: config.service_tier ?? null,
       fast_mode: config.fast_mode ?? null,
+      ...codexCatalogs(),
     }),
   );
   process.exit(0);
@@ -129,6 +144,7 @@ console.log(
         login: codexLogin(),
         plan: codexPlan(),
         config: codexConfig(),
+        ...codexCatalogs(),
       },
     },
     null,

@@ -3,17 +3,24 @@
 //
 //   bun configure-codex.mjs [--plan plus|prolite|pro] [--apply]
 //
-// Writes $CODEX_HOME/dotclaude-luna.config.toml (the bounded worker) and
+// Writes $CODEX_HOME/dotclaude-luna.config.toml (the bounded worker),
 // $CODEX_HOME/dotclaude-review.config.toml (the reviewer, with its model
-// picked for the ChatGPT plan), and sets `service_tier = "default"` and
+// picked for the ChatGPT plan), and the three model catalogs from
+// build-codex-catalog.mjs, then sets `service_tier = "default"`,
+// `model_catalog_json` (the interactive catalog), and
 // `[features] fast_mode = false` in config.toml, leaving every other key as
-// it is. Without --apply it prints the changes and writes nothing; with it,
-// changed files are backed up first and the result is re-parsed before
-// anything is written.
+// it is. Each profile points `model_catalog_json` at its own catalog. Without
+// --apply it prints the changes and writes nothing; with it, changed files are
+// backed up first and the result is re-parsed before anything is written.
 
 import fs from "node:fs";
 import path from "node:path";
 import { codexHome, codexPlan } from "../../../hooks/lib/_codex.mjs";
+import {
+  buildCatalogs,
+  catalogPath,
+  fetchLiveModels,
+} from "./build-codex-catalog.mjs";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const templates = path.join(here, "..", "codex");
@@ -33,10 +40,23 @@ const REVIEW = {
 const review = REVIEW[plan] ?? REVIEW.unknown;
 
 const home = codexHome();
+// The catalogs come first: the profiles and config.toml point at them, so a
+// missing model cache stops the run before anything is written.
+let catalogs;
+try {
+  catalogs = buildCatalogs(home, Date.now(), fetchLiveModels(home));
+} catch (err) {
+  console.error(`${err.message}\nNothing was written.`);
+  process.exit(1);
+}
+const catalogValue = (audience) => JSON.stringify(catalogPath(home, audience));
 const files = new Map([
+  ...catalogs.files,
   [
     path.join(home, "dotclaude-luna.config.toml"),
-    fs.readFileSync(path.join(templates, "dotclaude-luna.config.toml"), "utf8"),
+    fs
+      .readFileSync(path.join(templates, "dotclaude-luna.config.toml"), "utf8")
+      .replaceAll("{{CATALOG}}", catalogValue("worker")),
   ],
   [
     path.join(home, "dotclaude-review.config.toml"),
@@ -47,7 +67,8 @@ const files = new Map([
       )
       .replaceAll("{{PLAN}}", plan)
       .replaceAll("{{MODEL}}", review.model)
-      .replaceAll("{{EFFORT}}", review.effort),
+      .replaceAll("{{EFFORT}}", review.effort)
+      .replaceAll("{{CATALOG}}", catalogValue("review")),
   ],
 ]);
 
@@ -91,6 +112,7 @@ const baseBefore = fs.existsSync(basePath)
   ? fs.readFileSync(basePath, "utf8")
   : "";
 let base = setTopLevel(baseBefore, "service_tier", '"default"');
+base = setTopLevel(base, "model_catalog_json", catalogValue("interactive"));
 // On Plus a bare `codex` must not fall back to Astra (the catalog's first
 // model), so pin the base model to Luna when it is unset or Astra.
 let baseModelNote = null;
@@ -110,10 +132,22 @@ base = setInTable(base, "features", "fast_mode", "false");
 if (!base.endsWith("\n")) base += "\n";
 files.set(basePath, base);
 
-// Refuse to write anything Codex would fail to load.
+// Refuse to write anything Codex would fail to load. buildCatalogs already
+// re-parsed the catalogs; the TOML files are checked here.
+const catalogFor = new Map([
+  [basePath, catalogPath(home, "interactive")],
+  [path.join(home, "dotclaude-luna.config.toml"), catalogPath(home, "worker")],
+  [
+    path.join(home, "dotclaude-review.config.toml"),
+    catalogPath(home, "review"),
+  ],
+]);
 for (const [file, text] of files) {
+  if (!catalogFor.has(file)) continue;
   try {
     const parsed = Bun.TOML.parse(text);
+    if (parsed.model_catalog_json !== catalogFor.get(file))
+      throw new Error("model_catalog_json did not take effect");
     if (file === basePath) {
       if (
         parsed.service_tier !== "default" ||
@@ -137,6 +171,8 @@ console.log(`Codex home: ${home}`);
 console.log(
   `ChatGPT plan: ${plan}; reviewer: ${review.model} at ${review.effort} effort.`,
 );
+console.log(`Model list fetched at: ${catalogs.fetchedAt ?? "unknown"}`);
+for (const warning of catalogs.warnings) console.log(`Warning: ${warning}`);
 const changed = [...files].filter(
   ([file, text]) =>
     !fs.existsSync(file) || fs.readFileSync(file, "utf8") !== text,
@@ -149,7 +185,7 @@ for (const [file] of changed)
   console.log(`  ${fs.existsSync(file) ? "update" : "create"} ${file}`);
 if (baseBefore !== base) {
   console.log(
-    `\nconfig.toml keys set: service_tier = "default", [features] fast_mode = false${baseModelNote ? `, ${baseModelNote}` : ""}`,
+    `\nconfig.toml keys set: service_tier = "default", model_catalog_json = ${catalogValue("interactive")}, [features] fast_mode = false${baseModelNote ? `, ${baseModelNote}` : ""}`,
   );
 }
 if (!apply) {
@@ -166,5 +202,5 @@ for (const [file, text] of changed) {
   fs.writeFileSync(file, text);
 }
 console.log(
-  "\nWrote the files above (backups next to any file that existed). Check they load with: command codex debug prompt-input -p dotclaude-luna 'ok' >/dev/null && echo ok",
+  "\nWrote the files above (backups next to any file that existed). Check they load with: command codex -p dotclaude-luna debug prompt-input ok >/dev/null && command codex -p dotclaude-review debug prompt-input ok >/dev/null && echo ok",
 );
