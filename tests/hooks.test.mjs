@@ -617,7 +617,7 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   assert.match(out.hookSpecificOutput.additionalContext, /hypotheses/);
   assert.match(
     out.hookSpecificOutput.additionalContext,
-    /final message is the only output delivered/,
+    /Only your final message is delivered/,
   );
   assert.equal(
     hook("subagent-start/inject-working-conventions.mjs", {
@@ -828,5 +828,16 @@ test("plugin validation and markdownlint count as check runs", () => {
     edit(sid);
     checkRun(sid, command);
     assert.equal(stop(sid), null, command);
+  }
+});
+
+test("stop gate is not bypassed by a reply that mentions an error or failure it fixed", () => {
+  for (const message of [
+    "Fixed the parser error; empty input now returns [].",
+    "Fixed the failing branch in parse().",
+  ]) {
+    const sid = session();
+    edit(sid);
+    assert.equal(stop(sid, message)?.decision, "block", message);
   }
 });

@@ -9,6 +9,11 @@ import { load, save } from "../lib/_ledger.mjs";
 
 const CLAIMS_PASS =
   /\b(all\s+)?(tests?|specs?|checks?|builds?|suite|lint(ing)?|type-?checks?)\s+(now\s+)?(pass(es|ed|ing)?|succeed(s|ed)?|(are|is)\s+(green|passing|clean)|green)\b|\b\d+\s+passed\b|\bverified\b/i;
+// A reply that says outright the change was not checked. Mentioning an error
+// or failure the change fixed ("fixed the parser error") is not that.
+const SAYS_UNVERIFIED =
+  /\b(not\s+(yet\s+)?(run|ran|verified|tested|checked)|unverified|untested|didn'?t\s+(run|test|verify|check)|haven'?t\s+(run|tested|verified|checked)|could\s?n[o']t\s+(run|test|verify|check)|without\s+(running|testing|verifying))\b/i;
+// A reply that reports a failure or a gap, which is honest after a failed check.
 const ADMITS_GAP =
   /\b(fail(s|ed|ing|ure)?|error|broken|not\s+(yet\s+)?(run|ran|verified|tested)|unverified|untested|didn'?t\s+(run|test|verify)|haven'?t\s+(run|tested|verified)|could\s?n[o']t\s+(run|test))\b/i;
 
@@ -32,7 +37,7 @@ run((data) => {
     lastEdit &&
     (!lastCheck || lastCheck.seq < lastEdit.seq) &&
     state.blockedEdit !== lastEdit.seq &&
-    !ADMITS_GAP.test(message)
+    !SAYS_UNVERIFIED.test(message)
   ) {
     state.blockedEdit = lastEdit.seq;
     reason = lastCheck
@@ -61,5 +66,9 @@ run((data) => {
 
   if (!reason) return;
   save(data.session_id, agentId, state);
+  // The reply written after this becomes the final report, so it has to
+  // carry the whole outcome, not only the new check result.
+  reason +=
+    " Then end with the complete report again (what changed, what ran and its result), since your next reply replaces this one as the report.";
   emit({ decision: "block", reason });
 });

@@ -17,7 +17,8 @@ export function check(toolName, toolInput, ctx) {
   const out = [];
   if (isClaudeSettings(posix)) out.push(...settings(before, after, c));
   if (!c.editGuard) return out;
-  if (TEST_PATH.test(posix)) out.push(...testWeakening(before, after));
+  if (TEST_PATH.test(posix))
+    out.push(...testWeakening(before, after, c.testRemovalRequested));
   out.push(...generated(filePath, posix));
   if (toolName === "Write" && before !== null)
     out.push(...shrink(before, after));
@@ -69,13 +70,19 @@ const ASSERT =
 const SKIP =
   /\b(it|test|describe|context)\.(skip|todo|only)\b|\b(xit|xdescribe|xtest|fit|fdescribe)\s*\(|@pytest\.mark\.(skip|xfail)|pytest\.skip\(|@unittest\.skip|\bself\.skipTest\(|#\[ignore\]|\bt\.Skip(Now|f)?\(|XCTSkip|\.disabled\(|@Disabled\b|@Ignore\b|\[Ignore\]|\[Fact\(Skip|\bskip:\s*true/;
 
-function testWeakening(before, after) {
+// The user's latest message asks for tests to be removed ("rip out the flag,
+// its tests, all of it"), so deleting assertions is the requested change.
+export const ASKS_TEST_REMOVAL =
+  /\b(remove|delete|drop|rip(\s+\w+)?\s+out|get\s+rid\s+of|strip)\b(?:(?!\.\s)[^\n]){0,80}\btests?\b|\btests?\b(?:(?!\.\s)[^\n]){0,40}\b(remove|delete|drop)\b/i;
+
+function testWeakening(before, after, removalRequested = false) {
   // A new test file weakens nothing: conditional skips there are platform
   // guards such as `@unittest.skipUnless(shutil.which("openssl"))`.
   if (before === null) return [];
   const out = [];
   const removed = count(ASSERT, before ?? "") - count(ASSERT, after);
-  if (removed > 0)
+  // A skip marker still asks: removing tests is not hiding a failing one.
+  if (removed > 0 && !removalRequested)
     out.push(["ask", `edit removes ${removed} assertion(s) from a test file`]);
   if (count(SKIP, after) > count(SKIP, before ?? ""))
     out.push([

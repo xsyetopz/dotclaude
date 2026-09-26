@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { check } from "../hooks/lib/_edit-rules.mjs";
+import { ASKS_TEST_REMOVAL, check } from "../hooks/lib/_edit-rules.mjs";
 
 // A session with the dotclaude profile maps `sonnet` to Opus 5.5 through
 // ANTHROPIC_DEFAULT_SONNET_MODEL, which would change what these aliases resolve to.
@@ -26,6 +26,43 @@ test("removing an assertion from a test file asks", () => {
   );
   assert.deepEqual(levels(f), ["ask"]);
   assert.match(f[0][1], /removes 1 assertion/);
+});
+
+test("removing assertions passes when the user asked to remove the tests", () => {
+  const edit = {
+    file_path: "/repo/tests/test_api.py",
+    old_string: "r = get()\nassert r.ok\nassert r.body",
+    new_string: "r = get()\nassert r.ok",
+  };
+  assert.deepEqual(
+    check("Edit", edit, { ...ctx, testRemovalRequested: true }),
+    [],
+  );
+  const skip = check(
+    "Edit",
+    {
+      file_path: "/repo/src/api.test.ts",
+      old_string: "it('works', () => {",
+      new_string: "it.skip('works', () => {",
+    },
+    { ...ctx, testRemovalRequested: true },
+  );
+  assert.match(skip.map(([, r]) => r).join(), /skip/);
+});
+
+test("test-removal requests are recognized in the user's own words", () => {
+  for (const said of [
+    "rip it out: legacy.js, the USE_LEGACY_PRICING flag, its tests, all of it",
+    "delete the flaky test",
+    "these tests are obsolete, remove them",
+  ])
+    assert.ok(ASKS_TEST_REMOVAL.test(said), said);
+  for (const said of [
+    "fix the failing test",
+    "tests should still pass after",
+    "remove the log line. Tests should pass",
+  ])
+    assert.ok(!ASKS_TEST_REMOVAL.test(said), said);
 });
 
 test("adding a skip marker asks", () => {
