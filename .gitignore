@@ -2,6 +2,9 @@
 __pycache__/
 *.pyc
 evals/results/
+evals-heldout/results/
 .pytest_cache/
 
-/docs/
+/docs/*
+!/docs/claude-code-prompt-surface.md
+!/docs/evals.md
