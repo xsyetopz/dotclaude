@@ -1,6 +1,6 @@
 ---
 name: review-code-changes
-description: Review the current uncommitted changes, or a given git range or paths, with the dotclaude code-reviewer agent in a fresh, read-only context, and report findings tied to concrete failure scenarios. Run when the user types /dotclaude:review-code-changes.
+description: Review uncommitted changes, a git range, or paths with the code-reviewer agent in a fresh read-only context, with findings tied to failure scenarios. Run when the user types /dotclaude:review-code-changes.
 disable-model-invocation: true
 argument-hint: "[git range or paths, optional]"
 context: fork
@@ -16,7 +16,7 @@ Target: $ARGUMENTS
 </task>
 
 <context>
-If the target above is empty, review the uncommitted changes. Their summary at the time this review started:
+If the target above is empty, review the uncommitted changes. Their summary when this review started:
 
 !`git status --short 2>/dev/null | head -50; echo; git diff --stat HEAD 2>/dev/null | tail -30`
 </context>

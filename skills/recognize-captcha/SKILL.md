@@ -1,6 +1,6 @@
 ---
 name: recognize-captcha
-description: Recognize text in a CAPTCHA image using offline OCR (ddddocr-rs). This is a fallback: prefer CloakBrowser to prevent CAPTCHAs from appearing. Use when a text-based challenge appears despite antibot measures.
+description: "Read a text CAPTCHA image with offline OCR (ddddocr-rs). Use as a fallback when a text CAPTCHA appears despite antibot measures; prefer CloakBrowser, which keeps CAPTCHAs from appearing."
 allowed-tools: Bash(bun */captcha/ddddocr.mjs *)
 ---
 
@@ -9,12 +9,14 @@ Read the text in a CAPTCHA image with [ddddocr-rs](https://github.com/mzdk100/dd
 </task>
 
 <approach>
-CloakBrowser's job is to keep CAPTCHAs from appearing at all; this OCR tool covers only the rare case where a challenge appears anyway. Do not make CAPTCHA solving your default strategy, because a site that keeps challenging you will keep escalating, and prevention avoids that. Work through these in order:
+The best CAPTCHA is one that never appears, so this OCR covers only the rare challenge that appears anyway. Do not make CAPTCHA solving your default strategy, because a site that keeps challenging you keeps escalating, and prevention avoids that. Work through these in order:
 
 1. Use CloakBrowser to prevent challenges.
 2. Use residential proxies for geographic legitimacy.
 3. If a CAPTCHA still appears, try this offline OCR as a last resort.
 4. For complex CAPTCHAs (image puzzles, reCAPTCHA v3), ask the user.
+
+Offline OCR is the fallback of choice because it runs locally with no network latency, keeps images on the machine, has no per-solve cost, and works offline after the model download.
 </approach>
 
 <installation>
@@ -38,7 +40,7 @@ The script looks for the model in these locations, in order:
 </installation>
 
 <usage>
-Recognize a CAPTCHA image from a screenshot or image file. The script prints the result as JSON:
+Recognize a CAPTCHA from a screenshot or image file; the script prints JSON:
 
 ```bash
 # From a screenshot or image file
@@ -48,7 +50,7 @@ bun ${CLAUDE_PLUGIN_ROOT}/src/captcha/ddddocr.mjs /path/to/captcha.png
 # {"text": "A3Bx9"}
 ```
 
-To go from a page to a recognized CAPTCHA, screenshot the page, isolate the CAPTCHA, then recognize it:
+From a page, take a screenshot, then crop it to the CAPTCHA element before recognizing it, since the model reads a single challenge image, not a whole page:
 
 ```bash
 # 1. Take screenshot of CAPTCHA element with agent-browser or CloakBrowser
@@ -60,8 +62,6 @@ bun ${CLAUDE_PLUGIN_ROOT}/src/browser/cloakbrowser-launch.mjs \
 # 3. Recognize the text
 bun ${CLAUDE_PLUGIN_ROOT}/src/captcha/ddddocr.mjs /tmp/captcha.png
 ```
-
-Crop to the CAPTCHA element before step 3, since the model reads a single challenge image, not a whole page.
 
 From code, import the function (the path is relative to the plugin root):
 
@@ -75,14 +75,11 @@ console.log(result.text); // "A3Bx9"
 </usage>
 
 <configuration>
-The user enables this in the plugin settings in either of two ways:
-
-- Set the `CAPTCHA_OCR=ddddocr` environment variable.
-- Turn on the `captcha_ocr_ddddocr` option in `/config` under dotclaude (off by default). When it is on, a `<browser_preferences>` note at session start says so.
+The user enables this with the `CAPTCHA_OCR=ddddocr` environment variable, or with the `captcha_ocr_ddddocr` option in `/config` under dotclaude (off by default). When the option is on, a `<browser_preferences>` note at session start says so.
 </configuration>
 
 <limitations>
-The OCR works best on simple text CAPTCHAs (alphanumeric characters), and its success rate varies with the CAPTCHA's style and distortion. It does not work on:
+The OCR works best on simple alphanumeric text CAPTCHAs, and its success rate varies with style and distortion. It does not work on:
 
 - Image selection puzzles (reCAPTCHA v2)
 - Invisible challenges (reCAPTCHA v3, hCaptcha)
@@ -91,14 +88,3 @@ The OCR works best on simple text CAPTCHAs (alphanumeric characters), and its su
 
 For these, ask the user to complete the challenge manually, or use `--auto-connect` with agent-browser so they can solve it in their own browser.
 </limitations>
-
-<why_offline>
-Offline OCR is the fallback of choice because it is:
-
-- **Fast**: it runs locally, with no network latency.
-- **Private**: images never leave the machine.
-- **Free**: there are no per-solve costs.
-- **Self-contained**: it works offline after the model download.
-
-Still, the best CAPTCHA is the one that never appears, so reach for CloakBrowser first.
-</why_offline>
