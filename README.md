@@ -17,8 +17,8 @@ cannot set permissions, environment variables, or models itself, so this step
 writes them into a settings file you choose, after showing you the changes and
 making a backup.
 
-Optional integrations (CodeGraph, Headroom, the Codex CLI): ask Claude, for
-example "set up codegraph for this project", or run
+Optional integrations (CodeGraph, tgrep, Headroom, fast-compact, the Codex
+CLI): ask Claude, for example "set up codegraph for this project", or run
 `/dotclaude:setup-integrations`.
 
 Requirements: Claude Code 2.1.283 or later, [Bun](https://bun.sh) 1.4.2 or later
@@ -146,7 +146,7 @@ Code ignores an effort passed at spawn time.
 | Skill | What it does |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | `/dotclaude:apply-settings-profile` | applies the settings profile below |
-| `/dotclaude:setup-integrations` | installs and configures CodeGraph, Headroom, and Codex |
+| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, Headroom, fast-compact, and Codex |
 | `codex-fanout` | runs a large, well-specified job on parallel Codex Luna workers sized to your ChatGPT plan; Claude reviews and commits |
 | `/dotclaude:review-code-changes` | runs `code-reviewer` on the current changes or a range |
 | `write-session-handoff` | writes a note a fresh session can continue from |
@@ -172,6 +172,12 @@ project, or local settings. It sets:
 
 - **Fast mode off**: fast mode off, `ultracode` off, and the word "ultracode" in
   a prompt no longer starts a workflow.
+- **Lean system prompt**: `CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`, Claude Code's
+  shorter built-in prompt, about 6.6k fewer tokens on every request.
+- **Background usage**: compaction at 400k tokens of context (200k on plans
+  with a small 5-hour window) instead of about 967k, and no prompt
+  suggestions, automatic session recaps, or idle delivery of cross-session
+  messages, since each of those sends a request that re-reads the context.
 - **Effort cap**: `maxEffortLevel: "xhigh"`, which also caps agents, skills, and
   workflow stages. `max` is blocked because the claude.ai effort picker warns
   that it uses about 5.5x the usage on Opus 5.5 and 3.5x on Fable 5.1 (as of
@@ -269,6 +275,9 @@ Set in `/config` under dotclaude:
   from Claude Code's cached account; set `pro`, `max_5x`, `max_20x`,
   `team_standard`, `team_premium`, `enterprise`, or `api` to override it.
 - **Limits**: `usage_notes` and `turn_limit_handoff`, both on by default.
+- **Disk**: `scratchpad_prune_days`, off (`0`) by default. When set, session
+  start deletes Claude Code scratchpads and loose entries under
+  `/tmp/claude-<uid>` idle for that many days, never the current session's.
 - **Browser and CAPTCHA**: `cloakbrowser`, `cloakbrowser_humanize`,
   `cloakbrowser_headless`, and `captcha_ocr_ddddocr` choose the browser backend
   and CAPTCHA fallback.

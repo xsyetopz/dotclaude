@@ -10,6 +10,65 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-27
+
+After updating, re-run `/dotclaude:apply-settings-profile`.
+
+### Changed
+
+- Settings profile cuts background usage. Per Claude Code's costs and
+  prompt-caching docs, each of these sends a request that re-reads the
+  conversation:
+  - `autoCompactWindow: 400000`, or 200000 on Pro, Max 5x, and Team seats.
+    The default on current models is about 967k, and every turn re-reads the
+    context up to that size.
+  - `promptSuggestionEnabled: false`: suggestions cost an extra request after
+    every response.
+  - `awaySummaryEnabled: false`: no automatic session recap when you step
+    away; `/recap` still works.
+  - `crossSessionInbound: "hold"`: messages from your other sessions wait
+    instead of starting idle turns.
+- The output style asks for `/goal` conditions with an end state Claude's
+  own output shows, how it is checked, and a turn bound, since the goal
+  evaluator reads only the transcript.
+- Settings profile sets `CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`, Claude Code's
+  lean built-in prompt. It is the same prompt Claude Code already rolls out
+  to some interactive sessions, and it is about 6.6k tokens shorter per
+  request: a one-word `claude -p` request measured 26,671 input tokens
+  without it and 20,038 with it. Most of the cut is the long auto-memory
+  instructions; the tools are unchanged.
+- `/dotclaude:setup-integrations` offers two optional integrations:
+  - `tgrep`: indexed text search. Installs it, indexes the project, and adds
+    `.tgrep/` to git's global excludes file.
+  - `fast-compact`: `/fc`, which trims old tool output with Jev. It is set up
+    with the right Jev provider and model, and with dotclaude's measured
+    trade-off stated first.
+- Disk use:
+  - dotclaude's per-session hook state is pruned at session start once it is
+    30 days old, matching Claude Code's default transcript retention.
+  - The test suite keeps every temporary folder under one folder per run and
+    deletes it afterwards. Before this, each run left about 14 folders in the
+    system temp folder; one machine had collected 4,606 (109 MB).
+  - `scratchpad_prune_days` (off by default) deletes Claude Code session
+    scratchpads and loose entries under `/tmp/claude-<uid>` that nobody has
+    touched for that many days, at session start and in the background. The
+    current session is never pruned. For a one-time cleanup, run
+    `bun hooks/session-start/prune-scratchpads.mjs --days <n>` from the plugin
+    folder; it is a dry run unless `--apply` is given.
+  - The output style and the subagent conventions ask Claude to remove build
+    output, clones, and large dumps it put in the scratchpad or temp folder
+    once they are used, since nothing else deletes them.
+- The settings profile drops `Agent(model:claude-fable*)`. Permission rules
+  match the alias the Agent tool sends (`fable`), never a full model ID, so
+  that rule could not match anything.
+- The edit guard denies a `Write` or `Edit` that would leave a Markdown
+  file's YAML frontmatter unparseable, such as an unquoted
+  `description: Does a thing: then another`, and names the parser error so
+  the value gets quoted.
+- The global `CLAUDE.md` block names `tgrep`, `scc`, `tokei`, `dasel`, and
+  `mlr` when installed, and gives an example use only for tools that are
+  present.
+
 ## [0.5.1] - 2026-09-27
 
 ### Fixed

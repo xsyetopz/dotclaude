@@ -345,3 +345,48 @@ The first is context size and turn count:
 [fable-plan]: https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan
 [codex-pricing]: https://developers.openai.com/codex/pricing
 [usage-limits]: https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work
+
+## 8. Compaction eval: fast-compact vs built-in `/compact` (2026-09-27)
+
+Run on this machine's transcripts, with no Claude usage.
+
+**The fast-compact bench, on 28 of our points** (`bun bench/run.ts --jev`,
+TypeSafe `jev-latest`; 20 points answered, 8 failed at the API):
+
+- Upstream `fast-jev-compaction` as shipped kept 0% of old tool output. It
+  dropped 1,920 of 1,943 calls.
+- `fast-compact` as shipped keeps 55% of the size, 52% of needed tokens,
+  and 63% of needed outputs.
+- The same rule with the newest outputs kept whole and no Jev keeps 58%,
+  54%, and 63%.
+- Jev's ranking scored AUC 0.51–0.55 per point, near a coin flip. Plain
+  "largest first" scored 0.74.
+
+**Built-in compaction, replayed on the 5 real compactions in the scan**
+(2 sessions; the script is in the session scratchpad as
+`compact_eval.py`):
+
+- The token label is the bench's own: a path, number, or identifier of 8 or
+  more characters that a tool result introduced and the assistant used
+  within 40 calls after compacting.
+- 70 such tokens were needed.
+
+| | Kept in context | Re-fetched by a tool call | Neither | Context left |
+| --- | --- | --- | --- | --- |
+| Built-in `/compact` | 28 (40%) | 26 (37%) | 16 (23%) | 18k–25k of about 970k tokens |
+| fast-compact rule, same history | 58 (83%) | 12 (17%) from its cut files | – | 72–91% of characters |
+
+**Verdict:**
+
+- "Instant compaction" is false as a replacement for compaction. fast-compact
+  trims only old tool output and keeps the conversation word for word, so a
+  session near 1M stays at 72–91% and every later turn re-reads that much.
+- "Nothing gets lost" is mostly true. It keeps 83% of what is needed, against
+  the built-in summary's 40%, and the rest is one read away.
+- For usage, built-in compaction wins by far. The re-reads it causes cost a
+  few thousand tokens each, against about 750k extra re-read on every turn.
+- Jev adds no measurable gain on our data.
+- Caveats: the sample is small (5 compactions, 28 bench points), the label is
+  a token proxy the bench's blind check agreed with 71% of the time, and the
+  "Neither" row covers tokens that reached Claude some other way (hook
+  context, files, paraphrase).
