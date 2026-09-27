@@ -7,11 +7,31 @@ import { isolatedHook as hook, tmp } from "../support/hooks.mjs";
 
 test("a /goal check loop with no work in between ends after two blocks", () => {
   const line = (r) => JSON.stringify(r);
-  const feedback = {
+  // Claude Code 2.1.283 writes each failed goal check as a meta blocked
+  // message that starts with the condition, then a goal_status attachment.
+  const blocked = [
+    {
+      type: "user",
+      isMeta: true,
+      message: { content: "Stop hook blocked:\n[@GOAL.md]: unmet" },
+    },
+    {
+      type: "attachment",
+      attachment: { type: "goal_status", met: false, condition: "@GOAL.md" },
+    },
+  ];
+  const otherHook = {
     type: "user",
     isMeta: true,
-    message: {
-      content: "Stop hook feedback:\n[Goal: finish R01-R16]\n\nunmet",
+    message: { content: "Stop hook blocked:\n[dotclaude] Code changed" },
+  };
+  const goalSet = {
+    type: "attachment",
+    attachment: {
+      type: "goal_status",
+      met: false,
+      sentinel: true,
+      condition: "@GOAL.md",
     },
   };
   const said = {
@@ -24,7 +44,7 @@ test("a /goal check loop with no work in between ends after two blocks", () => {
   };
   const run = (records, env = {}) => {
     const file = path.join(tmp("dotclaude-goal-"), "t.jsonl");
-    fs.writeFileSync(file, records.map(line).join("\n"));
+    fs.writeFileSync(file, records.flat().map(line).join("\n"));
     return hook(
       "stop/end-goal-loops.mjs",
       {
@@ -35,16 +55,20 @@ test("a /goal check loop with no work in between ends after two blocks", () => {
       env,
     );
   };
-  expect(run([worked, said, feedback, said]), "one block passes").toBe(null);
-  const stopped = run([worked, said, feedback, said, feedback, said]);
+  expect(run([worked, said, blocked, said]), "one block passes").toBe(null);
+  const stopped = run([worked, said, blocked, said, blocked, said]);
   expect(stopped.continue).toBe(false);
   expect(stopped.stopReason).toMatch(/^\[dotclaude\] .*\/goal clear/);
   expect(
-    run([said, feedback, said, worked, feedback, said]),
+    run([said, blocked, said, worked, blocked, said]),
     "a tool call between blocks means work is happening",
   ).toBe(null);
   expect(
-    run([worked, said, feedback, said, feedback, said], {
+    run([worked, goalSet, said, otherHook, said, blocked, said]),
+    "setting a goal and other hooks' blocks are not goal checks",
+  ).toBe(null);
+  expect(
+    run([worked, said, blocked, said, blocked, said], {
       CLAUDE_PLUGIN_OPTION_GOAL_LOOP_GUARD: "false",
     }),
   ).toBe(null);

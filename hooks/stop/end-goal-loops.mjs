@@ -6,11 +6,14 @@
 // the user can end a goal early (`/goal clear`), so after two goal blocks in
 // a row with no tool call in between, this ends the turn and says so.
 // `continue: false` from any Stop hook wins over other hooks' blocks.
+// Each failed check is written as a `goal_status` attachment with
+// `met: false`; the feedback text starts with the user's own condition, so
+// it cannot tell a goal block from another hook's. The `sentinel` records
+// mark setting or meeting a goal, not a check.
 
 import fs from "node:fs";
 import { emit, option, run } from "../lib/_common.mjs";
 
-const GOAL_FEEDBACK = /^\s*Stop hook feedback:\s*\[Goal:/;
 const TAIL_BYTES = 400_000;
 const LIMIT = 2;
 
@@ -31,14 +34,6 @@ function tail(file) {
   }
 }
 
-function text(content) {
-  if (typeof content === "string") return content;
-  if (!Array.isArray(content)) return "";
-  return content
-    .map((b) => (typeof b?.text === "string" ? b.text : ""))
-    .join("");
-}
-
 /** Goal blocks in a row, newest first, with no tool call since the first. */
 export function idleGoalBlocks(lines) {
   let count = 0;
@@ -56,9 +51,15 @@ export function idleGoalBlocks(lines) {
       content.some((b) => b?.type === "tool_use")
     )
       break;
+    const attachment = record?.attachment;
+    if (
+      attachment?.type === "goal_status" &&
+      attachment.met === false &&
+      !attachment.sentinel
+    )
+      count += 1;
     if (record?.type !== "user") continue;
-    if (GOAL_FEEDBACK.test(text(content))) count += 1;
-    else if (
+    if (
       !record.isMeta &&
       !(
         Array.isArray(content) && content.some((b) => b?.type === "tool_result")

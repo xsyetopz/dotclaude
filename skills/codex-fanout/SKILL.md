@@ -13,7 +13,7 @@ Current Codex setup: !`bun "${CLAUDE_SKILL_DIR}/../setup-integrations/scripts/st
 
 <procedure>
 1. If the Codex CLI is missing, not logged in, or lacks the `dotclaude-luna` profile (see the setup line above), run the `setup-integrations` skill for Codex first.
-2. Build the work queue from tool output rather than judgment: compiler or type-checker errors grouped by file, failing tests, or a file list. Each item is one to three files or one failing test with a stated acceptance command, small enough to finish without Codex compacting its context.
+2. Build the work queue from tool output rather than judgment: compiler or type-checker errors grouped by file, failing tests, or a file list. Each item is one to three files or one failing test with a stated acceptance command, small enough to finish without Codex compacting its context. Keep edits under `.git`, `.agents`, or `.codex` directories out of the queue: Codex's sandbox keeps them read-only, so Claude makes those.
 3. Write the shared context once (conventions, the target API, the porting rules) to a file in the repository or scratchpad, and point every brief at it by path, so workers share an identical prompt prefix and hit Codex's cache.
 4. Trial two or three items first. Review their diffs and check how far the plan's usage moved before dispatching the rest.
 5. Codex records a trust entry in `config.toml` the first time it runs in a directory, and parallel first runs overwrite each other's entries. Before a parallel batch, create the worktrees it needs and run the first item in each new directory on its own.

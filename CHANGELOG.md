@@ -10,6 +10,22 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-27
+
+### Fixed
+
+- The `/goal` loop guard never fired unless the goal's condition started
+  with `Goal:`. Claude Code puts the condition itself in the feedback text
+  (`[@GOAL.md]: …`), so the guard now counts the transcript's
+  `goal_status` records instead.
+- `codex-worker` stops before starting Codex when a file in scope is under
+  `.git`, `.agents`, or `.codex`. Codex's `workspace-write` sandbox keeps
+  those read-only, so workers used up their 12 turns without an edit.
+  `codex-fanout` keeps those files out of the queue.
+- `codex-worker` no longer reads the files in scope or polls with `sleep`
+  while Codex runs. It waits for the background completion notice, so
+  exploring and polling no longer use up its turns before Codex finishes.
+
 ## [0.6.0] - 2026-09-27
 
 After updating, re-run `/dotclaude:apply-settings-profile`.
