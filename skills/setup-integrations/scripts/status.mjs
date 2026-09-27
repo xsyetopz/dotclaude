@@ -9,7 +9,9 @@
 // names, never their env or headers), $CODEX_HOME/config.toml and profile
 // files, which dotclaude model catalogs exist and the model cache's
 // fetched_at, the ChatGPT plan claim from the Codex login (never the tokens),
-// and the project's .codegraph/ directory.
+// the project's .codegraph/ and .tgrep/ directories, whether the global git
+// excludes file lists .tgrep/, and for fast-compact whether the plugin is
+// installed and which settings are present (key names only, never values).
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -63,6 +65,47 @@ function codexCatalogs() {
     ),
     models_cache_fetched_at:
       readJson(path.join(codexHome(), "models_cache.json"))?.fetched_at ?? null,
+  };
+}
+
+/** The global git excludes file, as git resolves it. */
+function globalIgnore() {
+  const res = spawnSync("git", ["config", "--global", "core.excludesFile"], {
+    encoding: "utf8",
+  });
+  const set = (res.stdout ?? "").trim().replace(/^~(?=\/)/, home);
+  const file =
+    set ||
+    path.join(
+      process.env.XDG_CONFIG_HOME || path.join(home, ".config"),
+      "git",
+      "ignore",
+    );
+  let text = "";
+  try {
+    text = fs.readFileSync(file, "utf8");
+  } catch {
+    text = "";
+  }
+  return { file, lists_tgrep: /^\/?\.tgrep\/?$/m.test(text) };
+}
+
+/** fast-compact: plugin installed, function hooks on, which Jev key exists. */
+function fastCompact() {
+  const settings = readJson(path.join(home, ".claude", "settings.json")) ?? {};
+  const env = { ...settings.env, ...process.env };
+  const plugins = readJson(
+    path.join(home, ".claude", "plugins", "installed_plugins.json"),
+  );
+  const installed = Object.keys(plugins?.plugins ?? {}).some((id) =>
+    id.startsWith("fast-compact@"),
+  );
+  const config = settings.pluginConfigs?.["fast-compact@fast-compact"] ?? {};
+  return {
+    installed,
+    function_hooks: env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS === "1",
+    keys: ["TYPESAFE_API_KEY", "OPENROUTER_API_KEY"].filter((k) => env[k]),
+    provider: config.options?.provider ?? null,
   };
 }
 
@@ -131,6 +174,12 @@ console.log(
         mcp: servers.get("codegraph") ?? null,
         indexed: fs.existsSync(path.join(project, ".codegraph")),
       },
+      tgrep: {
+        cli: version("tgrep"),
+        indexed: fs.existsSync(path.join(project, ".tgrep")),
+        global_ignore: globalIgnore(),
+      },
+      fast_compact: fastCompact(),
       headroom: {
         cli: version("headroom"),
         mcp: servers.get("headroom") ?? null,
