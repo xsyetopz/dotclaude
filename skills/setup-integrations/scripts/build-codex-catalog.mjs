@@ -111,11 +111,7 @@ export function fetchLiveModels(home = codexHome()) {
  * Returns { files: Map<absolute path, JSON text>, warnings: string[], fetchedAt }.
  * Throws with a readable message when the cache is missing or unusable.
  */
-export function buildCatalogs(
-  home = codexHome(),
-  now = Date.now(),
-  live = null,
-) {
+export function buildCatalogs(home = codexHome(), now = Date.now(), live) {
   if (live) return catalogsFrom(home, live, [], new Date(now).toISOString());
   const cacheFile = path.join(home, "models_cache.json");
   if (!fs.existsSync(cacheFile))

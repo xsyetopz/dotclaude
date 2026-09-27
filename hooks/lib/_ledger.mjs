@@ -165,11 +165,11 @@ const home = (p) => p.replace(/^~(?=\/|$)/, process.env.HOME ?? "~");
 export function shellWrites(command, root, cwd = root) {
   const inProject = (target, base) => {
     if (!target || target.includes("$") || target.startsWith("/dev/"))
-      return null;
+      return undefined;
     const abs = path.resolve(base, home(target));
     const rel = path.relative(root, abs);
-    if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) return null;
-    if (NON_CODE.test(rel) || rel.startsWith(".claude/")) return null;
+    if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
+    if (NON_CODE.test(rel) || rel.startsWith(".claude/")) return undefined;
     return rel;
   };
   let parsed;

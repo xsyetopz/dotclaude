@@ -199,7 +199,7 @@ const LOCKS = {
 
 function commitHygiene(args, cwd) {
   const staged = git(cwd, ["diff", "--cached", "--name-only"]);
-  if (staged === null) return [];
+  if (staged === undefined) return [];
   const files = new Set(staged.split("\n"));
   if (hasFlag(args, ["--all"], "a")) {
     for (const f of (git(cwd, ["diff", "--name-only"]) ?? "").split("\n"))

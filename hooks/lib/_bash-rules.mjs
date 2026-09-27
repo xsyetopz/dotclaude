@@ -100,14 +100,14 @@ const SHELL_OUT =
 const STRING_LIT = /'([^'\\]*(?:\\.[^'\\]*)*)'|"([^"\\]*(?:\\.[^"\\]*)*)"/g;
 
 function interpreterInline(cmd, ctx) {
-  let code = null;
+  let code;
   for (let i = 0; i < cmd.args.length - 1; i += 1) {
     if (INLINE_FLAGS.has(cmd.args[i])) {
       code = cmd.args[i + 1];
       break;
     }
   }
-  if (code === null && cmd.heredoc && positional(cmd.args).length === 0)
+  if (code === undefined && cmd.heredoc && positional(cmd.args).length === 0)
     code = cmd.heredoc;
   if (!code) return [];
   const out = [];

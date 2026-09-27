@@ -50,7 +50,7 @@ function codexProfile(args) {
       return args[i + 1];
     if (args[i].startsWith("--profile=")) return args[i].slice(10);
   }
-  return null;
+  return undefined;
 }
 
 /** Model a `codex` command line asks for (-m, --model, -c model=...), or null. */
@@ -69,7 +69,7 @@ function codexModel(args) {
     const m = config && /^model\s*=\s*["']?([^"']+)["']?$/.exec(config.trim());
     if (m) return m[1];
   }
-  return null;
+  return undefined;
 }
 
 // Models too expensive for a plan group's quota: Astra drains a Plus-sized
@@ -114,7 +114,7 @@ export function codex(cmd, ctx) {
   if (!ctx.modelLock) return [];
   const safety = codexSafety(cmd.args);
   if (safety.length) return safety;
-  const plan = ctx.codexPlan?.() ?? null;
+  const plan = ctx.codexPlan?.();
   const tier = codexTier(plan);
   if (tier === "none" && RUNS_MODEL.has(positional(cmd.args)[0]))
     return [
@@ -130,7 +130,7 @@ export function codex(cmd, ctx) {
   // Astra profile on Plus costs the same as `-m gpt-6-astra`.
   const configured = explicit
     ? null
-    : (ctx.codexConfiguredModel?.(codexProfile(cmd.args)) ?? null);
+    : ctx.codexConfiguredModel?.(codexProfile(cmd.args));
   const resolved = (explicit ?? configured)?.trim().toLowerCase();
   if (!resolved) return [];
   const model = resolved;

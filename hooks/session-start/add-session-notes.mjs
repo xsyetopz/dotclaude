@@ -15,9 +15,9 @@ import { planNote } from "../lib/_plans.mjs";
 
 function codexNote() {
   if (!fs.existsSync(path.join(codexHome(), "dotclaude-luna.config.toml")))
-    return null;
+    return undefined;
   const plan = codexPlan();
-  if (codexTier(plan) === "none" || !Bun.which("codex")) return null;
+  if (codexTier(plan) === "none" || !Bun.which("codex")) return undefined;
   return `<codex_delegation source="dotclaude">Codex is set up on the ChatGPT ${plan ?? "unknown"} plan. For a bounded, fully specified task with an acceptance command, prefer \`dotclaude:codex-worker\` (GPT-6 Luna): it spends the ChatGPT plan's quota instead of the user's Claude limits, and you review its diff.</codex_delegation>`;
 }
 

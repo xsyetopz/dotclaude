@@ -75,7 +75,7 @@ function resolveTarget(target, cmd, ctx) {
     target.startsWith("~") ||
     target.includes("__SUBST__")
   )
-    return null;
+    return undefined;
   let base = ctx.cwd;
   if (cmd.cwdHint && !cmd.cwdHint.includes("$") && !cmd.cwdHint.startsWith("~"))
     base = path.resolve(ctx.cwd, cmd.cwdHint);
@@ -218,7 +218,7 @@ export function fd(cmd) {
   const exec = cmd.args.slice(execAt + 1);
   if (!DELETERS.includes(program(exec[0] ?? ""))) return [];
   const before = cmd.args.slice(0, execAt);
-  let pattern = null;
+  let pattern;
   for (let i = 0; i < before.length; i += 1) {
     if (FD_VALUE_FLAGS.has(before[i])) i += 1;
     else if (!before[i].startsWith("-")) {

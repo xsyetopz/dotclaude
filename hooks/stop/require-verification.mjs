@@ -27,11 +27,11 @@ run((data) => {
     return;
   // SubagentStop checks the subagent's own ledger (edits it made, checks it ran).
   const agentId =
-    data.hook_event_name === "SubagentStop" ? (data.agent_id ?? null) : null;
+    data.hook_event_name === "SubagentStop" ? data.agent_id : null;
   const state = load(data.session_id, agentId);
   const message = data.last_assistant_message ?? "";
   const { lastEdit, lastCheck } = state;
-  let reason = null;
+  let reason;
 
   if (
     lastEdit &&

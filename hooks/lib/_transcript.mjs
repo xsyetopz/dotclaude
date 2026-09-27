@@ -29,7 +29,7 @@ function promptOf(entry) {
   ) {
     return att.prompt;
   }
-  return null;
+  return undefined;
 }
 
 export function recentPrompts(transcriptPath, limit = 5, maxChars = 600) {

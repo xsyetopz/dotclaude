@@ -25,7 +25,7 @@ function findModel() {
   for (const p of MODEL_PATHS) {
     if (fs.existsSync(p)) return p;
   }
-  return null;
+  return undefined;
 }
 
 /**
@@ -40,7 +40,7 @@ async function findDdddocrBinary() {
       if (result.stdout.trim()) return result.stdout.trim();
     } catch {}
   }
-  return null;
+  return undefined;
 }
 
 /**
@@ -115,7 +115,7 @@ function getDdddocrCrateDir() {
   for (const dir of candidates) {
     if (fs.existsSync(path.join(dir, "Cargo.toml"))) return dir;
   }
-  return null;
+  return undefined;
 }
 
 function runCommand(cmd, args, options = {}) {

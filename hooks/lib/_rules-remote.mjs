@@ -55,7 +55,7 @@ export function gh(cmd) {
   if (!pos.length || cmd.args.some((a) => a === "--help" || a === "-h"))
     return [];
   if (pos[0] === "api") {
-    let method = null;
+    let method;
     cmd.args.forEach((a, i) => {
       if ((a === "-X" || a === "--method") && cmd.args[i + 1])
         method = cmd.args[i + 1].toUpperCase();

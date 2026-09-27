@@ -126,10 +126,10 @@ function envSplitString(argv) {
           ...argv.slice(idx + 2),
         ];
       } catch {
-        return null;
+        return undefined;
       }
     }
-    if (!tok.startsWith("-")) return null;
+    if (!tok.startsWith("-")) return undefined;
   }
-  return null;
+  return undefined;
 }

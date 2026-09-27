@@ -126,7 +126,7 @@ base = setTopLevel(base, "model_catalog_json", catalogValue("interactive"));
 // On a Plus-sized plan a bare `codex` must not fall back to Astra (the
 // catalog's first model), so pin the base model to Luna when it is unset or
 // Astra.
-let baseModelNote = null;
+let baseModelNote;
 if (tier === "plus") {
   let current = null;
   try {

@@ -221,7 +221,7 @@ function expandVars(token, vars) {
 
 /** Script string for `bash -c '...'` style invocations, or null. */
 export function shellScript(cmd) {
-  if (!SHELLS.has(cmd.name)) return null;
+  if (!SHELLS.has(cmd.name)) return undefined;
   const args = cmd.args;
   for (let idx = 0; idx < args.length; idx += 1) {
     const tok = args[idx];
@@ -233,14 +233,14 @@ export function shellScript(cmd) {
     ) {
       return args[idx + 1] ?? "";
     }
-    if (!tok.startsWith("-")) return null; // running a script file
+    if (!tok.startsWith("-")) return undefined; // running a script file
   }
-  return null;
+  return undefined;
 }
 
 /** True for a bare shell that executes whatever arrives on stdin. */
 export function readsStdinScript(cmd) {
-  if (!SHELLS.has(cmd.name) || shellScript(cmd) !== null) return false;
+  if (!SHELLS.has(cmd.name) || shellScript(cmd) !== undefined) return false;
   const positional = cmd.args.filter((a) => !a.startsWith("-"));
   return positional.length === 0 || positional[0] === "-";
 }

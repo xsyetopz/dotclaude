@@ -16,11 +16,11 @@ import {
 /** Path of a code edit relative to the project, or null when it doesn't count. */
 /** Project-relative path an edit tool wrote, or null. */
 function editedPath(data) {
-  if (data.hook_event_name === "PostToolUseFailure") return null;
+  if (data.hook_event_name === "PostToolUseFailure") return undefined;
   const input = data.tool_input ?? {};
   const file = input.file_path || input.notebook_path || "";
   const rel = path.relative(projectRoot(data), file);
-  if (!file || rel.startsWith("..") || path.isAbsolute(rel)) return null;
+  if (!file || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
   return rel;
 }
 
@@ -30,16 +30,16 @@ const codeFile = (rel) => !NON_CODE.test(rel) && !rel.startsWith(".claude/");
 function checkRun(data) {
   const input = data.tool_input ?? {};
   const command = input.command;
-  if (typeof command !== "string" || !isCheckCommand(command)) return null;
-  if (input.run_in_background) return null; // result arrives later
+  if (typeof command !== "string" || !isCheckCommand(command)) return undefined;
+  if (input.run_in_background) return undefined; // result arrives later
   const recorded = command.slice(0, 200);
   if (data.hook_event_name === "PostToolUseFailure") {
-    if (data.is_interrupt) return null;
+    if (data.is_interrupt) return undefined;
     const code = /^Exit code (\d+)/.exec(data.error ?? "")?.[1];
     return { command: recorded, ok: false, code: code ? Number(code) : null };
   }
   const response = data.tool_response ?? {};
-  if (response.interrupted) return null;
+  if (response.interrupted) return undefined;
   const output = `${response.stdout ?? ""}\n${response.stderr ?? ""}`.slice(
     -20000,
   );

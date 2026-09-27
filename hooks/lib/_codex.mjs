@@ -55,7 +55,7 @@ const TIERS = {
 };
 
 export function codexTier(plan) {
-  return TIERS[String(plan ?? "").toLowerCase()] ?? null;
+  return TIERS[String(plan ?? "").toLowerCase()];
 }
 
 function readModel(file) {

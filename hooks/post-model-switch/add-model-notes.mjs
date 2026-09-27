@@ -7,7 +7,7 @@ import { emit, run } from "../lib/_common.mjs";
 import { FABLE, FABLE_OFF, isFable } from "../lib/_model-notes.mjs";
 
 run((data) => {
-  let note = null;
+  let note;
   if (isFable(data.to_model)) note = FABLE;
   else if (isFable(data.from_model)) note = FABLE_OFF;
   if (!note) return;

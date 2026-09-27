@@ -57,6 +57,6 @@ export function git(cwd, args) {
       stdio: ["ignore", "pipe", "ignore"],
     });
   } catch {
-    return null;
+    return undefined;
   }
 }

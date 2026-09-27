@@ -38,7 +38,7 @@ function findSkill(text) {
       `${text.slice(0, start).trimEnd()} ${text.slice(end).trimStart()}`.trim();
     return { name: m[2], file, args };
   }
-  return null;
+  return undefined;
 }
 
 function wrap(name, body, file) {

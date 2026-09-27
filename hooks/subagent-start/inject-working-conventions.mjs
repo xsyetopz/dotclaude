@@ -32,7 +32,7 @@ const OWN_PROMPT = new Set([
 
 /** `maxTurns` and `model` from a dotclaude agent's definition, or null. */
 function definition(agentType) {
-  if (!/^dotclaude:[a-z0-9-]+$/.test(agentType)) return null;
+  if (!/^dotclaude:[a-z0-9-]+$/.test(agentType)) return undefined;
   try {
     const file = path.join(
       import.meta.dir,
@@ -48,7 +48,7 @@ function definition(agentType) {
       model: /^model:\s*(\S+)\s*$/m.exec(head)?.[1] ?? "",
     };
   } catch {
-    return null;
+    return undefined;
   }
 }
 
