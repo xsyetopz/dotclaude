@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Guardrails, working conventions, and a set of task agents for Claude Code: destructive-command and test-weakening guards that stay quiet on recoverable actions in auto mode, a verify-before-stop gate for the session and its subagents, compaction carry-over, a fast-mode/model lock (Opus 5.5, Sonnet 5, Fable 5.1, Haiku 4.5) with an xhigh effort cap that adapts to the Claude and ChatGPT plans, reviewers, workers, and researchers on tiered models and effort, optional Codex delegation, and an always-on output style.",
   "author": {
     "name": "xsyetopz"
@@ -39,6 +39,12 @@
       "type": "boolean",
       "title": "Verify-before-stop gate",
       "description": "Send Claude back once when it stops after editing code without a later passing test/build/lint run.",
+      "default": true
+    },
+    "goal_loop_guard": {
+      "type": "boolean",
+      "title": "End stalled /goal loops",
+      "description": "When Claude Code's /goal check blocks a stop twice in a row and Claude did no work in between, end the turn and say that only you can end the goal early (/goal clear), instead of letting each round re-read the whole context up to Claude Code's cap of 9.",
       "default": true
     },
     "compact_carryover": {

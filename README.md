@@ -89,6 +89,11 @@ checkout instead, run `claude --plugin-dir /path/to/dotclaude`.
   it. The first message to it is rewritten into a request for a handoff
   report, later messages are blocked, and the work continues in a fresh agent
   briefed from that report.
+- **Stalled goals**: when Claude Code's `/goal` check blocks a stop twice in a
+  row and Claude did no work in between, the turn ends and the goal pauses,
+  with a note that only you can change or end it (`/goal <new condition>`,
+  `/goal clear`), instead of up to 9 rounds that each re-read the whole
+  context.
 - **Tagged messages**: everything dotclaude shows Claude or you starts with
   `[dotclaude]`.
 

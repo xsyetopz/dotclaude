@@ -10,6 +10,23 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-27
+
+### Fixed
+
+- A `/goal` whose condition is unmet no longer burns turns when Claude has
+  been told to stop.
+  - Claude Code's goal check blocks every stop, and in one session Claude
+    replied "I'm staying stopped" to 9 blocks in a row until Claude Code gave
+    up. Each round re-read about 710k tokens of context.
+  - A new Stop hook (`goal_loop_guard`, on by default) ends the turn after two
+    goal blocks in a row with no tool call in between. Claude Code then
+    pauses the goal, and the note names `/goal <new condition>` to change it,
+    `/goal clear` to end it, and sending a message to resume.
+  - The output style tells Claude to propose a replacement condition with
+    `ProposeGoal` when a goal no longer matches the user's request, or to
+    name those commands once, instead of restating that it is stopping.
+
 ## [0.5.0] - 2026-09-26
 
 Requires Claude Code v2.1.283 or later. After updating:

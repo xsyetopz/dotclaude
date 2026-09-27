@@ -140,3 +140,50 @@ test("usage notes fire once per level: 75%, then 90%", () => {
     .hookSpecificOutput.additionalContext;
   assert.match(at91, /start no new fan-out/);
 });
+
+test("a /goal check loop with no work in between ends after two blocks", () => {
+  const line = (r) => JSON.stringify(r);
+  const feedback = {
+    type: "user",
+    isMeta: true,
+    message: {
+      content: "Stop hook feedback:\n[Goal: finish R01-R16]\n\nunmet",
+    },
+  };
+  const said = {
+    type: "assistant",
+    message: { content: [{ type: "text", text: "Stopping." }] },
+  };
+  const worked = {
+    type: "assistant",
+    message: { content: [{ type: "tool_use", name: "Bash", input: {} }] },
+  };
+  const run = (records, env = {}) => {
+    const file = path.join(tmp("dotclaude-goal-"), "t.jsonl");
+    fs.writeFileSync(file, records.map(line).join("\n"));
+    return hook(
+      "stop/end-goal-loops.mjs",
+      {
+        hook_event_name: "Stop",
+        stop_hook_active: true,
+        transcript_path: file,
+      },
+      env,
+    );
+  };
+  assert.equal(run([worked, said, feedback, said]), null, "one block passes");
+  const stopped = run([worked, said, feedback, said, feedback, said]);
+  assert.equal(stopped.continue, false);
+  assert.match(stopped.stopReason, /^\[dotclaude\] .*\/goal clear/);
+  assert.equal(
+    run([said, feedback, said, worked, feedback, said]),
+    null,
+    "a tool call between blocks means work is happening",
+  );
+  assert.equal(
+    run([worked, said, feedback, said, feedback, said], {
+      CLAUDE_PLUGIN_OPTION_GOAL_LOOP_GUARD: "false",
+    }),
+    null,
+  );
+});
