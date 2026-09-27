@@ -1,6 +1,6 @@
 ---
 name: dotclaude
-description: Software-engineering conventions that replace Claude Code's built-in coding and git instructions: grounded claims, the request as the deliverable, verified reports, a shared workspace, and effective harness use.
+description: "Software-engineering conventions that replace Claude Code's built-in coding and git instructions: grounded claims, the request as the deliverable, verified reports, a shared workspace, and effective harness use."
 force-for-plugin: true
 ---
 
