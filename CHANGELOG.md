@@ -10,6 +10,19 @@ steps after each update.
 
 ## [Unreleased]
 
+### Added
+
+- A `justfile` with `test`, `lint`, `validate`, `check`, and `bump`
+  recipes. `just bump <major|minor|patch|X.Y.Z>` sets the version in both
+  manifests and dates the `[Unreleased]` CHANGELOG entries.
+
+### Changed
+
+- CI runs with a read-only token, actions pinned by commit, per-job
+  timeouts, and cancelled superseded pull-request runs. It checks format and
+  import order as well as lint, covers `scripts/`, and reports one
+  `all-green` check to require.
+
 ## [0.6.0] - 2026-09-27
 
 After updating, re-run `/dotclaude:apply-settings-profile`.

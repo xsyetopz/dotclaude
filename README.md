@@ -297,11 +297,19 @@ Set in `/config` under dotclaude:
 ## Development
 
 ```bash
-bun test ./tests/            # guard rules, hooks, and setup scripts
-bun run lint                 # biome
-bun run validate             # claude plugin validate --strict
+just test                    # bun test ./tests/; extra arguments pass through
+just lint                    # biome lint
+just validate                # claude plugin validate --strict
+just check                   # all three
+just bump minor --dry-run    # preview a version bump; drop --dry-run to write
 claude --plugin-dir . plugin details dotclaude  # inventory and token cost
 ```
+
+`just bump` (`scripts/bump-version.mjs`) sets the same version in
+`.claude-plugin/plugin.json` and `package.json`, refusing when they disagree,
+and moves the `[Unreleased]` CHANGELOG entries under a dated heading. CI runs
+`biome ci` (lint, format, and import order) and the tests on Linux and macOS;
+require its `all-green` check in branch protection.
 
 The behaviour evals in `evals/` run with `claude plugin eval`, which loads the
 plugin into Claude Code and repeats each case without it as a baseline.
