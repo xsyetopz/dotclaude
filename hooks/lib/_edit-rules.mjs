@@ -20,6 +20,7 @@ export function check(toolName, toolInput, ctx) {
   if (TEST_PATH.test(posix))
     out.push(...testWeakening(before, after, c.testRemovalRequested));
   out.push(...generated(filePath, posix));
+  out.push(...frontmatter(toolName, toolInput, filePath, posix));
   if (toolName === "Write" && before !== null)
     out.push(...shrink(before, after));
   return out;
@@ -90,6 +91,49 @@ function testWeakening(before, after, removalRequested = false) {
       "edit adds a skip, xfail, todo, or focus marker to a test file",
     ]);
   return out;
+}
+
+// --- Markdown frontmatter ---------------------------------------------------
+
+const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
+
+/** The whole file as this edit leaves it, or undefined when that is unknown. */
+function resultText(toolName, input, filePath) {
+  if (toolName === "Write") return input.content ?? "";
+  if (toolName !== "Edit" && toolName !== "MultiEdit") return undefined;
+  let text = readExisting(filePath);
+  if (text === null) return undefined;
+  const edits = toolName === "Edit" ? [input] : (input.edits ?? []);
+  for (const e of edits) {
+    const from = e.old_string ?? "";
+    const to = e.new_string ?? "";
+    if (!from || !text.includes(from)) return undefined;
+    if (e.replace_all) text = text.split(from).join(to);
+    else {
+      const at = text.indexOf(from);
+      text = text.slice(0, at) + to + text.slice(at + from.length);
+    }
+  }
+  return text;
+}
+
+// Skill, agent, rule, and output-style files are read through their YAML
+// frontmatter; an unquoted value containing ": " breaks the whole block.
+function frontmatter(toolName, input, filePath, posix) {
+  if (!posix.endsWith(".md")) return [];
+  const match = FRONTMATTER.exec(resultText(toolName, input, filePath) ?? "");
+  if (!match) return [];
+  try {
+    Bun.YAML.parse(match[1]);
+    return [];
+  } catch (err) {
+    return [
+      [
+        "deny",
+        `the YAML frontmatter in ${path.basename(filePath)} would not parse (${err.message}); quote any value that contains ": " or starts with a special character, as in description: "…"`,
+      ],
+    ];
+  }
 }
 
 // --- generated files --------------------------------------------------------
