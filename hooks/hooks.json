@@ -33,6 +33,14 @@
               "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/note-codegraph-index.mjs"
             ],
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/prune-scratchpads.mjs"
+            ],
+            "timeout": 10
           }
         ]
       },

@@ -51,6 +51,29 @@ export function stateDir() {
   return dir;
 }
 
+// Claude Code deletes session transcripts after `cleanupPeriodDays`, 30 by
+// default, and dotclaude's per-session state is useless without them.
+const STATE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Delete state files not modified in 30 days; returns how many went. */
+export function pruneState(now = Date.now()) {
+  const dir = stateDir();
+  let removed = 0;
+  for (const name of fs.readdirSync(dir)) {
+    const file = path.join(dir, name);
+    try {
+      const stat = fs.statSync(file);
+      if (stat.isFile() && now - stat.mtimeMs > STATE_MAX_AGE_MS) {
+        fs.rmSync(file);
+        removed += 1;
+      }
+    } catch {
+      // Another session removed or replaced it first.
+    }
+  }
+  return removed;
+}
+
 export function projectRoot(data) {
   return path.resolve(
     process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd(),

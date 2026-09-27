@@ -9,7 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { codexHome, codexPlan, codexTier } from "../lib/_codex.mjs";
-import { emit, option, run } from "../lib/_common.mjs";
+import { emit, option, pruneState, run } from "../lib/_common.mjs";
 import { FABLE, isFable } from "../lib/_model-notes.mjs";
 import { planNote } from "../lib/_plans.mjs";
 
@@ -44,6 +44,7 @@ run((data) => {
   // session, and a model restored on resume reaches PostModelSwitch.
   const continued = data.source === "resume" || data.source === "fork";
   if (!continued && isFable(data.model)) parts.push(FABLE);
+  if (data.source === "startup") pruneState();
   if (!continued) {
     const plan = planNote();
     if (plan) parts.push(plan);
