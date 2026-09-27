@@ -12,7 +12,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { currentPlan, fableAccess } from "../../../hooks/lib/_plans.mjs";
+import {
+  currentPlan,
+  fableAccess,
+  SMALL_WINDOW,
+} from "../../../hooks/lib/_plans.mjs";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -116,6 +120,14 @@ if (
   );
   console.log(
     `Claude plan: ${plan}, which runs Fable on usage credits with extra usage off; availableModels leaves Fable out.`,
+  );
+}
+// Every turn re-reads the whole context, and a small 5-hour window runs out
+// after a few large turns, so those plans compact at half the usual size.
+if (SMALL_WINDOW.has(plan) && typeof profile.autoCompactWindow === "number") {
+  profile.autoCompactWindow = 200000;
+  console.log(
+    `Claude plan: ${plan}, which has a small 5-hour window; autoCompactWindow is 200000.`,
   );
 }
 const merged = merge(current, profile, "");

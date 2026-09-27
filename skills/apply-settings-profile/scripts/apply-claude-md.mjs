@@ -51,6 +51,7 @@ const withHeading = (text) =>
 // Bash without loading the drive-web-browser skill that explains them.
 const TOOLS = [
   "rg",
+  "tgrep",
   "fd",
   "ast-grep",
   "jq",
@@ -64,8 +65,38 @@ const TOOLS = [
   "shellcheck",
   "difft",
   "sd",
+  "scc",
+  "tokei",
+  "dasel",
+  "mlr",
   "codegraph",
 ];
+
+// What each tool is for, named only when that tool is installed; the sizing
+// and indexed-search entries stand in for reading or grepping many files.
+const EXAMPLES = [
+  [["tgrep"], "`tgrep` for indexed search in large repositories"],
+  [["rg"], "`rg` for text"],
+  [["fd"], "`fd` for files"],
+  [["ast-grep"], "`ast-grep` for code structure"],
+  [["scc", "tokei"], "{} to size a repository before reading its files"],
+  [["jq"], "`jq` for JSON"],
+  [["dasel", "mlr"], "{} for YAML, TOML, CSV, and other structured data"],
+];
+
+function examples() {
+  const parts = EXAMPLES.flatMap(([names, text]) => {
+    const found = names.filter((name) => Bun.which(name));
+    if (!found.length) return [];
+    return [text.replace("{}", found.map((n) => `\`${n}\``).join(" or "))];
+  });
+  if (!parts.length) return "";
+  const list =
+    parts.length === 1
+      ? parts[0]
+      : `${parts.slice(0, -1).join(", ")}, and ${parts.at(-1)}`;
+  return `, for example ${list}`;
+}
 
 function installedTools() {
   const found = TOOLS.filter((name) => Bun.which(name));
@@ -82,7 +113,8 @@ if (remove) {
   const body = fs
     .readFileSync(sourcePath, "utf8")
     .trim()
-    .replace("{{TOOLS}}", installedTools());
+    .replace("{{TOOLS}}", installedTools())
+    .replace("{{EXAMPLES}}", examples());
   const block = `${BEGIN}\n${body}\n${END}\n`;
   if (BLOCK.test(current)) next = withHeading(current.replace(BLOCK, block));
   else next = `${withHeading(current).replace(/\s*$/, "")}\n\n${block}`;

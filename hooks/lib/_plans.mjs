@@ -122,7 +122,7 @@ export function fableAccess(plan, account = null) {
 }
 
 // Plans whose 5-hour window a few large-context turns can use up.
-const SMALL_WINDOW = new Set([
+export const SMALL_WINDOW = new Set([
   "pro",
   "max_5x",
   "team_standard",

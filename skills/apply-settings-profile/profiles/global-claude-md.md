@@ -1,4 +1,4 @@
-- Command-line tools installed on this machine: {{TOOLS}}. Prefer them for search and data handling in Bash, for example `rg` for text, `fd` for files, `ast-grep` for code structure, and `jq` for JSON.
+- Command-line tools installed on this machine: {{TOOLS}}. Prefer them for search and data handling in Bash{{EXAMPLES}}.
 - For anything in a web browser (agent-browser, CloakBrowser, screenshots, forms), load the dotclaude `drive-web-browser` skill before the first browser command.
 - Before any git work, read the current branch and `git status` yourself instead of relying on a snapshot from session start.
 - A repository's own `AGENTS.md`, `CLAUDE.md`, README, and build files define its commands. When no test or build command exists, say so in the report instead of skipping verification silently.
