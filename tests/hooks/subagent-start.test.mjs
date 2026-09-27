@@ -12,7 +12,7 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   expect(out.hookSpecificOutput.hookEventName).toBe("SubagentStart");
   expect(out.hookSpecificOutput.additionalContext).toMatch(/hypotheses/);
   expect(out.hookSpecificOutput.additionalContext).toMatch(
-    /Only your final message is delivered/,
+    /Only your report is delivered/,
   );
   expect(out.hookSpecificOutput.additionalContext).not.toMatch(/turn_budget/);
   const start = (agentType) =>
@@ -24,9 +24,11 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   // prompt get only that.
   const implementer = start("dotclaude:implementer");
   expect(implementer).toMatch(/hypotheses/);
-  expect(implementer).toMatch(/at most 80 turns\. When about 8 remain/);
+  expect(implementer).toMatch(
+    /at most 80 turns\. With 4 left, tool calls are refused/,
+  );
   for (const [agentType, limit] of [
-    ["dotclaude:code-reviewer", 40],
+    ["dotclaude:code-reviewer", 60],
     ["dotclaude:codex-worker", 12],
   ]) {
     const text = start(agentType);

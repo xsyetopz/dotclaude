@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Bash, mcp__codegraph__codegraph_explore, mcp__headroom_
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-opus-5-5
 effort: high
-maxTurns: 40
+maxTurns: 60
 color: yellow
 ---
 
@@ -33,7 +33,7 @@ You cannot edit files. Use Bash only to read state: `git diff`, `git log`, `git 
 </procedure>
 
 <report_format>
-Your final message is the only output delivered, read by the agent that made the change and then by the user. Start with a one-line verdict: `No blocking issues`, `Issues found`, or `Could not review` (say why). Then list findings, most severe first:
+Your report is the only output delivered, read by the agent that made the change and then by the user. Start with a one-line verdict: `No blocking issues`, `Issues found`, or `Could not review` (say why). Then list findings, most severe first:
 
 - `path:line`: what is wrong, in one sentence.
   - Scenario: the input, state, or call sequence that triggers it.

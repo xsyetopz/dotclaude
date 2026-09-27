@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Guardrails, working conventions, and a set of task agents for Claude Code: destructive-command and test-weakening guards that stay quiet on recoverable actions in auto mode, a verify-before-stop gate for the session and its subagents, compaction carry-over, a fast-mode/model lock (Opus 5.5, Sonnet 5, Fable 5.1, Haiku 4.5) with an xhigh effort cap that adapts to the Claude and ChatGPT plans, reviewers, workers, and researchers on tiered models and effort, optional Codex delegation, and an always-on output style.",
   "author": {
     "name": "xsyetopz"
@@ -68,7 +68,7 @@
     "turn_limit_handoff": {
       "type": "boolean",
       "title": "Hand off agents that hit their turn limit",
-      "description": "When a subagent stops at its turn limit, the first message to it is rewritten into a request for a handoff report, and later messages are blocked, so the work continues in a fresh agent with a small context instead of a resumed one that re-reads its whole history on every turn.",
+      "description": "Near a dotclaude agent's turn limit, refuse its tool calls so its next action is a report. When a subagent stops at its turn limit anyway, the first message to it is rewritten into a request for a handoff report, and later messages are blocked, so the work continues in a fresh agent with a small context instead of a resumed one that re-reads its whole history on every turn.",
       "default": true
     },
     "model_lock": {
@@ -86,7 +86,7 @@
     "usage_notes": {
       "type": "boolean",
       "title": "Usage notes",
-      "description": "When Claude Code's cached usage shows the session or weekly limit past 75% or 90%, tell Claude once per level so it routes the remaining work to stretch what is left.",
+      "description": "When Claude Code's cached usage shows the session or weekly limit past 75% or 90%, tell Claude once per level so it routes the remaining work to stretch what is left. When a turn stops on a usage limit, show a terminal notification with the reset time and the resume command.",
       "default": true
     },
     "allowed_models": {

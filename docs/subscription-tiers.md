@@ -311,6 +311,17 @@ API-equivalent; how Max weights cache reads is unverified.
   still calling tools and had produced no report"). 0.5.0 therefore tells
   agents their limit up front, and rewrites the first message to a capped
   agent into a report request.
+- The up-front notice did not work. Of the 13 capped runs in the first day
+  after 0.5.0 (`implementer`, `code-reviewer`, `debugger`,
+  `performance-engineer`), none reported before the cap; all were still
+  calling tools. 0.6.2 enforces it: when about 5% of the limit (at least 3
+  turns) remains, a hook refuses every tool except `SubagentHandback`.
+- Claude Code counts the limit per invocation. Every prompt, `SendMessage`
+  resume, and background-task wake-up starts the count again, which is why
+  resumed runs reach 100–380 API calls under a cap of 80.
+- `code-reviewer` went from 40 to 60 turns in 0.6.2. Its median run used 36
+  calls, 3 of 6 runs since 0.5.0 hit the cap, and a capped review loses its
+  findings, while a capped `implementer` only splits its work.
 
 **Model moves and their limit.** Cache reads cost $0.20 per million on both
 Opus 5.5 and Sonnet 5, so moving `implementer` and the built-in agents to

@@ -28,7 +28,7 @@ You cannot edit files. Use Bash only to read state (`git diff`, `git log`, `git 
 </procedure>
 
 <report_format>
-Your final message is the only output delivered. Start with a one-line verdict: `No exploitable issues found`, `Issues found`, or `Could not review` (say why). Then list findings, most severe first:
+Your report is the only output delivered. Start with a one-line verdict: `No exploitable issues found`, `Issues found`, or `Could not review` (say why). Then list findings, most severe first:
 
 - `path:line`: the defect in one sentence.
   - Exploit: the input or request and what it achieves, or what is unknown about reachability.

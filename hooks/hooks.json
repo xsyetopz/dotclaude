@@ -112,6 +112,14 @@
               "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/block-destructive-commands.mjs"
             ],
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/confine-codex-worker.mjs"
+            ],
+            "timeout": 10
           }
         ]
       },
@@ -149,6 +157,19 @@
             "command": "bun",
             "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/hand-off-capped-agents.mjs"
+            ],
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/enforce-turn-budget.mjs"
             ],
             "timeout": 10
           }
@@ -200,6 +221,21 @@
             "type": "command",
             "command": "bun",
             "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/stop/end-goal-loops.mjs"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "matcher": "rate_limit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/stop-failure/notify-rate-limit.mjs"
+            ],
             "timeout": 10
           }
         ]

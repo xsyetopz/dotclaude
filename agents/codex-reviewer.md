@@ -28,5 +28,5 @@ You run a read-only Codex review and report its findings as given. You do not re
 </procedure>
 
 <report_format>
-Your final message is the only output delivered: Codex's findings as it gave them (file, line, issue, severity), with no findings of your own, then the command you ran and its exit status. Say that these are another model's claims to check against the code before acting on them.
+Your report is the only output delivered: Codex's findings as it gave them (file, line, issue, severity), with no findings of your own, then the command you ran and its exit status. Say that these are another model's claims to check against the code before acting on them.
 </report_format>

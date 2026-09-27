@@ -10,6 +10,65 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-09-27
+
+### Added
+
+- When a turn stops on a usage limit, a `StopFailure` hook shows a terminal
+  notification with the limit that was hit, its reset time from Claude
+  Code's cached usage, and `claude --resume <session>`. It is part of the
+  `usage_notes` option. Claude Code shows it only in an interactive session,
+  and only terminals that support OSC 9, 99, or 777 notifications display it.
+- README notes on the prompt cache TTL (`CLAUDE_CODE_PROMPT_CACHE_TTL=1h` for
+  API keys, cloud providers, and usage credits; subscriptions already get an
+  hour on the main conversation) and on Claude Code relaying your latest chat
+  message to every workflow agent
+  ([#95369](https://github.com/anthropics/claude-code/issues/95369)).
+
+### Changed
+
+- The turn-budget hook and the notice that describes it follow the
+  `turn_limit_handoff` option.
+- `code-reviewer` may use 60 turns instead of 40. Its median review used
+  36, half of the reviews since 0.5.0 hit the cap, and a review cut off at
+  its cap delivers no findings.
+
+### Fixed
+
+- Agents still ran into their turn limit without a report. Of 13 capped
+  runs after 0.5.0 told agents their limit, none reported before it. A new
+  hook now refuses every tool except `SubagentHandback` once about 5% of a
+  dotclaude agent's `maxTurns` remains (at least 3 turns), so its next
+  action is its report. It counts the agent's API calls since its latest
+  prompt, resume, or wake-up, as Claude Code does.
+- The Bash guard asked only about `core.hooksPath` among git settings that
+  run a program. It now also asks when `-c`, `--config-env`, `git config`,
+  or git's environment variables (`GIT_SSH_COMMAND`, `GIT_CONFIG_KEY_n`,
+  and others) set a key such as `core.fsmonitor`, `core.sshCommand`,
+  `core.pager`, `diff.external`, a filter driver, or a `!` alias to a
+  program. Values like `cat`, `less`, `true`, and empty still pass.
+- `codex-worker` still ran out of turns on 0.6.1: all 7 runs in one session
+  stopped at the 12-turn limit with no report, and 2 finished only after
+  the orchestrator continued them. Haiku polled with `sleep` and `until`
+  loops, ran Codex in the foreground, and carried out the brief's
+  acceptance steps itself. The worker now runs one script,
+  `skills/codex-fanout/scripts/run-codex.mjs`, which checks the setup, runs
+  Codex, and prints a report with the git state, flagging writes Codex's
+  sandbox denied under `.git`, `.agents`, or `.codex`. The worker runs as a
+  background agent, so a run longer than the Bash timeout moves to the
+  background and the worker waits for the completion notice. The Bash
+  guard applies its Codex model and plan rules to the script's `--model`.
+- A new Bash hook limits `codex-worker` to writing its brief file, running
+  that script, and reading the report. Given the task text, Haiku edited
+  the files itself with a shell heredoc and never started Codex, and the
+  prompt alone did not stop it.
+- `codex-fanout` gives each worker a brief file instead of the task text,
+  and checks a stopped worker's report file and `git status` before
+  dispatching the item again.
+- Agent prompts and the subagent conventions said the final message is what
+  reaches the caller. In auto mode only the `SubagentHandback` report does,
+  so they now say "report".
+
 ## [0.6.1] - 2026-09-27
 
 ### Fixed

@@ -83,12 +83,20 @@ checkout instead, run `claude --plugin-dir /path/to/dotclaude`.
 - **Usage notes**: when Claude Code's cached usage (the same numbers as
   `/usage`, at most an hour old) shows the session or weekly limit past 75% or
   90%, Claude is told once per level and routes the rest of the work to
-  stretch what is left.
-- **Turn-limit handoff**: an agent that stops at its turn limit is not resumed.
-  Its context has grown with every turn, and each further turn re-reads all of
-  it. The first message to it is rewritten into a request for a handoff
-  report, later messages are blocked, and the work continues in a fresh agent
-  briefed from that report.
+  stretch what is left. When a turn stops on a usage limit, a terminal
+  notification names the limit, when it resets, and the `claude --resume`
+  command for the session (in terminals that show OSC 9, 99, or 777
+  notifications).
+- **Turn-limit handoff**: a dotclaude agent is refused tool calls once about
+  5% of its turn limit remains, so its next action is its report; Claude Code
+  delivers nothing from an agent cut off at the limit. An agent that stops at
+  its limit anyway is not resumed: its context has grown with every turn, and
+  each further turn re-reads all of it. The first message to it is rewritten
+  into a request for a handoff report, later messages are blocked, and the
+  work continues in a fresh agent briefed from that report.
+- **Codex worker confinement**: `codex-worker` may only write its brief file,
+  run `skills/codex-fanout/scripts/run-codex.mjs`, and read the report, so its
+  Haiku model hands the task to Codex instead of doing it.
 - **Stalled goals**: when Claude Code's `/goal` check blocks a stop twice in a
   row and Claude did no work in between, the turn ends and the goal pauses,
   with a note that only you can change or end it (`/goal <new condition>`,
@@ -117,7 +125,7 @@ own system prompts. It covers:
 
 On Fable 5.1, a note adds that model's adjustments, at session start and again
 whenever `/model` switches to Fable; switching away retracts it. Every dotclaude
-agent is told its turn limit at start and asked to report before reaching it,
+agent is told its turn limit at start and when its tool calls will be refused,
 and agents on Sonnet 5 are reminded to apply each instruction to everything it
 covers, since Sonnet 5 follows instructions literally. The style is
 forced on while the plugin is enabled; to use another, disable the plugin or
@@ -178,6 +186,11 @@ project, or local settings. It sets:
   with a small 5-hour window) instead of about 967k, and no prompt
   suggestions, automatic session recaps, or idle delivery of cross-session
   messages, since each of those sends a request that re-reads the context.
+  The prompt cache TTL is left to Claude Code: a subscription within plan
+  usage already gets one hour on the main conversation. On an API key, a
+  cloud provider, or usage credits it is five minutes; set
+  `CLAUDE_CODE_PROMPT_CACHE_TTL=1h` (Claude Code 2.1.242 or later) if you often
+  pause longer, since the API bills 1-hour cache writes at a higher rate.
 - **Effort cap**: `maxEffortLevel: "xhigh"`, which also caps agents, skills, and
   workflow stages. `max` is blocked because the claude.ai effort picker warns
   that it uses about 5.5x the usage on Opus 5.5 and 3.5x on Fable 5.1 (as of
@@ -191,7 +204,11 @@ project, or local settings. It sets:
 - **Subagent and workflow bounds**: 6 subagents at once, and 6 agents at once in
   a workflow run (`CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`).
   `workflowSizeGuideline: "medium"` asks Claude to aim for fewer than 10 agents
-  per workflow; that one is advice, not a cap. Workflows stay on.
+  per workflow; that one is advice, not a cap. Workflows stay on. Since
+  2026-09-18, Claude Code also hands every workflow agent your latest chat
+  message and tells it that message wins over the script's task
+  ([#95369](https://github.com/anthropics/claude-code/issues/95369), open), so
+  send nothing unrelated while a workflow launches or runs.
 - **Tools**: the task-list tools turned on (off by default on Opus 5.5), and
   `AskUserQuestion` denied, which drops about 4.9 KB from every request.
 - **Feedback off**: `/feedback`, the SendFeedback tool, the session survey, and
@@ -274,7 +291,9 @@ Set in `/config` under dotclaude:
 - **Claude plan**: `claude_plan` is `auto` by default, which reads the plan
   from Claude Code's cached account; set `pro`, `max_5x`, `max_20x`,
   `team_standard`, `team_premium`, `enterprise`, or `api` to override it.
-- **Limits**: `usage_notes` and `turn_limit_handoff`, both on by default.
+- **Limits**: `usage_notes` (usage notes and the usage-limit notification)
+  and `turn_limit_handoff` (refusing tools near the limit and the handoff),
+  both on by default.
 - **Disk**: `scratchpad_prune_days`, off (`0`) by default. When set, session
   start deletes Claude Code scratchpads and loose entries under
   `/tmp/claude-<uid>` idle for that many days, never the current session's.

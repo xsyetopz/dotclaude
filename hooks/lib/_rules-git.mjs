@@ -25,6 +25,72 @@ const HOOK_ENV = {
   OVERCOMMIT_DISABLE: null,
 };
 
+// Config keys whose value names a program git runs (from `git help config`),
+// so `git -c <key>=<value>` executes whatever the value says.
+const EXEC_KEY =
+  /^(core\.(fsmonitor|pager|editor|sshcommand|askpass|gitproxy|alternaterefscommand)|sequence\.editor|diff\.external|diff\..+\.(command|textconv)|(difftool|mergetool|browser|man|trailer|guitool)\..+\.cmd|merge\..+\.driver|filter\..+\.(clean|smudge|process)|credential\.(.+\.)?helper|pager\..+|gpg\.(.+\.)?program|gpg\.ssh\.defaultkeycommand|remote\..+\.(uploadpack|receivepack)|uploadpack\.packobjectshook|gc\.recentobjectshook|hook\..+\.command|interactive\.difffilter|alias\..+)$/;
+// Values Claude sets itself to keep git non-interactive.
+const BENIGN_PROGRAM = /^(|cat|less( -[a-z+]+)*|more|true|false|:)$/i;
+// Environment variables that pick a program for git to run.
+const EXEC_ENV = new Set([
+  "GIT_SSH",
+  "GIT_SSH_COMMAND",
+  "GIT_EXTERNAL_DIFF",
+  "GIT_PAGER",
+  "GIT_EDITOR",
+  "GIT_SEQUENCE_EDITOR",
+  "GIT_ASKPASS",
+  "GIT_PROXY_COMMAND",
+]);
+
+/** True when setting `key` to `value` (undefined: unknown) runs a program. */
+function runsProgram(key, value) {
+  const k = key.toLowerCase();
+  if (!EXEC_KEY.test(k)) return false;
+  if (value === undefined) return true;
+  const v = value.trim();
+  if (k.startsWith("alias.")) return v.startsWith("!");
+  return !BENIGN_PROGRAM.test(v);
+}
+
+/** Config settings on a git command line or its environment that run a program. */
+function execSettings(globals, sub, args, assigns) {
+  const found = [];
+  for (let i = 0; i < globals.length - 1; i += 1) {
+    const value = globals[i + 1];
+    const eq = value.indexOf("=");
+    if (globals[i] === "-c") {
+      const key = eq < 0 ? value : value.slice(0, eq);
+      if (runsProgram(key, eq < 0 ? "true" : value.slice(eq + 1)))
+        found.push(`-c ${key}`);
+    } else if (globals[i] === "--config-env") {
+      const key = value.slice(0, Math.max(eq, 0));
+      if (runsProgram(key, undefined)) found.push(`--config-env ${key}`);
+    }
+  }
+  for (const g of globals) {
+    const m = /^--config-env=([^=]+)=/.exec(g);
+    if (m && runsProgram(m[1], undefined)) found.push(`--config-env ${m[1]}`);
+  }
+  if (sub === "config") {
+    const pos = positional(args);
+    const at = pos.findIndex((a) => EXEC_KEY.test(a.toLowerCase()));
+    if (at >= 0 && at + 1 < pos.length && runsProgram(pos[at], pos[at + 1]))
+      found.push(`config ${pos[at]}`);
+  }
+  for (const [name, value] of Object.entries(assigns ?? {})) {
+    if (EXEC_ENV.has(name) && !BENIGN_PROGRAM.test(String(value).trim()))
+      found.push(name);
+    const n = /^GIT_CONFIG_KEY_(\d+)$/.exec(name)?.[1];
+    if (
+      n !== undefined &&
+      runsProgram(String(value), assigns[`GIT_CONFIG_VALUE_${n}`])
+    )
+      found.push(`${name}=${value}`);
+  }
+  return found;
+}
+
 function gitSplit(args) {
   const globals = [];
   for (let i = 0; i < args.length; i += 1) {
@@ -54,6 +120,11 @@ export function gitRule(cmd, ctx) {
   const out = [];
   if (globals.join(" ").toLowerCase().includes("core.hookspath"))
     out.push(["ask", "`git -c core.hooksPath=...` bypasses repository hooks"]);
+  for (const setting of execSettings(globals, sub, args, cmd.assigns))
+    out.push([
+      "ask",
+      `\`git\` with \`${setting}\` runs the program its value names`,
+    ]);
   const pos = positional(args);
   switch (sub) {
     case "push":

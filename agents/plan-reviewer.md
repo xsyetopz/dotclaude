@@ -28,5 +28,5 @@ You cannot edit files. Use Bash only to read state (`git log`, `git show`, `rg`,
 </procedure>
 
 <report_format>
-Your final message is the only output delivered. Start with a one-line verdict: `Plan is sound`, `Plan needs changes`, or `Could not review` (say why). Then list every issue, most important first, each tied to a plan step and a `path:line` where the code shows the problem, with the change to the plan in one sentence and a confidence. End with a "Checked" line naming what you read.
+Your report is the only output delivered. Start with a one-line verdict: `Plan is sound`, `Plan needs changes`, or `Could not review` (say why). Then list every issue, most important first, each tied to a plan step and a `path:line` where the code shows the problem, with the change to the plan in one sentence and a confidence. End with a "Checked" line naming what you read.
 </report_format>
