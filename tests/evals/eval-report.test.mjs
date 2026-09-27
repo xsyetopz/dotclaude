@@ -1,10 +1,10 @@
 // Statistics in evals/report.mjs.
 
-import assert from "node:assert/strict";
-import { test } from "node:test";
-import { meanSe, trialPassed, wilson } from "../evals/report.mjs";
+import { expect, test } from "bun:test";
+import { meanSe, trialPassed, wilson } from "../../evals/report.mjs";
 
-const near = (a, b) => assert.ok(Math.abs(a - b) < 0.005, `${a} vs ${b}`);
+const near = (a, b) =>
+  expect(Math.abs(a - b) < 0.005, `${a} vs ${b}`).toBeTruthy();
 
 test("wilson interval matches the textbook values", () => {
   const [lo, hi] = wilson(3, 3);
@@ -19,29 +19,31 @@ test("meanSe gives the standard error of the mean", () => {
   const { mean, se } = meanSe([1, 0, 1, 0]);
   near(mean, 0.5);
   near(se, 0.2887);
-  assert.ok(Number.isNaN(meanSe([1]).se));
+  expect(Number.isNaN(meanSe([1]).se)).toBeTruthy();
 });
 
 test("a trial passes only when every scored grader passed", () => {
   const run = (graders) => ({ graders });
-  assert.ok(trialPassed(run([{ name: "a", passed: true, scored: true }])));
-  assert.ok(
+  expect(
+    trialPassed(run([{ name: "a", passed: true, scored: true }])),
+  ).toBeTruthy();
+  expect(
     !trialPassed(
       run([
         { name: "a", passed: true, scored: true },
         { name: "b", passed: false, scored: true },
       ]),
     ),
-  );
-  assert.ok(
+  ).toBeTruthy();
+  expect(
     trialPassed(
       run([
         { name: "a", passed: true, scored: true },
         { name: "b", passed: false, scored: false },
       ]),
     ),
-  );
-  assert.ok(
+  ).toBeTruthy();
+  expect(
     trialPassed(
       run([
         { name: "a", passed: true, scored: true },
@@ -49,5 +51,5 @@ test("a trial passes only when every scored grader passed", () => {
       ]),
       new Set(["b"]),
     ),
-  );
+  ).toBeTruthy();
 });

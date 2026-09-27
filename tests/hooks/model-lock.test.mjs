@@ -1,0 +1,109 @@
+// Model lock: subagent models, model switches, and fast mode.
+
+import { expect, test } from "bun:test";
+import fs from "node:fs";
+import path from "node:path";
+import { data, hook } from "../support/hooks.mjs";
+
+test("model lock denies disallowed subagent models and switches", () => {
+  const agent = (model, env = {}) =>
+    hook(
+      "pre-tool-use/restrict-subagent-models.mjs",
+      {
+        hook_event_name: "PreToolUse",
+        tool_name: "Agent",
+        tool_input: { model, prompt: "x" },
+      },
+      env,
+    );
+  for (const model of ["sonnet", "claude-sonnet-5"])
+    expect(agent(model, { ANTHROPIC_DEFAULT_SONNET_MODEL: "" })).toBe(null);
+  // Fable is never a subagent model, even where the plan includes it.
+  for (const model of ["fable", "claude-fable-5-1"]) {
+    const out = agent(model, { ANTHROPIC_DEFAULT_FABLE_MODEL: "" });
+    expect(out.hookSpecificOutput.permissionDecision, model).toBe("deny");
+    expect(out.hookSpecificOutput.permissionDecisionReason).toMatch(/2\.5x/);
+  }
+  const old = agent("claude-opus-4-1");
+  expect(old.hookSpecificOutput.permissionDecision).toBe("deny");
+  expect(old.hookSpecificOutput.permissionDecisionReason).toMatch(
+    /mechanical-worker/,
+  );
+  for (const model of ["haiku", "claude-haiku-4-5"])
+    expect(
+      hook(
+        "pre-tool-use/restrict-subagent-models.mjs",
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Agent",
+          tool_input: { model, prompt: "x" },
+        },
+        { ANTHROPIC_DEFAULT_HAIKU_MODEL: "" },
+      ),
+      model,
+    ).toBe(null);
+  expect(
+    hook("pre-tool-use/restrict-subagent-models.mjs", {
+      hook_event_name: "PreToolUse",
+      tool_name: "Agent",
+      tool_input: { prompt: "x" },
+    }),
+  ).toBe(null);
+  expect(
+    hook("pre-tool-use/restrict-subagent-models.mjs", {
+      hook_event_name: "PreToolUse",
+      tool_name: "Agent",
+      tool_input: { model: "opus" },
+    }),
+  ).toBe(null);
+  expect(
+    hook("pre-model-switch/restrict-models.mjs", {
+      hook_event_name: "PreModelSwitch",
+      to_model: "claude-sonnet-5",
+    }),
+  ).toBe(null);
+  expect(
+    hook("pre-model-switch/restrict-models.mjs", {
+      hook_event_name: "PreModelSwitch",
+      to_model: "claude-opus-4-1",
+    }).decision,
+  ).toBe("block");
+  expect(
+    hook("pre-model-switch/restrict-models.mjs", {
+      hook_event_name: "PreModelSwitch",
+      to_model: "claude-fable-5-1",
+    }),
+  ).toBe(null);
+});
+
+test("model lock blocks a settings change that enables fast mode", () => {
+  const settings = path.join(data, "settings.json");
+  fs.writeFileSync(settings, JSON.stringify({ fastMode: true }));
+  expect(
+    hook("config-change/block-fast-mode.mjs", {
+      hook_event_name: "ConfigChange",
+      source: "user_settings",
+      file_path: settings,
+    }).decision,
+  ).toBe("block");
+  fs.writeFileSync(settings, JSON.stringify({ fastMode: false }));
+  expect(
+    hook("config-change/block-fast-mode.mjs", {
+      hook_event_name: "ConfigChange",
+      source: "user_settings",
+      file_path: settings,
+    }),
+  ).toBe(null);
+  fs.writeFileSync(settings, JSON.stringify({ fastMode: true }));
+  expect(
+    hook(
+      "config-change/block-fast-mode.mjs",
+      {
+        hook_event_name: "ConfigChange",
+        source: "user_settings",
+        file_path: settings,
+      },
+      { CLAUDE_PLUGIN_OPTION_MODEL_LOCK: "false" },
+    ),
+  ).toBe(null);
+});

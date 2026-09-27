@@ -1,12 +1,11 @@
 // Bash guard rules. Commands are plain strings here; nothing is executed.
 
-import assert from "node:assert/strict";
+import { expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { test } from "node:test";
-import { check } from "../hooks/lib/_bash-rules.mjs";
+import { check } from "../../hooks/lib/_bash-rules.mjs";
 
 // A session with the dotclaude profile maps `sonnet` to Opus 5.5 through
 // ANTHROPIC_DEFAULT_SONNET_MODEL, which would change what these aliases resolve to.
@@ -202,24 +201,24 @@ const PASS = [
 
 for (const command of DENY) {
   test(`deny: ${command}`, () =>
-    assert.equal(level(command), "deny", JSON.stringify(check(command, ctx))));
+    expect(level(command), JSON.stringify(check(command, ctx))).toBe("deny"));
 }
 for (const command of ASK) {
   test(`ask: ${command}`, () =>
-    assert.equal(level(command), "ask", JSON.stringify(check(command, ctx))));
+    expect(level(command), JSON.stringify(check(command, ctx))).toBe("ask"));
 }
 for (const command of WARN) {
   test(`warn: ${command}`, () =>
-    assert.equal(level(command), "warn", JSON.stringify(check(command, ctx))));
+    expect(level(command), JSON.stringify(check(command, ctx))).toBe("warn"));
 }
 for (const command of PASS) {
   test(`pass: ${command}`, () =>
-    assert.equal(level(command), "pass", JSON.stringify(check(command, ctx))));
+    expect(level(command), JSON.stringify(check(command, ctx))).toBe("pass"));
 }
 
 test("unparseable command falls back to a raw scan", () => {
-  assert.equal(level("rm -rf / 'unterminated"), "ask");
-  assert.equal(level("echo 'unterminated"), "pass");
+  expect(level("rm -rf / 'unterminated")).toBe("ask");
+  expect(level("echo 'unterminated")).toBe("pass");
 });
 
 test("commit hygiene flags .DS_Store and a lockfile without its manifest", () => {
@@ -230,17 +229,16 @@ test("commit hygiene flags .DS_Store and a lockfile without its manifest", () =>
   const reasons = check("git commit -m wip", { ...ctx, root: repo, cwd: repo })
     .map(([, r]) => r)
     .join("\n");
-  assert.match(reasons, /\.DS_Store/);
-  assert.match(reasons, /without its manifest/);
-  assert.deepEqual(
+  expect(reasons).toMatch(/\.DS_Store/);
+  expect(reasons).toMatch(/without its manifest/);
+  expect(
     check("git commit -m wip", {
       ...ctx,
       root: repo,
       cwd: repo,
       commitHygiene: false,
     }),
-    [],
-  );
+  ).toStrictEqual([]);
 });
 
 test("git worktree remove --force asks only when the worktree has changes", () => {
@@ -257,72 +255,65 @@ test("git worktree remove --force asks only when the worktree has changes", () =
     "init",
   ]);
   const cmd = `git worktree remove --force ${repo}`;
-  assert.equal(level(cmd), "pass");
+  expect(level(cmd)).toBe("pass");
   fs.writeFileSync(path.join(repo, "scratch.txt"), "unsaved\n");
-  assert.equal(level(cmd), "ask");
+  expect(level(cmd)).toBe("ask");
 });
 
 test("Codex plan groups: Plus-sized seats skip Astra, Free and Go do not delegate", () => {
   const astra = "codex exec -m gpt-6-astra hi";
   for (const plan of ["team", "business", "enterprise", "edu"])
-    assert.equal(level(astra, { ...ctx, codexPlan: () => plan }), "deny", plan);
+    expect(level(astra, { ...ctx, codexPlan: () => plan }), plan).toBe("deny");
   for (const plan of ["self_serve_business_prolite", "pro"])
-    assert.equal(level(astra, { ...ctx, codexPlan: () => plan }), "pass", plan);
+    expect(level(astra, { ...ctx, codexPlan: () => plan }), plan).toBe("pass");
   for (const plan of ["free", "go"]) {
     const free = { ...ctx, codexPlan: () => plan };
-    assert.equal(level("codex exec -m gpt-6-luna hi", free), "deny", plan);
-    assert.equal(
-      level("command codex exec -p dotclaude-luna hi", free),
+    expect(level("codex exec -m gpt-6-luna hi", free), plan).toBe("deny");
+    expect(level("command codex exec -p dotclaude-luna hi", free), plan).toBe(
       "deny",
-      plan,
     );
-    assert.equal(level("codex login status", free), "pass", plan);
+    expect(level("codex login status", free), plan).toBe("pass");
   }
 });
 
 test("Codex Astra is denied on the Plus plan and allowed on Pro", () => {
   const cmd = "codex exec -m gpt-6-astra hi";
-  assert.equal(level(cmd, { ...ctx, codexPlan: () => "plus" }), "deny");
-  assert.equal(level(cmd, { ...ctx, codexPlan: () => "prolite" }), "pass");
-  assert.equal(level(cmd, { ...ctx, codexPlan: () => null }), "pass");
-  assert.equal(
+  expect(level(cmd, { ...ctx, codexPlan: () => "plus" })).toBe("deny");
+  expect(level(cmd, { ...ctx, codexPlan: () => "prolite" })).toBe("pass");
+  expect(level(cmd, { ...ctx, codexPlan: () => null })).toBe("pass");
+  expect(
     level("codex exec -m gpt-6-luna hi", { ...ctx, codexPlan: () => "plus" }),
-    "pass",
-  );
+  ).toBe("pass");
   const plusAstraProfile = {
     ...ctx,
     codexPlan: () => "plus",
     codexConfiguredModel: (profile) =>
       profile === "dotclaude-review" ? "gpt-6-astra" : "gpt-6-luna",
   };
-  assert.equal(
+  expect(
     level(
       "command codex exec -p dotclaude-review review --uncommitted",
       plusAstraProfile,
     ),
-    "deny",
     "a profile that resolves to Astra counts on Plus",
-  );
-  assert.equal(
-    level("codex exec -p dotclaude-luna hi", plusAstraProfile),
+  ).toBe("deny");
+  expect(level("codex exec -p dotclaude-luna hi", plusAstraProfile)).toBe(
     "pass",
   );
-  assert.equal(
+  expect(
     level(
       "codex exec -p dotclaude-review -m gpt-6-luna review",
       plusAstraProfile,
     ),
-    "pass",
     "an explicit model overrides the profile",
-  );
+  ).toBe("pass");
 });
 
 test("model lock off lets fast-mode settings through", () => {
-  assert.equal(
+  expect(
     level("claude -p --settings '{\"fastMode\": true}' hi", {
       ...ctx,
       modelLock: false,
     }),
-    "pass",
-  );
+  ).toBe("pass");
 });

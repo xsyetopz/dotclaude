@@ -1,16 +1,15 @@
 // install-managed.mjs, run against a temporary DOTCLAUDE_MANAGED_DIR so the
 // real managed settings directory is never touched.
 
-import assert from "node:assert/strict";
+import { expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { test } from "node:test";
 
 const SCRIPT = path.resolve(
   import.meta.dirname,
-  "../skills/apply-settings-profile/scripts/install-managed.mjs",
+  "../../skills/apply-settings-profile/scripts/install-managed.mjs",
 );
 
 function tempManaged() {
@@ -31,17 +30,17 @@ const dropIn = (dir) =>
 test("install-managed dry run writes nothing", () => {
   const dir = tempManaged();
   const res = run(dir);
-  assert.equal(res.status, 0, res.stderr);
-  assert.match(res.stdout, /Dry run/);
-  assert.match(res.stdout, /would create/);
-  assert.deepEqual(fs.readdirSync(dir), []);
+  expect(res.status, res.stderr).toBe(0);
+  expect(res.stdout).toMatch(/Dry run/);
+  expect(res.stdout).toMatch(/would create/);
+  expect(fs.readdirSync(dir)).toStrictEqual([]);
 });
 
 test("install-managed --apply creates the drop-in, then a re-run is a no-op", () => {
   const dir = tempManaged();
   const res = run(dir, "--apply");
-  assert.equal(res.status, 0, res.stderr);
-  assert.deepEqual(JSON.parse(fs.readFileSync(dropIn(dir), "utf8")), {
+  expect(res.status, res.stderr).toBe(0);
+  expect(JSON.parse(fs.readFileSync(dropIn(dir), "utf8"))).toStrictEqual({
     maxEffortLevel: "xhigh",
     fastMode: false,
     fastModePerSessionOptIn: true,
@@ -52,13 +51,13 @@ test("install-managed --apply creates the drop-in, then a re-run is a no-op", ()
       "claude-haiku-4-5",
     ],
   });
-  assert.deepEqual(fs.readdirSync(path.join(dir, "managed-settings.d")), [
+  expect(fs.readdirSync(path.join(dir, "managed-settings.d"))).toStrictEqual([
     "50-dotclaude.json",
   ]);
   const again = run(dir, "--apply");
-  assert.equal(again.status, 0, again.stderr);
-  assert.match(again.stdout, /nothing to change/);
-  assert.deepEqual(fs.readdirSync(dir), ["managed-settings.d"]);
+  expect(again.status, again.stderr).toBe(0);
+  expect(again.stdout).toMatch(/nothing to change/);
+  expect(fs.readdirSync(dir)).toStrictEqual(["managed-settings.d"]);
 });
 
 test("install-managed --yes backs up a differing file outside managed-settings.d", () => {
@@ -66,22 +65,18 @@ test("install-managed --yes backs up a differing file outside managed-settings.d
   fs.mkdirSync(path.join(dir, "managed-settings.d"));
   fs.writeFileSync(dropIn(dir), '{"fastMode": true}\n');
   const res = run(dir, "--apply", "--yes");
-  assert.equal(res.status, 0, res.stderr);
-  assert.match(res.stdout, /--- current/);
-  assert.equal(
-    JSON.parse(fs.readFileSync(dropIn(dir), "utf8")).fastMode,
-    false,
-  );
-  assert.deepEqual(fs.readdirSync(path.join(dir, "managed-settings.d")), [
+  expect(res.status, res.stderr).toBe(0);
+  expect(res.stdout).toMatch(/--- current/);
+  expect(JSON.parse(fs.readFileSync(dropIn(dir), "utf8")).fastMode).toBe(false);
+  expect(fs.readdirSync(path.join(dir, "managed-settings.d"))).toStrictEqual([
     "50-dotclaude.json",
   ]);
   const backups = fs
     .readdirSync(dir)
     .filter((f) => f.startsWith("50-dotclaude.json.dotclaude-backup-"));
-  assert.equal(backups.length, 1);
-  assert.ok(!backups[0].endsWith(".json"));
-  assert.equal(
-    fs.readFileSync(path.join(dir, backups[0]), "utf8"),
+  expect(backups.length).toBe(1);
+  expect(!backups[0].endsWith(".json")).toBeTruthy();
+  expect(fs.readFileSync(path.join(dir, backups[0]), "utf8")).toBe(
     '{"fastMode": true}\n',
   );
 });
@@ -91,10 +86,10 @@ test("install-managed refuses to overwrite a differing file without a TTY or --y
   fs.mkdirSync(path.join(dir, "managed-settings.d"));
   fs.writeFileSync(dropIn(dir), '{"fastMode": true}\n');
   const res = run(dir, "--apply");
-  assert.equal(res.status, 1);
-  assert.match(res.stderr, /--yes/);
-  assert.equal(fs.readFileSync(dropIn(dir), "utf8"), '{"fastMode": true}\n');
-  assert.deepEqual(fs.readdirSync(dir), ["managed-settings.d"]);
+  expect(res.status).toBe(1);
+  expect(res.stderr).toMatch(/--yes/);
+  expect(fs.readFileSync(dropIn(dir), "utf8")).toBe('{"fastMode": true}\n');
+  expect(fs.readdirSync(dir)).toStrictEqual(["managed-settings.d"]);
 });
 
 test("install-managed leaves managed-settings.json alone and names shared keys", () => {
@@ -103,8 +98,8 @@ test("install-managed leaves managed-settings.json alone and names shared keys",
   const text = '{"fastMode": true, "theme": "dark"}\n';
   fs.writeFileSync(base, text);
   const res = run(dir, "--apply");
-  assert.equal(res.status, 0, res.stderr);
-  assert.match(res.stdout, /also sets fastMode\./);
-  assert.equal(fs.readFileSync(base, "utf8"), text);
-  assert.ok(fs.existsSync(dropIn(dir)));
+  expect(res.status, res.stderr).toBe(0);
+  expect(res.stdout).toMatch(/also sets fastMode\./);
+  expect(fs.readFileSync(base, "utf8")).toBe(text);
+  expect(fs.existsSync(dropIn(dir))).toBeTruthy();
 });

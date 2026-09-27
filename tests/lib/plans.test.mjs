@@ -1,20 +1,19 @@
 // Claude plan detection and what the model lock and session notes do with it.
 
-import assert from "node:assert/strict";
+import { expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { test } from "node:test";
 import {
   currentPlan,
   detectPlan,
   fableAccess,
   planAllowlist,
   planNote,
-} from "../hooks/lib/_plans.mjs";
+} from "../../hooks/lib/_plans.mjs";
 
-const HOOKS = path.resolve(import.meta.dirname, "../hooks");
+const HOOKS = path.resolve(import.meta.dirname, "../../hooks");
 
 /** A config dir holding .claude.json with this oauthAccount (or none). */
 function configDir(oauthAccount) {
@@ -60,61 +59,57 @@ test("detectPlan follows Claude Code's organization types and rate-limit tiers",
     [{ organizationType: "something_new" }, null],
   ];
   for (const [account, plan] of cases)
-    assert.equal(detectPlan(account, {}), plan, JSON.stringify(account));
-  assert.equal(detectPlan(null, {}), null);
-  assert.equal(detectPlan(null, { ANTHROPIC_API_KEY: "x" }), "api");
-  assert.equal(detectPlan(MAX_20X, { CLAUDE_CODE_USE_BEDROCK: "1" }), "api");
+    expect(detectPlan(account, {}), JSON.stringify(account)).toBe(plan);
+  expect(detectPlan(null, {})).toBe(null);
+  expect(detectPlan(null, { ANTHROPIC_API_KEY: "x" })).toBe("api");
+  expect(detectPlan(MAX_20X, { CLAUDE_CODE_USE_BEDROCK: "1" })).toBe("api");
 });
 
 test("the claude_plan option overrides detection; junk values fall back to it", () => {
-  assert.deepEqual(
+  expect(
     currentPlan({ CLAUDE_PLUGIN_OPTION_CLAUDE_PLAN: "max_5x" }, PRO),
-    { plan: "max_5x", detected: false },
-  );
-  assert.equal(
+  ).toStrictEqual({ plan: "max_5x", detected: false });
+  expect(
     currentPlan({ CLAUDE_PLUGIN_OPTION_CLAUDE_PLAN: "auto" }, PRO).plan,
-    "pro",
-  );
-  assert.equal(
+  ).toBe("pro");
+  expect(
     currentPlan({ CLAUDE_PLUGIN_OPTION_CLAUDE_PLAN: "ultra" }, PRO).plan,
-    "pro",
-  );
+  ).toBe("pro");
 });
 
 test("fableAccess matches the plans Anthropic includes Fable in", () => {
-  assert.equal(fableAccess("max_20x"), "included");
-  assert.equal(fableAccess("team_premium"), "included");
-  assert.equal(fableAccess("pro", PRO), "unavailable");
-  assert.equal(
-    fableAccess("pro", { ...PRO, hasExtraUsageEnabled: true }),
+  expect(fableAccess("max_20x")).toBe("included");
+  expect(fableAccess("team_premium")).toBe("included");
+  expect(fableAccess("pro", PRO)).toBe("unavailable");
+  expect(fableAccess("pro", { ...PRO, hasExtraUsageEnabled: true })).toBe(
     "credits",
   );
-  assert.equal(fableAccess("api"), "api");
-  assert.equal(fableAccess("enterprise"), null);
-  assert.equal(fableAccess(null), null);
+  expect(fableAccess("api")).toBe("api");
+  expect(fableAccess("enterprise")).toBe(null);
+  expect(fableAccess(null)).toBe(null);
 });
 
 test("planAllowlist drops Fable only where the plan cannot run it", () => {
   const pro = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(PRO) });
-  assert.ok(!pro.list.some((m) => /fable/.test(m)));
-  assert.ok(pro.list.includes("claude-sonnet-5"));
-  assert.match(pro.note, /Claude Pro plan runs them on usage credits/);
+  expect(!pro.list.some((m) => /fable/.test(m))).toBeTruthy();
+  expect(pro.list.includes("claude-sonnet-5")).toBeTruthy();
+  expect(pro.note).toMatch(/Claude Pro plan runs them on usage credits/);
   const max = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(MAX_20X) });
-  assert.ok(max.list.includes("claude-fable-5-1"));
-  assert.equal(max.note, "");
+  expect(max.list.includes("claude-fable-5-1")).toBeTruthy();
+  expect(max.note).toBe("");
   const unknown = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(null) });
-  assert.ok(unknown.list.includes("claude-fable-5-1"));
+  expect(unknown.list.includes("claude-fable-5-1")).toBeTruthy();
 });
 
 test("planNote describes Fable's weekly cap on Max and the small window on Pro", () => {
   const max = planNote({ CLAUDE_CONFIG_DIR: configDir(MAX_20X) });
-  assert.match(max, /Claude Max 20x \(detected\)/);
-  assert.match(max, /up to 50% of it/);
-  assert.doesNotMatch(max, /5-hour window is small/);
+  expect(max).toMatch(/Claude Max 20x \(detected\)/);
+  expect(max).toMatch(/up to 50% of it/);
+  expect(max).not.toMatch(/5-hour window is small/);
   const pro = planNote({ CLAUDE_CONFIG_DIR: configDir(PRO) });
-  assert.match(pro, /leaves it out/);
-  assert.match(pro, /5-hour window is small/);
-  assert.equal(planNote({ CLAUDE_CONFIG_DIR: configDir(null) }), null);
+  expect(pro).toMatch(/leaves it out/);
+  expect(pro).toMatch(/5-hour window is small/);
+  expect(planNote({ CLAUDE_CONFIG_DIR: configDir(null) })).toBe(null);
 });
 
 function hook(script, input, env) {
@@ -128,7 +123,7 @@ function hook(script, input, env) {
       ...env,
     },
   });
-  assert.equal(res.status, 0, res.stderr);
+  expect(res.status, res.stderr).toBe(0);
   return res.stdout ? JSON.parse(res.stdout) : null;
 }
 
@@ -138,16 +133,15 @@ test("on Pro without extra usage, a switch to Fable is blocked with the reason",
     { hook_event_name: "PreModelSwitch", to_model: "claude-fable-5-1" },
     { CLAUDE_CONFIG_DIR: configDir(PRO) },
   );
-  assert.equal(out.decision, "block");
-  assert.match(out.reason, /extra usage is off/);
-  assert.equal(
+  expect(out.decision).toBe("block");
+  expect(out.reason).toMatch(/extra usage is off/);
+  expect(
     hook(
       "pre-model-switch/restrict-models.mjs",
       { hook_event_name: "PreModelSwitch", to_model: "claude-fable-5-1" },
       { CLAUDE_CONFIG_DIR: configDir(MAX_20X) },
     ),
-    null,
-  );
+  ).toBe(null);
 });
 
 test("session start carries the plan note, once per new session", () => {
@@ -157,9 +151,8 @@ test("session start carries the plan note, once per new session", () => {
       { hook_event_name: "SessionStart", source, model: "claude-opus-5-5" },
       { CLAUDE_CONFIG_DIR: configDir(MAX_20X) },
     );
-  assert.match(
-    start("startup").hookSpecificOutput.additionalContext,
+  expect(start("startup").hookSpecificOutput.additionalContext).toMatch(
     /<claude_plan source="dotclaude">/,
   );
-  assert.equal(start("resume"), null);
+  expect(start("resume")).toBe(null);
 });
