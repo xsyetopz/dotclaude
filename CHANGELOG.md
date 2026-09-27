@@ -10,6 +10,10 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-27
+
+After updating, re-run `/dotclaude:apply-settings-profile`.
+
 ### Added
 
 - A `justfile` with `test`, `lint`, `validate`, `check`, and `bump`
@@ -22,13 +26,6 @@ steps after each update.
   timeouts, and cancelled superseded pull-request runs. It checks format and
   import order as well as lint, covers `scripts/`, and reports one
   `all-green` check to require.
-
-## [0.6.0] - 2026-09-27
-
-After updating, re-run `/dotclaude:apply-settings-profile`.
-
-### Changed
-
 - Settings profile cuts background usage. Per Claude Code's costs and
   prompt-caching docs, each of these sends a request that re-reads the
   conversation:
