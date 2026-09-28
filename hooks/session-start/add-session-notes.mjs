@@ -4,9 +4,11 @@
 // and CAPTCHA options are passed on here, only when they differ from their
 // defaults. On Fable 5.1 it also adds the model's adjustments to the
 // Opus-tuned output style. It names the user's Claude plan and what that
-// means for model choice.
+// means for model choice, and gives the commit and pull request attribution
+// lines that the profile's `includeGitInstructions: false` drops.
 
-import { emit, option, pruneState, run } from "../lib/_common.mjs";
+import { attributionNote } from "../lib/_attribution.mjs";
+import { emit, option, projectRoot, pruneState, run } from "../lib/_common.mjs";
 import { FABLE, isFable } from "../lib/_model-notes.mjs";
 import { planNote } from "../lib/_plans.mjs";
 
@@ -22,7 +24,7 @@ function browserNotes() {
     notes.push("pass --no-humanize to the CloakBrowser launcher");
   if (option("captcha_ocr_ddddocr", false))
     notes.push(
-      "offline CAPTCHA OCR is enabled, so the recognize-captcha skill may be used when a text CAPTCHA appears despite CloakBrowser",
+      "offline CAPTCHA OCR is enabled, so you may use the recognize-captcha skill when a text CAPTCHA appears despite CloakBrowser",
     );
   return notes;
 }
@@ -37,6 +39,10 @@ run((data) => {
   if (!continued) {
     const plan = planNote();
     if (plan) parts.push(plan);
+    if (option("git_attribution")) {
+      const attribution = attributionNote(data.model, projectRoot(data));
+      if (attribution) parts.push(attribution);
+    }
   }
   const browser = browserNotes();
   if (browser.length)

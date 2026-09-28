@@ -101,6 +101,12 @@
       "description": "On git commit, ask when the staged set contains .DS_Store, .env files, keys, build output, or a lockfile without its manifest.",
       "default": true
     },
+    "git_attribution": {
+      "type": "boolean",
+      "title": "Git attribution",
+      "description": "Add Claude Code's Co-Authored-By commit trailer and pull request footer, which the settings profile's includeGitInstructions: false removes. The attribution setting still changes or removes them. Turn off for no attribution.",
+      "default": true
+    },
     "cloakbrowser": {
       "type": "boolean",
       "title": "CloakBrowser backend",
