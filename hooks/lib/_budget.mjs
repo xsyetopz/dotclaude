@@ -22,5 +22,49 @@ export const SUBAGENT_CONTEXT_GROWTH = 50_000;
 /** Subagents, and agents in one workflow, running at once. */
 export const MAX_CONCURRENT_AGENTS = 3;
 
+/**
+ * Size limits for instruction text. A warn is reported. A fail is reported
+ * as a failure, and dotclaude's own tests fail on it. Lines count newlines
+ * plus a final line without one. Tokens are an estimate (see `tokens`).
+ * Change a value only with the user's approval: fix the content instead.
+ *
+ * - instructionLines: each CLAUDE.md, CLAUDE.local.md, AGENTS.md, rule file,
+ *   and import, after block-level HTML comments are removed. Claude Code
+ *   targets 200.
+ * - startupInstructionTokens: all instruction text that loads at session
+ *   start together (the directory chain, the global file, imports, and rules
+ *   without `paths:`).
+ * - instructionFileBytes: Claude Code skips a larger file.
+ * - importHops: Claude Code follows at most four `@path` hops.
+ * - The rest are dotclaude's own files.
+ */
+export const LIMITS = {
+  instructionLines: { warn: 150, fail: 200 },
+  startupInstructionTokens: { warn: 3000, fail: 5000 },
+  instructionFileBytes: { fail: 4 * 1024 * 1024 },
+  importHops: { fail: 4 },
+  skillLines: { warn: 450, fail: 500 },
+  skillBodyTokens: { warn: 4500, fail: 5000 },
+  outputStyleTokens: { warn: 1000, fail: 2000 },
+  agentBodyTokens: { warn: 2000, fail: 5000 },
+  systemPromptTokens: { warn: 5000, fail: 15000 },
+};
+
+/** Estimated tokens: the larger of chars / 4 and words / 0.75. */
+export function tokens(text) {
+  const words = text.split(/\s+/).filter(Boolean).length;
+  return Math.max(Math.ceil([...text].length / 4), Math.ceil(words / 0.75));
+}
+
+/** Newlines, plus a final line without one. */
+export const lineCount = (text) =>
+  text === "" ? 0 : text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
+
+/** "warn", "fail", or null for `value` against one entry of LIMITS. */
+export function severity(value, limit) {
+  if (value > limit.fail) return "fail";
+  return limit.warn !== undefined && value > limit.warn ? "warn" : null;
+}
+
 /** `200k` style label for prose. */
 export const k = (n) => `${Math.round(n / 1000)}k`;

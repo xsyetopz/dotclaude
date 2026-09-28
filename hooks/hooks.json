@@ -33,6 +33,14 @@
               "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/prune-scratchpads.mjs"
             ],
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/warn-instruction-size.mjs"
+            ],
+            "timeout": 10
           }
         ]
       },
