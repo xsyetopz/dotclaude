@@ -1,10 +1,17 @@
 #!/usr/bin/env bun
+
 // SessionStart(startup|resume): tell the user (not Claude) when the settings
 // profile is missing or stale, when a global effort override flattens the
 // agents' effort levels, or when the Bun on PATH is older than the hooks need.
+// It also updates the launcher's copy of the dotclaude system prompt when this
+// plugin version ships a different one, and says when the session started
+// without that prompt: the launcher is not installed, or an IDE or another
+// program started Claude Code without the shell function.
 
+import fs from "node:fs";
 import { emit, option, run } from "../lib/_common.mjs";
 import { profileStamp, STAMP_KEY } from "../lib/_profile.mjs";
+import { installedPrompt, syncPrompt } from "../lib/_system-prompt.mjs";
 
 const MIN_BUN = "1.4.2";
 
@@ -39,6 +46,30 @@ run(() => {
   if (typeof Bun !== "undefined" && olderThan(Bun.version, MIN_BUN)) {
     notices.push(
       `its hooks need Bun ${MIN_BUN} or later, and ${Bun.version} is on PATH. Run \`bun upgrade\`.`,
+    );
+  }
+  // DOTCLAUDE_SYSTEM_PROMPT=0 is the user's choice to run without the prompt.
+  if (env.DOTCLAUDE_SYSTEM_PROMPT !== "0") {
+    const RULES =
+      "so this session has none of dotclaude's engineering or git rules, only the output style's rules on how to talk and report";
+    if (!fs.existsSync(installedPrompt())) {
+      notices.push(
+        `the dotclaude system prompt is not installed, ${RULES}. Run /dotclaude:apply-settings-profile to install its launcher, or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.`,
+      );
+    } else if (!env.DOTCLAUDE_LAUNCHER) {
+      // A proxy wrapper such as `headroom wrap claude` runs the binary from
+      // PATH, not the function, and sets ANTHROPIC_BASE_URL.
+      const proxy = env.ANTHROPIC_BASE_URL
+        ? ` A proxy wrapper such as \`headroom wrap claude\` also skips the function. Start the proxy alone (\`headroom proxy\`), export \`ANTHROPIC_BASE_URL=${env.ANTHROPIC_BASE_URL}\`, and run \`claude\`.`
+        : "";
+      notices.push(
+        `this session did not start through dotclaude's \`claude\` shell function, ${RULES}. Start Claude Code from a terminal that loads the function (re-run /dotclaude:apply-settings-profile if it is out of date), or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.${proxy}`,
+      );
+    }
+  }
+  if (syncPrompt() === "content") {
+    notices.push(
+      "this plugin version changed the dotclaude system prompt. The launcher's copy is updated, and new sessions use it.",
     );
   }
   if (notices.length) emit({ systemMessage: notices.join(" Also, ") });
