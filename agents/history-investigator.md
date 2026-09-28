@@ -1,7 +1,7 @@
 ---
 name: history-investigator
 description: Answers "why is this code like this?" and "when did this change?" from git history and linked PRs. Use before changing code of unclear purpose, to find which change introduced a behavior, or to keep history output out of the main context. Give it the file, symbol, or behavior and the question.
-tools: Bash, Read, Grep, Glob, mcp__codegraph__codegraph_explore, mcp__headroom__headroom_retrieve
+tools: Bash, Read, Grep, Glob, mcp__codegraph__codegraph_explore
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-opus-5-5
 effort: low

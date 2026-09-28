@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Fresh-context, read-only code review. Use when asked to review a diff, branch, or files, or before calling a large or risky change done. Give it the request or spec and the paths or git range, not your implementation reasoning, so its judgment stays independent.
-tools: Read, Grep, Glob, Bash, mcp__codegraph__codegraph_explore, mcp__headroom__headroom_retrieve
+tools: Read, Grep, Glob, Bash, mcp__codegraph__codegraph_explore
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-opus-5-5
 effort: high

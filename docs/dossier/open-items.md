@@ -14,13 +14,17 @@ source labels.
   foreground agent may not produce.
 - Consider moving the long injected texts into `hooks/prompts/*.md`, with
   placeholders filled from `_budget.mjs`.
-- Consider a notice that suggests `/compact` or `/clear` when a prompt
-  arrives on a large context after the 1-hour TTL. That was about 1.5% of cost
-  in the measured week.
 - Write a capability eval suite, blind and frozen before any run. It should
   cover long sessions across a compaction, corrections over several turns,
   large repositories, and terse-answer requests.
 - Measure per-turn effort changes in one long-lived process.
+- Measure `implementer` on Opus 5.5 against Sonnet 5 on the same tasks. The
+  runs on this machine had different tasks (see
+  [Model Fit](plans-and-models.md#model-fit)).
+- Load path-scoped `.claude/rules` files for Bash reads too.
+  `load-nested-instructions.mjs` covers only `CLAUDE.md`, `.claude/CLAUDE.md`,
+  and `CLAUDE.local.md`
+  ([#90450](https://github.com/anthropics/claude-code/issues/90450)).
 
 ## 9. Claims Not Acted On
 

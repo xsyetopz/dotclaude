@@ -87,6 +87,10 @@ Claude Code delivers nothing from an agent that it stops at its turn limit.
   descriptions.
 - **A per-session subagent count cap.** Concurrency and the context budget
   already bound the cost. A hard count stops legitimate long sessions.
+- **Headroom.** Removed in 0.10.0. It compresses tool output with loss. In
+  this repository it dropped words from files that Claude then read as
+  exact. The saving is on tool results only, which are a small part of a
+  cached context, and every agent needed its retrieve tool.
 - **Codex delegation.** Removed in 0.7.0. It was a second model catalog,
   quota reader, and profile writer. It also added Claude turns for the relay
   agents and for review of every GPT diff. **inference:** one morning of the

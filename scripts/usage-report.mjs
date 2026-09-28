@@ -8,8 +8,11 @@
 // bill them, but its limits track the same token mix, so the shares show
 // what spends a plan's limits. Reports the share by agent type, the share of
 // calls whose context is past 150k tokens, and the cost of full cache
-// rewrites (a write over 30k tokens that is larger than the read), and the
-// main-conversation turns that background agents started.
+// rewrites (a write over 30k tokens that is larger than the read), the
+// main-conversation turns that background agents started, the advisor's
+// share, and the prompt cache hit rate (cache reads over all input tokens).
+// An advisor call is an `advisor_message` entry in the call's
+// `usage.iterations`, and the call's own token counts leave it out.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -25,7 +28,7 @@ const PRICES = {
 
 export function callCost(model, u) {
   const family = Object.keys(PRICES).find((f) => String(model).includes(f));
-  if (!family) return { total: 0, write: 0, context: 0 };
+  if (!family) return { total: 0, write: 0, context: 0, read: 0 };
   const [pi, po, pr, p5, p1] = PRICES[family];
   const cc = u.cache_creation;
   const w1 = cc?.ephemeral_1h_input_tokens ?? 0;
@@ -39,6 +42,7 @@ export function callCost(model, u) {
     total: (input * pi + (u.output_tokens ?? 0) * po + read * pr) / 1e6 + write,
     write,
     context: input + read + (u.cache_creation_input_tokens ?? 0),
+    read,
     rewrite:
       (u.cache_creation_input_tokens ?? 0) > 30_000 &&
       (u.cache_creation_input_tokens ?? 0) > read,
@@ -66,6 +70,9 @@ export function report(root, since) {
   // report or task notification, or anything else (mostly the user).
   const turns = { wake: 0, other: 0 };
   let wakeCost = 0;
+  const advisor = { calls: 0, cost: 0 };
+  // Input tokens and cache reads, for all calls and for the main conversation.
+  const cache = { all: [0, 0], main: [0, 0] };
   const files = fs
     .readdirSync(root, { recursive: true })
     .map(String)
@@ -102,14 +109,27 @@ export function report(root, since) {
       if (new Date(entry.timestamp) < since || seen.has(m.id)) continue;
       seen.add(m.id);
       const c = callCost(m.model, m.usage);
+      for (const it of m.usage.iterations ?? []) {
+        if (it.type !== "advisor_message") continue;
+        const a = callCost(it.model, it).total;
+        advisor.calls += 1;
+        advisor.cost += a;
+        c.total += a;
+      }
       total += c.total;
       byAgent[type] = (byAgent[type] ?? 0) + c.total;
       if (c.context > 150_000) over150k += c.total;
       if (c.rewrite) rewrites += c.write;
       if (type === "main" && wake) wakeCost += c.total;
+      for (const key of type === "main" ? ["all", "main"] : ["all"]) {
+        cache[key][0] += c.context;
+        cache[key][1] += c.read;
+      }
     }
   }
   const share = (x) => (total ? Math.round((1000 * x) / total) / 10 : 0);
+  const hit = ([context, read]) =>
+    context ? Math.round((1000 * read) / context) / 10 : null;
   return {
     total: Math.round(total * 100) / 100,
     byAgent: Object.entries(byAgent)
@@ -123,6 +143,8 @@ export function report(root, since) {
     rewriteShare: share(rewrites),
     mainTurns: turns,
     wakeShare: share(wakeCost),
+    advisor: { calls: advisor.calls, share: share(advisor.cost) },
+    cacheHitRate: { all: hit(cache.all), main: hit(cache.main) },
   };
 }
 
@@ -153,6 +175,13 @@ if (import.meta.main) {
     console.log(`Full cache rewrites: ${r.rewriteShare}% of cost`);
     console.log(
       `Main turns started by background agents: ${r.mainTurns.wake} of ${r.mainTurns.wake + r.mainTurns.other}, ${r.wakeShare}% of cost`,
+    );
+    console.log(
+      `Advisor calls: ${r.advisor.calls}, ${r.advisor.share}% of cost (each reads the whole context without the cache)`,
+    );
+    // The cost guide: below about 80%, something is breaking the cache.
+    console.log(
+      `Cache hit rate: ${r.cacheHitRate.all ?? "-"}% of input tokens (main conversation ${r.cacheHitRate.main ?? "-"}%). Below about 80%, something breaks the cache.`,
     );
   }
 }

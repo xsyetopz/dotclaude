@@ -6,6 +6,7 @@
 // auto mode.
 
 import path from "node:path";
+import { claudeTrailerOff } from "../lib/_attribution.mjs";
 import { check } from "../lib/_bash-rules.mjs";
 import { decide, option, projectRoot, run } from "../lib/_common.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
@@ -25,6 +26,7 @@ run((data) => {
     allowedModels: planAllowlist().list,
     modelLock,
     commitHygiene: option("commit_hygiene"),
+    claudeTrailerOff: claudeTrailerOff(root),
   });
   if (!guard)
     findings = findings.filter(([, reason]) => LOCK_ONLY.test(reason));

@@ -10,6 +10,76 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-28
+
+### Added
+
+- A stale-cache notice. When you send a prompt after the main conversation's
+  prompt cache expired, and the context is 100k tokens or more, a message
+  tells you that this turn reads the whole context uncached, and that a
+  `/compact` now does the same. It suggests a handoff note and `/clear` for
+  new work. The TTL is 1 hour, or 5 minutes with
+  `CLAUDE_CODE_PROMPT_CACHE_TTL=5m` or `FORCE_PROMPT_CACHING_5M=1`. The
+  message goes to you only and adds nothing to the context. The `usage_notes`
+  option controls it.
+- The Bash guard denies a `git commit` whose message has a Claude
+  `Co-Authored-By` line when the `attribution` setting (or
+  `includeCoAuthoredBy: false`) leaves that line out. Claude Code adds it
+  anyway in some sessions
+  ([#4287](https://github.com/anthropics/claude-code/issues/4287),
+  [#93007](https://github.com/anthropics/claude-code/issues/93007)).
+- A status line. The main line shows the folder, the git state, the model
+  and effort, the context against the 200k handoff point, the prompt cache's
+  expiry and hit ratio, the usage limits, and the pull request. Colors change
+  at 75% and 90%, and parts drop by priority on a narrow terminal. The plugin
+  sets `subagentStatusLine`: each subagent row shows its context against the
+  150k subagent budget. Claude Code leaves `${CLAUDE_PLUGIN_ROOT}` empty in
+  that command, so it runs a stub in the config directory that session start
+  writes. A plugin cannot set `statusLine`, so
+  `/dotclaude:apply-settings-profile` offers it through
+  `apply-statusline.mjs`, which writes a stub that session start keeps
+  pointing at the current plugin version.
+- A nested-instructions hook. When a Bash command reads files in a
+  subdirectory with its own `CLAUDE.md`, `.claude/CLAUDE.md`, or
+  `CLAUDE.local.md`, the hook adds that file to the context once per session
+  or subagent. Claude Code loads these files only for the Read tool
+  ([#90450](https://github.com/anthropics/claude-code/issues/90450)). The
+  `nested_instructions` option controls it.
+- The usage report shows the prompt cache hit rate and the advisor's share of
+  cost.
+- `just sandbox` runs Claude Code with the checkout as its plugin in a
+  separate config directory. It skips onboarding and the trust dialog, and
+  it gives your login token to `claude` in its environment only.
+  `docs/sandbox.md` tells people and AI agents how to test in it.
+  `just sandbox-clean` removes it. `just usage` runs the usage report.
+
+### Changed
+
+- The dossier uses the official prompt-caching facts: an effort change keeps
+  the cache on Opus 5.5 and Fable 5.1, `/model` loses it, and a 1-hour cache
+  write costs 2x the input price.
+- Subagents are told that Claude Code refuses their writes to `.md` files
+  whose names start with `report`, `summary`, `findings`, or `analysis`
+  ([#44657](https://github.com/anthropics/claude-code/issues/44657)).
+- The usage-note levels (75% and 90%) move to `hooks/lib/_budget.mjs` as
+  `USAGE_LEVELS`, shared with the status line.
+
+### Removed
+
+- Headroom support. Headroom compresses tool output with loss, and in this
+  repository it dropped words from text that Claude read as exact. Its saving
+  is small against a cached context, and all agents needed its retrieve tool.
+  The agents, `/dotclaude:setup-integrations`, and the session-start notice no
+  longer name it. To remove it from your setup, run `headroom unwrap claude`
+  and `claude mcp remove headroom`, and take `headroom wrap` out of your
+  `claude` shell function.
+
+### Fixed
+
+- The usage report left out advisor calls, because the call's own `usage`
+  does not count them. It now adds each `advisor_message` in
+  `usage.iterations`.
+
 ## [0.9.0] - 2026-09-28
 
 ### Added

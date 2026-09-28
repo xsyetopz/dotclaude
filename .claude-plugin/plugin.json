@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Guardrails, working conventions, and a set of task agents for Claude Code: destructive-command and test-weakening guards that stay quiet on recoverable actions in auto mode, a verify-before-stop gate for the session and its subagents, compaction carry-over, a fast-mode/model lock (Opus 5.5, Sonnet 5, Fable 5.1, Haiku 4.5) with an xhigh effort cap that adapts to the Claude plan, reviewers, workers, and researchers on tiered models and effort, and an always-on output style.",
   "author": {
     "name": "xsyetopz"
@@ -39,6 +39,12 @@
       "type": "boolean",
       "title": "Secret redaction",
       "description": "Scan every tool output with gitleaks and replace each secret it finds with [REDACTED:<rule>] before the model sees it. Needs gitleaks on PATH. Without it, output passes through and session start says so.",
+      "default": true
+    },
+    "nested_instructions": {
+      "type": "boolean",
+      "title": "Nested instructions",
+      "description": "When a Bash command reads files in a subdirectory with its own CLAUDE.md, add that file to the context once, as the Read tool does. Claude Code loads these files only for the Read tool.",
       "default": true
     },
     "stop_gate": {
@@ -92,7 +98,7 @@
     "usage_notes": {
       "type": "boolean",
       "title": "Usage notes",
-      "description": "When Claude Code's cached usage shows the session or weekly limit past 75% or 90%, tell Claude once per level. Claude then routes the remaining work to stretch what is left. When a turn stops on a usage limit, show a terminal notification with the reset time and the resume command.",
+      "description": "When Claude Code's cached usage shows the session or weekly limit past 75% or 90%, tell Claude once per level. Claude then routes the remaining work to stretch what is left. When a turn stops on a usage limit, show a terminal notification with the reset time and the resume command. When a prompt arrives after the prompt cache expired on a context of 100k tokens or more, tell the user that a handoff and /clear cost less than going on.",
       "default": true
     },
     "allowed_models": {

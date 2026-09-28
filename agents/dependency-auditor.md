@@ -1,7 +1,7 @@
 ---
 name: dependency-auditor
 description: Audits dependencies for vulnerabilities, outdated or unmaintained packages, license problems, and unused or duplicate entries. Use before a release, when adding or upgrading dependencies, or when asked about dependency health. Give it the project path and any focus.
-tools: Bash, Read, Grep, Glob, WebFetch, WebSearch, mcp__codegraph__codegraph_explore, mcp__headroom__headroom_retrieve
+tools: Bash, Read, Grep, Glob, WebFetch, WebSearch, mcp__codegraph__codegraph_explore
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-opus-5-5
 effort: medium

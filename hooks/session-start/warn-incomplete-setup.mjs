@@ -16,6 +16,10 @@ import { emit, option, run } from "../lib/_common.mjs";
 import { profileStamp, STAMP_KEY } from "../lib/_profile.mjs";
 import { gitleaksInstalled } from "../lib/_secrets.mjs";
 import {
+  syncStatusLine,
+  syncSubagentStatusLine,
+} from "../lib/_status-line.mjs";
+import {
   installedPrompt,
   LAUNCHER_BEGIN,
   shellStartupFile,
@@ -79,19 +83,13 @@ run(() => {
         `the dotclaude system prompt is not installed, ${RULES}. Run /dotclaude:apply-settings-profile to install its launcher, or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.`,
       );
     } else if (!env.DOTCLAUDE_LAUNCHER) {
-      // A proxy wrapper such as `headroom wrap claude` runs the binary from
-      // PATH, not the function, and sets ANTHROPIC_BASE_URL. Passing the
-      // prompt through the wrapper keeps the proxy tied to the session.
-      const proxy = env.ANTHROPIC_BASE_URL
-        ? ` A proxy wrapper such as \`headroom wrap claude\` also skips the function. Give it the prompt: \`DOTCLAUDE_LAUNCHER=1 headroom wrap claude --no-mcp --code-memory none -- --system-prompt-file ${tilde(installedPrompt())}\`. It starts the proxy and stops it when the session ends.`
-        : "";
       const rc = shellStartupFile(path.basename(env.SHELL ?? ""));
       const installed = rc && readText(rc).includes(LAUNCHER_BEGIN);
       const fix = installed
         ? `\`${tilde(rc)}\` has the function, so the terminal was opened before it was added or an IDE started Claude Code. Run \`source ${tilde(rc)}\` or open a new terminal, then start \`claude\` again`
         : "Start Claude Code from a terminal that loads the function (re-run /dotclaude:apply-settings-profile if it is out of date)";
       notices.push(
-        `this session did not start through dotclaude's \`claude\` shell function, ${RULES}. ${fix}, or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.${proxy}`,
+        `this session did not start through dotclaude's \`claude\` shell function, ${RULES}. ${fix}, or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.`,
       );
     }
   }
@@ -100,6 +98,8 @@ run(() => {
       "secret redaction is on, but gitleaks is not on PATH, so tool output reaches Claude unscanned. Run `brew install gitleaks`, or turn off the secret_redaction option.",
     );
   }
+  syncStatusLine();
+  syncSubagentStatusLine();
   if (syncPrompt() === "content") {
     notices.push(
       "this plugin version changed the dotclaude system prompt. The launcher's copy is updated, and new sessions use it.",

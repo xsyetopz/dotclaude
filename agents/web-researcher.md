@@ -1,7 +1,7 @@
 ---
 name: web-researcher
 description: Answers a question from the web with sources (version-specific API docs, error messages, release notes, standards, product facts, comparisons). Use for any lookup needing web pages rather than local code, especially several pages. Give it the question, the versions that matter, and what the answer is for.
-tools: WebSearch, WebFetch, Read, Grep, Glob, Bash, mcp__headroom__headroom_retrieve
+tools: WebSearch, WebFetch, Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-opus-5-5
 effort: low

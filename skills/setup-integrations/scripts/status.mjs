@@ -93,7 +93,6 @@ function fastCompact() {
 }
 
 const servers = mcpServers();
-const baseUrl = process.env.ANTHROPIC_BASE_URL ?? null;
 console.log(
   JSON.stringify(
     {
@@ -110,14 +109,6 @@ console.log(
       },
       fast_compact: fastCompact(),
       gitleaks: { cli: version("gitleaks", "version") },
-      headroom: {
-        cli: version("headroom"),
-        mcp: servers.get("headroom") ?? null,
-        proxy:
-          baseUrl && /127\.0\.0\.1:8787|localhost:8787/.test(baseUrl)
-            ? baseUrl
-            : null,
-      },
     },
     null,
     2,

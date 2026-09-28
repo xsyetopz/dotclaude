@@ -19,6 +19,18 @@ validate:
 # Everything CI runs, plus plugin validation
 check: lint test validate
 
+# Run Claude Code with this checkout as its plugin, in a sandbox config apart from yours; extra arguments go to claude
+sandbox *args:
+    bun scripts/sandbox.mjs "$@"
+
+# Remove the sandbox config and project
+sandbox-clean:
+    bun scripts/sandbox.mjs --clean
+
+# Where your Claude Code usage went; extra arguments go to the report (--days N, --json)
+usage *args:
+    bun scripts/usage-report.mjs "$@"
+
 # Bump the version (major, minor, patch, or X.Y.Z) in both manifests and the CHANGELOG; add --dry-run to preview
 bump level *flags:
     bun scripts/bump-version.mjs "$@"

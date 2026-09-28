@@ -3,7 +3,7 @@ name: apply-settings-profile
 description: "Preview and apply the dotclaude settings profile (models, fast mode off, effort cap, secret-file denies, git instructions, agent bounds) to a Claude Code settings file, with the system-prompt launcher and optional managed-settings and global `CLAUDE.md` additions. Run when the user types /dotclaude:apply-settings-profile or asks to apply, update, or check the dotclaude settings."
 disable-model-invocation: true
 argument-hint: "[user|project|local]"
-allowed-tools: Bash(bun *apply-settings.mjs*) Bash(bun *apply-claude-md.mjs*) Bash(bun *apply-launcher.mjs*) Bash(bun *install-managed.mjs*)
+allowed-tools: Bash(bun *apply-settings.mjs*) Bash(bun *apply-claude-md.mjs*) Bash(bun *apply-launcher.mjs*) Bash(bun *apply-statusline.mjs*) Bash(bun *install-managed.mjs*)
 ---
 
 <task>
@@ -50,7 +50,7 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
    | `workflows` | the Workflow tool and workflow skills | about 5.4 KB per request. Workflows fan out many agents |
    | `loops` | the cron tools and ScheduleWakeup | about 4.6 KB per request. Each `/loop` wake-up is a full turn |
    | `report-findings` | ReportFindings | about 2.2 KB per request. Only Claude Code's `/code-review` uses it |
-   | `advisor` | the advisor tool | its calls count toward plan limits |
+   | `advisor` | the advisor tool | each call reads the whole conversation without the cache |
    | `explore-plan` | the Explore and Plan agents | they run on the main model, and dotclaude's agents cover them |
    | `bundled-skills` | Claude Code's bundled skills and workflows | their entries in the per-turn skill listing |
    | `auto-memory` | auto memory | its index in every session and its memory writes |
@@ -100,9 +100,18 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
    - The replacement does not carry auto memory's instructions or brief and focus mode's text. The script warns when auto memory is on.
    - `--remove --apply` takes the function and the prompt copy out again.
 
-7. Offer the optional managed-settings lock described in `<managed_settings>` below.
+7. Offer the dotclaude status line. It replaces the user's `statusLine` setting, so show the current command from the preview and apply only if the user agrees:
 
-8. Tell the user to restart Claude Code, since `env`, model settings, managed settings, and `CLAUDE.md` are read at startup. The launcher needs a new terminal.
+   ```bash
+   bun "${CLAUDE_SKILL_DIR}/scripts/apply-statusline.mjs"
+   bun "${CLAUDE_SKILL_DIR}/scripts/apply-statusline.mjs" --apply
+   ```
+
+   The line shows the folder, the git branch with changed files and ahead/behind counts, the model and effort, the context against the 200k handoff point, when the prompt cache goes cold and its hit ratio, and the 5-hour and weekly limits. Colors change at 75% and 90%. Without plan limits it shows the session's estimated cost. The plugin also sets `subagentStatusLine` through a stub that session start writes, so each subagent row shows its context against the 150k subagent budget. `--remove --apply` takes the status line out again.
+
+8. Offer the optional managed-settings lock described in `<managed_settings>` below.
+
+9. Tell the user to restart Claude Code, since `env`, model settings, managed settings, and `CLAUDE.md` are read at startup. The launcher needs a new terminal.
 </procedure>
 
 <plugin_options>

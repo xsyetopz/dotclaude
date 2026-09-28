@@ -19,7 +19,7 @@
     "settings": { "permissions": { "deny": ["ReportFindings"] } }
   },
   "advisor": {
-    "why": "Removes the advisor tool; its calls count toward plan limits.",
+    "why": "Removes the advisor tool. Each call reads the whole conversation without the cache, and counts toward plan limits.",
     "settings": { "env": { "CLAUDE_CODE_DISABLE_ADVISOR_TOOL": "1" } }
   },
   "explore-plan": {

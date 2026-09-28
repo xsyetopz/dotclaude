@@ -11,10 +11,11 @@ const SCRIPTS = {
   "apply-settings": "a Claude Code settings file",
   "apply-claude-md": "the global `CLAUDE.md`",
   "apply-launcher": "the shell startup file and the system-prompt copy",
+  "apply-statusline": "the user settings' `statusLine` and its stub",
   "install-managed": "the managed settings (admin rights)",
 };
 const SCRIPT =
-  /\b(apply-settings|apply-claude-md|apply-launcher|install-managed)\.mjs\b/g;
+  /\b(apply-settings|apply-claude-md|apply-launcher|apply-statusline|install-managed)\.mjs\b/g;
 
 export const SETTINGS_PATH =
   /(^|[/"'\s])(\.claude\/settings(\.local)?\.json|managed-settings(\.json|\.d\b))/;

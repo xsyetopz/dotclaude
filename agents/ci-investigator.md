@@ -1,7 +1,7 @@
 ---
 name: ci-investigator
 description: Finds why a CI run or pull request check failed, keeping log output out of the main context. Use when a GitHub Actions (or similar) check fails for an unknown reason. Give it the run URL or ID, the PR number, or the branch.
-tools: Bash, Read, Grep, Glob, mcp__codegraph__codegraph_explore, mcp__headroom__headroom_retrieve
+tools: Bash, Read, Grep, Glob, mcp__codegraph__codegraph_explore
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-opus-5-5
 effort: medium

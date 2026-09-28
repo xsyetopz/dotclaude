@@ -124,3 +124,73 @@ test("a usage-limit stop shows the limit, its reset, and the resume command", ()
   expect(stop({}, { error: "overloaded" })).toBe(null);
   expect(stop({ CLAUDE_PLUGIN_OPTION_USAGE_NOTES: "false" })).toBe(null);
 });
+
+/** A main transcript whose last API call was `idleMs` ago at `context` tokens. */
+function transcript(idleMs, context, extra = {}) {
+  const file = path.join(tmp("dotclaude-transcript-"), "t.jsonl");
+  const at = (ms) => new Date(Date.now() - ms).toISOString();
+  const call = (ms, sidechain = false) =>
+    JSON.stringify({
+      type: "assistant",
+      isSidechain: sidechain,
+      timestamp: at(ms),
+      message: {
+        usage: {
+          input_tokens: 10,
+          cache_read_input_tokens: context - 10,
+          cache_creation_input_tokens: 0,
+        },
+      },
+    });
+  fs.writeFileSync(
+    file,
+    [call(idleMs + 60_000), call(idleMs), extra.sidechain ? call(0, true) : ""]
+      .filter(Boolean)
+      .join("\n"),
+  );
+  return file;
+}
+
+test("a prompt after the prompt cache expired on a large context tells the user", () => {
+  const notice = (file, env = {}, prompt = "go on") =>
+    hook(
+      "user-prompt-submit/note-stale-cache.mjs",
+      {
+        hook_event_name: "UserPromptSubmit",
+        session_id: `s${Math.random()}`,
+        transcript_path: file,
+        prompt,
+      },
+      env,
+    );
+  const stale = notice(transcript(2 * 3600_000, 350_000));
+  expect(stale.systemMessage).toMatch(/idle for 2h.*350k tokens/);
+  expect(stale.systemMessage).toMatch(/\/clear/);
+  expect(stale.hookSpecificOutput).toBeUndefined();
+  // A sidechain call does not count as main-conversation activity.
+  expect(
+    notice(transcript(2 * 3600_000, 350_000, { sidechain: true }))
+      .systemMessage,
+  ).toMatch(/idle for 2h/);
+  // Warm cache, small context, generated prompts, or the option off: silent.
+  expect(notice(transcript(30 * 60_000, 350_000))).toBe(null);
+  expect(notice(transcript(2 * 3600_000, 40_000))).toBe(null);
+  expect(
+    notice(
+      transcript(2 * 3600_000, 350_000),
+      {},
+      "<task-notification>x</task-notification>",
+    ),
+  ).toBe(null);
+  expect(
+    notice(transcript(2 * 3600_000, 350_000), {
+      CLAUDE_PLUGIN_OPTION_USAGE_NOTES: "false",
+    }),
+  ).toBe(null);
+  // A 5-minute TTL setting shortens the idle bound.
+  expect(
+    notice(transcript(10 * 60_000, 350_000), {
+      CLAUDE_CODE_PROMPT_CACHE_TTL: "5m",
+    }).systemMessage,
+  ).toMatch(/idle for 10m/);
+});

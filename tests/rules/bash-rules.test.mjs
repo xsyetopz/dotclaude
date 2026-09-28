@@ -274,3 +274,24 @@ test("model lock off lets fast-mode settings through", () => {
     }),
   ).toBe("pass");
 });
+
+test("git commit with a Claude co-author trailer is denied when settings turn it off", () => {
+  const off = { ...ctx, claudeTrailerOff: true, commitHygiene: false };
+  const heredoc =
+    "git commit -m \"$(cat <<'EOF'\nfix: x\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nEOF\n)\"";
+  expect(level(heredoc, off)).toBe("deny");
+  expect(
+    level(
+      'git commit -m "fix" -m "co-authored-by: Claude <noreply@anthropic.com>"',
+      off,
+    ),
+  ).toBe("deny");
+  // A human co-author, another command, or trailers allowed by settings pass.
+  expect(
+    level('git commit -m "fix" -m "Co-Authored-By: Ann <ann@x.org>"', off),
+  ).toBe("pass");
+  expect(level('echo "Co-Authored-By: Claude" > notes.txt', off)).toBe("pass");
+  expect(
+    level(heredoc, { ...ctx, claudeTrailerOff: false, commitHygiene: false }),
+  ).toBe("pass");
+});

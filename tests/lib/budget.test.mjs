@@ -11,9 +11,11 @@ import {
   lineCount,
   MAIN_CONTEXT_TOKENS,
   MAX_CONCURRENT_AGENTS,
+  STALE_CACHE_CONTEXT_TOKENS,
   SUBAGENT_CONTEXT_TOKENS,
   severity,
   tokens,
+  USAGE_LEVELS,
 } from "../../hooks/lib/_budget.mjs";
 
 const root = path.join(import.meta.dir, "..", "..");
@@ -40,6 +42,15 @@ test("the system prompt, profile, and option text use the budget's numbers", () 
   );
   expect(read(".claude-plugin/plugin.json")).toContain(
     `passes about ${k(SUBAGENT_CONTEXT_TOKENS)} tokens`,
+  );
+  expect(read(".claude-plugin/plugin.json")).toContain(
+    `on a context of ${k(STALE_CACHE_CONTEXT_TOKENS)} tokens or more`,
+  );
+  const skill = read("skills/apply-settings-profile/SKILL.md");
+  expect(skill).toContain(`the ${k(MAIN_CONTEXT_TOKENS)} handoff point`);
+  expect(skill).toContain(`the ${k(SUBAGENT_CONTEXT_TOKENS)} subagent budget`);
+  expect(skill).toContain(
+    `Colors change at ${USAGE_LEVELS[0]}% and ${USAGE_LEVELS[1]}%`,
   );
 });
 

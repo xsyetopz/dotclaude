@@ -1,7 +1,7 @@
 ---
 name: plan-reviewer
 description: Read-only review of a plan or design before coding. Use when a plan spans several files or modules or changes a public interface, data model, or migration, or when asked for a second opinion on an approach. Give it the plan, the request it serves, and the relevant paths.
-tools: Read, Grep, Glob, Bash, mcp__codegraph__codegraph_explore, mcp__headroom__headroom_retrieve
+tools: Read, Grep, Glob, Bash, mcp__codegraph__codegraph_explore
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-opus-5-5
 effort: high

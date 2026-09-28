@@ -47,6 +47,24 @@ export function modelName(model) {
   return `Claude ${family} ${m[2].replace("-", ".")}`;
 }
 
+/**
+ * True when the settings leave no Claude co-author line in commits: a
+ * configured `attribution.commit` without one, or `includeCoAuthoredBy: false`.
+ * Opus 5.5 still adds the line from habit (claude-code #4287, #93007).
+ */
+export function claudeTrailerOff(projectDir) {
+  const s = settings(projectDir);
+  if (s.attribution)
+    return (
+      typeof s.attribution.commit === "string" &&
+      !CLAUDE_TRAILER.test(s.attribution.commit)
+    );
+  return s.includeCoAuthoredBy === false;
+}
+
+export const CLAUDE_TRAILER =
+  /(^|[\s"'])co-authored-by:[^\n]*(claude|anthropic)/im;
+
 /** The attribution note, or null when Claude Code sends its own or none. */
 export function attributionNote(model, projectDir) {
   const s = settings(projectDir);

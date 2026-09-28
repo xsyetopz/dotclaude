@@ -1,7 +1,7 @@
 ---
 name: security-reviewer
 description: Fresh-context, read-only security review. Use when code touches authentication, authorization, input parsing, file paths, shell or SQL construction, secrets, crypto, deserialization, or network boundaries, or when asked for a security review. Give it the paths or git range and what the code is for.
-tools: Read, Grep, Glob, Bash, mcp__codegraph__codegraph_explore, mcp__headroom__headroom_retrieve
+tools: Read, Grep, Glob, Bash, mcp__codegraph__codegraph_explore
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-opus-5-5
 effort: high

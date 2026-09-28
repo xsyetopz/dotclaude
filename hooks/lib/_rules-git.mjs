@@ -107,6 +107,10 @@ function gitSplit(args) {
   return { globals, sub: "", rest: [] };
 }
 
+export function isGitCommit(cmd) {
+  return cmd.name === "git" && gitSplit(cmd.args).sub === "commit";
+}
+
 function gitCwd(globals, ctx) {
   let cwd = ctx.cwd;
   for (let i = 0; i < globals.length - 1; i += 1) {

@@ -262,3 +262,31 @@ test("session notes restore the attribution that includeGitInstructions: false d
   settings(path.join(project, ".claude"), { includeCoAuthoredBy: false });
   expect(notes()).toBe(null);
 });
+
+test("claudeTrailerOff follows attribution.commit and includeCoAuthoredBy", async () => {
+  const { claudeTrailerOff } = await import("../../hooks/lib/_attribution.mjs");
+  const config = tmp("dotclaude-config-");
+  const project = tmp("dotclaude-project-");
+  const saved = process.env.CLAUDE_CONFIG_DIR;
+  process.env.CLAUDE_CONFIG_DIR = config;
+  const set = (s) =>
+    fs.writeFileSync(path.join(config, "settings.json"), JSON.stringify(s));
+  try {
+    expect(claudeTrailerOff(project)).toBe(false);
+    set({ attribution: { commit: "" } });
+    expect(claudeTrailerOff(project)).toBe(true);
+    set({ attribution: { commit: "Assisted-by: Claude" } });
+    expect(claudeTrailerOff(project)).toBe(true);
+    set({
+      attribution: { commit: "Co-Authored-By: Claude <noreply@anthropic.com>" },
+    });
+    expect(claudeTrailerOff(project)).toBe(false);
+    set({ attribution: { pr: "" } });
+    expect(claudeTrailerOff(project)).toBe(false);
+    set({ includeCoAuthoredBy: false });
+    expect(claudeTrailerOff(project)).toBe(true);
+  } finally {
+    if (saved === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+    else process.env.CLAUDE_CONFIG_DIR = saved;
+  }
+});

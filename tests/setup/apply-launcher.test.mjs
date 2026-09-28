@@ -168,7 +168,7 @@ test("session start updates an installed prompt copy that differs from the shipp
   expect(start({ DOTCLAUDE_SYSTEM_PROMPT: "0" })).toBe(null);
   expect(fs.existsSync(promptCopy(home))).toBe(false);
 
-  fs.mkdirSync(path.dirname(promptCopy(home)));
+  fs.mkdirSync(path.dirname(promptCopy(home)), { recursive: true });
   fs.writeFileSync(promptCopy(home), "old prompt\n");
   expect(start().systemMessage).toMatch(/changed the dotclaude system prompt/);
   expect(fs.readFileSync(promptCopy(home), "utf8")).toBe(renderPrompt());
@@ -191,15 +191,6 @@ test("session start updates an installed prompt copy that differs from the shipp
   );
   expect(start({ DOTCLAUDE_LAUNCHER: "", DOTCLAUDE_SYSTEM_PROMPT: "0" })).toBe(
     null,
-  );
-  // `headroom wrap claude` runs the binary from PATH with its proxy URL set.
-  expect(
-    start({
-      DOTCLAUDE_LAUNCHER: "",
-      ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
-    }).systemMessage,
-  ).toMatch(
-    /`DOTCLAUDE_LAUNCHER=1 headroom wrap claude --no-mcp --code-memory none -- --system-prompt-file [^`]+system-prompt\.md`.*stops it when the session ends/,
   );
 });
 

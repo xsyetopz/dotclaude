@@ -5,6 +5,7 @@
 // mode; see decide() in _common.mjs). The guard never returns "allow": commands that match
 // nothing fall through to Claude Code's normal permission flow.
 
+import { CLAUDE_TRAILER } from "./_attribution.mjs";
 import { positional } from "./_bash-args.mjs";
 import { DB_CLIENTS, db, dbReset, snapshotBless } from "./_rules-data.mjs";
 import {
@@ -16,7 +17,7 @@ import {
   rm,
   secretRead,
 } from "./_rules-filesystem.mjs";
-import { gitRule } from "./_rules-git.mjs";
+import { gitRule, isGitCommit } from "./_rules-git.mjs";
 import { claude, modelEnv, rawSettingsWrite } from "./_rules-model.mjs";
 import { curl, gh, PUBLISH, publish, wget } from "./_rules-remote.mjs";
 import { ignoredWalk } from "./_rules-search.mjs";
@@ -24,7 +25,7 @@ import { settingsWrite } from "./_rules-settings.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /**
- * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, commitHygiene?: boolean}} Context
+ * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean}} Context
  * @typedef {["deny" | "ask" | "warn", string]} Finding
  */
 
@@ -34,6 +35,15 @@ export function check(command, ctx) {
   const parsed = parse(command);
   const findings = parsed.commands.flatMap((cmd) => checkCommand(cmd, c));
   if (parsed.unparsed.length) findings.push(...rawScan(command));
+  if (
+    c.claudeTrailerOff &&
+    CLAUDE_TRAILER.test(command) &&
+    parsed.commands.some(isGitCommit)
+  )
+    findings.push([
+      "deny",
+      "the commit message has a Claude `Co-Authored-By` line, and the attribution settings leave it out. Remove the line and commit again",
+    ]);
   if (c.modelLock) findings.push(...rawSettingsWrite(command));
   findings.push(...settingsWrite(command));
   const seen = new Set();

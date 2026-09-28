@@ -107,6 +107,7 @@ test("settings writes ask in auto mode, where the classifier would deny them", (
     "apply-settings",
     "apply-claude-md",
     "apply-launcher",
+    "apply-statusline",
     "install-managed",
   ]) {
     const out = bash(`bun "/p/scripts/${script}.mjs" --scope user --apply`);

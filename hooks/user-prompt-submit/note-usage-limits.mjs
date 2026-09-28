@@ -6,10 +6,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { USAGE_LEVELS } from "../lib/_budget.mjs";
 import { emit, option, run, stateDir, userTyped } from "../lib/_common.mjs";
 import { readUsage } from "../lib/_usage.mjs";
 
-const LEVELS = [90, 75];
+const LEVELS = [...USAGE_LEVELS].reverse();
 
 function level(pct) {
   return LEVELS.find((l) => pct !== null && pct >= l) ?? 0;

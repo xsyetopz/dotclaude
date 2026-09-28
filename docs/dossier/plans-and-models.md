@@ -68,8 +68,22 @@ API list prices per million tokens (**official**):
 - Cache reads cost the same on Opus 5.5 and Sonnet 5. They were about 65% of
   the measured spend, so a move to Sonnet 5 halves only the writes and the
   output. **inference:** that is about a fifth to a third of subagent cost.
+- **official:** A 1-hour cache write costs 2x the input price. Cache reads
+  cost 0.1x, but 0.05x on Opus 5.5 and 0.025x on Fable 5.1.
+- **official:** In Claude Code, the main conversation's cache lives 1 hour on
+  a subscription within its limits and 5 minutes on usage credits or an API
+  key. Subagents use 5 minutes. A prompt after the TTL, and a `/compact`
+  after it, write the whole context again. dotclaude tells the user when this
+  happens on 100k tokens or more.
+- **official:** `/model` loses the whole cache. An effort change and the
+  advisor toggle keep it. `/rewind` and forks read the existing cache.
 - **measured:** A one-word Fable reply from a fresh `claude -p` context cost
   $0.47. Every fresh Fable context, such as a subagent, pays this fixed cost.
+- **measured:** An advisor call reads the whole conversation without the
+  cache. In one week of this machine's transcripts, 41 advisor calls read
+  215k tokens each on average, with no cache reads. That was 2.1% of the
+  API-equivalent cost on Opus 5.5. The call's own `usage` leaves the advisor
+  out, and `usage.iterations` holds it as an `advisor_message`.
 
 ### Model Fit
 
@@ -81,11 +95,21 @@ This section weighs **reported** experience and Anthropic's guidance.
   has not solved the problem. Users report fast drain of the 5-hour window,
   whole-file rewrites, and invented tests. It is not for subagents or routine
   work.
+- **The advisor:** the profile keeps `advisorModel` on Opus 5.5. The advisor
+  tool's prompt asks for a call before the work and a call before "done" on
+  each task of several steps. A Fable advisor would make Fable routine work,
+  at 2.5x the price of calls that already read the whole context uncached.
+  Claude Code 2.1.283 turns the advisor off when it is less capable than the
+  main model, so a session switched to Fable 5.1 has no advisor.
 - **Sonnet 5:** a plan-following subagent, not a main agent. Anthropic says
   it follows instructions literally, and reserves `low` effort for short,
   scoped tasks. dotclaude uses it only for fully specified agents
   (`mechanical-worker`, `test-runner`, `docs-writer`, `implementer`) and adds
-  a scope reminder.
+  a scope reminder. **measured:** On this machine, 169 `implementer` runs on
+  Opus 5.5 took 66 calls and $2.50 at the median, and 28 runs on Sonnet 5
+  took 50 calls and $1.03. The tasks were not the same, and Opus got the
+  slices that needed design judgment, so this does not test the report that
+  Opus 5.5 takes half the calls. `implementer` stays on Sonnet 5.
 - **Haiku 4.5:** single-turn, tightly scoped reading or relay work.
   dotclaude uses it only for `integration-setup` and background tasks.
 
@@ -93,8 +117,8 @@ This section weighs **reported** experience and Anthropic's guidance.
 
 - `maxEffortLevel: "xhigh"` blocks `max`. The claude.ai effort picker warns
   that `max` uses about 5.5x the usage on Opus 5.5 and 3.5x on Fable 5.1.
-- **reported:** Effort can change per turn without a cache miss on Opus 5.5.
-  **measured, inconclusive:** an effort change caused no extra miss. But
-  `claude -p --resume` already misses the cache after about 11.7k tokens, so
-  the test cannot show whether the conversation part survives. A clean test
-  needs one long-lived process.
+- **official:** Effort can change per turn without a cache miss on Opus 5.5
+  and Fable 5.1 (code.claude.com/docs/en/prompt-caching).
+- **official:** Medium effort costs about 70% of high for about 2.5 points
+  less. xhigh costs about 2.5x high for 1.4 points more. Start low and raise
+  effort on failure.

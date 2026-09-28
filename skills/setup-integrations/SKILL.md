@@ -1,7 +1,7 @@
 ---
 name: setup-integrations
-description: Install, check, and configure dotclaude's optional integrations (CodeGraph code-graph MCP, tgrep indexed search, Headroom context compression, fast-compact tool-output trimming, and the gitleaks scanner behind secret redaction). Use when the user asks to set up, install, check, repair, or reconfigure CodeGraph, tgrep, Headroom, fast-compact, or gitleaks, or a dotclaude agent reports one missing.
-argument-hint: "[status|codegraph|tgrep|headroom|fast-compact|gitleaks] [what to change]"
+description: Install, check, and configure dotclaude's optional integrations (CodeGraph code-graph MCP, tgrep indexed search, fast-compact tool-output trimming, and the gitleaks scanner behind secret redaction). Use when the user asks to set up, install, check, repair, or reconfigure CodeGraph, tgrep, fast-compact, or gitleaks, or a dotclaude agent reports one missing.
+argument-hint: "[status|codegraph|tgrep|fast-compact|gitleaks] [what to change]"
 context: fork
 agent: integration-setup
 allowed-tools: Bash(bun *status.mjs*)
@@ -49,16 +49,6 @@ Before installing, tell the user what dotclaude measured on their transcripts (`
 - Model: the plugin sends `jev-latest`, which TypeSafe accepts. Its bench script defaults to `jev-1.13`, which TypeSafe rejects. When running the bench against TypeSafe, pass `JEV_BASE_URL=https://api.typesafe.ai/v1/systemone JEV_MODEL=jev-latest`.
 - After a restart or `/reload-plugins`, `/fc` should report the model and a cost line. If it says no key was found, the key or provider setting is missing.
 </fast_compact>
-
-<headroom>
-Headroom compresses large tool output and keeps the originals retrievable through its MCP tools.
-
-- Install the CLI: `uv tool install --python 3.13 "headroom-ai[all]"`.
-- Register the MCP server for Claude Code: `headroom mcp install --agent claude`. Its tools appear as `mcp__headroom__headroom_retrieve`, `mcp__headroom__headroom_compress`, and `mcp__headroom__headroom_stats`.
-- Proxy mode routes all Claude Code traffic through a local proxy. Since it changes how every session reaches the API, set it up only when the request explicitly asks for it. Otherwise, mention it as an option.
-- The proxy recipe: `DOTCLAUDE_LAUNCHER=1 headroom wrap claude --no-mcp --code-memory none -- --system-prompt-file ~/.claude/dotclaude/system-prompt.md`. The wrapper skips dotclaude's `claude` shell function, so it must pass the system prompt itself. It starts the proxy, stops it when the last wrapped session ends, and restores `.claude/settings.local.json`. Suggest a shell function with this command. Do not tell the user to start `headroom proxy` alone and export `ANTHROPIC_BASE_URL`, because nothing then stops that proxy.
-- `headroom unwrap claude --keep-mcp` stops a proxy that stays after a crash and removes what the wrapper left in `.claude/settings.local.json`.
-</headroom>
 
 <gitleaks>
 dotclaude's secret redaction (the `secret_redaction` option, on by default) runs gitleaks on every tool output. It replaces each secret that gitleaks finds with `[REDACTED:<rule>]` before Claude sees it. Without gitleaks on PATH, output passes through and session start says so.

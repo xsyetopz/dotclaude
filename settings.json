@@ -1,0 +1,6 @@
+{
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "bun \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/dotclaude/subagent-statusline.mjs\""
+  }
+}

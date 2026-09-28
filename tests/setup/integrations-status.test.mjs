@@ -16,7 +16,7 @@ test("setup-integrations status reports MCP servers and index state", () => {
   fs.writeFileSync(
     path.join(home, ".claude.json"),
     JSON.stringify({
-      mcpServers: { headroom: { command: "headroom", env: { SECRET: "x" } } },
+      mcpServers: { other: { command: "other", env: { SECRET: "x" } } },
       projects: { [project]: { mcpServers: { codegraph: {} } } },
     }),
   );
@@ -40,5 +40,4 @@ test("setup-integrations status reports MCP servers and index state", () => {
   const status = JSON.parse(res.stdout);
   expect(status.codegraph.mcp).toBe("local");
   expect(status.codegraph.indexed).toBe(true);
-  expect(status.headroom.mcp).toBe("user");
 });

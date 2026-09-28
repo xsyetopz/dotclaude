@@ -20,8 +20,7 @@ cannot set permissions, environment variables, or models. This skill writes
 them into a settings file that you choose. It shows the changes and makes a
 backup first.
 
-For the optional integrations (CodeGraph, tgrep, Headroom, fast-compact,
-gitleaks), run
+For the optional integrations (CodeGraph, tgrep, fast-compact, gitleaks), run
 `/dotclaude:setup-integrations`, or ask Claude, for example "set up codegraph
 for this project".
 
@@ -63,6 +62,12 @@ You can turn off each hook in `/config` under dotclaude.
   on every tool output and replaces each secret that it finds with
   `[REDACTED:<rule>]` before Claude sees it. Without gitleaks on `PATH`,
   output passes through and session start says so.
+- **Nested instructions:** Claude Code loads a subdirectory's `CLAUDE.md`
+  only when the Read tool opens a file there
+  ([#90450](https://github.com/anthropics/claude-code/issues/90450)). When a
+  Bash command such as `cat`, `sed`, or `rg` reads files in that directory,
+  this hook adds its `CLAUDE.md`, `.claude/CLAUDE.md`, and `CLAUDE.local.md`
+  once per session. Path-scoped rules in `.claude/rules` are not covered.
 - **Quiet in auto mode:** recoverable actions ask only in attended modes, so
   an unattended session never waits on a prompt. Irreversible and public
   actions still ask.
@@ -83,7 +88,10 @@ You can turn off each hook in `/config` under dotclaude.
   and subagents run in the foreground.
 - **Usage notes:** tells Claude once when the session or weekly limit passes
   75% and 90%. When a turn stops on a usage limit, a terminal notification
-  names the limit, its reset time, and the `claude --resume` command.
+  names the limit, its reset time, and the `claude --resume` command. When a
+  prompt arrives after the prompt cache expired on a context of 100k tokens
+  or more, a message tells you that a handoff and `/clear` cost less than
+  going on or `/compact`.
 - **Stalled goals:** ends the turn and pauses a `/goal` when its check blocks
   a stop twice in a row with no work between.
 - **Instruction-file lint:** at session start, reports `CLAUDE.md`,
@@ -131,13 +139,42 @@ ignores an effort passed at spawn time.
 | Skill | Use |
 | --- | --- |
 | `/dotclaude:apply-settings-profile` | applies the settings profile |
-| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, Headroom, fast-compact, and gitleaks |
+| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, fast-compact, and gitleaks |
 | `write-session-handoff` | writes a note that a fresh session can continue from |
 | `drive-web-browser`, `recognize-captcha` | browser automation with agent-browser or CloakBrowser, offline CAPTCHA OCR |
 
 You name the skills with a leading `/`. You can put `/dotclaude:<skill>`
 anywhere in a message. A user-only skill must start the message. General
 workflow skills are in [xsyetopz/skills](https://github.com/xsyetopz/skills).
+
+## Status Line
+
+The main status line measures the session against dotclaude's bounds:
+
+- the folder, the git branch with changed files and commits ahead or behind,
+  and the model with its effort
+- the context against the 200k handoff point, with a bar that turns yellow
+  at 75% and red at 90%, and `handoff` past it
+- the prompt cache: the time it expires and its hit ratio, or the tokens that
+  the next turn re-reads when it is cold on 100k or more
+- the 5-hour and weekly limits with their reset times from 75%, or the
+  session cost when you pay per token
+- the pull request number, as a link
+
+Parts drop from the right by priority when the terminal is narrow. Each
+subagent row shows the agent, its model and effort, its context against the
+150k subagent budget, and its run time. The plugin sets the subagent rows
+through a stub that session start writes to
+`~/.claude/dotclaude/subagent-statusline.mjs`. A plugin cannot set the main
+line, so the settings profile skill offers it.
+It writes a small stub to `~/.claude/dotclaude/statusline.mjs`, and session
+start keeps the stub pointing at the current plugin version. To install or
+remove it yourself, run one of these in the plugin directory:
+
+```sh
+bun skills/apply-settings-profile/scripts/apply-statusline.mjs --apply
+bun skills/apply-settings-profile/scripts/apply-statusline.mjs --remove --apply
+```
 
 ## Settings Profile
 
@@ -177,6 +214,9 @@ model policy (`availableModels` and the `Agent(model:...)` denies).
   Bypass mode is off.
 - **Git:** the system prompt replaces Claude Code's git instructions. The
   `git_attribution` option keeps the commit trailer and pull request footer.
+  When the `attribution` setting leaves the Claude trailer out, the Bash guard
+  denies a `git commit` whose message still has it
+  ([#4287](https://github.com/anthropics/claude-code/issues/4287)).
 
 ### System Prompt Launcher
 
@@ -190,16 +230,6 @@ passes dotclaude's system prompt, which holds its engineering and git rules.
 - `DOTCLAUDE_SYSTEM_PROMPT=0 claude` starts one session with Claude Code's own
   prompt. Set the same variable to silence the session-start notice in an IDE
   that does not load your shell function.
-- A wrapper such as `headroom wrap claude` skips the function. Give the
-  wrapper the prompt instead. It starts the proxy and stops it when the
-  session ends:
-
-  ```sh
-  DOTCLAUDE_LAUNCHER=1 headroom wrap claude --no-mcp --code-memory none \
-    -- --system-prompt-file ~/.claude/dotclaude/system-prompt.md
-  ```
-
-  `headroom unwrap claude --keep-mcp` stops a proxy that stays after a crash.
 - `apply-launcher.mjs --remove --apply` removes the function.
 
 ### Managed Lock
@@ -216,7 +246,7 @@ Set these in `/config` under dotclaude.
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `bash_guard`, `edit_guard`, `secret_redaction`, `stop_gate`, `goal_loop_guard`, `compact_carryover`, `model_lock`, `commit_hygiene` | on | the hooks above |
+| `bash_guard`, `edit_guard`, `secret_redaction`, `nested_instructions`, `stop_gate`, `goal_loop_guard`, `compact_carryover`, `model_lock`, `commit_hygiene` | on | the hooks above |
 | `subagent_guidance` | on | shared rules and report format for agents, and the `general-purpose` refusal |
 | `ask_in_auto_mode` | off | asks about recoverable actions in auto mode too |
 | `git_attribution` | on | adds the `Co-Authored-By` trailer and pull request footer |
@@ -235,8 +265,15 @@ just validate                # claude plugin validate --strict
 just check                   # all three
 just bump minor --dry-run    # preview a version bump
 claude --plugin-dir . plugin details dotclaude  # inventory and token cost
-bun scripts/usage-report.mjs --days 7  # where your usage went
+just usage --days 7          # where your usage went
+just sandbox                 # Claude Code with this checkout, own config
+just sandbox-clean           # remove the sandbox
 ```
+
+`just sandbox` runs Claude Code with the checkout as its plugin in a
+separate config directory, so a test does not change your own setup.
+[docs/sandbox.md](docs/sandbox.md) tells how to test in it, for people and
+for AI agents.
 
 `just bump` sets one version in `.claude-plugin/plugin.json` and
 `package.json`, and it moves the `[Unreleased]` CHANGELOG entries under a

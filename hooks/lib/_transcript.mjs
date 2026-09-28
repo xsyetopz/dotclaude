@@ -32,19 +32,54 @@ function promptOf(entry) {
   return undefined;
 }
 
-export function recentPrompts(transcriptPath, limit = 5, maxChars = 600) {
-  let text;
+/** The last `maxBytes` of a file as text, or null when it cannot be read. */
+export function tail(file, maxBytes = MAX_BYTES) {
   try {
-    const stat = fs.statSync(transcriptPath);
-    const fd = fs.openSync(transcriptPath, "r");
-    const start = Math.max(0, stat.size - MAX_BYTES);
+    const stat = fs.statSync(file);
+    const fd = fs.openSync(file, "r");
+    const start = Math.max(0, stat.size - maxBytes);
     const buf = Buffer.alloc(stat.size - start);
     fs.readSync(fd, buf, 0, buf.length, start);
     fs.closeSync(fd);
-    text = buf.toString("utf8");
+    return buf.toString("utf8");
   } catch {
-    return [];
+    return null;
   }
+}
+
+/**
+ * The time (ms) and context tokens (input plus cache reads and writes) of the
+ * latest main-conversation API call, or null without one.
+ */
+export function lastMainCall(transcriptPath) {
+  const text = tail(transcriptPath, 2_000_000);
+  if (!text) return null;
+  const lines = text.split("\n");
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    if (!lines[i].includes('"usage"')) continue;
+    let entry;
+    try {
+      entry = JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
+    const u = entry.type === "assistant" ? entry.message?.usage : null;
+    const at = Date.parse(entry.timestamp);
+    if (!u || entry.isSidechain || Number.isNaN(at)) continue;
+    return {
+      at,
+      context:
+        (u.input_tokens ?? 0) +
+        (u.cache_read_input_tokens ?? 0) +
+        (u.cache_creation_input_tokens ?? 0),
+    };
+  }
+  return null;
+}
+
+export function recentPrompts(transcriptPath, limit = 5, maxChars = 600) {
+  const text = tail(transcriptPath);
+  if (text === null) return [];
   const prompts = [];
   for (const line of text.split("\n")) {
     if (!line.trim()) continue;

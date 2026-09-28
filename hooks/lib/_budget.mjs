@@ -7,6 +7,14 @@
 export const MAIN_CONTEXT_TOKENS = 200_000;
 
 /**
+ * Main-conversation context (tokens) at which a prompt that arrives after the
+ * prompt cache expired gets a notice: that turn writes the whole context to
+ * the cache again, at 1.25x the input price instead of reads at 0.05x on
+ * Opus 5.5.
+ */
+export const STALE_CACHE_CONTEXT_TOKENS = 100_000;
+
+/**
  * Subagent context (tokens) at which tool calls are refused and the agent
  * reports. In the week of 2026-09-21, 83% of implementer and 85% of
  * general-purpose cost came from calls above 100k.
@@ -18,6 +26,19 @@ export const SUBAGENT_CONTEXT_TOKENS = 150_000;
  * (a fork starts with the parent's context).
  */
 export const SUBAGENT_CONTEXT_GROWTH = 50_000;
+
+/**
+ * Usage-limit percentages at which the usage notes tell Claude and the status
+ * line turns yellow, then red. Claude Code starts warning at 75%.
+ */
+export const USAGE_LEVELS = [75, 90];
+
+/**
+ * Characters of nested CLAUDE.md text that one Bash call may add to the
+ * context (see hooks/post-tool-use/load-nested-instructions.mjs). A file
+ * past it is named instead, for Claude to open with the Read tool.
+ */
+export const NESTED_INSTRUCTIONS_CHARS = 10_000;
 
 /** Subagents, and agents in one workflow, running at once. */
 export const MAX_CONCURRENT_AGENTS = 3;

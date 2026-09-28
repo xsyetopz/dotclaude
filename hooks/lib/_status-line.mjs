@@ -1,0 +1,346 @@
+// dotclaude's status lines. The main line measures the session against
+// dotclaude's own bounds: context against the 200k handoff point, not the
+// model's window; the prompt cache's expiry and hit ratio; and the usage
+// limits at the levels the usage notes use. The subagent rows measure each
+// agent's context against the subagent budget.
+//
+// A plugin can ship only `subagentStatusLine`. The main `statusLine` lives in
+// the user's settings, so apply-statusline.mjs points it at a small stub at a
+// fixed path, and session start keeps the stub pointing at this plugin
+// version (the plugin's directory changes with every version). The plugin's
+// `subagentStatusLine` runs a stub too: Claude Code leaves
+// `${CLAUDE_PLUGIN_ROOT}` empty in that command, but sets CLAUDE_CONFIG_DIR.
+
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { stripVTControlCharacters } from "node:util";
+import {
+  k,
+  MAIN_CONTEXT_TOKENS,
+  STALE_CACHE_CONTEXT_TOKENS,
+  SUBAGENT_CONTEXT_TOKENS,
+  USAGE_LEVELS,
+} from "./_budget.mjs";
+
+const ESC = "\x1b[";
+const paint = (code) => (text) => `${ESC}${code}m${text}${ESC}0m`;
+export const C = {
+  dim: paint("2"),
+  bold: paint("1"),
+  red: paint("31"),
+  green: paint("32"),
+  yellow: paint("33"),
+  blue: paint("34"),
+  magenta: paint("35"),
+  cyan: paint("36"),
+};
+const SEP = C.dim(" · ");
+
+/** Visible width: ANSI colors and OSC 8 links take no columns. */
+export function width(text) {
+  return [...stripVTControlCharacters(text)].length;
+}
+
+const link = (url, text) => `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
+
+/** "claude-opus-5-5" -> "Opus 5.5", "claude-haiku-4-5-20251001" -> "Haiku 4.5". */
+export function shortModel(id) {
+  const m = /claude-([a-z]+)-(\d+(?:-\d+)?)/i.exec(String(id ?? ""));
+  if (!m) return String(id ?? "");
+  const [major, minor] = m[2].split("-");
+  const version = minor && minor.length <= 2 ? `${major}.${minor}` : major;
+  return `${m[1][0].toUpperCase()}${m[1].slice(1)} ${version}`;
+}
+
+/** Green, yellow at the first usage level, red at the second. */
+function levelColor(pct) {
+  const [warn, high] = USAGE_LEVELS;
+  if (pct >= high) return C.red;
+  if (pct >= warn) return C.yellow;
+  return C.green;
+}
+const byLevel = (pct, text) => levelColor(pct)(text);
+
+/** Context tokens against `limit`, with a bar and a handoff mark past it. */
+export function contextPart(tokens, limit, cells = 8) {
+  const fraction = tokens / limit;
+  const color = levelColor(fraction * 100);
+  const full = Math.round(Math.min(fraction, 1) * cells);
+  let text = `${color(`${k(tokens)}/${k(limit)}`)} ${color("█".repeat(full))}${C.dim("░".repeat(cells - full))}`;
+  if (fraction >= 1) text += ` ${C.red("handoff")}`;
+  return text;
+}
+
+const clock = (sec, now) => {
+  const d = new Date(sec * 1000);
+  const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  if (sec * 1000 - now < 20 * 3600_000) return hm;
+  return d.toLocaleDateString("en-US", { weekday: "short" });
+};
+
+/**
+ * The prompt cache: when it goes cold, and the hit ratio. A cold cache over
+ * the stale-cache bound is red, because the next turn re-reads it all.
+ */
+export function cachePart(cache, now = Date.now()) {
+  if (!cache?.caching_observed) return null;
+  const hit =
+    typeof cache.hit_ratio === "number"
+      ? Math.round(cache.hit_ratio * 100)
+      : null;
+  // The cost guide: below about 80%, something is breaking the cache.
+  const ratio =
+    hit === null ? "" : ` ${(hit < 80 ? C.yellow : C.dim)(`${hit}%`)}`;
+  if (cache.warm && cache.expires_at && cache.expires_at * 1000 > now)
+    return `${C.green("cache")} ${C.dim("till")} ${clock(cache.expires_at, now)}${ratio}`;
+  const recache = cache.recache_tokens_if_cold ?? 0;
+  if (recache >= STALE_CACHE_CONTEXT_TOKENS)
+    return `${C.red(`cache cold, ${k(recache)} to re-read`)}${ratio}`;
+  return `${C.dim("cache cold")}${ratio}`;
+}
+
+/** One usage window: "5h 23%", with its reset time once it passes a level. */
+export function limitPart(label, window, now = Date.now()) {
+  if (typeof window?.used_percentage !== "number") return null;
+  const pct = Math.round(window.used_percentage);
+  const reset =
+    pct >= USAGE_LEVELS[0] && window.resets_at
+      ? C.dim(` ↻${clock(window.resets_at, now)}`)
+      : "";
+  return `${C.dim(label)} ${byLevel(pct, `${pct}%`)}${reset}`;
+}
+
+/** Branch, dirty count, and ahead/behind from one `git status` call. */
+export function gitState(dir) {
+  const res = spawnSync(
+    "git",
+    ["--no-optional-locks", "-C", dir, "status", "--porcelain=v2", "--branch"],
+    { encoding: "utf8", timeout: 1500 },
+  );
+  if (res.status !== 0 || !res.stdout) return null;
+  let branch = null;
+  let oid = null;
+  let ahead = 0;
+  let behind = 0;
+  let dirty = 0;
+  for (const line of res.stdout.split("\n")) {
+    if (line.startsWith("# branch.head ")) branch = line.slice(14);
+    else if (line.startsWith("# branch.oid ")) oid = line.slice(13, 20);
+    else if (line.startsWith("# branch.ab ")) {
+      const m = /\+(\d+) -(\d+)/.exec(line);
+      if (m) [ahead, behind] = [Number(m[1]), Number(m[2])];
+    } else if (line && !line.startsWith("#")) dirty++;
+  }
+  return {
+    branch: branch === "(detached)" ? oid : branch,
+    dirty,
+    ahead,
+    behind,
+  };
+}
+
+function gitPart(git) {
+  if (!git?.branch) return null;
+  let text = C.magenta(git.branch);
+  if (git.dirty) text += C.yellow(` ±${git.dirty}`);
+  if (git.ahead) text += C.cyan(` ↑${git.ahead}`);
+  if (git.behind) text += C.cyan(` ↓${git.behind}`);
+  return text;
+}
+
+const REVIEW = {
+  approved: C.green,
+  changes_requested: C.red,
+  draft: C.dim,
+};
+
+/**
+ * The main status line. Parts carry a priority, and the lowest go first
+ * until the line fits `columns`.
+ */
+export function renderMain(
+  data,
+  { columns = 120, now = Date.now(), git } = {},
+) {
+  const dir = data.workspace?.current_dir || data.cwd || "";
+  const parts = [];
+  const add = (priority, text) => {
+    if (text) parts.push({ priority, text });
+  };
+
+  add(9, C.bold(C.blue(path.basename(dir) || dir)));
+  add(6, gitPart(git));
+
+  let model = C.bold(shortModel(data.model?.id) || data.model?.display_name);
+  if (data.effort?.level) model += ` ${C.dim(data.effort.level)}`;
+  if (data.fast_mode) model += ` ${C.red("FAST")}`;
+  add(8, model);
+
+  const ctx = data.context_window?.total_input_tokens;
+  if (typeof ctx === "number" && ctx > 0)
+    add(10, contextPart(ctx, MAIN_CONTEXT_TOKENS));
+
+  add(7, cachePart(data.prompt_cache, now));
+  add(5, limitPart("5h", data.rate_limits?.five_hour, now));
+  add(4, limitPart("7d", data.rate_limits?.seven_day, now));
+  // Subscribers see limits. Others pay per token, so they see the estimate.
+  if (!data.rate_limits && typeof data.cost?.total_cost_usd === "number")
+    add(3, C.dim(`$${data.cost.total_cost_usd.toFixed(2)}`));
+  if (data.pr?.number) {
+    const color = REVIEW[data.pr.review_state] ?? C.yellow;
+    const label = `${data.pr.kind === "mr" ? "!" : "#"}${data.pr.number}`;
+    add(2, color(data.pr.url ? link(data.pr.url, label) : label));
+  }
+
+  const kept = [...parts];
+  const fits = () => width(kept.map((p) => p.text).join(SEP)) <= columns;
+  while (kept.length > 1 && !fits()) {
+    const lowest = kept.reduce((a, b) => (b.priority < a.priority ? b : a));
+    kept.splice(kept.indexOf(lowest), 1);
+  }
+  return kept.map((p) => p.text).join(SEP);
+}
+
+function elapsed(startTime, now) {
+  const start =
+    typeof startTime === "number" ? startTime : Date.parse(startTime);
+  if (!Number.isFinite(start)) return null;
+  const min = Math.floor((now - start) / 60_000);
+  return min >= 60 ? `${Math.floor(min / 60)}h${min % 60}m` : `${min}m`;
+}
+
+/**
+ * One subagent row body: name, model and effort, context against the
+ * subagent budget, and run time. The description fills what is left.
+ */
+export function renderTask(task, { columns = 100, now = Date.now() } = {}) {
+  // `type` is the task kind ("local_agent"), so it is no name.
+  const head = [C.bold(task.name || task.agentType || "agent")];
+  const model = task.model ? shortModel(task.model) : "";
+  const effort = typeof task.effort === "string" ? task.effort : "";
+  if (model || effort)
+    head.push(C.dim([model, effort].filter(Boolean).join(" ")));
+  if (typeof task.tokenCount === "number" && task.tokenCount > 0)
+    head.push(contextPart(task.tokenCount, SUBAGENT_CONTEXT_TOKENS));
+  const time = elapsed(task.startTime, now);
+  if (time) head.push(C.dim(time));
+  let line = head.join(SEP);
+  const room = columns - width(line) - width(SEP);
+  const desc = String(task.description ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (desc && room > 8)
+    line +=
+      SEP + C.dim(desc.length > room ? `${desc.slice(0, room - 1)}…` : desc);
+  return line;
+}
+
+/**
+ * A subagent's type without its plugin prefix ("dotclaude:test-runner" ->
+ * "test-runner"). Claude Code's row input has no agent type, but the
+ * agent's `.meta.json` next to the session transcript has it.
+ */
+export function agentTypeOf(transcriptPath, id) {
+  if (!transcriptPath || !/^[A-Za-z0-9_-]+$/.test(String(id))) return null;
+  const meta = path.join(
+    transcriptPath.replace(/\.jsonl$/, ""),
+    "subagents",
+    `agent-${id}.meta.json`,
+  );
+  try {
+    const type = JSON.parse(fs.readFileSync(meta, "utf8")).agentType;
+    return typeof type === "string" ? type.replace(/^[^:]+:/, "") : null;
+  } catch {
+    return null;
+  }
+}
+
+const configDir = (env) =>
+  env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+
+/** The copy that the user's `statusLine` setting runs. */
+export function installedStatusLine(env = process.env) {
+  return path.join(configDir(env), "dotclaude", "statusline.mjs");
+}
+
+/** The copy that the plugin's `subagentStatusLine` setting runs. */
+export function installedSubagentStatusLine(env = process.env) {
+  return path.join(configDir(env), "dotclaude", "subagent-statusline.mjs");
+}
+
+export const MAIN_SCRIPT = path.resolve(
+  import.meta.dir,
+  "../status-line/main.mjs",
+);
+
+export const SUBAGENT_SCRIPT = path.resolve(
+  import.meta.dir,
+  "../status-line/subagents.mjs",
+);
+
+/**
+ * A stub's text: it runs `script` from this plugin version. The subagent
+ * stub prints nothing when the plugin is gone, so the rows keep Claude
+ * Code's default rendering.
+ */
+export function stubText(script = MAIN_SCRIPT) {
+  const missing =
+    script === SUBAGENT_SCRIPT
+      ? ""
+      : '\n  console.log("dotclaude status line: plugin not found, restart Claude Code");';
+  return `// Managed by dotclaude. Session start points this at the current plugin version.
+try {
+  await import(${JSON.stringify(pathToFileURL(script).href)});
+} catch {${missing}
+}
+`;
+}
+
+/** The `statusLine` setting that runs the stub. */
+export function statusLineSetting(stub = installedStatusLine()) {
+  return {
+    type: "command",
+    command: `bun ${JSON.stringify(stub)}`,
+    padding: 0,
+  };
+}
+
+/**
+ * Point an installed stub at this plugin version. A missing stub means the
+ * status line is not installed, so it stays missing. Returns true when it
+ * wrote.
+ */
+export function syncStatusLine(
+  stub = installedStatusLine(),
+  main = MAIN_SCRIPT,
+) {
+  let current;
+  try {
+    current = fs.readFileSync(stub, "utf8");
+  } catch {
+    return false;
+  }
+  const next = stubText(main);
+  if (current === next) return false;
+  fs.writeFileSync(stub, next);
+  return true;
+}
+
+/**
+ * Write the stub that the plugin's `subagentStatusLine` runs. The plugin
+ * ships that setting, so the stub is always written. Returns true when it
+ * wrote.
+ */
+export function syncSubagentStatusLine(stub = installedSubagentStatusLine()) {
+  const next = stubText(SUBAGENT_SCRIPT);
+  try {
+    if (fs.readFileSync(stub, "utf8") === next) return false;
+  } catch {
+    fs.mkdirSync(path.dirname(stub), { recursive: true });
+  }
+  fs.writeFileSync(stub, next);
+  return true;
+}
