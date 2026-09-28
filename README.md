@@ -1,9 +1,9 @@
 # dotclaude
 
 A Claude Code plugin for software engineering with Claude Opus 5.5. Hooks
-enforce what can be checked mechanically, an always-on output style sets working
-conventions for what can't, and a set of agents and skills covers review,
-delegated work, and research.
+enforce what can be checked mechanically, a replacement system prompt and an
+always-on output style set working conventions for what can't, and a set of
+agents and skills covers review, delegated work, and research.
 
 ## Install
 
@@ -95,6 +95,16 @@ checkout instead, run `claude --plugin-dir /path/to/dotclaude`.
   with a note that only you can change or end it (`/goal <new condition>`,
   `/goal clear`), instead of up to 9 rounds that each re-read the whole
   context.
+- **Instruction-file lint**: at session start, a warning when an
+  instruction file passes 150 lines, and a failure when it passes 200. The
+  check covers every `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, and
+  `.claude/rules/` file and every file they `@import`, without block-level
+  HTML comments. The instructions that load at session start get a warning
+  above about 3,000 tokens together, and a failure above 5,000. A file above
+  4 MiB, an import more than four hops deep, and an `AGENTS.md` that a
+  `CLAUDE.md` hides without `@AGENTS.md` are also reported. Names symlinked
+  to one file (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) are checked once, under
+  the original's path. A symlink to a missing file gets its own warning.
 - **Tagged messages**: everything dotclaude shows Claude or you starts with
   `[dotclaude]`.
 
@@ -215,12 +225,34 @@ project, or local settings. It sets:
   - read denies for `.env` files and credential directories;
   - bypass mode disabled.
 - **Git**: Claude Code's built-in git instructions replaced by the output
-  style's.
+  style's. The session notes keep the commit trailer and pull request footer
+  (see `git_attribution` under Options).
 - **`$schema`**: the documented settings schema, for editor completion.
 
 The merge only adds, except for the model policy (`availableModels` and
 `Agent(model:...)` denies), which it replaces. It can also add a short marked
 section to `~/.claude/CLAUDE.md`.
+
+The skill also installs dotclaude's own system prompt, which replaces Claude
+Code's built-in one and holds dotclaude's engineering and git rules. The
+prompt names the installed Claude Code version. The output style keeps only
+how Claude talks and reports, so without the launcher those rules are not
+sent. Only the `--system-prompt-file` flag can replace that
+prompt, and a plugin cannot pass flags, so the skill adds a `claude` function
+to your shell's startup file: `.zshrc`, `.bash_profile` on macOS or `.bashrc`
+elsewhere, `conf.d/dotclaude.fish`, or the PowerShell `$PROFILE`. The function
+adds nothing when you pass your own `--system-prompt` or
+`--system-prompt-file`. `DOTCLAUDE_SYSTEM_PROMPT=0 claude` starts one session
+with Claude Code's own prompt. Session start keeps the prompt copy in
+`~/.claude/dotclaude/` up to date after each plugin or Claude Code update.
+It also tells you when a session starts without the prompt, for example from
+an IDE that does not load your shell's function. Set
+`DOTCLAUDE_SYSTEM_PROMPT=0` in that environment to silence it. A proxy
+wrapper such as `headroom wrap claude` also runs Claude Code without the
+function. Run `headroom proxy` instead, export
+`ANTHROPIC_BASE_URL=http://127.0.0.1:8787`, and start `claude` as usual. The
+replacement does not carry auto memory's instructions, which the profile turns
+off. Run `apply-launcher.mjs --remove --apply` to take it out.
 
 The profile sets a ceiling, not a level. Opus 5.5 defaults to medium, which
 suits coding; use `/effort high` for hard debugging and planning, and do not set
@@ -246,6 +278,11 @@ Set in `/config` under dotclaude:
   `subagent_guidance` for the shared working-tree rules, the progress log, and
   the report format, so turning it off weakens them. `subagent_guidance` also
   refuses `general-purpose` agents in favor of the dotclaude agent for the job.
+- **Git attribution**: `git_attribution`, on by default. The settings profile
+  turns off Claude Code's git instructions, and Claude Code then drops its
+  `Co-Authored-By` commit trailer and pull request footer. This option adds
+  them back through the session notes. Claude Code's `attribution` setting
+  still changes or removes them. Turn the option off for no attribution.
 - **Model lists**: `allowed_models` lists the Claude models the lock accepts.
 - **Claude plan**: `claude_plan` is `auto` by default, which reads the plan
   from Claude Code's cached account; set `pro`, `max_5x`, `max_20x`,
@@ -266,8 +303,8 @@ Set in `/config` under dotclaude:
 - **No banned-phrase lists.** They get routed around with synonyms, so the
   conventions name what each behavior does and why.
 - **No hooks that judge tone or architecture.** A regex can't tell a needed
-  abstraction from a speculative one, so those live in the output style and the
-  reviewers.
+  abstraction from a speculative one, so those live in the system prompt and
+  the reviewers.
 - **No prompt-type or agent-type hooks.** They spend usage on every event.
 - **Only documented extension points.** dotclaude uses hooks, output styles,
   skills, agents, `userConfig`, and settings keys, and never patches Claude

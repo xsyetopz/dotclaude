@@ -401,3 +401,43 @@ TypeSafe `jev-latest`; 20 points answered, 8 failed at the API):
   a token proxy the bench's blind check agreed with 71% of the time, and the
   "Neither" row covers tokens that reached Claude some other way (hook
   context, files, paraphrase).
+
+## 9. Reported: two Max 5x plans against one Max 20x (2026-09-28)
+
+A comment in the r/ClaudeCode thread "I exhausted my claude max 20x weekly
+limit" ([source][reddit-20x]) claims:
+
+- Max 20x gives about 1.7 times the weekly usage of Max 5x.
+- Max 20x gives 4 times the usage of Max 5x in one 5-hour window.
+- So two Max 5x plans give about twice the weekly usage of Max 5x, for the
+  same price as one Max 20x.
+
+This is one user's report. It is not verified, and Anthropic's plan pages do
+not state a weekly ratio between the two plans ([usage-limits]). Check the
+consumer terms before you hold two plans on one person's account.
+
+If the claim is true, it changes the choice as follows:
+
+- When the weekly limit stops you first, two Max 5x plans give more work per
+  dollar.
+- When the 5-hour window stops you first, Max 20x gives more work in one
+  window.
+
+dotclaude does not act on this claim. `claude_plan` still reads one plan.
+
+### Tool calls and usage
+
+Usage is counted in tokens, not in tool calls. Each model turn re-reads the
+whole context. So the count that costs usage is the number of turns, not the
+number of tool calls.
+
+- Several independent tool calls in one response take one turn. The same calls
+  made one after another take one turn each, and each turn re-reads the
+  context. The output style already says: "Batch independent tool calls in one
+  response."
+- One Bash call can do several reads, for example
+  `sed -n 1,40p a.mjs; rg -n foo src/`. That takes one turn and one result.
+- Claude Code has no general tool that runs several tools in one call.
+  [bundle, 2.1.283] Parallel calls in one response are the batch.
+
+[reddit-20x]: https://www.reddit.com/r/ClaudeCode/comments/1ws56p0/i_exhausted_my_claude_max_20x_weekly_limit_how/
