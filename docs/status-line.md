@@ -34,7 +34,9 @@ The second row shows what the session uses:
   whole context to the cache again. When you see the expiry time, you can
   answer before it or decide on a handoff. The miss cause tells you what broke
   the cache, for example a model or effort change
-  ([prices](dossier/plans-and-models.md#prices)).
+  ([prices](dossier/plans-and-models.md#prices)). A miss from idle time past
+  the cache lifetime does not count, because nothing broke the cache. The
+  stale-cache notice tells you about it before the turn.
 - **Limits from 75%:** the same levels as the
   [usage notes](hooks.md#usage-notes-usage_notes). Below 75% a limit does not
   change what you do, so it takes little space.

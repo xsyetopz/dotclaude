@@ -95,10 +95,18 @@ export function cachePart(cache, now = Date.now()) {
   let ratio =
     hit === null ? "" : ` ${(hit < 80 ? C.yellow : C.dim)(`${hit}%`)}`;
   // Misses tell an advanced user that something breaks the cache, and the
-  // last cause tells them what.
-  if (cache.misses > 0) {
+  // last cause tells them what. Idle time past the TTL breaks nothing, and the
+  // stale-cache notice covers it, so those misses do not count. Claude Code
+  // records a TTL cause only when no other cause applies, so subtracting the
+  // TTL counts is exact.
+  const idle =
+    (cache.miss_causes?.ttl_expired_5m ?? 0) +
+    (cache.miss_causes?.ttl_expired_1h ?? 0);
+  const misses = (cache.misses ?? 0) - idle;
+  if (misses > 0) {
     const cause = cache.last_miss_cause?.causes?.[0];
-    ratio += ` ${C.yellow(`${cache.misses} miss${cause ? ` ${cause}` : ""}`)}`;
+    const shown = cause && !cause.startsWith("ttl_expired") ? ` ${cause}` : "";
+    ratio += ` ${C.yellow(`${misses} miss${shown}`)}`;
   }
   if (cache.warm && cache.expires_at && cache.expires_at * 1000 > now)
     return `${C.green("cache")} ${C.dim("till")} ${clock(cache.expires_at, now)}${ratio}`;

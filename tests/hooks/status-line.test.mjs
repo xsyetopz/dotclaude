@@ -80,6 +80,30 @@ test("the cache part shows the expiry while warm and the re-read cost when cold"
   expect(cachePart({ caching_observed: false }, NOW)).toBe(null);
 });
 
+test("the cache part counts only misses that idle time did not cause", () => {
+  const warm = {
+    caching_observed: true,
+    warm: true,
+    expires_at: sec(NOW + 40 * 60_000),
+    hit_ratio: 0.97,
+  };
+  const idle = {
+    ...warm,
+    misses: 1,
+    last_miss_cause: { causes: ["ttl_expired_1h"] },
+    miss_causes: { ttl_expired_1h: 1 },
+  };
+  expect(plain(cachePart(idle, NOW))).toBe("cache till 12:40 97%");
+  // The last miss came from idle time, so its cause does not name the others.
+  const mixed = {
+    ...warm,
+    misses: 4,
+    last_miss_cause: { causes: ["ttl_expired_5m"] },
+    miss_causes: { tools_changed: 1, ttl_expired_5m: 2, ttl_expired_1h: 1 },
+  };
+  expect(plain(cachePart(mixed, NOW))).toBe("cache till 12:40 97% 1 miss");
+});
+
 test("a usage limit shows its reset only from the first usage level", () => {
   const reset = sec(NOW + 90 * 60_000);
   expect(

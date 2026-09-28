@@ -10,6 +10,15 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-09-28
+
+### Changed
+
+- The main status line counts only prompt cache misses that something broke,
+  for example a model, tool, or system prompt change. It does not count misses
+  from idle time past the cache lifetime (`ttl_expired_5m`, `ttl_expired_1h`),
+  because they break nothing and the stale-cache notice already covers them.
+
 ## [0.10.1] - 2026-09-28
 
 ### Added
