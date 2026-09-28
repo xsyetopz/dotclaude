@@ -181,6 +181,19 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/redact-secrets.mjs"
+            ],
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUseFailure": [

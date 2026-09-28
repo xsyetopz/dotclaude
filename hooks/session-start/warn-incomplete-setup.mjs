@@ -6,13 +6,15 @@
 // It also updates the launcher's copy of the dotclaude system prompt when this
 // plugin version ships a different one, and says when the session started
 // without that prompt: the launcher is not installed, or an IDE or another
-// program started Claude Code without the shell function.
+// program started Claude Code without the shell function. With secret
+// redaction on, it says when gitleaks is missing.
 
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { emit, option, run } from "../lib/_common.mjs";
 import { profileStamp, STAMP_KEY } from "../lib/_profile.mjs";
+import { gitleaksInstalled } from "../lib/_secrets.mjs";
 import {
   installedPrompt,
   LAUNCHER_BEGIN,
@@ -78,9 +80,10 @@ run(() => {
       );
     } else if (!env.DOTCLAUDE_LAUNCHER) {
       // A proxy wrapper such as `headroom wrap claude` runs the binary from
-      // PATH, not the function, and sets ANTHROPIC_BASE_URL.
+      // PATH, not the function, and sets ANTHROPIC_BASE_URL. Passing the
+      // prompt through the wrapper keeps the proxy tied to the session.
       const proxy = env.ANTHROPIC_BASE_URL
-        ? ` A proxy wrapper such as \`headroom wrap claude\` also skips the function. Start the proxy alone (\`headroom proxy\`), export \`ANTHROPIC_BASE_URL=${env.ANTHROPIC_BASE_URL}\`, and run \`claude\`.`
+        ? ` A proxy wrapper such as \`headroom wrap claude\` also skips the function. Give it the prompt: \`DOTCLAUDE_LAUNCHER=1 headroom wrap claude --no-mcp --code-memory none -- --system-prompt-file ${tilde(installedPrompt())}\`. It starts the proxy and stops it when the session ends.`
         : "";
       const rc = shellStartupFile(path.basename(env.SHELL ?? ""));
       const installed = rc && readText(rc).includes(LAUNCHER_BEGIN);
@@ -91,6 +94,11 @@ run(() => {
         `this session did not start through dotclaude's \`claude\` shell function, ${RULES}. ${fix}, or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.${proxy}`,
       );
     }
+  }
+  if (option("secret_redaction") && !gitleaksInstalled()) {
+    notices.push(
+      "secret redaction is on, but gitleaks is not on PATH, so tool output reaches Claude unscanned. Run `brew install gitleaks`, or turn off the secret_redaction option.",
+    );
   }
   if (syncPrompt() === "content") {
     notices.push(

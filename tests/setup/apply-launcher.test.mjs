@@ -151,6 +151,7 @@ test("session start updates an installed prompt copy that differs from the shipp
       {
         CLAUDE_CONFIG_DIR: config,
         CLAUDE_PLUGIN_OPTION_MODEL_LOCK: "false",
+        CLAUDE_PLUGIN_OPTION_SECRET_REDACTION: "false",
         CLAUDE_CODE_EFFORT_LEVEL: "",
         DOTCLAUDE_SYSTEM_PROMPT: "",
         DOTCLAUDE_LAUNCHER: "1",
@@ -198,7 +199,7 @@ test("session start updates an installed prompt copy that differs from the shipp
       ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
     }).systemMessage,
   ).toMatch(
-    /`headroom proxy`.*`ANTHROPIC_BASE_URL=http:\/\/127\.0\.0\.1:8787`/,
+    /`DOTCLAUDE_LAUNCHER=1 headroom wrap claude --no-mcp --code-memory none -- --system-prompt-file [^`]+system-prompt\.md`.*stops it when the session ends/,
   );
 });
 

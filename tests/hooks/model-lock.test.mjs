@@ -116,9 +116,12 @@ test("general-purpose is refused, and other subagents run in the foreground", ()
       env,
     )?.hookSpecificOutput;
   const forksOff = { CLAUDE_CODE_FORK_SUBAGENT: "false" };
-  expect(
-    spawn({ subagent_type: "general-purpose", prompt: "x" }).permissionDecision,
-  ).toBe("deny");
+  const refused = spawn({ subagent_type: "general-purpose", prompt: "x" });
+  expect(refused.permissionDecision).toBe("deny");
+  // A plan has a route too, so it does not go to an implementer.
+  expect(refused.permissionDecisionReason).toMatch(
+    /Draft a plan yourself.*`dotclaude:plan-reviewer`/,
+  );
   expect(spawn({ prompt: "x" }, forksOff).permissionDecision).toBe("deny");
   const rewritten = spawn({
     subagent_type: "dotclaude:implementer",

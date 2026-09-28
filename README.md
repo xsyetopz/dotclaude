@@ -20,7 +20,8 @@ cannot set permissions, environment variables, or models. This skill writes
 them into a settings file that you choose. It shows the changes and makes a
 backup first.
 
-For the optional integrations (CodeGraph, tgrep, Headroom, fast-compact), run
+For the optional integrations (CodeGraph, tgrep, Headroom, fast-compact,
+gitleaks), run
 `/dotclaude:setup-integrations`, or ask Claude, for example "set up codegraph
 for this project".
 
@@ -58,6 +59,10 @@ You can turn off each hook in `/config` under dotclaude.
 - **Edit guard:** asks before an edit removes test assertions or skips an
   existing test. It also asks before edits to Claude settings, generated
   files, or lockfiles.
+- **Secret redaction:** runs [gitleaks](https://github.com/gitleaks/gitleaks)
+  on every tool output and replaces each secret that it finds with
+  `[REDACTED:<rule>]` before Claude sees it. Without gitleaks on `PATH`,
+  output passes through and session start says so.
 - **Quiet in auto mode:** recoverable actions ask only in attended modes, so
   an unattended session never waits on a prompt. Irreversible and public
   actions still ask.
@@ -126,7 +131,7 @@ ignores an effort passed at spawn time.
 | Skill | Use |
 | --- | --- |
 | `/dotclaude:apply-settings-profile` | applies the settings profile |
-| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, Headroom, and fast-compact |
+| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, Headroom, fast-compact, and gitleaks |
 | `write-session-handoff` | writes a note that a fresh session can continue from |
 | `drive-web-browser`, `recognize-captcha` | browser automation with agent-browser or CloakBrowser, offline CAPTCHA OCR |
 
@@ -185,9 +190,16 @@ passes dotclaude's system prompt, which holds its engineering and git rules.
 - `DOTCLAUDE_SYSTEM_PROMPT=0 claude` starts one session with Claude Code's own
   prompt. Set the same variable to silence the session-start notice in an IDE
   that does not load your shell function.
-- A wrapper such as `headroom wrap claude` skips the function. Run
-  `headroom proxy`, export `ANTHROPIC_BASE_URL=http://127.0.0.1:8787`, and
-  start `claude` as usual.
+- A wrapper such as `headroom wrap claude` skips the function. Give the
+  wrapper the prompt instead. It starts the proxy and stops it when the
+  session ends:
+
+  ```sh
+  DOTCLAUDE_LAUNCHER=1 headroom wrap claude --no-mcp --code-memory none \
+    -- --system-prompt-file ~/.claude/dotclaude/system-prompt.md
+  ```
+
+  `headroom unwrap claude --keep-mcp` stops a proxy that stays after a crash.
 - `apply-launcher.mjs --remove --apply` removes the function.
 
 ### Managed Lock
@@ -204,7 +216,7 @@ Set these in `/config` under dotclaude.
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `bash_guard`, `edit_guard`, `stop_gate`, `goal_loop_guard`, `compact_carryover`, `model_lock`, `commit_hygiene` | on | the hooks above |
+| `bash_guard`, `edit_guard`, `secret_redaction`, `stop_gate`, `goal_loop_guard`, `compact_carryover`, `model_lock`, `commit_hygiene` | on | the hooks above |
 | `subagent_guidance` | on | shared rules and report format for agents, and the `general-purpose` refusal |
 | `ask_in_auto_mode` | off | asks about recoverable actions in auto mode too |
 | `git_attribution` | on | adds the `Co-Authored-By` trailer and pull request footer |

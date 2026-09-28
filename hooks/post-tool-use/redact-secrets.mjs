@@ -1,0 +1,27 @@
+#!/usr/bin/env bun
+// PostToolUse(*): replace secrets in a tool's output before the model sees
+// it. gitleaks scans every string in the output, and each secret it finds
+// becomes `[REDACTED:<rule>]`; the rest of the output and its shape stay.
+// Claude Code applies `updatedToolOutput` to every tool (2.1.283). Without
+// gitleaks on PATH, output passes through and session start says so.
+
+import { emit, option, run } from "../lib/_common.mjs";
+import { redact, scan, strings } from "../lib/_secrets.mjs";
+
+run((data) => {
+  if (!option("secret_redaction")) return;
+  const output = data.tool_response;
+  if (output === undefined || output === null) return;
+  const findings = scan(strings(output).join("\n"));
+  if (!findings?.length) return;
+  const { value, count } = redact(output, findings);
+  if (!count) return;
+  const rules = [...new Set(findings.map((f) => f.rule))].join(", ");
+  emit({
+    hookSpecificOutput: {
+      hookEventName: "PostToolUse",
+      updatedToolOutput: value,
+      additionalContext: `redacted ${count} secret${count === 1 ? "" : "s"} (${rules}) from this tool output. Do not try to recover the values; refer to the secret by its variable or file name.`,
+    },
+  });
+});

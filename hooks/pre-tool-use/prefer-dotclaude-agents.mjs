@@ -23,7 +23,7 @@ import { emit, option, preToolDecision, run } from "../lib/_common.mjs";
 const OFF = new Set(["0", "false", "no", "off"]);
 
 const AGENTS =
-  "use the dotclaude agent for the job instead: `dotclaude:implementer` for a scoped code change, `dotclaude:mechanical-worker` for fully specified edits, `dotclaude:debugger` for an unknown cause, `dotclaude:docs-writer` for docs, `dotclaude:web-researcher` for the web, and `dotclaude:test-runner` for long test output. Do a search yourself. For work too large for one agent, split it into slices.";
+  "use the dotclaude agent for the job instead: `dotclaude:implementer` for a scoped code change, `dotclaude:mechanical-worker` for fully specified edits, `dotclaude:debugger` for an unknown cause, `dotclaude:docs-writer` for docs, `dotclaude:web-researcher` for the web, and `dotclaude:test-runner` for long test output. Do a search yourself. Draft a plan yourself, in plan mode, and have `dotclaude:plan-reviewer` review it: an implementer builds from a plan and runs out of context when it has to write one. For work too large for one agent, split it into slices.";
 
 run((data) => {
   if (!option("subagent_guidance")) return;

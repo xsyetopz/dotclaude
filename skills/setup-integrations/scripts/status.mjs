@@ -7,7 +7,7 @@
 // names, never their env or headers), the project's .codegraph/ and .tgrep/
 // directories, whether the global git excludes file lists .tgrep/, and for
 // fast-compact whether the plugin is installed and which settings are
-// present (key names only, never values).
+// present (key names only, never values), and the gitleaks version.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -109,6 +109,7 @@ console.log(
         global_ignore: globalIgnore(),
       },
       fast_compact: fastCompact(),
+      gitleaks: { cli: version("gitleaks", "version") },
       headroom: {
         cli: version("headroom"),
         mcp: servers.get("headroom") ?? null,

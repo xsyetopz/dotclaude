@@ -1,9 +1,11 @@
 // Bash guard rules for writes to Claude Code's own configuration.
 //
 // In auto mode the classifier denies these writes as self-modification, even
-// when the user asked for them. An "ask" from a hook skips the classifier and
+// when the user asked for them. For a Bash command, an "ask" from a hook
 // shows the user a permission prompt (Claude Code 2.1.283), so the user can
-// approve the write.
+// approve the write. This does not hold for Edit or Write on a settings file:
+// Claude Code's own safety check on that path keeps the classifier in the
+// pipeline ("hookAskFloor"), so a classifier deny stands over a hook's ask.
 
 const SCRIPTS = {
   "apply-settings": "a Claude Code settings file",

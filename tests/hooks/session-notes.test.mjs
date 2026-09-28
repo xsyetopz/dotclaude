@@ -13,7 +13,12 @@ test("session start warns about incomplete setup and notes a CodeGraph index", (
       "session-start/warn-incomplete-setup.mjs",
       { hook_event_name: "SessionStart", source: "startup" },
       // The launcher notice has its own test in apply-launcher.test.mjs.
-      { CLAUDE_CODE_EFFORT_LEVEL: "", DOTCLAUDE_SYSTEM_PROMPT: "0", ...env },
+      {
+        CLAUDE_CODE_EFFORT_LEVEL: "",
+        DOTCLAUDE_SYSTEM_PROMPT: "0",
+        CLAUDE_PLUGIN_OPTION_SECRET_REDACTION: "false",
+        ...env,
+      },
     );
   const current = { DOTCLAUDE_SETTINGS_PROFILE: profileStamp() };
   expect(start(current)).toBe(null);
@@ -34,6 +39,28 @@ test("session start warns about incomplete setup and notes a CodeGraph index", (
   expect(
     start({ ...current, CLAUDE_CODE_EFFORT_LEVEL: "max" }).systemMessage,
   ).toMatch(/CLAUDE_CODE_EFFORT_LEVEL=max/);
+});
+
+test("session start says when secret redaction has no gitleaks", () => {
+  // A PATH that holds bun and nothing else, so gitleaks is missing.
+  const bin = tmp("dotclaude-bin-");
+  fs.symlinkSync(Bun.which("bun"), path.join(bin, "bun"));
+  const start = (option) =>
+    hook(
+      "session-start/warn-incomplete-setup.mjs",
+      { hook_event_name: "SessionStart", source: "startup" },
+      {
+        PATH: bin,
+        CLAUDE_CODE_EFFORT_LEVEL: "",
+        DOTCLAUDE_SYSTEM_PROMPT: "0",
+        DOTCLAUDE_SETTINGS_PROFILE: profileStamp(),
+        CLAUDE_PLUGIN_OPTION_SECRET_REDACTION: option,
+      },
+    );
+  expect(start("true").systemMessage).toMatch(
+    /gitleaks is not on PATH.*`brew install gitleaks`/,
+  );
+  expect(start("false")).toBe(null);
 });
 
 test("Fable sessions get the Fable adjustments; Opus sessions get nothing", () => {

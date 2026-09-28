@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: Implements one well-scoped piece of work end to end (feature slice, endpoint, module, or fix with a known cause). Use for independent work that can run in parallel or would fill the main context. Give it the goal, files or area, constraints, and how to check it is done.
+description: Implements one well-scoped piece of work end to end (feature slice, endpoint, module, or fix with a known cause) from a plan or clear request. Not for drafting a plan. Use for independent work that can run in parallel or would fill the main context. Give it the goal, files or area, constraints, and how to check it is done.
 disallowedTools: Agent
 model: claude-sonnet-5
 effort: medium
