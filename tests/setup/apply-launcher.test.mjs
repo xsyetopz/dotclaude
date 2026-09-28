@@ -135,6 +135,9 @@ for (const [shell, command] of Object.entries(SHELLS)) {
         "<1>[hi]",
       ]);
     },
+    // A cold pwsh start on GitHub's ubuntu runners takes close to 5 s,
+    // which is bun's default per-test timeout.
+    30_000,
   );
 }
 
