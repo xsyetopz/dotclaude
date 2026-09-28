@@ -6,8 +6,6 @@ evals-heldout/results/
 .pytest_cache/
 
 /docs/*
-!/docs/claude-code-prompt-surface.md
-!/docs/evals.md
-!/docs/subscription-tiers.md
-!/docs/pro-first-usage.md
-!/docs/usage-architecture.md
+!/docs/dossier.md
+!/docs/dossier/
+!/docs/changelog/

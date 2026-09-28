@@ -40,7 +40,7 @@ tgrep is indexed text search with ripgrep's flags, faster than `rg` on large rep
 <fast_compact>
 fast-compact (NodarDavituri/fast-compact) adds `/fc`, which cuts old tool output to its start and end in about a second. It saves every cut to a file Claude can read back. It also has Jev (TypeSafe's decision model) choose which old outputs stay whole. Claude Code's `/compact` stays unaffected.
 
-Before installing, tell the user what dotclaude measured on their transcripts (`docs/subscription-tiers.md`, section 8). `/fc` keeps more of what the session later needs than `/compact` (83% against 40%). But it leaves 72–91% of the context in place, so every later turn re-reads that much. It is relief for a mid-sized context, not a replacement for compaction. Jev's picks measured no better than keeping the newest outputs whole.
+Before installing, tell the user what dotclaude measured on their transcripts (`docs/dossier/evals.md`). `/fc` keeps more of what the session later needs than `/compact` (83% against 40%). But it leaves 72–91% of the context in place, so every later turn re-reads that much. It is relief for a mid-sized context, not a replacement for compaction. Jev's picks measured no better than keeping the newest outputs whole.
 
 - Install the plugin: `claude plugin marketplace add NodarDavituri/fast-compact`, then `claude plugin install fast-compact@fast-compact`.
 - It needs two settings that the user adds to `~/.claude/settings.json`, because settings edits are theirs to make. Give them the exact JSON:
