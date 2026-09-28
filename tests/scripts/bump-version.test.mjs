@@ -33,6 +33,8 @@ function project(pluginVersion = "0.6.0", packageVersion = pluginVersion) {
 const bump = (root, ...args) =>
   spawnSync("bun", [SCRIPT, ...args, "--root", root], { encoding: "utf8" });
 const read = (root, rel) => fs.readFileSync(path.join(root, rel), "utf8");
+const FILES = [".claude-plugin/plugin.json", "package.json", "CHANGELOG.md"];
+const snapshot = (root) => FILES.map((rel) => read(root, rel));
 
 test("semver levels", () => {
   expect(nextVersion("0.6.0", "patch")).toBe("0.6.1");
@@ -59,18 +61,27 @@ test("a bump rewrites both version lines and dates the Unreleased entries", () =
 
 test("a dry run writes nothing", () => {
   const root = project();
+  const before = snapshot(root);
   const res = bump(root, "patch", "--dry-run");
   expect(res.status, res.stderr).toBe(0);
-  expect(res.stdout).toMatch(/Dry run/);
-  expect(read(root, "package.json")).toMatch(/"version": "0\.6\.0"/);
+  expect(res.stdout).toContain("0.6.0 -> 0.6.1");
+  expect(snapshot(root)).toStrictEqual(before);
 });
 
 test("mismatched manifests or an existing section stop the bump before any write", () => {
   const mismatched = project("0.6.0", "0.5.9");
+  const before = snapshot(mismatched);
   const res = bump(mismatched, "patch");
   expect(res.status).toBe(1);
-  expect(res.stderr).toMatch(/disagree \(0\.6\.0 vs 0\.5\.9\)/);
-  expect(read(mismatched, ".claude-plugin/plugin.json")).toMatch(/"0\.6\.0"/);
+  // The error names both versions it found.
+  expect(res.stderr).toContain("0.6.0");
+  expect(res.stderr).toContain("0.5.9");
+  expect(snapshot(mismatched)).toStrictEqual(before);
+
   const taken = project();
-  expect(bump(taken, "0.6.0").stderr).toMatch(/already has a 0\.6\.0 section/);
+  const untouched = snapshot(taken);
+  const again = bump(taken, "0.6.0");
+  expect(again.status).toBe(1);
+  expect(again.stderr).toContain("0.6.0");
+  expect(snapshot(taken)).toStrictEqual(untouched);
 });

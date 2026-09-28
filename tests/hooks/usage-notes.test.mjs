@@ -64,12 +64,16 @@ test("usage notes fire once per level: 75%, then 90%", () => {
   const at87 = prompt(usageDir(60_000, { session: 28, weekly: 87 }))
     .hookSpecificOutput.additionalContext;
   expect(at87).toMatch(/^\[dotclaude\] <usage_limits/);
+  expect(at87).toMatch(/session 28%/);
   expect(at87).toMatch(/weekly 87%/);
-  expect(at87).toMatch(/Stretch what is left: prefer the Sonnet 5/);
+  expect(at87).toContain("Sonnet 5");
   expect(prompt(usageDir(60_000, { session: 30, weekly: 88 }))).toBe(null);
   const at91 = prompt(usageDir(60_000, { session: 91, weekly: 88 }))
     .hookSpecificOutput.additionalContext;
-  expect(at91).toMatch(/start no new fan-out/);
+  expect(at91).toMatch(/session 91%/);
+  // With the numbers taken out, the 90% note still differs from the 75% one.
+  const advice = (text) => text.replace(/\d+/g, "#");
+  expect(advice(at91)).not.toBe(advice(at87));
 });
 
 test("readUsage returns the reset times", () => {
@@ -103,7 +107,7 @@ test("a usage-limit stop shows the limit, its reset, and the resume command", ()
   expect(session.startsWith("\u001b]777;notify;Claude Code;")).toBe(true);
   expect(session.endsWith("\u0007")).toBe(true);
   expect(session).toMatch(
-    /;session usage limit reached, resets 0?8:10( AM)?\. Resume: claude --resume s9/,
+    /\bsession\b.*\b0?8:10( AM)?\b.*`?claude --resume s9/,
   );
   const weekly = stop({
     TERM_PROGRAM: "iTerm.app",
@@ -113,14 +117,11 @@ test("a usage-limit stop shows the limit, its reset, and the resume command", ()
       weeklyReset: reset,
     }),
   }).terminalSequence;
-  expect(weekly.startsWith("\u001b]9;Claude Code: weekly usage limit")).toBe(
-    true,
-  );
-  expect(weekly).toMatch(/resets Sun,? 0?8:10( AM)?\./);
+  expect(weekly.startsWith("\u001b]9;")).toBe(true);
+  expect(weekly).toMatch(/\bweekly\b.*\bSun,? 0?8:10( AM)?\b/);
   const unknown = stop({ CLAUDE_CONFIG_DIR: tmp("dotclaude-none-") });
-  expect(unknown.terminalSequence).toMatch(
-    /;Usage limit reached\. Resume: claude --resume s9/,
-  );
+  expect(unknown.terminalSequence).toContain("claude --resume s9");
+  expect(unknown.terminalSequence).not.toMatch(/\d:\d\d/);
   expect(stop({}, { error: "overloaded" })).toBe(null);
   expect(stop({ CLAUDE_PLUGIN_OPTION_USAGE_NOTES: "false" })).toBe(null);
 });
@@ -164,14 +165,15 @@ test("a prompt after the prompt cache expired on a large context tells the user"
       env,
     );
   const stale = notice(transcript(2 * 3600_000, 350_000));
-  expect(stale.systemMessage).toMatch(/idle for 2h.*350k tokens/);
+  // The idle time, then the context size.
+  expect(stale.systemMessage).toMatch(/\b2h\b.*\b350k\b/);
   expect(stale.systemMessage).toMatch(/\/clear/);
   expect(stale.hookSpecificOutput).toBeUndefined();
   // A sidechain call does not count as main-conversation activity.
   expect(
     notice(transcript(2 * 3600_000, 350_000, { sidechain: true }))
       .systemMessage,
-  ).toMatch(/idle for 2h/);
+  ).toMatch(/\b2h\b/);
   // Warm cache, small context, generated prompts, or the option off: silent.
   expect(notice(transcript(30 * 60_000, 350_000))).toBe(null);
   expect(notice(transcript(2 * 3600_000, 40_000))).toBe(null);
@@ -192,5 +194,5 @@ test("a prompt after the prompt cache expired on a large context tells the user"
     notice(transcript(10 * 60_000, 350_000), {
       CLAUDE_CODE_PROMPT_CACHE_TTL: "5m",
     }).systemMessage,
-  ).toMatch(/idle for 10m/);
+  ).toMatch(/\b10m\b/);
 });

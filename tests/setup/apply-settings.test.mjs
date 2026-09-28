@@ -6,6 +6,20 @@ import path from "node:path";
 import { profileStamp } from "../../hooks/lib/_profile.mjs";
 import { run, tempHome } from "../support/setup.mjs";
 
+const backups = (home) =>
+  fs
+    .readdirSync(path.join(home, ".claude"))
+    .filter((f) => f.startsWith("settings.json.dotclaude-backup-"));
+
+// A second --apply with nothing to change leaves the bytes and makes no backup.
+function expectNoChange(home, file) {
+  const bytes = fs.readFileSync(file, "utf8");
+  const count = backups(home).length;
+  run("apply-settings.mjs", home, "--apply");
+  expect(fs.readFileSync(file, "utf8")).toBe(bytes);
+  expect(backups(home).length).toBe(count);
+}
+
 test("apply-settings previews without writing, then merges without removing user keys", () => {
   const home = tempHome();
   const file = path.join(home, ".claude", "settings.json");
@@ -17,8 +31,11 @@ test("apply-settings previews without writing, then merges without removing user
     }),
   );
   const before = fs.readFileSync(file, "utf8");
-  expect(run("apply-settings.mjs", home)).toMatch(/Dry run/);
+  expect(run("apply-settings.mjs", home)).toContain(
+    "fastMode: (unset) -> false",
+  );
   expect(fs.readFileSync(file, "utf8")).toBe(before);
+  expect(backups(home)).toStrictEqual([]);
   run("apply-settings.mjs", home, "--apply");
   const merged = JSON.parse(fs.readFileSync(file, "utf8"));
   expect(merged.theme).toBe("auto");
@@ -28,12 +45,11 @@ test("apply-settings previews without writing, then merges without removing user
   ).toBe(1);
   expect(merged.fastMode).toBe(false);
   expect(merged.env.CLAUDE_CODE_DISABLE_FAST_MODE).toBe("1");
+  expect(backups(home).length).toBe(1);
   expect(
-    fs
-      .readdirSync(path.join(home, ".claude"))
-      .some((f) => f.startsWith("settings.json.dotclaude-backup-")),
-  ).toBeTruthy();
-  expect(run("apply-settings.mjs", home)).toMatch(/Already up to date/);
+    fs.readFileSync(path.join(home, ".claude", backups(home)[0]), "utf8"),
+  ).toBe(before);
+  expectNoChange(home, file);
 });
 
 test("apply-settings keeps a user's own sonnet mapping and leaves Fable out on Pro without extra usage", () => {
@@ -54,7 +70,11 @@ test("apply-settings keeps a user's own sonnet mapping and leaves Fable out on P
       },
     }),
   );
-  expect(run("apply-settings.mjs", home)).toMatch(/leaves Fable out/);
+  const preview = run("apply-settings.mjs", home);
+  expect(preview).toContain(
+    'availableModels: add "claude-opus-5-5", "claude-sonnet-5", "claude-haiku-4-5"\n',
+  );
+  expect(preview).not.toContain("claude-fable");
   run("apply-settings.mjs", home, "--apply");
   const merged = JSON.parse(fs.readFileSync(file, "utf8"));
   expect(merged.availableModels).toStrictEqual([
@@ -139,7 +159,9 @@ test("apply-settings adds the optional switches unless skipped", () => {
     "artifact,loops",
     "--apply",
   );
-  expect(out).toMatch(/Skipped switch: artifact/);
+  expect(out).not.toContain("CLAUDE_CODE_DISABLE_ARTIFACT");
+  expect(out).not.toContain("CLAUDE_CODE_DISABLE_CRON");
+  expect(out).toContain("CLAUDE_CODE_DISABLE_WORKFLOWS");
   const some = JSON.parse(
     fs.readFileSync(path.join(other, ".claude", "settings.json"), "utf8"),
   );
@@ -167,9 +189,7 @@ test("apply-settings removes exact entries older profiles wrote and keeps look-a
     }),
   );
   const preview = run("apply-settings.mjs", home);
-  expect(preview).toMatch(
-    /permissions\.deny: remove "AskUserQuestion" \(left by an older dotclaude profile\)/,
-  );
+  expect(preview).toContain('permissions.deny: remove "AskUserQuestion"');
   expect(preview).toMatch(/env\.ANTHROPIC_DEFAULT_SONNET_MODEL: remove/);
   run("apply-settings.mjs", home, "--apply");
   const merged = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -178,5 +198,5 @@ test("apply-settings removes exact entries older profiles wrote and keeps look-a
   expect(merged.permissions.deny).toContain("Read(~/.ssh/**)");
   expect(merged.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBeUndefined();
   expect(merged.env.CLAUDE_CODE_FORK_SUBAGENT).toBe("0");
-  expect(run("apply-settings.mjs", home)).toMatch(/Already up to date/);
+  expectNoChange(home, file);
 });

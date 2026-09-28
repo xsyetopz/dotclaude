@@ -11,12 +11,13 @@ test("apply-claude-md appends a marked section, replaces it in place, and remove
   const source = path.join(home, "section.md");
   fs.writeFileSync(file, "## CodeGraph\n\nUser's own rules.\n");
   fs.writeFileSync(source, "First version.");
-  expect(run("apply-claude-md.mjs", home, "--source", source)).toMatch(
-    /Dry run/,
+  expect(run("apply-claude-md.mjs", home, "--source", source)).toContain(
+    "First version.",
   );
   expect(fs.readFileSync(file, "utf8")).toBe(
     "## CodeGraph\n\nUser's own rules.\n",
   );
+  expect(fs.readdirSync(path.dirname(file))).toStrictEqual(["CLAUDE.md"]);
 
   run("apply-claude-md.mjs", home, "--source", source, "--apply");
   let text = fs.readFileSync(file, "utf8");

@@ -17,6 +17,13 @@ import { run, tempHome } from "../support/setup.mjs";
 const launcher = (home, ...args) => run("apply-launcher.mjs", home, ...args);
 const promptCopy = (home) =>
   path.join(home, ".claude", "dotclaude", "system-prompt.md");
+const backups = (rc) =>
+  fs
+    .readdirSync(path.dirname(rc))
+    .filter((f) => f.startsWith(`${path.basename(rc)}.dotclaude-backup-`));
+// Lines in `after` that `before` does not have.
+const added = (before, after) =>
+  after.split("\n").filter((line) => !before.split("\n").includes(line));
 
 // A `claude` on PATH that prints DOTCLAUDE_LAUNCHER in angle brackets, then
 // each argument in square brackets.
@@ -35,8 +42,11 @@ test("the launcher block is added, replaced in place, and removed", () => {
   const home = tempHome();
   const rc = path.join(home, ".zshrc");
   fs.writeFileSync(rc, "export EDITOR=vim\n");
-  expect(launcher(home, "--shell", "zsh", "--rc", rc)).toMatch(/Dry run/);
+  expect(launcher(home, "--shell", "zsh", "--rc", rc)).toContain(
+    "# >>> dotclaude system prompt >>>",
+  );
   expect(fs.readFileSync(rc, "utf8")).toBe("export EDITOR=vim\n");
+  expect(backups(rc)).toStrictEqual([]);
   expect(fs.existsSync(promptCopy(home))).toBe(false);
 
   launcher(home, "--shell", "zsh", "--rc", rc, "--apply");
@@ -45,13 +55,18 @@ test("the launcher block is added, replaced in place, and removed", () => {
     /^export EDITOR=vim\n\n# >>> dotclaude system prompt >>>\n[\s\S]*claude\(\) \{[\s\S]*# <<< dotclaude system prompt <<<\n$/,
   );
   expect(fs.readFileSync(promptCopy(home), "utf8")).toBe(renderPrompt());
-  expect(launcher(home, "--shell", "zsh", "--rc", rc)).toMatch(
-    /Already up to date/,
-  );
+  expect(backups(rc).length).toBe(1);
+  // A second --apply with nothing to change writes nothing.
+  const copyTime = fs.statSync(promptCopy(home)).mtimeMs;
+  const plain = launcher(home, "--shell", "zsh", "--rc", rc, "--apply");
+  expect(fs.readFileSync(rc, "utf8")).toBe(text);
+  expect(backups(rc).length).toBe(1);
+  expect(fs.statSync(promptCopy(home)).mtimeMs).toBe(copyTime);
 
+  // An alias hides the function, so the output names it.
   fs.appendFileSync(rc, "alias claude='claude --verbose'\n");
   const out = launcher(home, "--shell", "zsh", "--rc", rc, "--apply");
-  expect(out).toMatch(/also defines `alias claude`/);
+  expect(added(plain, out).join("\n")).toContain("alias claude");
   expect(
     fs.readFileSync(rc, "utf8").match(/dotclaude system prompt >>>/g),
   ).toHaveLength(1);
@@ -66,16 +81,15 @@ test("the launcher block is added, replaced in place, and removed", () => {
 test("the launcher warns when auto memory is on", () => {
   const home = tempHome();
   const rc = path.join(home, ".bashrc");
-  expect(launcher(home, "--shell", "bash", "--rc", rc)).toMatch(
-    /auto memory is on/,
-  );
+  const on = launcher(home, "--shell", "bash", "--rc", rc);
   fs.writeFileSync(
     path.join(home, ".claude", "settings.json"),
     JSON.stringify({ autoMemoryEnabled: false }),
   );
-  expect(launcher(home, "--shell", "bash", "--rc", rc)).not.toMatch(
-    /auto memory/,
-  );
+  const off = launcher(home, "--shell", "bash", "--rc", rc);
+  // Only the auto memory state differs, so the extra output names its key.
+  expect(added(off, on).join("\n")).toContain("autoMemoryEnabled");
+  expect(off).not.toContain("autoMemoryEnabled");
 });
 
 // Each shell runs its function against the fake `claude`: the flag goes first,
@@ -162,33 +176,31 @@ test("session start updates an installed prompt copy that differs from the shipp
         ...env,
       },
     );
-  expect(start().systemMessage, "no copy means no launcher").toMatch(
-    /the dotclaude system prompt is not installed, so this session has none of dotclaude's engineering or git rules/,
-  );
+  const missing = start().systemMessage;
+  expect(missing, "no copy means no launcher").toBeString();
+  expect(missing).toContain("/dotclaude:apply-settings-profile");
+  expect(missing).toContain("DOTCLAUDE_SYSTEM_PROMPT=0");
   expect(start({ DOTCLAUDE_SYSTEM_PROMPT: "0" })).toBe(null);
   expect(fs.existsSync(promptCopy(home))).toBe(false);
 
   fs.mkdirSync(path.dirname(promptCopy(home)), { recursive: true });
   fs.writeFileSync(promptCopy(home), "old prompt\n");
-  expect(start().systemMessage).toMatch(/changed the dotclaude system prompt/);
+  expect(start().systemMessage, "the copy changed").toBeString();
   expect(fs.readFileSync(promptCopy(home), "utf8")).toBe(renderPrompt());
   expect(start()).toBe(null);
 
   // An IDE starts Claude Code without the shell function.
-  expect(start({ DOTCLAUDE_LAUNCHER: "" }).systemMessage).toMatch(
-    /did not start through dotclaude's `claude` shell function/,
-  );
-  expect(start({ DOTCLAUDE_LAUNCHER: "" }).systemMessage).toMatch(
-    /Start Claude Code from a terminal that loads the function/,
-  );
+  const ide = start({ DOTCLAUDE_LAUNCHER: "" }).systemMessage;
+  expect(ide, "no shell function").toBeString();
+  expect(ide).not.toContain("~/.zshrc");
   // The function is in .zshrc, but this terminal started before it was added.
   fs.writeFileSync(
     path.join(home, ".zshrc"),
     "# >>> dotclaude system prompt >>>\nclaude() { :; }\n# <<< dotclaude system prompt <<<\n",
   );
-  expect(start({ DOTCLAUDE_LAUNCHER: "" }).systemMessage).toMatch(
-    /`~\/\.zshrc` has the function.*Run `source ~\/\.zshrc` or open a new terminal/,
-  );
+  const stale = start({ DOTCLAUDE_LAUNCHER: "" }).systemMessage;
+  expect(stale).toContain("`~/.zshrc`");
+  expect(stale).toContain("`source ~/.zshrc`");
   expect(start({ DOTCLAUDE_LAUNCHER: "", DOTCLAUDE_SYSTEM_PROMPT: "0" })).toBe(
     null,
   );
@@ -201,12 +213,11 @@ test("the replacement prompt names the allowed models", () => {
 });
 
 test("the prompt copy names the Claude Code version it runs on", () => {
-  expect(renderPrompt("2.1.283")).toStartWith(
-    "You are an agent running inside Claude Code v2.1.283, ",
-  );
-  expect(renderPrompt(null)).toStartWith(
-    "You are an agent running inside Claude Code, ",
-  );
+  const named = renderPrompt("2.1.283");
+  expect(named.split("\n")[0]).toContain(" v2.1.283");
+  expect(named).not.toContain("{{");
+  // Without a version, only the version goes away.
+  expect(named.replace(" v2.1.283", "")).toBe(renderPrompt(null));
 
   const copy = path.join(tempHome(), "system-prompt.md");
   fs.writeFileSync(copy, renderPrompt("2.1.283"));

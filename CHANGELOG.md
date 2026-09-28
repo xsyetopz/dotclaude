@@ -55,6 +55,9 @@ steps after each update.
 
 ### Changed
 
+- Tests check what dotclaude does, not how its messages read: the decision,
+  the file effects, and the facts a message carries (paths, IDs, numbers).
+  A reworded message no longer breaks a test.
 - The dossier uses the official prompt-caching facts: an effort change keeps
   the cache on Opus 5.5 and Fable 5.1, `/model` loses it, and a 1-hour cache
   write costs 2x the input price.

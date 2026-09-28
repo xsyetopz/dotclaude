@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { k, MAIN_CONTEXT_TOKENS } from "../../hooks/lib/_budget.mjs";
 import {
   currentPlan,
   detectPlan,
@@ -93,9 +94,8 @@ test("planAllowlist drops Fable only where the plan cannot run it", () => {
   const pro = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(PRO) });
   expect(!pro.list.some((m) => /fable/.test(m))).toBeTruthy();
   expect(pro.list.includes("claude-sonnet-5")).toBeTruthy();
-  expect(pro.note).toMatch(
-    /Claude Pro plan excludes Fable models because it runs them on usage credits/,
-  );
+  // The note names the plan that caused the removal.
+  expect(pro.note).toContain("Claude Pro");
   const max = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(MAX_20X) });
   expect(max.list.includes("claude-fable-5-1")).toBeTruthy();
   expect(max.note).toBe("");
@@ -104,13 +104,30 @@ test("planAllowlist drops Fable only where the plan cannot run it", () => {
 });
 
 test("planNote describes Fable per plan and one Pro-sized handoff bound for every plan", () => {
-  const max = planNote({ CLAUDE_CONFIG_DIR: configDir(MAX_20X) });
-  expect(max).toMatch(/Claude Max 20x \(detected\)/);
-  expect(max).toMatch(/up to 50% of it/);
-  expect(max).toMatch(/passes about 200k tokens/);
-  const pro = planNote({ CLAUDE_CONFIG_DIR: configDir(PRO) });
-  expect(pro).toMatch(/model lock excludes it/);
-  expect(pro).toMatch(/passes about 200k tokens/);
+  const note = (account, env = {}) =>
+    planNote({ CLAUDE_CONFIG_DIR: configDir(account), ...env });
+  // Lines: open tag, plan, the Fable line (if any), the bound, close tag.
+  const fableLine = (text) => text.split("\n").slice(2, -2).join("\n");
+  const max = note(MAX_20X);
+  expect(max).toStartWith('<claude_plan source="dotclaude">');
+  expect(max).toContain("Claude Max 20x");
+  expect(max).toContain("50%");
+  // A plan set in the option reads differently from a detected one.
+  const setMax = note(null, { CLAUDE_PLUGIN_OPTION_CLAUDE_PLAN: "max_20x" });
+  expect(setMax).toContain("Claude Max 20x");
+  expect(setMax).not.toBe(max);
+  const pro = note(PRO);
+  expect(pro).toContain("Claude Pro");
+  const credits = note({ ...PRO, hasExtraUsageEnabled: true });
+  const enterprise = note({ organizationType: "claude_enterprise" });
+  // Included, unavailable, and credits each get their own Fable line;
+  // Enterprise gets none.
+  const lines = [max, pro, credits].map(fableLine);
+  for (const line of lines) expect(line).toBeTruthy();
+  expect(new Set(lines).size).toBe(3);
+  expect(fableLine(enterprise)).toBe("");
+  for (const text of [max, pro, credits, enterprise])
+    expect(text).toContain(k(MAIN_CONTEXT_TOKENS));
   expect(planNote({ CLAUDE_CONFIG_DIR: configDir(null) })).toBe(null);
 });
 
@@ -135,7 +152,10 @@ test("on Pro without extra usage, a switch to Fable is blocked with the reason",
     { CLAUDE_CONFIG_DIR: configDir(PRO) },
   );
   expect(out.decision).toBe("block");
-  expect(out.reason).toMatch(/extra usage is off/);
+  // The reason lists what is allowed, without Fable, and names the plan.
+  expect(out.reason).toContain("claude-sonnet-5");
+  expect(out.reason).not.toMatch(/fable/);
+  expect(out.reason).toContain("Claude Pro");
   expect(
     hook(
       "pre-model-switch/restrict-models.mjs",

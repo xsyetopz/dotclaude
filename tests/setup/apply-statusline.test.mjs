@@ -8,6 +8,10 @@ import { stubText } from "../../hooks/lib/_status-line.mjs";
 import { run, tempHome } from "../support/setup.mjs";
 
 const read = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
+const backups = (settings) =>
+  fs
+    .readdirSync(path.dirname(settings))
+    .filter((f) => f.startsWith("settings.json.dotclaude-backup-"));
 
 test("apply-statusline previews, installs the stub, and removes only its own setting", () => {
   const home = tempHome();
@@ -18,10 +22,11 @@ test("apply-statusline previews, installs the stub, and removes only its own set
     JSON.stringify({ statusLine: { type: "command", command: "sh ~/x.sh" } }),
   );
 
+  const original = fs.readFileSync(settings, "utf8");
   const preview = run("apply-statusline.mjs", home);
   expect(preview).toContain('"sh ~/x.sh" -> ');
-  expect(preview).toMatch(/Dry run/);
-  expect(read(settings).statusLine.command).toBe("sh ~/x.sh");
+  expect(fs.readFileSync(settings, "utf8")).toBe(original);
+  expect(backups(settings)).toStrictEqual([]);
   expect(fs.existsSync(stub)).toBe(false);
 
   run("apply-statusline.mjs", home, "--apply");
@@ -31,21 +36,20 @@ test("apply-statusline previews, installs the stub, and removes only its own set
     padding: 0,
   });
   expect(fs.readFileSync(stub, "utf8")).toBe(stubText());
-  expect(
-    fs.readdirSync(path.dirname(settings)).some((f) => f.includes("backup")),
-  ).toBe(true);
-  expect(run("apply-statusline.mjs", home)).toMatch(/Already up to date/);
+  expect(backups(settings).length).toBe(1);
+  // A second --apply with nothing to change writes nothing and makes no backup.
+  const installed = fs.readFileSync(settings, "utf8");
+  run("apply-statusline.mjs", home, "--apply");
+  expect(fs.readFileSync(settings, "utf8")).toBe(installed);
+  expect(backups(settings).length).toBe(1);
 
   run("apply-statusline.mjs", home, "--remove", "--apply");
   expect(read(settings).statusLine).toBeUndefined();
   expect(fs.existsSync(stub)).toBe(false);
 
-  fs.writeFileSync(
-    settings,
-    JSON.stringify({ statusLine: { type: "command", command: "sh ~/x.sh" } }),
-  );
-  expect(run("apply-statusline.mjs", home, "--remove", "--apply")).toMatch(
-    /not dotclaude's; it stays/,
-  );
-  expect(read(settings).statusLine.command).toBe("sh ~/x.sh");
+  fs.writeFileSync(settings, original);
+  const count = backups(settings).length;
+  run("apply-statusline.mjs", home, "--remove", "--apply");
+  expect(fs.readFileSync(settings, "utf8")).toBe(original);
+  expect(backups(settings).length).toBe(count);
 });

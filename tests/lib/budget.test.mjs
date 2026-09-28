@@ -23,13 +23,46 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const PROMPT = "skills/apply-settings-profile/profiles/system-prompt.md";
 
-test("the system prompt, profile, and option text use the budget's numbers", () => {
-  expect(read(PROMPT)).toContain(
-    `passes about ${k(MAIN_CONTEXT_TOKENS)} tokens`,
-  );
-  expect(read(PROMPT)).toContain(
-    `about ${k(SUBAGENT_CONTEXT_TOKENS)} tokens of context`,
-  );
+// Each file that quotes a bound names it as a whole word, so a changed
+// constant fails here until the file follows. The sentences around the
+// numbers are free to change.
+const QUOTED = {
+  [PROMPT]: [MAIN_CONTEXT_TOKENS, SUBAGENT_CONTEXT_TOKENS],
+  "skills/apply-settings-profile/SKILL.md": [
+    MAIN_CONTEXT_TOKENS,
+    SUBAGENT_CONTEXT_TOKENS,
+  ],
+  ".claude-plugin/plugin.json": [
+    SUBAGENT_CONTEXT_TOKENS,
+    STALE_CACHE_CONTEXT_TOKENS,
+  ],
+};
+const BOUNDS = new Set(
+  [
+    MAIN_CONTEXT_TOKENS,
+    SUBAGENT_CONTEXT_TOKENS,
+    STALE_CACHE_CONTEXT_TOKENS,
+  ].map(k),
+);
+const words = (n) => new RegExp(`(?<![\\w.])${n}(?![\\w.])`);
+
+test("the system prompt, skill, and option text quote the budget's token bounds", () => {
+  for (const [file, bounds] of Object.entries(QUOTED)) {
+    const text = read(file);
+    for (const n of bounds) expect(text, file).toMatch(words(k(n)));
+    for (const [, figure] of text.matchAll(/\b(\d+k) tokens\b/g))
+      expect(BOUNDS.has(figure), `${file}: ${figure} tokens`).toBe(true);
+  }
+});
+
+test("the skill quotes the usage levels", () => {
+  const [, low, high] =
+    /(\d+)% and (\d+)%/.exec(read("skills/apply-settings-profile/SKILL.md")) ??
+    [];
+  expect([Number(low), Number(high)]).toEqual(USAGE_LEVELS);
+});
+
+test("the recommended profile uses the budget's values", () => {
   const profile = JSON.parse(
     read("skills/apply-settings-profile/profiles/recommended.json"),
   );
@@ -39,18 +72,6 @@ test("the system prompt, profile, and option text use the budget's numbers", () 
   );
   expect(profile.env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS).toBe(
     String(MAX_CONCURRENT_AGENTS),
-  );
-  expect(read(".claude-plugin/plugin.json")).toContain(
-    `passes about ${k(SUBAGENT_CONTEXT_TOKENS)} tokens`,
-  );
-  expect(read(".claude-plugin/plugin.json")).toContain(
-    `on a context of ${k(STALE_CACHE_CONTEXT_TOKENS)} tokens or more`,
-  );
-  const skill = read("skills/apply-settings-profile/SKILL.md");
-  expect(skill).toContain(`the ${k(MAIN_CONTEXT_TOKENS)} handoff point`);
-  expect(skill).toContain(`the ${k(SUBAGENT_CONTEXT_TOKENS)} subagent budget`);
-  expect(skill).toContain(
-    `Colors change at ${USAGE_LEVELS[0]}% and ${USAGE_LEVELS[1]}%`,
   );
 });
 

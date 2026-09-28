@@ -31,8 +31,7 @@ test("install-managed dry run writes nothing", () => {
   const dir = tempManaged();
   const res = run(dir);
   expect(res.status, res.stderr).toBe(0);
-  expect(res.stdout).toMatch(/Dry run/);
-  expect(res.stdout).toMatch(/would create/);
+  expect(res.stdout).toContain(dropIn(dir));
   expect(fs.readdirSync(dir)).toStrictEqual([]);
 });
 
@@ -54,9 +53,14 @@ test("install-managed --apply creates the drop-in, then a re-run is a no-op", ()
   expect(fs.readdirSync(path.join(dir, "managed-settings.d"))).toStrictEqual([
     "50-dotclaude.json",
   ]);
+  const before = fs.statSync(dropIn(dir));
+  const bytes = fs.readFileSync(dropIn(dir), "utf8");
   const again = run(dir, "--apply");
   expect(again.status, again.stderr).toBe(0);
-  expect(again.stdout).toMatch(/nothing to change/);
+  const after = fs.statSync(dropIn(dir));
+  expect(fs.readFileSync(dropIn(dir), "utf8")).toBe(bytes);
+  expect(after.ino).toBe(before.ino);
+  expect(after.mtimeMs).toBe(before.mtimeMs);
   expect(fs.readdirSync(dir)).toStrictEqual(["managed-settings.d"]);
 });
 
@@ -99,7 +103,18 @@ test("install-managed leaves managed-settings.json alone and names shared keys",
   fs.writeFileSync(base, text);
   const res = run(dir, "--apply");
   expect(res.status, res.stderr).toBe(0);
-  expect(res.stdout).toMatch(/also sets fastMode\./);
+  // Output that names the base file names the shared key, not the other one.
+  const mentions = (out) => out.split("\n").filter((l) => l.includes(base));
+  expect(mentions(res.stdout).join("\n")).toContain("fastMode");
+  expect(mentions(res.stdout).join("\n")).not.toContain("theme");
   expect(fs.readFileSync(base, "utf8")).toBe(text);
   expect(fs.existsSync(dropIn(dir))).toBeTruthy();
+
+  // With no shared key, the output does not name the base file.
+  const other = tempManaged();
+  const otherBase = path.join(other, "managed-settings.json");
+  fs.writeFileSync(otherBase, '{"theme": "dark"}\n');
+  const quiet = run(other);
+  expect(quiet.status, quiet.stderr).toBe(0);
+  expect(quiet.stdout).not.toContain(otherBase);
 });

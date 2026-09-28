@@ -1,7 +1,20 @@
 // Subagent start guidance injection.
 
 import { expect, test } from "bun:test";
+import { k, SUBAGENT_CONTEXT_TOKENS } from "../../hooks/lib/_budget.mjs";
 import { hook } from "../support/hooks.mjs";
+
+const CONVENTIONS = '<working_conventions source="dotclaude">';
+
+/** The text of the `<tag source="dotclaude">` block, or undefined. */
+function block(text, tag) {
+  return text.match(
+    new RegExp(`<${tag} source="dotclaude">([\\s\\S]*?)</${tag}>`),
+  )?.[1];
+}
+
+/** The whole numbers a block states, in order. */
+const numbers = (text) => (text ?? "").match(/\d+/g)?.map(Number) ?? [];
 
 test("subagent guidance is injected, skipped for the reviewer, and can be turned off", () => {
   const out = hook("subagent-start/inject-working-conventions.mjs", {
@@ -10,13 +23,12 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
     agent_type: "general-purpose",
   });
   expect(out.hookSpecificOutput.hookEventName).toBe("SubagentStart");
-  expect(out.hookSpecificOutput.additionalContext).toMatch(/hypotheses/);
-  expect(out.hookSpecificOutput.additionalContext).toMatch(
-    /Only your report is delivered/,
-  );
-  expect(out.hookSpecificOutput.additionalContext).not.toMatch(/turn_budget/);
-  expect(out.hookSpecificOutput.additionalContext).toMatch(
-    /passes about 150k tokens, tool calls are refused/,
+  const context = out.hookSpecificOutput.additionalContext;
+  expect(context).toContain(CONVENTIONS);
+  expect(block(context, "working_conventions")?.trim()).toBeTruthy();
+  expect(context).not.toMatch(/turn_budget/);
+  expect(block(context, "context_budget")).toContain(
+    k(SUBAGENT_CONTEXT_TOKENS),
   );
   const start = (agentType) =>
     hook("subagent-start/inject-working-conventions.mjs", {
@@ -26,17 +38,18 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   // Every dotclaude agent learns its turn limit; the ones with their own
   // prompt get only that.
   const implementer = start("dotclaude:implementer");
-  expect(implementer).toMatch(/hypotheses/);
-  expect(implementer).toMatch(
-    /at most 80 turns\. With 4 left, tool calls are refused/,
-  );
+  expect(implementer).toContain(CONVENTIONS);
+  // The limit from the agent file, then the turns kept for the report.
+  const implementerBudget = numbers(block(implementer, "turn_budget"));
+  expect(implementerBudget).toContain(80);
+  expect(implementerBudget).toContain(4);
   for (const [agentType, limit] of [
     ["dotclaude:code-reviewer", 60],
     ["dotclaude:security-reviewer", 40],
   ]) {
     const text = start(agentType);
-    expect(text, agentType).not.toMatch(/hypotheses/);
-    expect(text, agentType).toMatch(new RegExp(`at most ${limit} turns`));
+    expect(text, agentType).not.toContain(CONVENTIONS);
+    expect(numbers(block(text, "turn_budget")), agentType).toContain(limit);
   }
   expect(
     hook(

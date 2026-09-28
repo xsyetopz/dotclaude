@@ -68,12 +68,14 @@ test("compaction carry-over restores prompts and last check", () => {
   );
   expect(text).not.toMatch(/task-notification|system-reminder/);
   expect(text).toMatch(/`bun test` passed/);
-  expect(text).toMatch(
-    /this session or its subagents edited: [^\n]*src\/mine\.js/,
-  );
-  expect(text).toMatch(/not recorded as edited[^\n]*src\/users\.js/);
-  expect(text.match(/not recorded as edited[^\n]*/)[0]).not.toMatch(
-    /src\/mine\.js/,
-  );
+  // Each file list is its own paragraph: first the files this session
+  // edited, then the files it did not record as edited.
+  const paragraphs = text.split("\n\n");
+  const ours = paragraphs.findIndex((p) => p.includes("src/mine.js"));
+  const theirs = paragraphs.findIndex((p) => p.includes("src/users.js"));
+  expect(ours).toBeGreaterThan(-1);
+  expect(theirs).toBeGreaterThan(ours);
+  expect(paragraphs.filter((p) => p.includes("src/mine.js"))).toHaveLength(1);
+  expect(paragraphs.filter((p) => p.includes("src/users.js"))).toHaveLength(1);
   expect(text.length <= 2600).toBeTruthy();
 });
