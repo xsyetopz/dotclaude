@@ -132,9 +132,10 @@ test("general-purpose is refused, and other subagents run in the foreground", ()
     run_in_background: false,
   });
   // With forks on, a missing type spawns a fork, which also runs in the foreground.
-  expect(spawn({ prompt: "fork this" }).updatedInput.run_in_background).toBe(
-    false,
-  );
+  const forksOn = { CLAUDE_CODE_FORK_SUBAGENT: "" };
+  expect(
+    spawn({ prompt: "fork this" }, forksOn).updatedInput.run_in_background,
+  ).toBe(false);
   expect(
     spawn({ subagent_type: "Explore", run_in_background: false }),
   ).toBeUndefined();

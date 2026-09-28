@@ -93,7 +93,9 @@ test("planAllowlist drops Fable only where the plan cannot run it", () => {
   const pro = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(PRO) });
   expect(!pro.list.some((m) => /fable/.test(m))).toBeTruthy();
   expect(pro.list.includes("claude-sonnet-5")).toBeTruthy();
-  expect(pro.note).toMatch(/Claude Pro plan runs them on usage credits/);
+  expect(pro.note).toMatch(
+    /Claude Pro plan excludes Fable models because it runs them on usage credits/,
+  );
   const max = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(MAX_20X) });
   expect(max.list.includes("claude-fable-5-1")).toBeTruthy();
   expect(max.note).toBe("");
@@ -107,7 +109,7 @@ test("planNote describes Fable per plan and one Pro-sized handoff bound for ever
   expect(max).toMatch(/up to 50% of it/);
   expect(max).toMatch(/passes about 200k tokens/);
   const pro = planNote({ CLAUDE_CONFIG_DIR: configDir(PRO) });
-  expect(pro).toMatch(/leaves it out/);
+  expect(pro).toMatch(/model lock excludes it/);
   expect(pro).toMatch(/passes about 200k tokens/);
   expect(planNote({ CLAUDE_CONFIG_DIR: configDir(null) })).toBe(null);
 });

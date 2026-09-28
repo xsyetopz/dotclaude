@@ -6,7 +6,7 @@ import { allowed } from "./_models.mjs";
 // --- fast mode and model lock -----------------------------------------------
 
 const FAST_ON = /["']?fastMode["']?\s*[:=]\s*true/i;
-const FAST_DENY = "fast mode is turned off by dotclaude's model lock";
+const FAST_DENY = "dotclaude's model lock turns off fast mode";
 
 export function claude(cmd, ctx) {
   if (!ctx.modelLock) return [];
@@ -69,7 +69,7 @@ export function rawSettingsWrite(command) {
     /CLAUDE_CODE_DISABLE_FAST_MODE["']?\s*[:=]\s*["']?0/.test(command)
   ) {
     return [
-      ["deny", `${FAST_DENY}; settings writes that enable it are blocked`],
+      ["deny", `${FAST_DENY} and blocks settings writes that turn it on`],
     ];
   }
   if (/disableAllHooks["']?\s*[:=]\s*true/.test(command))

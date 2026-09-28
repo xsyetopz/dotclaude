@@ -41,7 +41,7 @@ run((data) => {
   ) {
     state.blockedEdit = lastEdit.seq;
     reason = lastCheck
-      ? `Code changed after the last check run (last edit: ${lastEdit.path}; last check: \`${lastCheck.command}\`). Run the tests, build, or lint that cover this change, or state in your reply that the change is unverified and why.`
+      ? `Code changed after the last check run (last edit: ${lastEdit.path}, last check: \`${lastCheck.command}\`). Run the tests, build, or lint that cover this change, or state in your reply that the change is unverified and why.`
       : `Code changed (last edit: ${lastEdit.path}) and no test, build, or lint command ran this session. Run the checks that cover this change, or state in your reply that the change is unverified and why.`;
   } else if (
     lastCheck &&
@@ -69,6 +69,6 @@ run((data) => {
   // The reply written after this becomes the final report, so it has to
   // carry the whole outcome, not only the new check result.
   reason +=
-    " Then end with the complete report again (what changed, what ran and its result), since your next reply replaces this one as the report.";
+    " Then end with the complete report again (what changed, what ran and its result), because your next reply replaces this one as the report.";
   emit({ decision: "block", reason });
 });

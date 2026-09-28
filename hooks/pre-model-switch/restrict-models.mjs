@@ -12,7 +12,7 @@ run((data) => {
   if (target && !allowed(target, list)) {
     emit({
       decision: "block",
-      reason: `only these models are allowed: ${list.join(", ")}.${note}`,
+      reason: `the model lock allows only these models: ${list.join(", ")}.${note}`,
     });
   }
 });

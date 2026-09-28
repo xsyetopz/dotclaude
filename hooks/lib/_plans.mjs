@@ -132,7 +132,7 @@ export function planAllowlist(env = process.env) {
   if (fableAccess(plan, account) !== "unavailable") return { list, note: "" };
   return {
     list: list.filter((m) => !/fable/.test(canonical(m))),
-    note: ` Fable models are left out because the ${LABELS[plan]} plan runs them on usage credits and extra usage is off.`,
+    note: ` The ${LABELS[plan]} plan excludes Fable models because it runs them on usage credits and extra usage is off.`,
   };
 }
 
@@ -147,28 +147,28 @@ export function planNote(env = process.env) {
   switch (fable) {
     case "included":
       lines.push(
-        "Fable 5.1 draws from the same weekly limit as every other model, up to 50% of it; per token it costs 2.5x Opus 5.5 for input, output, and cache writes, and 1.25x for cache reads. Use it in the main conversation for planning or advice when Opus 5.5 has not solved the problem, not for routine work.",
+        "Fable 5.1 draws from the same weekly limit as every other model, up to 50% of it. Per token it costs 2.5x Opus 5.5 for input, output, and cache writes, and 1.25x for cache reads. Use it in the main conversation for planning or advice when Opus 5.5 has not solved the problem, not for routine work.",
       );
       break;
     case "credits":
       lines.push(
-        "Fable 5.1 is not in this plan's limits and runs on paid usage credits; switch to it only when the user asks.",
+        "Fable 5.1 is not in this plan's limits and runs on paid usage credits. Switch to it only when the user asks.",
       );
       break;
     case "unavailable":
       lines.push(
-        "Fable 5.1 is not in this plan's limits and extra usage is off, so dotclaude's model lock leaves it out.",
+        "Fable 5.1 is not in this plan's limits and extra usage is off, so dotclaude's model lock excludes it.",
       );
       break;
     case "api":
       lines.push(
-        "Usage is billed per token. For input, output, and cache writes, Fable 5.1 costs 2.5x Opus 5.5, Opus 5.5 2x Sonnet 5, and Sonnet 5 2x Haiku 4.5; cache reads, most of a long session's cost, are $0.25 per million on Fable 5.1, $0.20 on Opus 5.5 and Sonnet 5, and $0.10 on Haiku 4.5.",
+        "Usage is billed per token. For input, output, and cache writes, Fable 5.1 costs 2.5x Opus 5.5, Opus 5.5 2x Sonnet 5, and Sonnet 5 2x Haiku 4.5. Cache reads, most of a long session's cost, are $0.25 per million on Fable 5.1, $0.20 on Opus 5.5 and Sonnet 5, and $0.10 on Haiku 4.5.",
       );
       break;
   }
   // One bound for every plan, sized for Pro: larger plans only run out later.
   lines.push(
-    `Every turn re-reads the whole context, so write a handoff or compact once the main context passes about ${k(MAIN_CONTEXT_TOKENS)} tokens, and keep subagent briefs small and subagents few. dotclaude sizes this for Pro's 5-hour window and applies it on every plan; larger plans only run out later.`,
+    `Every turn re-reads the whole context. Once it passes about ${k(MAIN_CONTEXT_TOKENS)} tokens, write a handoff or compact. Keep subagent briefs small and subagents few. dotclaude sizes this for Pro's 5-hour window and applies it on every plan. Larger plans only run out later.`,
   );
   return `<claude_plan source="dotclaude">\n${lines.join("\n")}\n</claude_plan>`;
 }

@@ -17,7 +17,7 @@ import {
 } from "../lib/_common.mjs";
 
 const REPORT_REQUEST =
-  "You stopped at your turn limit, and a fresh agent will continue this work. Make no more tool calls. Reply now with your final report as a handoff: the goal, what is done and how it was verified (commands and results), the files you changed, anything left half-edited or uncommitted, what is left in order, and anything the next agent must know.";
+  "You stopped at your turn limit, and a fresh agent will continue this work. Make no more tool calls. Reply now with your final report as a handoff: the goal, what you did and how you verified it (commands and results), the files you changed, anything you left half-edited or uncommitted, what work remains and in what order, and anything the next agent must know.";
 
 /** True when the transcript shows agent `id` stopping at its turn limit. */
 function stoppedAtLimit(transcript, id) {
@@ -62,7 +62,7 @@ run((data) => {
   if (reported.includes(to)) {
     preToolDecision(
       "deny",
-      `Agent \`${to}\` stopped at its turn limit and was asked for its handoff report. Resuming it re-reads its whole context on every turn; start a fresh agent of the same type instead, briefed from that report (goal, what is done, files, what is left). If the report never arrived, read the agent's output file named in its task notification.`,
+      `Agent \`${to}\` stopped at its turn limit, and dotclaude already asked it for its handoff report. Resuming it re-reads its whole context on every turn. Start a fresh agent of the same type instead, briefed from that report (goal, what is done, the files, what remains). If the report never arrived, read the agent's output file named in its task notification.`,
     );
     return;
   }
@@ -75,7 +75,7 @@ run((data) => {
       permissionDecisionReason:
         "the agent stopped at its turn limit, so this message asks only for its handoff report.",
       updatedInput: { ...input, message: REPORT_REQUEST },
-      additionalContext: `Replaced this message to \`${to}\` with a request for its handoff report, because it stopped at its turn limit. When the report arrives, continue the work with a fresh agent of the same type briefed from it; further messages to \`${to}\` are blocked.`,
+      additionalContext: `This hook replaced the message to \`${to}\` with a request for its handoff report, because it stopped at its turn limit. When the report arrives, continue the work with a fresh agent of the same type, briefed from it. This hook blocks further messages to \`${to}\`.`,
     },
   });
 });

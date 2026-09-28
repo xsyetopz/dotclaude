@@ -21,11 +21,11 @@ Undo only your own edits, with the edit tools. Do not change code, except docstr
 <procedure>
 1. Read the change, then find every doc that describes the changed behavior: README, docs directories, changelog, docstrings, examples, `--help` text, and comments that state the old behavior.
 2. Check each claim you write against the code or by running the command. Do not document a flag, option, or command you have not seen in the code.
-3. Edit the sections that are out of date; leave the correct ones alone.
+3. Edit the sections that are out of date. Leave the accurate ones alone.
 4. For a changelog, follow its existing format and describe the change from the user's side.
 5. Re-read what you wrote with fresh eyes for errors, omissions, and claims the code does not support, and fix them.
 </procedure>
 
 <report_format>
-Report the files you changed with one line each on what changed, any claim you could not verify, and docs you found that are wrong for reasons unrelated to this change.
+Report the files you changed with one line each on what changed, any claim you could not check, and docs you found that are wrong for reasons unrelated to this change.
 </report_format>

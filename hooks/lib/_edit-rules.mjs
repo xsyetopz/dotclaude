@@ -130,7 +130,7 @@ function frontmatter(toolName, input, filePath, posix) {
     return [
       [
         "deny",
-        `the YAML frontmatter in ${path.basename(filePath)} would not parse (${err.message}); quote any value that contains ": " or starts with a special character, as in description: "…"`,
+        `the YAML frontmatter in ${path.basename(filePath)} would not parse (${err.message}). Quote any value that contains ": " or starts with a special character, as in description: "…"`,
       ],
     ];
   }
@@ -148,7 +148,7 @@ function generated(filePath, posix) {
     return [
       [
         "warn",
-        `${name} is generated, vendored, or a lockfile; the usual fix is to edit its source or rerun the generator`,
+        `${name} is generated, vendored, or a lockfile. Usually, edit its source or rerun the generator instead`,
       ],
     ];
   let head = "";
@@ -170,7 +170,7 @@ function generated(filePath, posix) {
     ? [
         [
           "warn",
-          `${name} is marked as generated; the usual fix is to edit its source or rerun the generator`,
+          `${name} is marked as generated. Usually, edit its source or rerun the generator instead`,
         ],
       ]
     : [];
@@ -193,7 +193,7 @@ function shrink(before, after) {
 
 const SETTINGS_NAME =
   /(^|\/)(settings(\.local)?\.json|managed-settings\.json)$/;
-const FAST_DENY = "fast mode is turned off by dotclaude's model lock";
+const FAST_DENY = "dotclaude's model lock turns off fast mode";
 
 function isClaudeSettings(posix) {
   return (

@@ -32,7 +32,7 @@
     "edit_guard": {
       "type": "boolean",
       "title": "Edit guard",
-      "description": "Ask before edits that remove test assertions, add skip markers, touch generated files, or edit Claude settings files.",
+      "description": "Ask before edits that delete test assertions, add skip markers, touch generated files, or edit Claude settings files.",
       "default": true
     },
     "stop_gate": {
@@ -44,7 +44,7 @@
     "goal_loop_guard": {
       "type": "boolean",
       "title": "End stalled /goal loops",
-      "description": "When Claude Code's /goal check blocks a stop twice in a row and Claude did no work in between, end the turn and say that only you can end the goal early (/goal clear), instead of letting each round re-read the whole context up to Claude Code's cap of 9.",
+      "description": "When Claude Code's /goal check blocks a stop twice in a row and Claude did no work in between, end the turn. Say only you can end the goal early, with /goal clear. Otherwise each round re-reads the whole context, up to Claude Code's cap of 9.",
       "default": true
     },
     "compact_carryover": {
@@ -68,7 +68,7 @@
     "turn_limit_handoff": {
       "type": "boolean",
       "title": "Hand off agents at their turn or context limit",
-      "description": "Once any subagent's context passes about 150k tokens, or near a dotclaude agent's turn limit, refuse its tool calls so its next action is a report. When a subagent stops at its turn limit anyway, the first message to it is rewritten into a request for a handoff report, and later messages are blocked, so the work continues in a fresh agent with a small context instead of a resumed one that re-reads its whole history on every turn.",
+      "description": "Once any subagent's context passes about 150k tokens, or a dotclaude agent nears its turn limit, refuse its tool calls. Its next action is then a report. When a subagent stops at its turn limit anyway, rewrite the first message to it into a request for a handoff report. Block any later messages to it. The work then continues in a fresh agent with a small context, instead of a resumed one that re-reads its whole history on every turn.",
       "default": true
     },
     "model_lock": {
@@ -80,13 +80,13 @@
     "claude_plan": {
       "type": "string",
       "title": "Claude plan",
-      "description": "auto (default) reads the plan from Claude Code's cached account. Or set one of: pro, max_5x, max_20x, team_standard, team_premium, enterprise, api. On Pro and standard Team seats without extra usage, the model lock leaves Fable out; session start notes what the plan means for model choice.",
+      "description": "auto (default) reads the plan from Claude Code's cached account. Or set one of: pro, max_5x, max_20x, team_standard, team_premium, enterprise, api. On Pro and standard Team seats without extra usage, the model lock leaves Fable out. Session start notes what the plan means for model choice.",
       "default": "auto"
     },
     "usage_notes": {
       "type": "boolean",
       "title": "Usage notes",
-      "description": "When Claude Code's cached usage shows the session or weekly limit past 75% or 90%, tell Claude once per level so it routes the remaining work to stretch what is left. When a turn stops on a usage limit, show a terminal notification with the reset time and the resume command.",
+      "description": "When Claude Code's cached usage shows the session or weekly limit past 75% or 90%, tell Claude once per level. Claude then routes the remaining work to stretch what is left. When a turn stops on a usage limit, show a terminal notification with the reset time and the resume command.",
       "default": true
     },
     "allowed_models": {

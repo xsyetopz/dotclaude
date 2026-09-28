@@ -62,7 +62,7 @@ run((data) => {
     const c = state.lastCheck;
     const stale =
       state.lastEdit && state.lastEdit.seq > c.seq
-        ? "; files were edited after it"
+        ? ". Files were edited after it"
         : "";
     parts.push(
       `Last check run: \`${c.command}\` ${c.ok ? "passed" : `failed${c.code ? ` (exit ${c.code})` : ""}`}${stale}.`,

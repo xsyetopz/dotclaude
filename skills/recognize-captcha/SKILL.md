@@ -1,6 +1,6 @@
 ---
 name: recognize-captcha
-description: "Read a text CAPTCHA image with offline OCR (ddddocr-rs). Use as a fallback when a text CAPTCHA appears despite antibot measures; prefer CloakBrowser, which keeps CAPTCHAs from appearing."
+description: "Read a text CAPTCHA image with offline OCR (ddddocr-rs). Use as a fallback when a text CAPTCHA appears despite antibot measures. Prefer CloakBrowser, which keeps CAPTCHAs from appearing."
 allowed-tools: Bash(bun */captcha/ddddocr.mjs *)
 ---
 
@@ -16,7 +16,7 @@ The best CAPTCHA is one that never appears, so this OCR covers only the rare cha
 3. If a CAPTCHA still appears, try this offline OCR as a last resort.
 4. For complex CAPTCHAs (image puzzles, reCAPTCHA v3), ask the user.
 
-Offline OCR is the fallback of choice because it runs locally with no network latency, keeps images on the machine, has no per-solve cost, and works offline after the model download.
+Offline OCR is the fallback of choice: it runs locally, with no network latency, and it keeps images on the machine. It also has no per-solve cost, and works offline after the model download.
 </approach>
 
 <installation>
@@ -40,7 +40,7 @@ The script looks for the model in these locations, in order:
 </installation>
 
 <usage>
-Recognize a CAPTCHA from a screenshot or image file; the script prints JSON:
+Recognize a CAPTCHA from a screenshot or image file. The script prints JSON:
 
 ```bash
 # From a screenshot or image file
@@ -50,7 +50,7 @@ bun ${CLAUDE_PLUGIN_ROOT}/src/captcha/ddddocr.mjs /path/to/captcha.png
 # {"text": "A3Bx9"}
 ```
 
-From a page, take a screenshot, then crop it to the CAPTCHA element before recognizing it, since the model reads a single challenge image, not a whole page:
+From a page, take a screenshot, then crop it to the CAPTCHA element. The model reads one challenge image, not a whole page:
 
 ```bash
 # 1. Take screenshot of CAPTCHA element with agent-browser or CloakBrowser

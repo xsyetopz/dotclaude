@@ -76,6 +76,6 @@ run((data) => {
   if (blocks < LIMIT) return;
   emit({
     continue: false,
-    stopReason: `The /goal check blocked this stop ${blocks} times in a row with no work in between. The goal is paused. To change it, run \`/goal <new condition>\`; to end it early, \`/goal clear\`; to keep working toward it, send a message.`,
+    stopReason: `The /goal check blocked this stop ${blocks} times in a row with no work in between. The goal is paused. To change it, run \`/goal <new condition>\`. To end it early, run \`/goal clear\`. To keep working toward it, send a message.`,
   });
 });
