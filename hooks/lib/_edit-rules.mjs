@@ -15,7 +15,8 @@ export function check(toolName, toolInput, ctx) {
   const posix = filePath.split(path.sep).join("/");
   const { before, after } = beforeAfter(toolName, toolInput, filePath);
   const out = [];
-  if (isClaudeSettings(posix)) out.push(...settings(before, after, c));
+  if (isClaudeSettings(posix) || MANAGED_DROP_IN.test(posix))
+    out.push(...settings(before, after, c));
   if (!c.editGuard) return out;
   if (TEST_PATH.test(posix))
     out.push(...testWeakening(before, after, c.testRemovalRequested));
@@ -193,6 +194,7 @@ function shrink(before, after) {
 
 const SETTINGS_NAME =
   /(^|\/)(settings(\.local)?\.json|managed-settings\.json)$/;
+const MANAGED_DROP_IN = /(^|\/)managed-settings\.d\/[^/]+\.json$/;
 const FAST_DENY = "dotclaude's model lock turns off fast mode";
 
 function isClaudeSettings(posix) {

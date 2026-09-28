@@ -9,11 +9,31 @@
 // program started Claude Code without the shell function.
 
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { emit, option, run } from "../lib/_common.mjs";
 import { profileStamp, STAMP_KEY } from "../lib/_profile.mjs";
-import { installedPrompt, syncPrompt } from "../lib/_system-prompt.mjs";
+import {
+  installedPrompt,
+  LAUNCHER_BEGIN,
+  shellStartupFile,
+  syncPrompt,
+} from "../lib/_system-prompt.mjs";
 
 const MIN_BUN = "1.4.2";
+
+function readText(file) {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+const tilde = (file) =>
+  file.startsWith(`${os.homedir()}${path.sep}`)
+    ? `~${file.slice(os.homedir().length)}`
+    : file;
 
 function olderThan(version, minimum) {
   const a = version.split(".").map(Number);
@@ -62,8 +82,13 @@ run(() => {
       const proxy = env.ANTHROPIC_BASE_URL
         ? ` A proxy wrapper such as \`headroom wrap claude\` also skips the function. Start the proxy alone (\`headroom proxy\`), export \`ANTHROPIC_BASE_URL=${env.ANTHROPIC_BASE_URL}\`, and run \`claude\`.`
         : "";
+      const rc = shellStartupFile(path.basename(env.SHELL ?? ""));
+      const installed = rc && readText(rc).includes(LAUNCHER_BEGIN);
+      const fix = installed
+        ? `\`${tilde(rc)}\` has the function, so the terminal was opened before it was added or an IDE started Claude Code. Run \`source ${tilde(rc)}\` or open a new terminal, then start \`claude\` again`
+        : "Start Claude Code from a terminal that loads the function (re-run /dotclaude:apply-settings-profile if it is out of date)";
       notices.push(
-        `this session did not start through dotclaude's \`claude\` shell function, ${RULES}. Start Claude Code from a terminal that loads the function (re-run /dotclaude:apply-settings-profile if it is out of date), or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.${proxy}`,
+        `this session did not start through dotclaude's \`claude\` shell function, ${RULES}. ${fix}, or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.${proxy}`,
       );
     }
   }

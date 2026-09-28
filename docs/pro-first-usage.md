@@ -354,7 +354,7 @@ Fable access stays plan-specific because it is a fact about the plan.
 1. **A 150k context budget for every subagent**, enforced by refusing its
    tool calls.
 1. **Foreground subagents and no `general-purpose`**, enforced by a
-   `PreToolUse(Agent)` hook and `CLAUDE_CODE_FORK_SUBAGENT=false`.
+   `PreToolUse(Agent)` hook and `CLAUDE_CODE_FORK_SUBAGENT=0`.
 1. **3 subagents at once**, and 3 agents at once in a workflow.
 
 ## 5. Open items

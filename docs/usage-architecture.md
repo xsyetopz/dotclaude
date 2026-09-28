@@ -60,7 +60,7 @@ no mechanism exists.
 - Main context: the profile's `autoCompactWindow`, not a request in prose.
 - Agent choice: a `PreToolUse(Agent)` deny for `general-purpose`.
 - Wake turns: the same `Agent` hook sets `run_in_background: false`, and
-  the profile sets `CLAUDE_CODE_FORK_SUBAGENT=false`, because fork mode forces
+  the profile sets `CLAUDE_CODE_FORK_SUBAGENT=0`, because fork mode forces
   every subagent into the background. A foreground agent returns its report
   as the tool result of the turn that spawned it, so it causes no wake-ups,
   and agents spawned in one message still run together. The calls that act

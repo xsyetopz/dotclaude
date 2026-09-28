@@ -23,10 +23,11 @@ import os from "node:os";
 import path from "node:path";
 import {
   installedPrompt,
+  LAUNCHER_BEGIN,
   renderPrompt,
+  shellStartupFile,
 } from "../../../hooks/lib/_system-prompt.mjs";
 
-const BEGIN = "# >>> dotclaude system prompt >>>";
 const END = "# <<< dotclaude system prompt <<<";
 const NOTE =
   "# Managed by /dotclaude:apply-settings-profile. Edits inside this block are replaced.";
@@ -77,26 +78,7 @@ function pwshProfile() {
 }
 
 function startupFile(shell) {
-  switch (shell) {
-    case "zsh":
-      return path.join(process.env.ZDOTDIR || home, ".zshrc");
-    case "bash":
-      // macOS terminals start login shells, which read .bash_profile.
-      return path.join(
-        home,
-        process.platform === "darwin" ? ".bash_profile" : ".bashrc",
-      );
-    case "fish":
-      // A file of its own in conf.d, which fish reads at every start.
-      return path.join(
-        process.env.XDG_CONFIG_HOME || path.join(home, ".config"),
-        "fish",
-        "conf.d",
-        "dotclaude.fish",
-      );
-    default:
-      return pwshProfile();
-  }
+  return shellStartupFile(shell) ?? pwshProfile();
 }
 
 // For a word inside double quotes in sh.
@@ -184,7 +166,7 @@ let next;
 if (remove) {
   next = current.replace(BLOCK, "").replace(/\n{3,}$/, "\n\n");
 } else {
-  const block = `${BEGIN}\n${NOTE}\n${body(shell)}\n${END}\n`;
+  const block = `${LAUNCHER_BEGIN}\n${NOTE}\n${body(shell)}\n${END}\n`;
   next = BLOCK.test(current)
     ? current.replace(BLOCK, block)
     : current.trim()

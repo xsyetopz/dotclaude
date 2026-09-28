@@ -31,6 +31,20 @@ test("a /dotclaude: skill typed mid-message runs through the Skill tool", () => 
   ).toBe(null);
   expect(
     expand(
+      "```\nSessionStart:startup says: re-run /dotclaude:write-session-handoff\n```\nthis, too.",
+    ),
+  ).toBe(null);
+  expect(
+    expand("see:\n~~~~\nthen /dotclaude:write-session-handoff h.md"),
+    "an unclosed fence runs to the end of the message",
+  ).toBe(null);
+  expect(
+    expand("```\nlog\n```\nnow /dotclaude:write-session-handoff h.md")
+      .hookSpecificOutput.additionalContext,
+    "a name after the closing fence still runs",
+  ).toMatch(/dotclaude:write-session-handoff/);
+  expect(
+    expand(
       "<task-notification>\n<result>see /dotclaude:write-session-handoff</result>\n</task-notification>",
     ),
   ).toBe(null);

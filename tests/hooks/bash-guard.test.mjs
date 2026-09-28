@@ -94,3 +94,48 @@ test("malformed input fails open", () => {
   expect(res.status).toBe(0);
   expect(res.stdout).toBe("");
 });
+
+test("settings writes ask in auto mode, where the classifier would deny them", () => {
+  const decision = (input) =>
+    hook("pre-tool-use/block-destructive-commands.mjs", {
+      permission_mode: "auto",
+      ...input,
+    })?.hookSpecificOutput ?? null;
+  const bash = (command) =>
+    decision({ tool_name: "Bash", tool_input: { command } });
+  for (const script of [
+    "apply-settings",
+    "apply-claude-md",
+    "apply-launcher",
+    "install-managed",
+  ]) {
+    const out = bash(`bun "/p/scripts/${script}.mjs" --scope user --apply`);
+    expect(out.permissionDecision, script).toBe("ask");
+    expect(out.permissionDecisionReason).toContain(`${script}.mjs --apply`);
+  }
+  expect(
+    bash(
+      'SUDO_ASKPASS=/p/askpass.sh sudo -A "$(command -v bun)" /p/scripts/install-managed.mjs --apply',
+    ).permissionDecision,
+  ).toBe("ask");
+  expect(
+    bash(
+      "jq '.permissions.deny -= [\"X\"]' ~/.claude/settings.json > /tmp/s.json && mv /tmp/s.json ~/.claude/settings.json",
+    ).permissionDecision,
+  ).toBe("ask");
+  expect(bash('bun "/p/scripts/apply-settings.mjs" --scope user')).toBe(null);
+  expect(bash("jq . ~/.claude/settings.json")).toBe(null);
+  const edit = (file_path) =>
+    hook("pre-tool-use/confirm-risky-edits.mjs", {
+      permission_mode: "auto",
+      tool_name: "Edit",
+      tool_input: { file_path, old_string: '"a": 1', new_string: '"a": 2' },
+    })?.hookSpecificOutput.permissionDecision ?? null;
+  expect(edit(path.join(repo, ".claude", "settings.local.json"))).toBe("ask");
+  expect(
+    edit(
+      "/Library/Application Support/ClaudeCode/managed-settings.d/50-x.json",
+    ),
+  ).toBe("ask");
+  expect(edit(path.join(repo, "config", "settings.json"))).toBe(null);
+});

@@ -147,3 +147,35 @@ test("apply-settings adds the optional switches unless skipped", () => {
   expect(some.env.CLAUDE_CODE_DISABLE_WORKFLOWS).toBe("1");
   expect(some.env.DOTCLAUDE_SETTINGS_PROFILE).toBe(profileStamp());
 });
+
+test("apply-settings removes exact entries older profiles wrote and keeps look-alikes", () => {
+  const home = tempHome();
+  const file = path.join(home, ".claude", "settings.json");
+  fs.writeFileSync(
+    file,
+    JSON.stringify({
+      env: { ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-opus-5-5" },
+      permissions: {
+        allow: [
+          "Bash(codex exec -p dotclaude-luna *)",
+          "Bash(codex exec -p dotclaude-review *)",
+          "Bash(codex exec *)",
+        ],
+        deny: ["AskUserQuestion", "Read(~/.ssh/**)"],
+      },
+    }),
+  );
+  const preview = run("apply-settings.mjs", home);
+  expect(preview).toMatch(
+    /permissions\.deny: remove "AskUserQuestion" \(left by an older dotclaude profile\)/,
+  );
+  expect(preview).toMatch(/env\.ANTHROPIC_DEFAULT_SONNET_MODEL: remove/);
+  run("apply-settings.mjs", home, "--apply");
+  const merged = JSON.parse(fs.readFileSync(file, "utf8"));
+  expect(merged.permissions.allow).toStrictEqual(["Bash(codex exec *)"]);
+  expect(merged.permissions.deny).not.toContain("AskUserQuestion");
+  expect(merged.permissions.deny).toContain("Read(~/.ssh/**)");
+  expect(merged.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBeUndefined();
+  expect(merged.env.CLAUDE_CODE_FORK_SUBAGENT).toBe("0");
+  expect(run("apply-settings.mjs", home)).toMatch(/Already up to date/);
+});

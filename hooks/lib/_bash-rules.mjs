@@ -19,6 +19,7 @@ import {
 import { gitRule } from "./_rules-git.mjs";
 import { claude, modelEnv, rawSettingsWrite } from "./_rules-model.mjs";
 import { curl, gh, PUBLISH, publish, wget } from "./_rules-remote.mjs";
+import { settingsWrite } from "./_rules-settings.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /**
@@ -33,6 +34,7 @@ export function check(command, ctx) {
   const findings = parsed.commands.flatMap((cmd) => checkCommand(cmd, c));
   if (parsed.unparsed.length) findings.push(...rawScan(command));
   if (c.modelLock) findings.push(...rawSettingsWrite(command));
+  findings.push(...settingsWrite(command));
   const seen = new Set();
   return findings.filter(([level, reason]) => {
     const key = `${level}\0${reason}`;

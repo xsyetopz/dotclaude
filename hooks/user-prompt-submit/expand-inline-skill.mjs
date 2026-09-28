@@ -15,10 +15,11 @@ const TOKEN = /(^|\s)\/dotclaude:([a-z0-9-]+)(?![\w:/-])/g;
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
 const USER_ONLY = /^disable-model-invocation:\s*true\s*$/m;
 
-// Pasted blocks and `>` quote lines only mention a skill; a name there, such
-// as one quoted back from Claude's own reply, is not an invocation.
+// Pasted blocks, `>` quote lines, and fenced code blocks (closed or not) only
+// mention a skill; a name there, such as one quoted back from Claude's own
+// reply or a hook message, is not an invocation.
 const QUOTED =
-  /<pasted_content id="([^"]*)">[\s\S]*?<\/pasted_content id="\1">|^[ \t]*>.*$/gm;
+  /<pasted_content id="([^"]*)">[\s\S]*?<\/pasted_content id="\1">|^[ \t]*>.*$|^[ \t]*(`{3,}|~{3,}).*\n[\s\S]*?(?:^[ \t]*\2[ \t]*$|$(?![\s\S]))/gm;
 
 function pluginRoot() {
   return (

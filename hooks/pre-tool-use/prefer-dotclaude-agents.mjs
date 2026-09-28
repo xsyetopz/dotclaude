@@ -6,7 +6,7 @@
 // spend, 83 explicit calls, almost all implementation slices with no turn
 // limit. The dotclaude agents carry a model, effort, turn limit, and tool set
 // for their job. With forks off (the settings profile sets
-// CLAUDE_CODE_FORK_SUBAGENT=false), leaving `subagent_type` out also spawns
+// CLAUDE_CODE_FORK_SUBAGENT=0), leaving `subagent_type` out also spawns
 // general-purpose, so that is refused too; with forks on it spawns a fork.
 //
 // Foreground: a background agent wakes the main conversation when it

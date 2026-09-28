@@ -10,7 +10,8 @@
 // backs the file up next to itself, then writes the merged result.
 // Merge rules: objects merge key by key, arrays gain missing entries, scalars
 // take the profile value. The model policy (OWNED below) is replaced, not
-// merged; nothing else already in the file is removed.
+// merged. With the shipped profile, the exact entries in STALE, which older
+// dotclaude profiles wrote, are removed; nothing else already in the file is.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -71,6 +72,20 @@ function readJson(file, fallback) {
 const OWNED = {
   availableModels: () => true,
   "permissions.deny": (entry) => /^Agent\(model:/.test(String(entry)),
+};
+
+// Exact values that older dotclaude profiles wrote and 0.8 dropped. Only an
+// exact match is removed, so a user's own setting of the same key stays.
+const STALE = {
+  // 0.7 and earlier denied it; 0.8 stopped.
+  "permissions.deny": ["AskUserQuestion"],
+  // Codex support was removed in 0.8.
+  "permissions.allow": [
+    "Bash(codex exec -p dotclaude-luna *)",
+    "Bash(codex exec -p dotclaude-review *)",
+  ],
+  // 0.4.0 mapped `sonnet` to Opus 5.5, so every `sonnet` agent ran on Opus.
+  "env.ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-opus-5-5",
 };
 
 const isObject = (v) =>
@@ -134,7 +149,35 @@ if (
     `Claude plan: ${plan}, which runs Fable on usage credits with extra usage off; availableModels leaves Fable out.`,
   );
 }
-let merged = merge(current, profile, "");
+function dropStale(settings) {
+  const out = structuredClone(settings);
+  for (const [where, stale] of Object.entries(STALE)) {
+    const keys = where.split(".");
+    const last = keys.pop();
+    const parent = keys.reduce((o, k) => (isObject(o) ? o[k] : undefined), out);
+    if (!isObject(parent) || !Object.hasOwn(parent, last)) continue;
+    const value = parent[last];
+    const gone = Array.isArray(stale)
+      ? (Array.isArray(value) ? value : []).filter((v) => stale.includes(v))
+      : value === stale
+        ? [value]
+        : [];
+    if (!gone.length) continue;
+    if (Array.isArray(stale))
+      parent[last] = value.filter((v) => !stale.includes(v));
+    else delete parent[last];
+    changes.push(
+      `${where}: remove ${gone.map((v) => JSON.stringify(v)).join(", ")} (left by an older dotclaude profile)`,
+    );
+  }
+  return out;
+}
+
+let merged = merge(
+  profilePath === RECOMMENDED ? dropStale(current) : current,
+  profile,
+  "",
+);
 if (profilePath === RECOMMENDED) {
   const optional = readJson(OPTIONAL, {});
   for (const name of skip)

@@ -152,6 +152,9 @@ test("session start updates an installed prompt copy that differs from the shipp
         DOTCLAUDE_SYSTEM_PROMPT: "",
         DOTCLAUDE_LAUNCHER: "1",
         ANTHROPIC_BASE_URL: "",
+        HOME: home,
+        SHELL: "/bin/zsh",
+        ZDOTDIR: "",
         ...env,
       },
     );
@@ -170,6 +173,17 @@ test("session start updates an installed prompt copy that differs from the shipp
   // An IDE starts Claude Code without the shell function.
   expect(start({ DOTCLAUDE_LAUNCHER: "" }).systemMessage).toMatch(
     /did not start through dotclaude's `claude` shell function/,
+  );
+  expect(start({ DOTCLAUDE_LAUNCHER: "" }).systemMessage).toMatch(
+    /Start Claude Code from a terminal that loads the function/,
+  );
+  // The function is in .zshrc, but this terminal started before it was added.
+  fs.writeFileSync(
+    path.join(home, ".zshrc"),
+    "# >>> dotclaude system prompt >>>\nclaude() { :; }\n# <<< dotclaude system prompt <<<\n",
+  );
+  expect(start({ DOTCLAUDE_LAUNCHER: "" }).systemMessage).toMatch(
+    /`~\/\.zshrc` has the function.*Run `source ~\/\.zshrc` or open a new terminal/,
   );
   expect(start({ DOTCLAUDE_LAUNCHER: "", DOTCLAUDE_SYSTEM_PROMPT: "0" })).toBe(
     null,

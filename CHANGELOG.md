@@ -10,6 +10,46 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-09-28
+
+### Added
+
+- Writes to Claude Code's own configuration ask the user. In auto mode, the
+  classifier denied them as self-modification even when the user asked for
+  them, so the 0.8.0 migration could not finish. A hook "ask" skips the
+  classifier and shows a permission prompt (checked in Claude Code
+  2.1.283). The Bash guard asks for this skill's `apply-settings`,
+  `apply-claude-md`, `apply-launcher`, and `install-managed` scripts with
+  `--apply`, and for commands that write a `.claude/settings*.json` or
+  `managed-settings` file. It follows the `bash_guard` option. The edit
+  guard, which already asked for settings edits, now also covers
+  `managed-settings.d/*.json`.
+- `install-managed` can run from Claude Code. `scripts/askpass.sh` asks for
+  the admin password in a desktop dialog (`osascript` on macOS; `zenity`,
+  `kdialog`, or `ssh-askpass` on Linux) through `sudo -A`, after the Bash
+  guard's prompt. Without a dialog, the user runs the command in a terminal
+  as before.
+
+### Changed
+
+- `apply-settings` removes exact entries that older dotclaude profiles wrote
+  and 0.8 dropped: the `AskUserQuestion` deny, the two Codex allow rules,
+  and `ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5`. The preview lists
+  each one. The same keys with other values stay.
+- The settings profile sets `CLAUDE_CODE_FORK_SUBAGENT` to `"0"` instead of
+  `"false"`. Claude Code reads both as off, and the settings JSON schema
+  accepts only `"0"` and `"1"`.
+- When a session starts without the `claude` function but the startup file
+  already has it, the session-start notice says so and names
+  `source <file>` or a new terminal as the fix. This happens when the
+  terminal was opened before the launcher was installed.
+
+### Fixed
+
+- A `/dotclaude:` skill name inside a fenced code block no longer counts as
+  an invocation. A pasted session-start notice in a code fence made Claude
+  ask the user to send `/dotclaude:apply-settings-profile` again.
+
 ## [0.8.0] - 2026-09-28
 
 ### Added
@@ -822,7 +862,23 @@ re-run `/dotclaude:apply-settings-profile`.
   `drive-web-browser`, and `recognize-captcha` skills.
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.4.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.8.1...HEAD
+[0.8.1]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.8.0...dotclaude--v0.8.1
+[0.8.0]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.7.0...dotclaude--v0.8.0
+[0.7.0]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.6.2...dotclaude--v0.7.0
+[0.6.2]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.6.1...dotclaude--v0.6.2
+[0.6.1]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.6.0...dotclaude--v0.6.1
+[0.6.0]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.5.1...dotclaude--v0.6.0
+[0.5.1]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.5.0...dotclaude--v0.5.1
+[0.5.0]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.4.0...dotclaude--v0.5.0
 [0.4.0]:
   https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.3.0...dotclaude--v0.4.0
 [0.3.0]:

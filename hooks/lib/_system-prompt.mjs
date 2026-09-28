@@ -69,3 +69,34 @@ export function syncPrompt(
   const old = current.match(/Claude Code v(\S+?),/)?.[1] ?? null;
   return current === renderPrompt(old) ? "version" : "content";
 }
+
+export const LAUNCHER_BEGIN = "# >>> dotclaude system prompt >>>";
+
+/**
+ * The startup file apply-launcher.mjs writes the function to for `shell`
+ * (zsh, bash, or fish), or null for another shell. PowerShell's profile path
+ * needs a pwsh process, so the launcher script finds that one itself.
+ */
+export function shellStartupFile(shell) {
+  const home = os.homedir();
+  switch (shell) {
+    case "zsh":
+      return path.join(process.env.ZDOTDIR || home, ".zshrc");
+    case "bash":
+      // macOS terminals start login shells, which read .bash_profile.
+      return path.join(
+        home,
+        process.platform === "darwin" ? ".bash_profile" : ".bashrc",
+      );
+    case "fish":
+      // A file of its own in conf.d, which fish reads at every start.
+      return path.join(
+        process.env.XDG_CONFIG_HOME || path.join(home, ".config"),
+        "fish",
+        "conf.d",
+        "dotclaude.fish",
+      );
+    default:
+      return null;
+  }
+}

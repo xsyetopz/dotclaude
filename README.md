@@ -197,7 +197,7 @@ project, or local settings. It sets:
   subagent model. Haiku runs Claude Code's background tasks.
 - **Subagent and workflow bounds**: 3 subagents at once, and 3 agents at once in
   a workflow run (`CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`). Forks are off
-  (`CLAUDE_CODE_FORK_SUBAGENT=false`) so subagents run in the foreground and
+  (`CLAUDE_CODE_FORK_SUBAGENT=0`) so subagents run in the foreground and
   return in the turn that spawned them.
   `workflowSizeGuideline: "medium"` asks Claude to aim for fewer than 10 agents
   per workflow; that one is advice, not a cap. Workflows stay on. Since

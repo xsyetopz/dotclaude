@@ -29,7 +29,7 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
    | Lean system prompt | `env.CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1` | Claude Code's shorter built-in prompt, which it already rolls out to some sessions: about 6.6k fewer tokens on every request, mostly from condensed auto-memory instructions, with the same tools. |
    | Background usage | `autoCompactWindow: 200000` on every plan, `promptSuggestionEnabled: false`, `awaySummaryEnabled: false`, `crossSessionInbound: "hold"` | Every request re-reads the whole context. Compacting at 200k instead of the default (about 967k on current models) keeps each turn smaller. The value is sized for Pro and applies on every plan. Prompt suggestions send an extra request after every response, session recap sends one when you step away, and cross-session messages start idle turns. Each re-reads the context. `/recap` still works on demand. |
    | Effort cap | `maxEffortLevel: xhigh` | `max` is blocked because the claude.ai effort picker warns it uses about 5.5x usage on Opus 5.5 and 3.5x on Fable 5.1 (as of 2026-09-26). `xhigh` stays for the rare hard turn. The lowest cap across settings scopes applies. |
-   | Subagent and workflow bounds | `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=3`, `env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS=3`, `workflowSizeGuideline: medium`, `env.CLAUDE_CODE_FORK_SUBAGENT=false` | Subagents were 55% of one measured Max 20x week, and parallel agents spend a Pro 5-hour window several times faster. Three at once is sized for Pro, and larger plans only run out later. The workflow env var hard-caps agents running at once in a workflow. The size guideline only advises Claude how many to plan. Workflows stay enabled. Forks off, because fork mode forces every subagent into the background, and a background agent's report wakes the main conversation for extra full turns. |
+   | Subagent and workflow bounds | `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=3`, `env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS=3`, `workflowSizeGuideline: medium`, `env.CLAUDE_CODE_FORK_SUBAGENT=0` | Subagents were 55% of one measured Max 20x week, and parallel agents spend a Pro 5-hour window several times faster. Three at once is sized for Pro, and larger plans only run out later. The workflow env var hard-caps agents running at once in a workflow. The size guideline only advises Claude how many to plan. Workflows stay enabled. Forks off, because fork mode forces every subagent into the background, and a background agent's report wakes the main conversation for extra full turns. |
    | Task list | `env.CLAUDE_CODE_ENABLE_TODO_TOOLS=1` | The task-list tools are off by default on Opus 5.5, and the dotclaude system prompt relies on them. |
    | Feedback off | `env.DISABLE_FEEDBACK_COMMAND=1`, `env.CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1`, `env.DISABLE_ERROR_REPORTING=1` | Removes `/feedback`, `/bug`, `/share`, and the SendFeedback tool (about 5.5 KB sent on every request), the session-quality survey, and error reports. Telemetry itself stays on, because `DISABLE_TELEMETRY` and `DO_NOT_TRACK` also stop feature-flag fetching, which removes the advisor tool and the marking of large pastes. |
    | Secrets | `permissions.deny` `Read(...)` rules for `.env`, `.env.local`, `.env.production`, `.env.*.local`, `~/.ssh`, `~/.aws/credentials`, `~/.gnupg`, `~/.netrc`, `~/.docker/config.json` | Keeps credentials out of the context window. |
@@ -64,7 +64,9 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
    bun "${CLAUDE_SKILL_DIR}/scripts/apply-settings.mjs" --scope <scope> [--skip name,...] --apply
    ```
 
-   The script backs up the existing file next to it before writing. If the permission system blocks the command, give the user the exact command to run with the `!` prefix. Do not retry, because a block is the user's decision.
+   The script backs up the existing file next to it before writing. With the shipped profile it also removes the exact entries older dotclaude profiles wrote and 0.8 dropped (the `AskUserQuestion` deny, the two Codex allow rules, and `ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5`). The preview lists each one.
+
+   dotclaude's Bash guard asks the user to approve every `--apply` of this skill's scripts, in auto mode too, so the auto-mode classifier does not deny it as self-modification. If the user declines the prompt, stop. If the command is blocked anyway, give the user the exact command to run with the `!` prefix. Do not retry, because a block is the user's decision.
 
 5. Offer the global `CLAUDE.md` section. It adds a short, marked block to `~/.claude/CLAUDE.md` that names:
 
@@ -117,11 +119,13 @@ The script writes `managed-settings.d/50-dotclaude.json` inside the managed sett
    bun "${CLAUDE_SKILL_DIR}/scripts/install-managed.mjs"
    ```
 
-2. If the user wants the lock, give them the command the dry run printed. They run it in their own terminal, since `sudo` needs one for its password prompt. It names Bun by absolute path because `sudo` resets `PATH` on Linux:
+2. If the user wants the lock, run it through `sudo -A`. The Bash tool has no terminal for `sudo`'s password prompt, so `scripts/askpass.sh` asks for the password in a desktop dialog (`osascript` on macOS; `zenity`, `kdialog`, or `ssh-askpass` on Linux). The command names Bun by absolute path because `sudo` resets `PATH` on Linux:
 
    ```bash
-   sudo "$(command -v bun)" "${CLAUDE_SKILL_DIR}/scripts/install-managed.mjs" --apply
+   SUDO_ASKPASS="${CLAUDE_SKILL_DIR}/scripts/askpass.sh" sudo -A "$(command -v bun)" "${CLAUDE_SKILL_DIR}/scripts/install-managed.mjs" --apply
    ```
 
-   Claude never runs `sudo`, because admin rights are the user's to grant. If a different `50-dotclaude.json` is already there, the script shows old and new and asks before overwriting. Without a terminal, it refuses unless given `--yes`. It keeps a backup outside `managed-settings.d/`, so Claude Code never reads it. An invalid managed JSON file stops Claude Code from starting. The script checks the new file before moving it into place.
+   The user approves twice: dotclaude's Bash guard shows a permission prompt for the command, and the dialog asks for the admin password. If the user declines either one, stop and do not retry. If no dialog is available (the script says so), or the user prefers their own terminal, give them the same command without `SUDO_ASKPASS=…` and `-A`.
+
+   If a different `50-dotclaude.json` is already there, the script shows old and new and asks before overwriting. Without a terminal, it refuses unless given `--yes`. Pass `--yes` only after showing the user the current file and the new content and the user agrees to replace it. It keeps a backup outside `managed-settings.d/`, so Claude Code never reads it. An invalid managed JSON file stops Claude Code from starting. The script checks the new file before moving it into place.
 </managed_settings>
