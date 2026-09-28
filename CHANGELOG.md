@@ -26,6 +26,13 @@ steps after each update.
   `-E`, `tree -I`, including `{a,b}` lists), or when it is at most two levels
   deep. The deny message names the directories and points to `rg`, `fd`, or
   `git grep`, which skip ignored files. It follows the `bash_guard` option.
+- The settings profile sets `CLAUDE_CODE_GLOB_NO_IGNORE` to `"false"`, so the
+  Glob tool skips gitignored files as the Grep tool already does. Claude Code
+  2.1.283 runs Glob as `rg --files --no-ignore` unless this variable is false;
+  in a test repository, `**/*.swift` returned files under `.build/` and
+  `node_modules/` without it and only the tracked file with it. The variable
+  comes from the Claude Code source and is not documented, so a later release
+  may change it. Run `apply-settings` again to add it.
 
 ## [0.8.1] - 2026-09-28
 

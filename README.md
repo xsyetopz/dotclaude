@@ -208,7 +208,9 @@ project, or local settings. It sets:
   message and tells it that message wins over the script's task
   ([#95369](https://github.com/anthropics/claude-code/issues/95369), open), so
   send nothing unrelated while a workflow launches or runs.
-- **Tools**: the task-list tools turned on (off by default on Opus 5.5).
+- **Tools**: the task-list tools turned on (off by default on Opus 5.5), and
+  the Glob tool skips gitignored files (`CLAUDE_CODE_GLOB_NO_IGNORE=false`), as
+  the Grep tool already does.
 - **Built-in switches** (`profiles/optional.json`), each applied unless you
   skip it with `--skip name,...`:
   - `artifact`: the Artifact tool (about 34 KB per request).

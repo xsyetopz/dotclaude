@@ -111,6 +111,7 @@ test("apply-settings replaces the model policy: availableModels and Agent(model:
     expect(!merged.permissions.deny.includes(gone), gone).toBeTruthy();
   expect(merged.autoCompactWindow).toBe(200000);
   expect(merged.env.CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT).toBe("1");
+  expect(merged.env.CLAUDE_CODE_GLOB_NO_IGNORE).toBe("false");
   expect(merged.promptSuggestionEnabled).toBe(false);
   expect(merged.awaySummaryEnabled).toBe(false);
   expect(merged.crossSessionInbound).toBe("hold");
