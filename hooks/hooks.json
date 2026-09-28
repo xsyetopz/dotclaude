@@ -248,6 +248,12 @@
             "command": "bun",
             "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/stop/end-goal-loops.mjs"],
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bun",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/stop/check-open-tasks.mjs"],
+            "timeout": 10
           }
         ]
       }

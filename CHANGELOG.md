@@ -47,6 +47,10 @@ steps after each update.
   `nested_instructions` option controls it.
 - The usage report shows the prompt cache hit rate and the advisor's share of
   cost.
+- An open-task check. When Claude ends a turn with tasks still pending or in
+  progress, a Stop hook sends it back once to update the task list. The same
+  set of open tasks blocks only once, so tasks left open for you do not block
+  again. The `task_check` option controls it.
 - `just sandbox` runs Claude Code with the checkout as its plugin in a
   separate config directory. It skips onboarding and the trust dialog, and
   it gives your login token to `claude` in its environment only.

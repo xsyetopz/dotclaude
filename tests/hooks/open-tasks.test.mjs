@@ -1,0 +1,89 @@
+// Open-task check: a turn that ends with tasks still pending or in progress
+// is sent back once per set of open tasks.
+
+import { expect, test } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { openTasks, taskListDir } from "../../hooks/lib/_tasks.mjs";
+import { hook, session } from "../support/hooks.mjs";
+
+const config = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-tasks-"));
+const tasks = (list, entries) => {
+  const dir = path.join(config, "tasks", list);
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [id, status] of entries)
+    fs.writeFileSync(
+      path.join(dir, `${id}.json`),
+      JSON.stringify({ id, subject: `Task ${id}`, status }),
+    );
+};
+const stop = (sid, extra = {}, env = {}) =>
+  hook(
+    "stop/check-open-tasks.mjs",
+    { session_id: sid, hook_event_name: "Stop", ...extra },
+    { CLAUDE_CONFIG_DIR: config, CLAUDE_CODE_TASK_LIST_ID: "", ...env },
+  );
+
+test("the task list directory follows the list ID and the session", () => {
+  expect(taskListDir("s1", { CLAUDE_CONFIG_DIR: "/c" })).toBe("/c/tasks/s1");
+  expect(
+    taskListDir("s1", {
+      CLAUDE_CONFIG_DIR: "/c",
+      CLAUDE_CODE_TASK_LIST_ID: "team a/b",
+    }),
+  ).toBe("/c/tasks/team-a-b");
+});
+
+test("open tasks are pending or in progress, in ID order", () => {
+  tasks("order", [
+    ["10", "pending"],
+    ["2", "in_progress"],
+    ["3", "completed"],
+  ]);
+  fs.writeFileSync(path.join(config, "tasks", "order", "4.json"), "{");
+  expect(
+    openTasks(path.join(config, "tasks", "order")).map((t) => t.id),
+  ).toEqual(["2", "10"]);
+  expect(openTasks(path.join(config, "tasks", "missing"))).toEqual([]);
+});
+
+test("a stop with open tasks blocks once per set of open tasks", () => {
+  const sid = session();
+  tasks(sid, [
+    ["1", "completed"],
+    ["2", "in_progress"],
+  ]);
+  const first = stop(sid);
+  expect(first.decision).toBe("block");
+  expect(first.reason).toContain("#2 Task 2");
+  expect(first.reason).not.toContain("#1");
+  expect(stop(sid), "the same open set lets the stop through").toBeNull();
+  tasks(sid, [["3", "pending"]]);
+  expect(stop(sid)?.decision, "a new open task blocks again").toBe("block");
+  tasks(sid, [
+    ["2", "completed"],
+    ["3", "completed"],
+  ]);
+  expect(stop(sid)).toBeNull();
+});
+
+test("no block for a continuation, background work, or the option off", () => {
+  const sid = session();
+  tasks(sid, [["1", "pending"]]);
+  expect(stop(sid, { stop_hook_active: true })).toBeNull();
+  expect(
+    stop(sid, { background_tasks: [{ type: "subagent", id: "a1" }] }),
+  ).toBeNull();
+  expect(
+    stop(sid, {}, { CLAUDE_PLUGIN_OPTION_TASK_CHECK: "false" }),
+  ).toBeNull();
+  expect(stop(session()), "a session without tasks").toBeNull();
+});
+
+test("CLAUDE_CODE_TASK_LIST_ID selects a shared list", () => {
+  tasks("shared", [["1", "in_progress"]]);
+  expect(
+    stop(session(), {}, { CLAUDE_CODE_TASK_LIST_ID: "shared" })?.decision,
+  ).toBe("block");
+});

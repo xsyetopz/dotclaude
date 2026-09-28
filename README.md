@@ -74,6 +74,9 @@ You can turn off each hook in `/config` under dotclaude.
 - **Verify-before-stop:** sends Claude back once when it edits code and stops
   without a test, build, or lint run. It does the same when Claude claims that
   tests pass after a failure.
+- **Open-task check:** sends Claude back once when it ends a turn with tasks
+  still pending or in progress, so it marks them done or says why they stay
+  open.
 - **Compaction carry-over:** after compaction, restores your last messages
   word for word, the last check result, and the files this session edited.
 - **Model lock:** keeps fast mode off and limits Claude to Opus 5.5, Sonnet 5,
@@ -246,7 +249,7 @@ Set these in `/config` under dotclaude.
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `bash_guard`, `edit_guard`, `secret_redaction`, `nested_instructions`, `stop_gate`, `goal_loop_guard`, `compact_carryover`, `model_lock`, `commit_hygiene` | on | the hooks above |
+| `bash_guard`, `edit_guard`, `secret_redaction`, `nested_instructions`, `stop_gate`, `task_check`, `goal_loop_guard`, `compact_carryover`, `model_lock`, `commit_hygiene` | on | the hooks above |
 | `subagent_guidance` | on | shared rules and report format for agents, and the `general-purpose` refusal |
 | `ask_in_auto_mode` | off | asks about recoverable actions in auto mode too |
 | `git_attribution` | on | adds the `Co-Authored-By` trailer and pull request footer |

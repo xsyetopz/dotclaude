@@ -53,6 +53,12 @@
       "description": "Send Claude back once when it stops after editing code without a later passing test/build/lint run.",
       "default": true
     },
+    "task_check": {
+      "type": "boolean",
+      "title": "Open-task check",
+      "description": "Send Claude back once when it ends a turn with tasks still pending or in progress, so it updates the task list.",
+      "default": true
+    },
     "goal_loop_guard": {
       "type": "boolean",
       "title": "End stalled /goal loops",
