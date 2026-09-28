@@ -10,6 +10,37 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-09-28
+
+### Added
+
+- Public documentation in `docs/`, from `docs/README.md`. Each page tells what
+  each part of dotclaude does and why, and links to the dossier for the
+  evidence: hooks, models, agents and skills, working rules, the settings
+  profile, the status line, and development.
+- The `explain-dotclaude` skill. When you ask why Claude or dotclaude did,
+  blocked, or asked about something, Claude answers from the documentation
+  with the reason, its source, and how to change it.
+
+### Changed
+
+- The README is a short overview that links to the documentation. The hook
+  details, options, settings profile, and development notes moved to
+  `docs/`.
+- The main status line's `statusLine` setting sets `refreshInterval: 60`, so
+  an idle session's clock and cache expiry keep updating between events. Run
+  `/dotclaude:apply-settings-profile` (or `apply-statusline.mjs --apply`)
+  again to add it to an existing install.
+
+- The main status line uses two rows: where the session works, then what it
+  uses. A row that is too wide continues on the next row, so parts are not
+  cut off. Past three rows, parts drop by priority, and a limit at 75% or
+  more stays.
+- The main status line shows more of the session: the folder below the
+  project, added directories, the worktree, the `--agent` name, the vim
+  mode, the session name, prompt cache misses with the last cause, the spend
+  limit, lines added and removed, and the session time.
+
 ## [0.10.0] - 2026-09-28
 
 ### Added

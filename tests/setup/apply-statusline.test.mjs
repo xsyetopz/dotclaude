@@ -34,6 +34,7 @@ test("apply-statusline previews, installs the stub, and removes only its own set
     type: "command",
     command: `bun ${JSON.stringify(stub)}`,
     padding: 0,
+    refreshInterval: 60,
   });
   expect(fs.readFileSync(stub, "utf8")).toBe(stubText());
   expect(backups(settings).length).toBe(1);
@@ -52,4 +53,29 @@ test("apply-statusline previews, installs the stub, and removes only its own set
   run("apply-statusline.mjs", home, "--remove", "--apply");
   expect(fs.readFileSync(settings, "utf8")).toBe(original);
   expect(backups(settings).length).toBe(count);
+});
+
+test("apply-statusline adds refreshInterval to an install made before it existed", () => {
+  const home = tempHome();
+  const settings = path.join(home, ".claude", "settings.json");
+  const stub = path.join(home, ".claude", "dotclaude", "statusline.mjs");
+  // An older install: same stub, no refreshInterval yet.
+  fs.mkdirSync(path.dirname(stub), { recursive: true });
+  fs.writeFileSync(stub, stubText());
+  fs.writeFileSync(
+    settings,
+    JSON.stringify({
+      statusLine: {
+        type: "command",
+        command: `bun ${JSON.stringify(stub)}`,
+        padding: 0,
+      },
+    }),
+  );
+
+  const preview = run("apply-statusline.mjs", home);
+  expect(preview).toContain("refreshInterval (unset) ->");
+
+  run("apply-statusline.mjs", home, "--apply");
+  expect(read(settings).statusLine.refreshInterval).toBeGreaterThan(0);
 });

@@ -92,8 +92,14 @@ export function cachePart(cache, now = Date.now()) {
       ? Math.round(cache.hit_ratio * 100)
       : null;
   // The cost guide: below about 80%, something is breaking the cache.
-  const ratio =
+  let ratio =
     hit === null ? "" : ` ${(hit < 80 ? C.yellow : C.dim)(`${hit}%`)}`;
+  // Misses tell an advanced user that something breaks the cache, and the
+  // last cause tells them what.
+  if (cache.misses > 0) {
+    const cause = cache.last_miss_cause?.causes?.[0];
+    ratio += ` ${C.yellow(`${cache.misses} miss${cause ? ` ${cause}` : ""}`)}`;
+  }
   if (cache.warm && cache.expires_at && cache.expires_at * 1000 > now)
     return `${C.green("cache")} ${C.dim("till")} ${clock(cache.expires_at, now)}${ratio}`;
   const recache = cache.recache_tokens_if_cold ?? 0;
@@ -157,59 +163,132 @@ const REVIEW = {
   draft: C.dim,
 };
 
+/** The folder, as `project/subdir` when the session moved below its project. */
+function folderPart(workspace, dir) {
+  const project = workspace?.project_dir;
+  let name = path.basename(dir) || dir;
+  if (project && dir !== project && dir.startsWith(project + path.sep))
+    name = `${path.basename(project)}/${path.relative(project, dir)}`;
+  let text = C.bold(C.blue(name));
+  const added = workspace?.added_dirs?.length;
+  if (added) text += C.dim(` +${added} dir${added > 1 ? "s" : ""}`);
+  return text;
+}
+
+const minutes = (ms) => {
+  const min = Math.floor(ms / 60_000);
+  return min >= 60 ? `${Math.floor(min / 60)}h${min % 60}m` : `${min}m`;
+};
+
+/** Lines added and removed this session: "+156 -23". */
+function linesPart(cost) {
+  const added = cost?.total_lines_added ?? 0;
+  const removed = cost?.total_lines_removed ?? 0;
+  if (!added && !removed) return null;
+  return `${C.green(`+${added}`)} ${C.red(`-${removed}`)}`;
+}
+
+/** At most this many rows. Past it, the lowest-priority parts go first. */
+const MAX_ROWS = 3;
+
 /**
- * The main status line. Parts carry a priority, and the lowest go first
- * until the line fits `columns`.
+ * Pack each group's parts into rows no wider than `columns`. A group starts
+ * a new row, and a part that does not fit goes to the next row.
+ */
+function pack(groups, columns) {
+  const rows = [];
+  for (const group of groups) {
+    let row = "";
+    for (const { text } of group) {
+      if (row && width(row + SEP + text) <= columns) row += SEP + text;
+      else {
+        if (row) rows.push(row);
+        row = text;
+      }
+    }
+    if (row) rows.push(row);
+  }
+  return rows;
+}
+
+/**
+ * The main status line: where the session works on the first row, and what
+ * it uses on the second. A row that is wider than `columns` wraps to the
+ * next row, so no part is cut off. Parts carry a priority, and past
+ * `MAX_ROWS` rows the lowest go first.
  */
 export function renderMain(
   data,
   { columns = 120, now = Date.now(), git } = {},
 ) {
   const dir = data.workspace?.current_dir || data.cwd || "";
-  const parts = [];
-  const add = (priority, text) => {
-    if (text) parts.push({ priority, text });
+  const place = [];
+  const usage = [];
+  const add = (group, priority, text) => {
+    if (text) group.push({ priority, text });
   };
 
-  add(9, C.bold(C.blue(path.basename(dir) || dir)));
-  add(6, gitPart(git));
+  add(place, 9, folderPart(data.workspace, dir));
+  const worktree = data.worktree?.name || data.workspace?.git_worktree;
+  if (worktree) add(place, 5, C.cyan(`worktree ${worktree}`));
+  add(place, 6, gitPart(git));
+  if (data.pr?.number) {
+    const color = REVIEW[data.pr.review_state] ?? C.yellow;
+    const label = `${data.pr.kind === "mr" ? "!" : "#"}${data.pr.number}`;
+    add(place, 3, color(data.pr.url ? link(data.pr.url, label) : label));
+  }
+  if (data.agent?.name) add(place, 4, C.magenta(`@${data.agent.name}`));
+  if (data.vim?.mode) add(place, 3, C.bold(data.vim.mode));
+  if (data.session_name) {
+    const name = data.session_name;
+    add(place, 1, C.dim(name.length > 32 ? `${name.slice(0, 31)}…` : name));
+  }
 
   let model = C.bold(shortModel(data.model?.id) || data.model?.display_name);
   if (data.effort?.level) model += ` ${C.dim(data.effort.level)}`;
   if (data.fast_mode) model += ` ${C.red("FAST")}`;
-  add(8, model);
+  add(usage, 8, model);
 
   const ctx = data.context_window?.total_input_tokens;
   if (typeof ctx === "number" && ctx > 0)
-    add(10, contextPart(ctx, MAIN_CONTEXT_TOKENS));
+    add(usage, 10, contextPart(ctx, MAIN_CONTEXT_TOKENS));
 
-  add(7, cachePart(data.prompt_cache, now));
-  add(5, limitPart("5h", data.rate_limits?.five_hour, now));
-  add(4, limitPart("7d", data.rate_limits?.seven_day, now));
+  add(usage, 7, cachePart(data.prompt_cache, now));
+  // A limit past the first usage level outranks all but the context.
+  const limit = (label, window, priority) =>
+    add(
+      usage,
+      window?.used_percentage >= USAGE_LEVELS[0] ? 9 : priority,
+      limitPart(label, window, now),
+    );
+  limit("5h", data.rate_limits?.five_hour, 5);
+  limit("7d", data.rate_limits?.seven_day, 4);
+  limit("spend", data.rate_limits?.spend_limit, 4);
   // Subscribers see limits. Others pay per token, so they see the estimate.
   if (!data.rate_limits && typeof data.cost?.total_cost_usd === "number")
-    add(3, C.dim(`$${data.cost.total_cost_usd.toFixed(2)}`));
-  if (data.pr?.number) {
-    const color = REVIEW[data.pr.review_state] ?? C.yellow;
-    const label = `${data.pr.kind === "mr" ? "!" : "#"}${data.pr.number}`;
-    add(2, color(data.pr.url ? link(data.pr.url, label) : label));
-  }
+    add(usage, 3, C.dim(`$${data.cost.total_cost_usd.toFixed(2)}`));
+  add(usage, 2, linesPart(data.cost));
+  if (data.cost?.total_duration_ms > 0)
+    add(usage, 1, C.dim(minutes(data.cost.total_duration_ms)));
 
-  const kept = [...parts];
-  const fits = () => width(kept.map((p) => p.text).join(SEP)) <= columns;
-  while (kept.length > 1 && !fits()) {
-    const lowest = kept.reduce((a, b) => (b.priority < a.priority ? b : a));
-    kept.splice(kept.indexOf(lowest), 1);
+  const groups = [place, usage];
+  let rows = pack(groups, columns);
+  while (rows.length > MAX_ROWS) {
+    const all = groups.flat();
+    if (all.length <= 1) break;
+    const lowest = all.reduce((a, b) => (b.priority < a.priority ? b : a));
+    for (const group of groups)
+      if (group.includes(lowest)) group.splice(group.indexOf(lowest), 1);
+    rows = pack(groups, columns);
   }
-  return kept.map((p) => p.text).join(SEP);
+  return rows.join("\n");
 }
 
 function elapsed(startTime, now) {
   const start =
     typeof startTime === "number" ? startTime : Date.parse(startTime);
   if (!Number.isFinite(start)) return null;
-  const min = Math.floor((now - start) / 60_000);
-  return min >= 60 ? `${Math.floor(min / 60)}h${min % 60}m` : `${min}m`;
+  return minutes(now - start);
 }
 
 /**
@@ -299,12 +378,21 @@ try {
 `;
 }
 
+/**
+ * Seconds between forced re-runs, so an idle session's clock and session
+ * time (minute resolution) do not go stale between events. Each run spawns
+ * `bun` plus one `git status`; once a minute matches the display's own
+ * resolution without spawning more often than that.
+ */
+const REFRESH_INTERVAL_SECONDS = 60;
+
 /** The `statusLine` setting that runs the stub. */
 export function statusLineSetting(stub = installedStatusLine()) {
   return {
     type: "command",
     command: `bun ${JSON.stringify(stub)}`,
     padding: 0,
+    refreshInterval: REFRESH_INTERVAL_SECONDS,
   };
 }
 

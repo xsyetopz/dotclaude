@@ -21,5 +21,9 @@ A Claude Code plugin in Bun ESM. Design and evidence: `docs/dossier.md`.
 - Change a usage bound only in `hooks/lib/_budget.mjs`. Tests pin its copies.
 - `hooks/lib` imports only itself. Event hooks import only `hooks/lib`.
 - Tests give commands to the guards as strings. Never run a guarded command.
+- Never patch the Claude Code CLI binary or its npm package, although it is
+  minified JavaScript that you can read. A patch violates Anthropic's terms of
+  service. Use only documented extension points. Reading the bundle for
+  evidence is permitted.
 - Add CHANGELOG entries under `[Unreleased]`. Change versions with `just bump`.
 - `.gitignore` hides `docs/`. Add each new public doc path to its allow list.

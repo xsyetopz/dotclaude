@@ -40,7 +40,10 @@ if (fs.existsSync(target)) {
   }
 }
 const current = settings.statusLine;
+// Ownership is the command it runs, not the whole object, so an older
+// install (same stub, no refreshInterval yet) is still ours to update.
 const ours = current?.command === wanted.command;
+const upToDate = ours && current.refreshInterval === wanted.refreshInterval;
 const changes = [];
 if (remove) {
   if (ours) changes.push("statusLine: remove");
@@ -53,6 +56,10 @@ if (remove) {
   if (!ours)
     changes.push(
       `statusLine: ${current ? JSON.stringify(current.command) : "(unset)"} -> ${JSON.stringify(wanted.command)}`,
+    );
+  else if (!upToDate)
+    changes.push(
+      `statusLine: refreshInterval ${current.refreshInterval ?? "(unset)"} -> ${wanted.refreshInterval}`,
     );
   const text = stubText();
   if (!fs.existsSync(stub) || fs.readFileSync(stub, "utf8") !== text)

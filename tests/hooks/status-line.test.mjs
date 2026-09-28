@@ -19,6 +19,7 @@ import {
   renderMain,
   renderTask,
   shortModel,
+  statusLineSetting,
   stubText,
   syncStatusLine,
   syncSubagentStatusLine,
@@ -114,11 +115,12 @@ const DATA = {
 };
 const GIT = { branch: "main", dirty: 3, ahead: 1, behind: 0 };
 
-test("the main line joins every part, and shows cost only without plan limits", () => {
+test("the main line shows the place on one row and the usage on the next, with cost only without plan limits", () => {
   const line = renderMain(DATA, { columns: 200, now: NOW, git: GIT });
-  expect(plain(line)).toBe(
-    "dotclaude · main ±3 ↑1 · Opus 5.5 medium · 87k/200k ███░░░░░ · cache till 12:40 93% · 5h 23% · 7d 41% · #42",
-  );
+  expect(plain(line).split("\n")).toEqual([
+    "dotclaude · main ±3 ↑1 · #42",
+    "Opus 5.5 medium · 87k/200k ███░░░░░ · cache till 12:40 93% · 5h 23% · 7d 41%",
+  ]);
   expect(line).toContain("\x1b]8;;https://github.com/o/r/pull/42\x07");
   const api = renderMain(
     { ...DATA, rate_limits: undefined },
@@ -127,13 +129,69 @@ test("the main line joins every part, and shows cost only without plan limits", 
   expect(plain(api)).toContain("$3.21");
 });
 
-test("a narrow terminal drops the lowest-priority parts first", () => {
-  const line = renderMain(DATA, { columns: 60, now: NOW, git: GIT });
-  expect(width(line)).toBeLessThanOrEqual(60);
-  expect(plain(line)).toContain("87k/200k");
-  expect(plain(line)).toContain("Opus 5.5");
-  expect(plain(line)).not.toContain("#42");
-  expect(plain(line)).not.toContain("7d");
+const FULL = {
+  ...DATA,
+  workspace: {
+    current_dir: "/work/dotclaude/hooks",
+    project_dir: "/work/dotclaude",
+    added_dirs: ["/work/skills", "/work/docs"],
+    git_worktree: "feature-x",
+  },
+  session_name: "status line rows",
+  agent: { name: "security-reviewer" },
+  vim: { mode: "NORMAL" },
+  prompt_cache: {
+    ...DATA.prompt_cache,
+    misses: 2,
+    last_miss_cause: { causes: ["tools_changed"] },
+  },
+  rate_limits: {
+    ...DATA.rate_limits,
+    spend_limit: { used_percentage: 62.8 },
+  },
+  cost: {
+    total_cost_usd: 3.21,
+    total_duration_ms: 72 * 60_000,
+    total_lines_added: 156,
+    total_lines_removed: 23,
+  },
+};
+
+test("the main line shows the session facts that advanced users check", () => {
+  const text = plain(renderMain(FULL, { columns: 400, now: NOW, git: GIT }));
+  expect(text.split("\n")).toEqual([
+    "dotclaude/hooks +2 dirs · worktree feature-x · main ±3 ↑1 · #42 · @security-reviewer · NORMAL · status line rows",
+    "Opus 5.5 medium · 87k/200k ███░░░░░ · cache till 12:40 93% 2 miss tools_changed · 5h 23% · 7d 41% · spend 63% · +156 -23 · 1h12m",
+  ]);
+});
+
+test("a narrow terminal wraps parts to new rows instead of cutting them off", () => {
+  const rows = renderMain(FULL, { columns: 80, now: NOW, git: GIT }).split(
+    "\n",
+  );
+  expect(rows.length).toBeLessThanOrEqual(3);
+  for (const row of rows) expect(width(row)).toBeLessThanOrEqual(80);
+  const text = plain(rows.join("\n"));
+  for (const part of ["87k/200k", "Opus 5.5", "5h 23%", "cache till 12:40"])
+    expect(text).toContain(part);
+});
+
+test("past three rows the lowest-priority parts go first", () => {
+  const rows = renderMain(FULL, { columns: 40, now: NOW, git: GIT }).split(
+    "\n",
+  );
+  expect(rows).toHaveLength(3);
+  const text = plain(rows.join("\n"));
+  expect(text).toContain("87k/200k");
+  expect(text).not.toContain("1h12m");
+  expect(text).not.toContain("status line rows");
+  expect(text).not.toContain("5h");
+  const high = {
+    ...FULL,
+    rate_limits: { five_hour: { used_percentage: 81 } },
+  };
+  const kept = renderMain(high, { columns: 40, now: NOW, git: GIT });
+  expect(plain(kept)).toContain("5h 81%");
 });
 
 test("a subagent row measures its context against the subagent budget", () => {
@@ -203,6 +261,12 @@ test("a row without a name takes the agent type from its meta file", () => {
   expect(rows[0]).toStartWith("test-runner · 5k/150k");
   expect(rows[1]).toStartWith("agent");
   fs.rmSync(dir, { recursive: true });
+});
+
+test("the statusLine setting refreshes at least once a minute, matching the displayed fields' resolution", () => {
+  const setting = statusLineSetting("/x/statusline.mjs");
+  expect(setting.refreshInterval).toBeGreaterThanOrEqual(1);
+  expect(setting.refreshInterval).toBeLessThanOrEqual(60);
 });
 
 test("session start re-points an installed stub and leaves a missing one missing", () => {

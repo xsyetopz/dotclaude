@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // statusLine: dotclaude's main status line. Reads Claude Code's status JSON on
-// stdin and prints one line sized to $COLUMNS. See hooks/lib/_status-line.mjs.
+// stdin and prints rows that wrap at $COLUMNS. See hooks/lib/_status-line.mjs.
 
 import { readInput } from "../lib/_common.mjs";
 import { gitState, renderMain } from "../lib/_status-line.mjs";

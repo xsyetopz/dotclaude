@@ -2,7 +2,9 @@
 
 This dossier records why dotclaude works the way it does. It holds the design
 decisions, the measurements behind them, and the open questions.
-[`README.md`](../README.md) tells you how to install and use the plugin.
+[`README.md`](../README.md) tells you how to install the plugin. The
+[documentation](README.md) tells you what each part does and why, and links
+here for the evidence.
 [`CHANGELOG.md`](../CHANGELOG.md) tells you what changed in each release.
 
 ## Contents
