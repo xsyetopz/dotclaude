@@ -23,9 +23,9 @@ steps after each update.
   --no-index`. It asks `git` which ignored directories are under the search
   path, so a walk passes when it has none, when it starts inside an ignored
   directory, when it excludes each one (`--exclude-dir`, `-prune`, `-g '!…'`,
-  `-E`, `tree -I`), or when it is at most two levels deep. The deny message
-  names the directories and points to `rg`, `fd`, or `git grep`, which skip
-  ignored files. It follows the `bash_guard` option.
+  `-E`, `tree -I`, including `{a,b}` lists), or when it is at most two levels
+  deep. The deny message names the directories and points to `rg`, `fd`, or
+  `git grep`, which skip ignored files. It follows the `bash_guard` option.
 
 ## [0.8.1] - 2026-09-28
 

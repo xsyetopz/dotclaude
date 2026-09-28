@@ -68,11 +68,19 @@ function depth(flags, ...names) {
   return v === undefined ? undefined : Number.parseInt(v, 10);
 }
 
+/** `{a,b}` alternatives, as the shell expands them and rg and fd globs match them. */
+function expandBraces(glob) {
+  const m = /^(.*?)\{([^{}]*,[^{}]*)\}(.*)$/s.exec(glob);
+  if (!m) return [glob];
+  return m[2].split(",").flatMap((alt) => expandBraces(m[1] + alt + m[3]));
+}
+
 /** Directory names from exclude globs such as `!.build`, `**\/node_modules/**`. */
 function excludeNames(globs) {
   return globs.flatMap((g) =>
     g
       .split("|")
+      .flatMap(expandBraces)
       .map((p) =>
         p
           .replace(/^!/, "")
