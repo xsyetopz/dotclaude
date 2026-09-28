@@ -1,5 +1,3 @@
-// Shared markdownlint rules. markdownlint-cli2.jsonc and the prompt
-// directories (agents/, skills/, output-styles/) extend this file.
 {
   "default": true,
   "MD003": { "style": "atx" },
