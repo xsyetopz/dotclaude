@@ -19,6 +19,7 @@ import {
 import { gitRule } from "./_rules-git.mjs";
 import { claude, modelEnv, rawSettingsWrite } from "./_rules-model.mjs";
 import { curl, gh, PUBLISH, publish, wget } from "./_rules-remote.mjs";
+import { ignoredWalk } from "./_rules-search.mjs";
 import { settingsWrite } from "./_rules-settings.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
@@ -66,6 +67,7 @@ function checkCommand(cmd, ctx) {
     out.push(...interpreterInline(cmd, ctx));
   }
   out.push(...snapshotBless(cmd));
+  out.push(...ignoredWalk(cmd, ctx));
   if (ctx.modelLock) out.push(...modelEnv(cmd, ctx));
   return out;
 }

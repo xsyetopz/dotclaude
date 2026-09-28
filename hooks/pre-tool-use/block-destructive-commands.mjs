@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 // PreToolUse hook for Bash: ask before destructive or public commands, deny
 // the few that are never intended (root/home deletes, decoded payloads piped
-// to a shell, turning fast mode back on). Recoverable deletes ask only outside
+// to a shell, turning fast mode back on, recursive searches that walk
+// gitignored build output). Recoverable deletes ask only outside
 // auto mode.
 
 import path from "node:path";

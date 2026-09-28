@@ -51,7 +51,10 @@ checkout instead, run `claude --plugin-dir /path/to/dotclaude`.
 - **Bash guard**: asks before destructive or public commands (force push,
   `reset --hard`, publishing, `gh` writes, destructive SQL, `curl | sh`), even
   when reworded through `sudo`, `env`, `bash -c`, `eval`, `$(...)`, heredocs, or
-  loop bodies. It denies deleting `/` or your home directory.
+  loop bodies. It denies deleting `/` or your home directory, and recursive
+  searches that would walk gitignored build output or dependencies (`grep -r`,
+  `find`, `tree`, `rg --no-ignore`, `fd -I`); plain `rg`, `fd`, and `git grep`
+  skip those directories.
 - **Edit guard**: asks before an edit removes test assertions or adds skip
   markers to an existing test, and before edits to Claude settings, generated
   files, or lockfiles.

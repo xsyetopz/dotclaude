@@ -69,7 +69,7 @@ function isTemp(p) {
   );
 }
 
-function resolveTarget(target, cmd, ctx) {
+export function resolveTarget(target, cmd, ctx) {
   if (
     target.includes("$") ||
     target.startsWith("~") ||

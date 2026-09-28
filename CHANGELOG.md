@@ -10,6 +10,23 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-09-28
+
+### Added
+
+- The Bash guard denies recursive searches and listings that would walk
+  gitignored directories such as build output, dependencies, and caches. An
+  agent's `grep -r` in a repository with an 8.9 GB `.build/` directory hung
+  and would have flooded the context with generated files. The guard covers
+  `grep -r`, `find`, `tree`, `ls -R`, `ack`, `rg` and `ag` with
+  ignore-bypass flags (`--no-ignore`, `-u`), `fd -I`/`-u`, and `git grep
+  --no-index`. It asks `git` which ignored directories are under the search
+  path, so a walk passes when it has none, when it starts inside an ignored
+  directory, when it excludes each one (`--exclude-dir`, `-prune`, `-g '!…'`,
+  `-E`, `tree -I`), or when it is at most two levels deep. The deny message
+  names the directories and points to `rg`, `fd`, or `git grep`, which skip
+  ignored files. It follows the `bash_guard` option.
+
 ## [0.8.1] - 2026-09-28
 
 ### Added
@@ -863,6 +880,8 @@ re-run `/dotclaude:apply-settings-profile`.
 
 [unreleased]:
   https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.8.1...HEAD
+[0.8.2]:
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.8.1...dotclaude--v0.8.2
 [0.8.1]:
   https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.8.0...dotclaude--v0.8.1
 [0.8.0]:
