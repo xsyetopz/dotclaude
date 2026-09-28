@@ -11,6 +11,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { k, MAIN_CONTEXT_TOKENS } from "./_budget.mjs";
 import { optionList } from "./_common.mjs";
 import { canonical, DEFAULT_ALLOWED } from "./_models.mjs";
 
@@ -121,14 +122,6 @@ export function fableAccess(plan, account = null) {
   }
 }
 
-// Plans whose 5-hour window a few large-context turns can use up.
-export const SMALL_WINDOW = new Set([
-  "pro",
-  "max_5x",
-  "team_standard",
-  "team_premium",
-]);
-
 /**
  * The model allowlist for the current plan: `allowed_models`, minus Fable when
  * the plan cannot run it. `note` explains the removal for deny messages.
@@ -173,9 +166,9 @@ export function planNote(env = process.env) {
       );
       break;
   }
-  if (SMALL_WINDOW.has(plan))
-    lines.push(
-      "This plan's 5-hour window is small: every turn re-reads the whole context, so write a handoff or compact once the main context passes about 200k tokens, and keep subagent briefs small.",
-    );
+  // One bound for every plan, sized for Pro: larger plans only run out later.
+  lines.push(
+    `Every turn re-reads the whole context, so write a handoff or compact once the main context passes about ${k(MAIN_CONTEXT_TOKENS)} tokens, and keep subagent briefs small and subagents few. dotclaude sizes this for Pro's 5-hour window and applies it on every plan; larger plans only run out later.`,
+  );
   return `<claude_plan source="dotclaude">\n${lines.join("\n")}\n</claude_plan>`;
 }

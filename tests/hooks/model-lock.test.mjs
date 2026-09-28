@@ -107,3 +107,41 @@ test("model lock blocks a settings change that enables fast mode", () => {
     ),
   ).toBe(null);
 });
+
+test("general-purpose is refused, and other subagents run in the foreground", () => {
+  const spawn = (input, env = {}) =>
+    hook(
+      "pre-tool-use/prefer-dotclaude-agents.mjs",
+      { hook_event_name: "PreToolUse", tool_name: "Agent", tool_input: input },
+      env,
+    )?.hookSpecificOutput;
+  const forksOff = { CLAUDE_CODE_FORK_SUBAGENT: "false" };
+  expect(
+    spawn({ subagent_type: "general-purpose", prompt: "x" }).permissionDecision,
+  ).toBe("deny");
+  expect(spawn({ prompt: "x" }, forksOff).permissionDecision).toBe("deny");
+  const rewritten = spawn({
+    subagent_type: "dotclaude:implementer",
+    prompt: "x",
+    run_in_background: true,
+  });
+  expect(rewritten.permissionDecision).toBe("allow");
+  expect(rewritten.updatedInput).toEqual({
+    subagent_type: "dotclaude:implementer",
+    prompt: "x",
+    run_in_background: false,
+  });
+  // With forks on, a missing type spawns a fork, which also runs in the foreground.
+  expect(spawn({ prompt: "fork this" }).updatedInput.run_in_background).toBe(
+    false,
+  );
+  expect(
+    spawn({ subagent_type: "Explore", run_in_background: false }),
+  ).toBeUndefined();
+  expect(
+    spawn(
+      { subagent_type: "general-purpose" },
+      { CLAUDE_PLUGIN_OPTION_SUBAGENT_GUIDANCE: "false" },
+    ),
+  ).toBeUndefined();
+});

@@ -1,21 +1,22 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5",
     "CLAUDE_CODE_DISABLE_FAST_MODE": "1",
+    "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
+    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
+    "CLAUDE_CODE_FORK_SUBAGENT": "false",
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "3",
     "CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT": "1",
     "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-5",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5",
-    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "6",
-    "CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS": "6",
-    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
-    "DISABLE_FEEDBACK_COMMAND": "1",
-    "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
-    "DISABLE_ERROR_REPORTING": "1"
+    "CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS": "3",
+    "DISABLE_ERROR_REPORTING": "1",
+    "DISABLE_FEEDBACK_COMMAND": "1"
   },
   "fastMode": false,
   "fastModePerSessionOptIn": true,
   "maxEffortLevel": "xhigh",
-  "autoCompactWindow": 400000,
+  "autoCompactWindow": 200000,
   "promptSuggestionEnabled": false,
   "awaySummaryEnabled": false,
   "crossSessionInbound": "hold",
@@ -33,10 +34,6 @@
   "enableAllProjectMcpServers": false,
   "permissions": {
     "disableBypassPermissionsMode": "disable",
-    "allow": [
-      "Bash(codex exec -p dotclaude-luna *)",
-      "Bash(codex exec -p dotclaude-review *)"
-    ],
     "deny": [
       "Read(**/.env)",
       "Read(**/.env.local)",
@@ -47,8 +44,7 @@
       "Read(~/.gnupg/**)",
       "Read(~/.netrc)",
       "Read(~/.docker/config.json)",
-      "Agent(model:fable*)",
-      "AskUserQuestion"
+      "Agent(model:fable*)"
     ]
   }
 }

@@ -29,7 +29,6 @@ const ctx = {
   root,
   cwd: root,
   allowedModels: ["claude-opus-5-5", "claude-fable-5-1"],
-  codexModels: ["gpt-6-luna", "gpt-6-sol", "gpt-6-astra"],
 };
 
 function level(command, c = ctx) {
@@ -64,14 +63,6 @@ const DENY = [
   "sed -i '' 's/\"fastMode\": false/\"fastMode\": true/' .claude/settings.json",
   "python -c \"import os; os.system('rm -rf ~')\"",
   "if true; then rm -rf /; fi",
-  "command codex exec -p dotclaude-luna --dangerously-bypass-approvals-and-sandbox hi",
-  "codex exec --dangerously-bypass-hook-trust hi",
-  'codex exec -c service_tier="fast" hi',
-  "codex exec --enable fast_mode hi",
-  "codex exec -c features.fast_mode=true hi",
-  "codex exec -m gpt-5.6-terra hi",
-  "command codex exec review --uncommitted --model=gpt-5.6-terra",
-  'codex exec -c model="o3" hi',
   "while true; do rm -rf ~; done",
   "S=/; rm -rf $S",
   'export T=/usr; rm -rf "$T"',
@@ -209,10 +200,6 @@ const PASS = [
   "fd -g .tox -x rm -rf",
   "S=$(mktemp -d); trap 'rm -rf $S' EXIT; rm -rf $S",
   'W="$(mktemp -d -t dotclaude)"; rm -rf "$W"',
-  "command codex exec -m gpt-6-luna -s workspace-write -o /tmp/x.md - < /tmp/brief.md",
-  'codex exec review --uncommitted -m gpt-6-astra -c model_reasoning_effort="medium"',
-  "codex exec hi",
-  'codex exec -c service_tier="default" -c features.fast_mode=false hi',
   "gh pr merge --help | grep squash",
   "gh release delete --help",
   "git worktree remove --force /nonexistent/worktree",
@@ -277,69 +264,6 @@ test("git worktree remove --force asks only when the worktree has changes", () =
   expect(level(cmd)).toBe("pass");
   fs.writeFileSync(path.join(repo, "scratch.txt"), "unsaved\n");
   expect(level(cmd)).toBe("ask");
-});
-
-test("Codex plan groups: Plus-sized seats skip Astra, Free and Go do not delegate", () => {
-  const astra = "codex exec -m gpt-6-astra hi";
-  for (const plan of ["team", "business", "enterprise", "edu"])
-    expect(level(astra, { ...ctx, codexPlan: () => plan }), plan).toBe("deny");
-  for (const plan of ["self_serve_business_prolite", "pro"])
-    expect(level(astra, { ...ctx, codexPlan: () => plan }), plan).toBe("pass");
-  for (const plan of ["free", "go"]) {
-    const free = { ...ctx, codexPlan: () => plan };
-    expect(level("codex exec -m gpt-6-luna hi", free), plan).toBe("deny");
-    expect(level("command codex exec -p dotclaude-luna hi", free), plan).toBe(
-      "deny",
-    );
-    expect(level("codex login status", free), plan).toBe("pass");
-  }
-});
-
-test("Codex Astra is denied on the Plus plan and allowed on Pro", () => {
-  const cmd = "codex exec -m gpt-6-astra hi";
-  expect(level(cmd, { ...ctx, codexPlan: () => "plus" })).toBe("deny");
-  expect(level(cmd, { ...ctx, codexPlan: () => "prolite" })).toBe("pass");
-  expect(level(cmd, { ...ctx, codexPlan: () => null })).toBe("pass");
-  expect(
-    level("codex exec -m gpt-6-luna hi", { ...ctx, codexPlan: () => "plus" }),
-  ).toBe("pass");
-  const plusAstraProfile = {
-    ...ctx,
-    codexPlan: () => "plus",
-    codexConfiguredModel: (profile) =>
-      profile === "dotclaude-review" ? "gpt-6-astra" : "gpt-6-luna",
-  };
-  expect(
-    level(
-      "command codex exec -p dotclaude-review review --uncommitted",
-      plusAstraProfile,
-    ),
-    "a profile that resolves to Astra counts on Plus",
-  ).toBe("deny");
-  expect(level("codex exec -p dotclaude-luna hi", plusAstraProfile)).toBe(
-    "pass",
-  );
-  expect(
-    level(
-      "codex exec -p dotclaude-review -m gpt-6-luna review",
-      plusAstraProfile,
-    ),
-    "an explicit model overrides the profile",
-  ).toBe("pass");
-});
-
-test("codex-worker's runner gets the same Codex model checks", () => {
-  const plus = { ...ctx, codexPlan: () => "plus" };
-  const run = (flags) =>
-    `bun "/p/skills/codex-fanout/scripts/run-codex.mjs" --brief /s/b.md --dir /r ${flags}`;
-  expect(level(run("--model gpt-6-astra"), plus)).toBe("deny");
-  expect(level(run("--model gpt-5.6-terra"), plus)).toBe("deny");
-  expect(level(run("--model gpt-6-sol"), plus)).toBe("pass");
-  expect(level(run("--effort max"), plus)).toBe("pass");
-  expect(
-    level(run(""), { ...ctx, codexPlan: () => "free" }),
-    "no delegation on Free",
-  ).toBe("deny");
 });
 
 test("model lock off lets fast-mode settings through", () => {

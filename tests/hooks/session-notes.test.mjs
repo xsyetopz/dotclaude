@@ -1,86 +1,35 @@
 // Session start notes: setup warnings, model adjustments, and browser options.
 
 import { expect, test } from "bun:test";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { hook, repo } from "../support/hooks.mjs";
+import { profileStamp } from "../../hooks/lib/_profile.mjs";
+import { hook } from "../support/hooks.mjs";
 
 test("session start warns about incomplete setup and notes a CodeGraph index", () => {
-  const warn = hook(
-    "session-start/warn-incomplete-setup.mjs",
-    { hook_event_name: "SessionStart", source: "startup" },
-    { CLAUDE_CODE_DISABLE_FAST_MODE: "" },
-  );
-  expect(warn.systemMessage).toMatch(/fast mode/);
-  const home = (settings) => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-home-"));
-    fs.mkdirSync(path.join(dir, ".claude"));
-    fs.writeFileSync(
-      path.join(dir, ".claude", "settings.json"),
-      JSON.stringify(settings),
-    );
-    return dir;
-  };
-  const current = {
-    ANTHROPIC_DEFAULT_HAIKU_MODEL: "claude-haiku-4-5",
-    CLAUDE_CODE_EFFORT_LEVEL: "",
-    CLAUDE_CONFIG_DIR: "",
-    HOME: home({ maxEffortLevel: "xhigh" }),
-    DOTCLAUDE_MANAGED_DIR: fs.mkdtempSync(
-      path.join(os.tmpdir(), "dotclaude-managed-"),
-    ),
-  };
   const start = (env) =>
     hook(
       "session-start/warn-incomplete-setup.mjs",
       { hook_event_name: "SessionStart", source: "startup" },
-      { ...current, ...env },
+      { CLAUDE_CODE_EFFORT_LEVEL: "", ...env },
     );
-  expect(start({})).toBe(null);
-  expect(start({ ANTHROPIC_DEFAULT_HAIKU_MODEL: "" }).systemMessage).toMatch(
-    /out of date/,
+  const current = { DOTCLAUDE_SETTINGS_PROFILE: profileStamp() };
+  expect(start(current)).toBe(null);
+  expect(start({ DOTCLAUDE_SETTINGS_PROFILE: "" }).systemMessage).toMatch(
+    /not applied yet/,
   );
-  expect(start({ CLAUDE_CODE_EFFORT_LEVEL: "max" }).systemMessage).toMatch(
-    /CLAUDE_CODE_EFFORT_LEVEL=max/,
-  );
-  const oldProfile = home({ model: "opus" });
-  expect(start({ HOME: oldProfile }).systemMessage).toMatch(
-    /out of date: the effort cap \(maxEffortLevel\)/,
-  );
-  const both = start({
-    HOME: oldProfile,
-    ANTHROPIC_DEFAULT_HAIKU_MODEL: "",
-  }).systemMessage;
-  expect(both.match(/out of date/g).length, both).toBe(1);
-  // The cap applied at local scope, or locked in a managed drop-in, counts too.
-  const local = path.join(repo, ".claude", "settings.local.json");
-  fs.mkdirSync(path.dirname(local), { recursive: true });
-  fs.writeFileSync(local, JSON.stringify({ maxEffortLevel: "xhigh" }));
-  expect(start({ HOME: oldProfile })).toBe(null);
-  fs.rmSync(local);
-  const managed = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-managed-"));
-  fs.mkdirSync(path.join(managed, "managed-settings.d"));
-  fs.writeFileSync(
-    path.join(managed, "managed-settings.d", "50-dotclaude.json"),
-    JSON.stringify({ maxEffortLevel: "xhigh" }),
-  );
-  expect(start({ HOME: oldProfile, DOTCLAUDE_MANAGED_DIR: managed })).toBe(
-    null,
-  );
-  fs.mkdirSync(path.join(repo, ".codegraph"), { recursive: true });
-  const note = hook("session-start/note-codegraph-index.mjs", {
-    hook_event_name: "SessionStart",
-    source: "startup",
-  });
-  expect(note.hookSpecificOutput.additionalContext).toMatch(/CodeGraph/);
+  // Any change to the shipped profile reads as out of date, with no check
+  // written per release.
   expect(
-    hook(
-      "session-start/note-codegraph-index.mjs",
-      { hook_event_name: "SessionStart", source: "startup" },
-      { CLAUDE_PLUGIN_OPTION_CODEGRAPH_HINT: "false" },
-    ),
+    start({ DOTCLAUDE_SETTINGS_PROFILE: "0123456789ab" }).systemMessage,
+  ).toMatch(/out of date: this version of the plugin changed it/);
+  expect(
+    start({
+      DOTCLAUDE_SETTINGS_PROFILE: "",
+      CLAUDE_PLUGIN_OPTION_MODEL_LOCK: "false",
+    }),
   ).toBe(null);
+  expect(
+    start({ ...current, CLAUDE_CODE_EFFORT_LEVEL: "max" }).systemMessage,
+  ).toMatch(/CLAUDE_CODE_EFFORT_LEVEL=max/);
 });
 
 test("Fable sessions get the Fable adjustments; Opus sessions get nothing", () => {

@@ -56,7 +56,7 @@ run((data) => {
     );
   if (theirs.length)
     parts.push(
-      `Uncommitted files not recorded as edited through this session's tools: ${list(theirs)}. They may be the user's or another session's work, or changes from formatters, codemods, or Codex workers this session ran. Do not revert them, and check the transcript or the diff before claiming or disclaiming them.`,
+      `Uncommitted files not recorded as edited through this session's tools: ${list(theirs)}. They may be the user's or another session's work, or changes from formatters or codemods this session ran. Do not revert them, and check the transcript or the diff before claiming or disclaiming them.`,
     );
   if (state.lastCheck) {
     const c = state.lastCheck;

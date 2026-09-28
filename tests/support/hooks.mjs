@@ -14,8 +14,8 @@ export const repo = fs.realpathSync(
   fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-repo-")),
 );
 execFileSync("git", ["init", "-q", repo]);
-// No cached Claude account and no Codex login, so the machine running the
-// tests does not decide the plan.
+// No cached Claude account, so the machine running the tests does not
+// decide the plan.
 export const noAccount = fs.mkdtempSync(
   path.join(os.tmpdir(), "dotclaude-home-"),
 );
@@ -30,7 +30,6 @@ export function hook(script, input, env = {}) {
       CLAUDE_PROJECT_DIR: repo,
       CLAUDE_CODE_DISABLE_FAST_MODE: "1",
       CLAUDE_CONFIG_DIR: noAccount,
-      CODEX_HOME: noAccount,
       ANTHROPIC_API_KEY: "",
       ...env,
     },

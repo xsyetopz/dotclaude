@@ -4,7 +4,6 @@
 
 export const DEFAULT_ALLOWED =
   "claude-opus-5-5,claude-sonnet-5,claude-fable-5-1,claude-haiku-4-5";
-export const DEFAULT_CODEX = "gpt-6-luna,gpt-6-sol,gpt-6-astra";
 const FAMILIES = new Set(["opus", "sonnet", "haiku", "fable", "mythos"]);
 const ALWAYS = new Set(["", "inherit", "default"]);
 

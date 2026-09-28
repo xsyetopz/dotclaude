@@ -8,8 +8,7 @@ import { option, preToolDecision, run } from "../lib/_common.mjs";
 import { allowed, canonical } from "../lib/_models.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 
-const HINT =
-  "Omit `model` to use the agent's own model. For fully specified, mechanical work use `dotclaude:mechanical-worker` (Sonnet 5); for bounded tasks with an acceptance command, `dotclaude:codex-worker` when Codex is set up.";
+const HINT = `Omit \`model\` to use the agent's own model. For fully specified, mechanical work use \`dotclaude:mechanical-worker\` (Sonnet 5).`;
 
 function isFable(model) {
   const m = canonical(model);

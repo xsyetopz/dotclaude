@@ -5,9 +5,9 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { tempHome, writeModelCache } from "../support/setup.mjs";
+import { tempHome } from "../support/setup.mjs";
 
-test("setup-integrations status reports MCP servers, index, and Codex profiles", () => {
+test("setup-integrations status reports MCP servers and index state", () => {
   const home = tempHome();
   const project = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-proj-")),
@@ -18,27 +18,6 @@ test("setup-integrations status reports MCP servers, index, and Codex profiles",
     JSON.stringify({
       mcpServers: { headroom: { command: "headroom", env: { SECRET: "x" } } },
       projects: { [project]: { mcpServers: { codegraph: {} } } },
-    }),
-  );
-  fs.mkdirSync(path.join(home, ".codex"));
-  fs.writeFileSync(
-    path.join(home, ".codex", "config.toml"),
-    'model = "gpt-6-luna"\nservice_tier = "default"\n[features]\nfast_mode = false\n[profiles.dotclaude-luna]\nmodel = "gpt-6-luna"\n',
-  );
-  writeModelCache(path.join(home, ".codex"), "2026-01-02T03:04:05Z");
-  fs.writeFileSync(
-    path.join(home, ".codex", "dotclaude-catalog-worker.json"),
-    "{}",
-  );
-  const claims = Buffer.from(
-    JSON.stringify({
-      "https://api.openai.com/auth": { chatgpt_plan_type: "plus" },
-    }),
-  ).toString("base64url");
-  fs.writeFileSync(
-    path.join(home, ".codex", "auth.json"),
-    JSON.stringify({
-      tokens: { id_token: `h.${claims}.sig`, access_token: "SECRET-TOKEN" },
     }),
   );
   const res = spawnSync(
@@ -58,21 +37,8 @@ test("setup-integrations status reports MCP servers, index, and Codex profiles",
   );
   expect(res.status, res.stderr).toBe(0);
   expect(res.stdout).not.toMatch(/SECRET/);
-  expect(JSON.parse(res.stdout).codex.plan).toBe("plus");
   const status = JSON.parse(res.stdout);
   expect(status.codegraph.mcp).toBe("local");
   expect(status.codegraph.indexed).toBe(true);
   expect(status.headroom.mcp).toBe("user");
-  expect(status.codex.cli).toBe(null);
-  expect(status.codex.config.service_tier).toBe("default");
-  expect(status.codex.config.fast_mode).toBe(false);
-  expect(status.codex.config.legacy_profile_tables).toStrictEqual([
-    "dotclaude-luna",
-  ]);
-  expect(status.codex.catalogs).toStrictEqual({
-    interactive: false,
-    worker: true,
-    review: false,
-  });
-  expect(status.codex.models_cache_fetched_at).toBe("2026-01-02T03:04:05Z");
 });

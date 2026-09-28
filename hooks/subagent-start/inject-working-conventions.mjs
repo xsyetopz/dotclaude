@@ -3,6 +3,7 @@
 // reach only the main conversation, so subagents get this short version.
 
 import { definition, reserve } from "../lib/_agents.mjs";
+import { k, SUBAGENT_CONTEXT_TOKENS } from "../lib/_budget.mjs";
 import { emit, option, run } from "../lib/_common.mjs";
 
 const GUIDANCE = `<working_conventions source="dotclaude">
@@ -19,24 +20,24 @@ const GUIDANCE = `<working_conventions source="dotclaude">
 - Report: lead with the answer, then what you changed, what ran and its result, what you could not verify, and what is left open.
 </working_conventions>`;
 
-// Read-only dotclaude agents whose own prompt sets a different report format,
-// and the Codex forwarders, which only relay another tool's output.
+// Read-only dotclaude agents whose own prompt sets a different report format.
 const OWN_PROMPT = new Set([
   "code-reviewer",
   "security-reviewer",
   "plan-reviewer",
-  "codex-worker",
-  "codex-reviewer",
 ]);
 
 // An agent cut off at its turn limit delivers no report, so it is told the
-// limit, and enforce-turn-budget refuses tool calls near it.
+// limit, and enforce-agent-budget refuses tool calls near it.
 function budget(limit) {
   const cutoff = option("turn_limit_handoff")
     ? `With ${reserve(limit)} left, tool calls are refused and your next action must be your report. Plan to finish before then`
     : `When about ${reserve(limit)} remain, stop and write your report`;
   return `<turn_budget source="dotclaude">You have at most ${limit} turns. ${cutoff}; if work remains, the report is a handoff (what is done and how it was verified, files changed, anything half-edited, what is left in order), because a fresh agent will continue from it rather than you.</turn_budget>`;
 }
+
+// Every subagent, of any type, is refused tool calls past this context size.
+const CONTEXT = `<context_budget source="dotclaude">Every turn re-reads your whole context. Once it passes about ${k(SUBAGENT_CONTEXT_TOKENS)} tokens, tool calls are refused and your next action must be your report, so read files by line range, keep command output short, and do not re-read what you already have.</context_budget>`;
 
 // Anthropic's Sonnet 5 prompting guide: it "does not silently generalize an
 // instruction from one item to another", most of all at lower effort.
@@ -49,6 +50,7 @@ run((data) => {
   const parts = OWN_PROMPT.has(type) ? [] : [GUIDANCE];
   const def = definition(agentType);
   if (def?.maxTurns) parts.push(budget(def.maxTurns));
+  if (option("turn_limit_handoff")) parts.push(CONTEXT);
   if (/sonnet/.test(def?.model ?? "")) parts.push(SONNET);
   if (!parts.length) return;
   emit({

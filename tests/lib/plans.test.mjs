@@ -101,14 +101,14 @@ test("planAllowlist drops Fable only where the plan cannot run it", () => {
   expect(unknown.list.includes("claude-fable-5-1")).toBeTruthy();
 });
 
-test("planNote describes Fable's weekly cap on Max and the small window on Pro", () => {
+test("planNote describes Fable per plan and one Pro-sized handoff bound for every plan", () => {
   const max = planNote({ CLAUDE_CONFIG_DIR: configDir(MAX_20X) });
   expect(max).toMatch(/Claude Max 20x \(detected\)/);
   expect(max).toMatch(/up to 50% of it/);
-  expect(max).not.toMatch(/5-hour window is small/);
+  expect(max).toMatch(/passes about 200k tokens/);
   const pro = planNote({ CLAUDE_CONFIG_DIR: configDir(PRO) });
   expect(pro).toMatch(/leaves it out/);
-  expect(pro).toMatch(/5-hour window is small/);
+  expect(pro).toMatch(/passes about 200k tokens/);
   expect(planNote({ CLAUDE_CONFIG_DIR: configDir(null) })).toBe(null);
 });
 
@@ -118,7 +118,6 @@ function hook(script, input, env) {
     encoding: "utf8",
     env: {
       ...process.env,
-      CODEX_HOME: configDir(null),
       ANTHROPIC_API_KEY: "",
       ...env,
     },

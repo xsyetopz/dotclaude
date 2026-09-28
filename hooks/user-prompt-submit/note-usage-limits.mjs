@@ -43,7 +43,7 @@ run((data) => {
   const advice =
     worst >= 90
       ? "Little is left: finish the current step, start no new fan-out, and tell the user before any large piece of work."
-      : "Stretch what is left: send bounded, fully specified work to `dotclaude:codex-worker` if Codex is set up, prefer the Sonnet 5 agents for well-specified work, keep briefs and fan-out small, do not switch to Fable, and hand off before the context grows large.";
+      : "Stretch what is left: prefer the Sonnet 5 agents for well-specified work, keep briefs and fan-out small, do not switch to Fable, and hand off before the context grows large.";
   emit({
     hookSpecificOutput: {
       hookEventName: "UserPromptSubmit",

@@ -1,25 +1,24 @@
 #!/usr/bin/env bun
-// UserPromptSubmit: expand a `/dotclaude:<skill>` typed in the middle of a
-// message. Claude Code expands a slash command only at the start of a message;
-// elsewhere it reaches Claude as plain text. The skill's body is added as
-// context with $ARGUMENTS set to the rest of the message. A skill that forks a
-// subagent or runs `!` commands cannot be inlined, so Claude is told to run it
-// through the Skill tool instead.
+// UserPromptSubmit: run a `/dotclaude:<skill>` typed in the middle of a
+// message. Claude Code expands a slash command only at the start of a message,
+// and a hook cannot rewrite the prompt, so Claude is told to load the skill
+// through the Skill tool with the rest of the message as its arguments. The
+// Skill tool loads it the way Claude Code would (forks, `!` commands, model
+// and tool settings). A user-only skill refuses the Skill tool, so Claude asks
+// the user to send it again at the start of a message.
 
 import fs from "node:fs";
 import path from "node:path";
-import { emit, run, TAG, userTyped } from "../lib/_common.mjs";
+import { emit, run, userTyped } from "../lib/_common.mjs";
 
-// The whole context, including the "[dotclaude] " tag emit() adds, stays
-// within 9500 characters.
-const MAX_CONTEXT = 9500 - TAG.length - 1;
 const TOKEN = /(^|\s)\/dotclaude:([a-z0-9-]+)(?![\w:/-])/g;
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
-const FORK = /^context:\s*["']?fork["']?\s*$/m;
 const USER_ONLY = /^disable-model-invocation:\s*true\s*$/m;
-// `!`command`` lines and ```! blocks, which Claude Code runs before the skill
-// reaches Claude; a quoted `!` in prose is not one.
-const DYNAMIC = /(^|\s)!`[^`\n]+`|^```!/m;
+
+// Pasted blocks and `>` quote lines only mention a skill; a name there, such
+// as one quoted back from Claude's own reply, is not an invocation.
+const QUOTED =
+  /<pasted_content id="([^"]*)">[\s\S]*?<\/pasted_content id="\1">|^[ \t]*>.*$/gm;
 
 function pluginRoot() {
   return (
@@ -28,7 +27,9 @@ function pluginRoot() {
 }
 
 function findSkill(text) {
-  for (const m of text.matchAll(TOKEN)) {
+  // Blank quoted spans with spaces so match offsets still index `text`.
+  const typed = text.replace(QUOTED, (q) => q.replace(/[^\n]/g, " "));
+  for (const m of typed.matchAll(TOKEN)) {
     const start = m.index + m[1].length;
     if (start === 0) continue;
     const file = path.join(pluginRoot(), "skills", m[2], "SKILL.md");
@@ -41,45 +42,19 @@ function findSkill(text) {
   return undefined;
 }
 
-function wrap(name, body, file) {
-  const open = `<skill name="dotclaude:${name}">\n`;
-  const close = "\n</skill>";
-  if (open.length + body.length + close.length <= MAX_CONTEXT)
-    return open + body + close;
-  const note = `\n[Truncated at ${MAX_CONTEXT} characters; read the rest from ${file}.]`;
-  const room = MAX_CONTEXT - open.length - note.length - close.length;
-  return open + body.slice(0, room) + note + close;
-}
-
 run((data) => {
   if (!userTyped(data.prompt)) return;
   const skill = findSkill(data.prompt.trimStart());
   if (!skill) return;
   const { name, file, args } = skill;
-  const source = fs.readFileSync(file, "utf8");
-  const front = source.match(FRONTMATTER);
-  const frontmatter = front?.[1] ?? "";
-  let body = front ? source.slice(front[0].length) : source;
-  let context;
-  if (FORK.test(frontmatter) || DYNAMIC.test(body)) {
-    // A user-only skill refuses the Skill tool, so only the user can start it,
-    // and only from the start of a message.
-    context = USER_ONLY.test(frontmatter)
-      ? `The user's message names /dotclaude:${name}, which runs only when a message starts with it. Ask the user to send it again beginning with /dotclaude:${name}.`
-      : `The user's message invokes /dotclaude:${name}. Run it by calling the Skill tool with skill "dotclaude:${name}" and args ${JSON.stringify(args)}.`;
-  } else {
-    body = body
-      .replace(/\$\{CLAUDE_SKILL_DIR\}/g, () => path.dirname(file))
-      .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, () => pluginRoot())
-      .split("$ARGUMENTS")
-      .join(args)
-      .trim();
-    context = wrap(name, body, file);
-  }
+  const frontmatter =
+    fs.readFileSync(file, "utf8").match(FRONTMATTER)?.[1] ?? "";
   emit({
     hookSpecificOutput: {
       hookEventName: "UserPromptSubmit",
-      additionalContext: context,
+      additionalContext: USER_ONLY.test(frontmatter)
+        ? `The user's message names /dotclaude:${name}, which runs only when a message starts with it. Ask the user to send it again beginning with /dotclaude:${name}.`
+        : `The user's message invokes /dotclaude:${name}. Run it now by calling the Skill tool with skill "dotclaude:${name}" and args ${JSON.stringify(args)}.`,
     },
   });
 });

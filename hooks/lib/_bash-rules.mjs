@@ -17,12 +17,12 @@ import {
   secretRead,
 } from "./_rules-filesystem.mjs";
 import { gitRule } from "./_rules-git.mjs";
-import { claude, codex, modelEnv, rawSettingsWrite } from "./_rules-model.mjs";
+import { claude, modelEnv, rawSettingsWrite } from "./_rules-model.mjs";
 import { curl, gh, PUBLISH, publish, wget } from "./_rules-remote.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /**
- * @typedef {{root: string, cwd: string, allowedModels: string[], codexModels?: string[], modelLock?: boolean, commitHygiene?: boolean}} Context
+ * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, commitHygiene?: boolean}} Context
  * @typedef {["deny" | "ask" | "warn", string]} Finding
  */
 
@@ -62,13 +62,6 @@ function checkCommand(cmd, ctx) {
   }
   if (INTERPRETERS.has(cmd.name)) {
     out.push(...interpreterInline(cmd, ctx));
-    // codex-worker's runner starts `codex exec -p dotclaude-luna` with its
-    // own --model, so the Codex rules see it as that command line.
-    const at = cmd.args.findIndex((a) => /(^|\/)run-codex\.mjs$/.test(a));
-    if (at >= 0) {
-      const args = ["exec", "-p", "dotclaude-luna", ...cmd.args.slice(at + 1)];
-      out.push(...codex({ ...cmd, args }, ctx));
-    }
   }
   out.push(...snapshotBless(cmd));
   if (ctx.modelLock) out.push(...modelEnv(cmd, ctx));
@@ -198,7 +191,6 @@ const HANDLERS = {
   curl,
   wget,
   claude,
-  codex,
   yarn: publish,
   dropdb: dbReset,
   ...Object.fromEntries(Object.keys(PUBLISH).map((n) => [n, publish])),

@@ -6,19 +6,10 @@
 
 import path from "node:path";
 import { check } from "../lib/_bash-rules.mjs";
-import { codexPlan, configuredModel } from "../lib/_codex.mjs";
-import {
-  decide,
-  option,
-  optionList,
-  projectRoot,
-  run,
-} from "../lib/_common.mjs";
-import { DEFAULT_CODEX } from "../lib/_models.mjs";
+import { decide, option, projectRoot, run } from "../lib/_common.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 
-const LOCK_ONLY =
-  /fast mode|allowed models|allowed Codex models|ChatGPT \w+ plan|Codex's sandbox/;
+const LOCK_ONLY = /fast mode|allowed models/;
 
 run((data) => {
   const command = data.tool_input?.command;
@@ -31,11 +22,6 @@ run((data) => {
     root,
     cwd: path.resolve(data.cwd || root),
     allowedModels: planAllowlist().list,
-    codexModels: optionList("allowed_codex_models", DEFAULT_CODEX).map((m) =>
-      m.toLowerCase(),
-    ),
-    codexPlan,
-    codexConfiguredModel: configuredModel,
     modelLock,
     commitHygiene: option("commit_hygiene"),
   });

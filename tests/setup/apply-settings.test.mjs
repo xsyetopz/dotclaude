@@ -3,6 +3,7 @@
 import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
+import { profileStamp } from "../../hooks/lib/_profile.mjs";
 import { run, tempHome } from "../support/setup.mjs";
 
 test("apply-settings previews without writing, then merges without removing user keys", () => {
@@ -21,11 +22,7 @@ test("apply-settings previews without writing, then merges without removing user
   run("apply-settings.mjs", home, "--apply");
   const merged = JSON.parse(fs.readFileSync(file, "utf8"));
   expect(merged.theme).toBe("auto");
-  expect(merged.permissions.allow).toStrictEqual([
-    "mcp__codegraph__*",
-    "Bash(codex exec -p dotclaude-luna *)",
-    "Bash(codex exec -p dotclaude-review *)",
-  ]);
+  expect(merged.permissions.allow).toStrictEqual(["mcp__codegraph__*"]);
   expect(
     merged.permissions.deny.filter((r) => r === "Read(~/.ssh/**)").length,
   ).toBe(1);
@@ -66,7 +63,6 @@ test("apply-settings keeps a user's own sonnet mapping and leaves Fable out on P
     "claude-haiku-4-5",
   ]);
   expect(merged.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe("claude-sonnet-5");
-  // A small 5-hour window compacts at half the usual size.
   expect(merged.autoCompactWindow).toBe(200000);
 });
 
@@ -78,8 +74,6 @@ test("apply-settings replaces the model policy: availableModels and Agent(model:
     JSON.stringify({
       availableModels: ["claude-opus-5-5", "claude-sonnet-5"],
       env: {
-        CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION: "40",
-        ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-opus-5-5",
         KEEP_ME: "1",
       },
       permissions: {
@@ -115,18 +109,41 @@ test("apply-settings replaces the model policy: availableModels and Agent(model:
     "Agent(model:claude-haiku*)",
   ])
     expect(!merged.permissions.deny.includes(gone), gone).toBeTruthy();
-  expect(merged.autoCompactWindow).toBe(400000);
+  expect(merged.autoCompactWindow).toBe(200000);
   expect(merged.env.CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT).toBe("1");
   expect(merged.promptSuggestionEnabled).toBe(false);
   expect(merged.awaySummaryEnabled).toBe(false);
   expect(merged.crossSessionInbound).toBe("hold");
-  // The 0.4.0 mapping of `sonnet` to Opus 5.5 is taken out again.
-  expect(
-    !Object.hasOwn(merged.env, "ANTHROPIC_DEFAULT_SONNET_MODEL"),
-  ).toBeTruthy();
-  // A retired env key the 0.2.0 profile set is removed; the user's own stays.
-  expect(
-    !Object.hasOwn(merged.env, "CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION"),
-  ).toBeTruthy();
+  expect(merged.env.DOTCLAUDE_SETTINGS_PROFILE).toBe(profileStamp());
   expect(merged.env.KEEP_ME).toBe("1");
+});
+
+test("apply-settings adds the optional switches unless skipped", () => {
+  const home = tempHome();
+  const file = path.join(home, ".claude", "settings.json");
+  run("apply-settings.mjs", home, "--apply");
+  const all = JSON.parse(fs.readFileSync(file, "utf8"));
+  expect(all.env.CLAUDE_CODE_DISABLE_ARTIFACT).toBe("1");
+  expect(all.env.DISABLE_AUTOUPDATER).toBe("1");
+  expect(all.permissions.deny).toContain("ScheduleWakeup");
+  expect(all.permissions.deny).toContain("ReportFindings");
+  expect(all.disableBundledSkills).toBe(true);
+  expect(all.autoMemoryEnabled).toBe(false);
+
+  const other = tempHome();
+  const out = run(
+    "apply-settings.mjs",
+    other,
+    "--skip",
+    "artifact,loops",
+    "--apply",
+  );
+  expect(out).toMatch(/Skipped switch: artifact/);
+  const some = JSON.parse(
+    fs.readFileSync(path.join(other, ".claude", "settings.json"), "utf8"),
+  );
+  expect(some.env.CLAUDE_CODE_DISABLE_ARTIFACT).toBeUndefined();
+  expect(some.permissions.deny).not.toContain("ScheduleWakeup");
+  expect(some.env.CLAUDE_CODE_DISABLE_WORKFLOWS).toBe("1");
+  expect(some.env.DOTCLAUDE_SETTINGS_PROFILE).toBe(profileStamp());
 });

@@ -1,4 +1,4 @@
-// enforce-turn-budget: refuse tool calls when a dotclaude agent nears maxTurns.
+// enforce-agent-budget: refuse tool calls when a dotclaude agent nears maxTurns.
 
 import { expect, test } from "bun:test";
 import fs from "node:fs";
@@ -11,9 +11,13 @@ const prompt = (text, extra = {}) => ({
   message: { role: "user", content: text },
   ...extra,
 });
-const call = (n) => ({
+const call = (n, context = 30_000) => ({
   type: "assistant",
-  message: { id: `msg_${n}`, content: [{ type: "tool_use", name: "Bash" }] },
+  message: {
+    id: `msg_${n}`,
+    content: [{ type: "tool_use", name: "Bash" }],
+    usage: { input_tokens: 2, cache_read_input_tokens: context - 2 },
+  },
 });
 const result = () => ({
   type: "user",
@@ -30,7 +34,7 @@ function decide(entries, input = {}) {
     path.join(sub, "agent-a1.jsonl"),
     entries.map((e) => JSON.stringify(e)).join("\n"),
   );
-  const out = hook("pre-tool-use/enforce-turn-budget.mjs", {
+  const out = hook("pre-tool-use/enforce-agent-budget.mjs", {
     hook_event_name: "PreToolUse",
     session_id: "s1",
     transcript_path: path.join(dir, "s1.jsonl"),
@@ -87,9 +91,23 @@ test("other agents, missing transcripts, and the option switch pass", () => {
   expect(decide(full, { agent_id: "missing" })).toBe("pass");
   expect(decide(full, { agent_id: "agent-a1" }), "prefixed id").toBe("deny");
   const out = hook(
-    "pre-tool-use/enforce-turn-budget.mjs",
+    "pre-tool-use/enforce-agent-budget.mjs",
     { agent_type: "dotclaude:implementer", agent_id: "a1" },
     { CLAUDE_PLUGIN_OPTION_TURN_LIMIT_HANDOFF: "false" },
   );
   expect(out).toBeNull();
+});
+
+test("any subagent is refused tools past the context budget, a fork past its growth", () => {
+  const grown = [...brief, call(0), result(), call(1, 150_000), result()];
+  expect(decide([...brief, call(0), result(), call(1, 149_000)])).toBe("pass");
+  expect(decide(grown, { agent_type: "general-purpose" })).toBe("deny");
+  expect(decide(grown, { tool_name: "SubagentHandback" })).toBe("pass");
+  const fork = [...brief, call(0, 300_000), result()];
+  expect(decide([...fork, call(1, 349_000)], { agent_type: "fork" })).toBe(
+    "pass",
+  );
+  expect(decide([...fork, call(1, 350_000)], { agent_type: "fork" })).toBe(
+    "deny",
+  );
 });

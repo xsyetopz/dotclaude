@@ -1,8 +1,11 @@
 #!/usr/bin/env bun
 // Merge a dotclaude settings profile into a Claude Code settings file.
 //
-//   bun apply-settings.mjs [--scope user|project|local] [--profile file] [--apply]
+//   bun apply-settings.mjs [--scope user|project|local] [--profile file]
+//                          [--skip name,...] [--apply]
 //
+// With the shipped profile, the switches in profiles/optional.json are merged
+// too, except the ones named in --skip.
 // Without --apply it prints the changes and writes nothing. With --apply it
 // backs the file up next to itself, then writes the merged result.
 // Merge rules: objects merge key by key, arrays gain missing entries, scalars
@@ -12,11 +15,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { currentPlan, fableAccess } from "../../../hooks/lib/_plans.mjs";
 import {
-  currentPlan,
-  fableAccess,
-  SMALL_WINDOW,
-} from "../../../hooks/lib/_plans.mjs";
+  OPTIONAL,
+  profileStamp,
+  RECOMMENDED,
+  STAMP_KEY,
+} from "../../../hooks/lib/_profile.mjs";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -29,6 +34,12 @@ const profilePath = path.resolve(
   flag("--profile", path.join(here, "..", "profiles", "recommended.json")),
 );
 const apply = args.includes("--apply");
+const skip = new Set(
+  flag("--skip", "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
 const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
 const targets = {
@@ -66,15 +77,15 @@ const isObject = (v) =>
   v !== null && typeof v === "object" && !Array.isArray(v);
 const changes = [];
 
-function merge(current, profile, keyPath) {
+function merge(current, profile, keyPath, owned = OWNED) {
   const out = isObject(current) ? { ...current } : {};
   for (const [key, value] of Object.entries(profile)) {
     const where = keyPath ? `${keyPath}.${key}` : key;
     const existing = out[key];
     if (isObject(value)) {
-      out[key] = merge(existing, value, where);
+      out[key] = merge(existing, value, where, owned);
     } else if (Array.isArray(value)) {
-      const owns = OWNED[where] ?? (() => false);
+      const owns = owned[where] ?? (() => false);
       const all = Array.isArray(existing) ? existing : [];
       const base = all.filter((v) => !owns(v) || value.includes(v));
       if (base.length < all.length)
@@ -108,6 +119,7 @@ if (!isObject(profile)) {
   console.error(`Profile ${profilePath} not found or not an object.`);
   process.exit(1);
 }
+profile.env = { ...profile.env, [STAMP_KEY]: profileStamp(profilePath) };
 // A plan that runs Fable only on usage credits, with extra usage off, cannot
 // use it, so the model list leaves it out there.
 const { plan, account } = currentPlan();
@@ -122,42 +134,20 @@ if (
     `Claude plan: ${plan}, which runs Fable on usage credits with extra usage off; availableModels leaves Fable out.`,
   );
 }
-// Every turn re-reads the whole context, and a small 5-hour window runs out
-// after a few large turns, so those plans compact at half the usual size.
-if (SMALL_WINDOW.has(plan) && typeof profile.autoCompactWindow === "number") {
-  profile.autoCompactWindow = 200000;
-  console.log(
-    `Claude plan: ${plan}, which has a small 5-hour window; autoCompactWindow is 200000.`,
-  );
-}
-const merged = merge(current, profile, "");
-
-// Keys an earlier profile set and this one no longer wants: removed when they
-// still hold the value dotclaude wrote (`value`) or always (`value` unset).
-// Nothing else is ever deleted.
-const RETIRED = [
-  {
-    block: "env",
-    key: "CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION",
-    why: "no longer read by Claude Code",
-  },
-  {
-    block: "env",
-    key: "ANTHROPIC_DEFAULT_SONNET_MODEL",
-    value: "claude-opus-5-5",
-    why: "Sonnet 5 is allowed again, so `sonnet` runs as Sonnet",
-  },
-];
-for (const { block, key, value, why } of RETIRED) {
-  const holder = merged[block];
-  if (
-    isObject(holder) &&
-    Object.hasOwn(holder, key) &&
-    (value === undefined || holder[key] === value)
-  ) {
-    changes.push(`${block}.${key}: remove (${why})`);
-    merged[block] = { ...holder };
-    delete merged[block][key];
+let merged = merge(current, profile, "");
+if (profilePath === RECOMMENDED) {
+  const optional = readJson(OPTIONAL, {});
+  for (const name of skip)
+    if (!Object.hasOwn(optional, name)) {
+      console.error(
+        `Unknown switch "${name}". Known: ${Object.keys(optional).join(", ")}.`,
+      );
+      process.exit(2);
+    }
+  for (const [name, { settings }] of Object.entries(optional)) {
+    if (skip.has(name)) console.log(`Skipped switch: ${name}`);
+    // The switches only add; the model policy is the base profile's.
+    else merged = merge(merged, settings, "", {});
   }
 }
 

@@ -1,4 +1,4 @@
-// dotclaude agent definitions and their turn budgets.
+// dotclaude agent definitions and their turn and context budgets.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -68,4 +68,36 @@ export function turnsUsed(transcript) {
     }
   }
   return ids.size;
+}
+
+/**
+ * Context tokens of the first and latest API calls in a subagent transcript
+ * (input plus cache reads and writes), or null without a readable call.
+ */
+export function contextUsed(transcript) {
+  let text;
+  try {
+    text = fs.readFileSync(transcript, "utf8");
+  } catch {
+    return null;
+  }
+  let first = null;
+  let last = null;
+  for (const line of text.split("\n")) {
+    if (!line.includes('"usage"')) continue;
+    let entry;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const u = entry.type === "assistant" ? entry.message?.usage : null;
+    if (!u) continue;
+    last =
+      (u.input_tokens ?? 0) +
+      (u.cache_read_input_tokens ?? 0) +
+      (u.cache_creation_input_tokens ?? 0);
+    first ??= last;
+  }
+  return last === null ? null : { first, last };
 }

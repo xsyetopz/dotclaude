@@ -15,6 +15,9 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
     /Only your report is delivered/,
   );
   expect(out.hookSpecificOutput.additionalContext).not.toMatch(/turn_budget/);
+  expect(out.hookSpecificOutput.additionalContext).toMatch(
+    /passes about 150k tokens, tool calls are refused/,
+  );
   const start = (agentType) =>
     hook("subagent-start/inject-working-conventions.mjs", {
       hook_event_name: "SubagentStart",
@@ -29,7 +32,7 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   );
   for (const [agentType, limit] of [
     ["dotclaude:code-reviewer", 60],
-    ["dotclaude:codex-worker", 12],
+    ["dotclaude:security-reviewer", 40],
   ]) {
     const text = start(agentType);
     expect(text, agentType).not.toMatch(/hypotheses/);

@@ -25,14 +25,13 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
    | Group | Keys | Why |
    | --- | --- | --- |
    | Fast mode off | `env.CLAUDE_CODE_DISABLE_FAST_MODE=1`, `fastMode: false`, `fastModePerSessionOptIn: true`, `ultracode: false` | The env var removes the `/fast` toggle; the others keep a stray toggle, or ultracode's xhigh orchestration, from persisting. With `workflowKeywordTriggerEnabled: false`, ultracode starts only when the user picks `/effort ultracode`; no setting disables it alone, and the `xhigh` cap does not block it. |
-   | Models | `model`, `availableModels`, `advisorModel`, `env.CLAUDE_CODE_SUBAGENT_MODEL`, `env.ANTHROPIC_DEFAULT_HAIKU_MODEL`, `Agent(model:fable*)` deny (the Agent tool sends a model alias, never a full ID) | Keeps the session and advisor on Opus 5.5, with Sonnet 5 for built-in subagents that set no model of their own, such as `general-purpose` and dotclaude's `implementer` and low-judgment agents, Fable 5.1 for the main conversation only (a fresh Fable context costs about 2.5x an Opus one), and Haiku 4.5 for Claude Code's background tasks. On Pro or a standard Team seat with extra usage off, `availableModels` leaves Fable out, since those plans run it on usage credits. A leftover `env.ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5` from 0.4.0 is removed. |
+   | Models | `model`, `availableModels`, `advisorModel`, `env.CLAUDE_CODE_SUBAGENT_MODEL`, `env.ANTHROPIC_DEFAULT_HAIKU_MODEL`, `Agent(model:fable*)` deny (the Agent tool sends a model alias, never a full ID) | Keeps the session and advisor on Opus 5.5, with Sonnet 5 for built-in subagents that set no model of their own, such as `general-purpose` and dotclaude's `implementer` and low-judgment agents, Fable 5.1 for the main conversation only (a fresh Fable context costs about 2.5x an Opus one), and Haiku 4.5 for Claude Code's background tasks. On Pro or a standard Team seat with extra usage off, `availableModels` leaves Fable out, since those plans run it on usage credits. |
    | Lean system prompt | `env.CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1` | Claude Code's shorter built-in prompt, which it already rolls out to some sessions: about 6.6k fewer tokens on every request, mostly from condensed auto-memory instructions, with the same tools. |
-   | Background usage | `autoCompactWindow: 400000` (200000 on Pro, Max 5x, and Team seats), `promptSuggestionEnabled: false`, `awaySummaryEnabled: false`, `crossSessionInbound: "hold"` | Every request re-reads the whole context. Compacting at 400k instead of the default (about 967k on current models) keeps each turn smaller. Prompt suggestions send an extra request after every response, session recap sends one when you step away, and cross-session messages start idle turns; each re-reads the context. `/recap` still works on demand. |
+   | Background usage | `autoCompactWindow: 200000` on every plan, `promptSuggestionEnabled: false`, `awaySummaryEnabled: false`, `crossSessionInbound: "hold"` | Every request re-reads the whole context. Compacting at 200k instead of the default (about 967k on current models) keeps each turn smaller; the value is sized for Pro and applies on every plan. Prompt suggestions send an extra request after every response, session recap sends one when you step away, and cross-session messages start idle turns; each re-reads the context. `/recap` still works on demand. |
    | Effort cap | `maxEffortLevel: xhigh` | `max` is blocked because the claude.ai effort picker warns it uses about 5.5x usage on Opus 5.5 and 3.5x on Fable 5.1 (as of 2026-09-26); `xhigh` stays for the rare hard turn. The lowest cap across settings scopes applies. |
-   | Subagent and workflow bounds | `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=6`, `env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS=6`, `workflowSizeGuideline: medium` | Fan-out is the largest driver of quota burn in long sessions, and past about six parallel agents rate limits make agents retry and burn context. The workflow env var hard-caps agents running at once in a workflow; the size guideline only advises Claude how many to plan. Workflows stay enabled. |
+   | Subagent and workflow bounds | `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=3`, `env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS=3`, `workflowSizeGuideline: medium`, `env.CLAUDE_CODE_FORK_SUBAGENT=false` | Subagents were 55% of one measured Max 20x week, and parallel agents spend a Pro 5-hour window several times faster; three at once is sized for Pro, and larger plans only run out later. The workflow env var hard-caps agents running at once in a workflow; the size guideline only advises Claude how many to plan. Workflows stay enabled. Forks off, because fork mode forces every subagent into the background, and a background agent's report wakes the main conversation for extra full turns. |
    | Task list | `env.CLAUDE_CODE_ENABLE_TODO_TOOLS=1` | The task-list tools are off by default on Opus 5.5, and the dotclaude output style relies on them. |
    | Feedback off | `env.DISABLE_FEEDBACK_COMMAND=1`, `env.CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1`, `env.DISABLE_ERROR_REPORTING=1` | Removes `/feedback`, `/bug`, `/share`, and the SendFeedback tool (about 5.5 KB sent on every request), the session-quality survey, and error reports. Telemetry itself stays on, because `DISABLE_TELEMETRY` and `DO_NOT_TRACK` also stop feature-flag fetching, which removes the advisor tool and the marking of large pastes. |
-   | Tools | `permissions.deny` `AskUserQuestion` | Removes the multiple-choice question tool, about 4.9 KB sent on every request; Claude asks in plain text instead. |
    | Secrets | `permissions.deny` `Read(...)` rules for `.env`, `.env.local`, `.env.production`, `.env.*.local`, `~/.ssh`, `~/.aws/credentials`, `~/.gnupg`, `~/.netrc`, `~/.docker/config.json` | Keeps credentials out of the context window. |
    | Safety | `permissions.disableBypassPermissionsMode`, `enableAllProjectMcpServers: false`, `workflowKeywordTriggerEnabled: false` | No bypass mode, no silent project MCP servers, and the word "ultracode" in a prompt does not launch a workflow. |
    | Git instructions | `includeGitInstructions: false` | Removes Claude Code's built-in commit and PR instructions; the dotclaude output style carries its own git section. |
@@ -42,10 +41,27 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
 
    If the user wants to drop a group, copy the profile to a temporary file, remove those keys, and pass it with `--profile <file>`.
 
+   Then list the built-in switches from `profiles/optional.json`. The preview includes them all, and each one removes a Claude Code feature, so ask which to keep:
+
+   | Switch | Removes | Why |
+   | --- | --- | --- |
+   | `artifact` | the Artifact tool | about 34 KB on every request; it publishes pages to claude.ai |
+   | `workflows` | the Workflow tool and workflow skills | about 5.4 KB per request; workflows fan out many agents |
+   | `loops` | the cron tools and ScheduleWakeup | about 4.6 KB per request; each `/loop` wake-up is a full turn |
+   | `report-findings` | ReportFindings | about 2.2 KB per request; only Claude Code's `/code-review` uses it |
+   | `advisor` | the advisor tool | its calls count toward plan limits |
+   | `explore-plan` | the Explore and Plan agents | they run on the main model; dotclaude's agents cover them |
+   | `bundled-skills` | Claude Code's bundled skills and workflows | their entries in the per-turn skill listing |
+   | `auto-memory` | auto memory | its index in every session and its memory writes |
+   | `refusal-retry` | the automatic retry after a refusal | an extra request |
+   | `auto-updates` | automatic updates | an update cold-starts the prompt cache |
+
+   Pass the ones the user keeps as `--skip name,name` in both the preview and the apply command. A switch skipped now but applied earlier stays in the settings file until the user removes its key.
+
 4. Apply, after the user agrees:
 
    ```bash
-   bun "${CLAUDE_SKILL_DIR}/scripts/apply-settings.mjs" --scope <scope> --apply
+   bun "${CLAUDE_SKILL_DIR}/scripts/apply-settings.mjs" --scope <scope> [--skip name,...] --apply
    ```
 
    The script backs up the existing file next to it before writing. If the permission system blocks the command, give the user the exact command to run with the `!` prefix instead of retrying, since a block is the user's decision.
