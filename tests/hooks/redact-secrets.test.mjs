@@ -47,7 +47,9 @@ test.skipIf(!hasGitleaks)(
       stderr: "",
       interrupted: false,
     });
-    expect(h.additionalContext).toMatch(/redacted 1 secret \(github-pat\)/);
+    // The count, then the rule that matched, and never the value.
+    expect(h.additionalContext).toMatch(/\b1\b.*`github-pat`/);
+    expect(h.additionalContext).not.toContain(token);
   },
 );
 

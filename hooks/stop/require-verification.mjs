@@ -41,8 +41,8 @@ run((data) => {
   ) {
     state.blockedEdit = lastEdit.seq;
     reason = lastCheck
-      ? `Code changed after the last check run (last edit: ${lastEdit.path}, last check: \`${lastCheck.command}\`). Run the tests, build, or lint that cover this change, or state in your reply that the change is unverified and why.`
-      : `Code changed (last edit: ${lastEdit.path}) and no test, build, or lint command ran this session. Run the checks that cover this change, or state in your reply that the change is unverified and why.`;
+      ? `Code changed after the last check run (last edit: \`${lastEdit.path}\`, last check: \`${lastCheck.command}\`). Run the tests, build, or lint that cover this change. Otherwise, say in your reply that the change is unverified, and give the reason.`
+      : `Code changed (last edit: \`${lastEdit.path}\`), and no test, build, or lint command ran this session. Run the tests, build, or lint that cover this change. Otherwise, say in your reply that the change is unverified, and give the reason.`;
   } else if (
     lastCheck &&
     lastCheck.ok === false &&
@@ -52,7 +52,7 @@ run((data) => {
     !ADMITS_GAP.test(message)
   ) {
     state.blockedCheck = lastCheck.seq;
-    reason = `The last check (\`${lastCheck.command}\`) failed${lastCheck.code ? ` with exit code ${lastCheck.code}` : ""} and nothing has passed since, but the reply describes it as passing. Fix the failure, or report it as failing.`;
+    reason = `The last check (\`${lastCheck.command}\`) failed${lastCheck.code ? ` with exit code ${lastCheck.code}` : ""}, and no check passed after it, but the reply describes it as passing. Fix the failure, or report it as failing.`;
   } else if (
     !lastCheck &&
     !lastEdit &&
@@ -61,7 +61,7 @@ run((data) => {
   ) {
     state.blockedCheck = "claim";
     reason =
-      "The reply says tests or a build passed, but no test or build command ran this session. Run it, or reword the reply to say what was actually checked.";
+      "The reply says tests or a build passed, but no test or build command ran this session. Run the tests or build. Otherwise, change the reply to say what you actually checked.";
   }
 
   if (!reason) return;
@@ -69,6 +69,6 @@ run((data) => {
   // The reply written after this becomes the final report, so it has to
   // carry the whole outcome, not only the new check result.
   reason +=
-    " Then end with the complete report again (what changed, what ran and its result), because your next reply replaces this one as the report.";
+    " Then write the complete report again at the end (what changed, what ran and its result). Your next reply replaces this one as the report.";
   emit({ decision: "block", reason });
 });

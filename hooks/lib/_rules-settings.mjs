@@ -29,12 +29,12 @@ export function settingsWrite(command) {
     for (const [, name] of command.matchAll(SCRIPT))
       out.push([
         "ask",
-        `\`${name}.mjs --apply\` changes ${SCRIPTS[name]}; approve to let it write`,
+        `\`${name}.mjs --apply\` changes ${SCRIPTS[name]}. Approve it to let it write`,
       ]);
   if (!out.length && SETTINGS_PATH.test(command) && WRITES_FILE.test(command))
     out.push([
       "ask",
-      "command may write a Claude Code settings file; approve to let it write",
+      "the command may write a Claude Code settings file. Approve it to let it write",
     ]);
   return out;
 }

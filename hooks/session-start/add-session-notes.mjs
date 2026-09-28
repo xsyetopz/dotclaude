@@ -16,15 +16,15 @@ function browserNotes() {
   const notes = [];
   if (option("cloakbrowser", false))
     notes.push(
-      "use CloakBrowser (the drive-web-browser skill's launcher) as the browser backend rather than agent-browser",
+      "Use CloakBrowser (the `drive-web-browser` skill's launcher) as the browser backend, not `agent-browser`.",
     );
   if (option("cloakbrowser_headless", false))
-    notes.push("pass --headless to the CloakBrowser launcher");
+    notes.push("Pass `--headless` to the CloakBrowser launcher.");
   if (!option("cloakbrowser_humanize", true))
-    notes.push("pass --no-humanize to the CloakBrowser launcher");
+    notes.push("Pass `--no-humanize` to the CloakBrowser launcher.");
   if (option("captcha_ocr_ddddocr", false))
     notes.push(
-      "offline CAPTCHA OCR is enabled, so you may use the recognize-captcha skill when a text CAPTCHA appears despite CloakBrowser",
+      "Offline CAPTCHA OCR is on, so you may use the `recognize-captcha` skill when a text CAPTCHA appears despite CloakBrowser.",
     );
   return notes;
 }
@@ -47,7 +47,7 @@ run((data) => {
   const browser = browserNotes();
   if (browser.length)
     parts.push(
-      `<browser_preferences>The user's dotclaude settings: ${browser.join("; ")}.</browser_preferences>`,
+      `<browser_preferences>These preferences come from the user's dotclaude settings. ${browser.join(" ")}</browser_preferences>`,
     );
   if (!parts.length) return;
   emit({

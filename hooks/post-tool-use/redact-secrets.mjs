@@ -16,12 +16,12 @@ run((data) => {
   if (!findings?.length) return;
   const { value, count } = redact(output, findings);
   if (!count) return;
-  const rules = [...new Set(findings.map((f) => f.rule))].join(", ");
+  const rules = [...new Set(findings.map((f) => `\`${f.rule}\``))].join(", ");
   emit({
     hookSpecificOutput: {
       hookEventName: "PostToolUse",
       updatedToolOutput: value,
-      additionalContext: `redacted ${count} secret${count === 1 ? "" : "s"} (${rules}) from this tool output. Do not try to recover the values; refer to the secret by its variable or file name.`,
+      additionalContext: `This hook redacted ${count} secret${count === 1 ? "" : "s"} (${rules}) from this tool output. Do not try to recover the values. Refer to each secret by its variable or file name.`,
     },
   });
 });

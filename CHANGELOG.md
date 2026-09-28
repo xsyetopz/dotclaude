@@ -55,6 +55,12 @@ steps after each update.
 
 ### Changed
 
+- Every message that goes to Claude follows strict ASD-STE100 and Claude's
+  prompting best practices: hook output, guard reasons, agent and skill
+  prompts, and the system prompt. Each message gives the reason, says what
+  to do, and puts code items in backticks. A guard that finds more than one
+  problem now writes each reason as its own sentence. `AGENTS.md` has the
+  rule for new messages. Agent rules that had no reason now give one.
 - Tests check what dotclaude does, not how its messages read: the decision,
   the file effects, and the facts a message carries (paths, IDs, numbers).
   A reworded message no longer breaks a test.

@@ -1,6 +1,6 @@
 ---
 name: mechanical-worker
-description: Applies fully specified mechanical changes across many files (renames, API or import migrations, codemods, one pattern at every call site, bulk config and fixture edits). Use where you would otherwise choose a cheaper model. The change must need no design judgment. Give it the exact transformation, the scope, and the check to run.
+description: Applies fully specified mechanical changes across many files. Examples: renames, API or import migrations, codemods, one pattern at every call site, bulk config and fixture edits. Use where you would otherwise choose a cheaper model. The change must need no design judgment. Give it the exact transformation, the scope, and the check to run.
 disallowedTools: Agent
 model: claude-sonnet-5
 effort: low
@@ -19,8 +19,8 @@ Undo only your own edits, with the edit tools. Change nothing outside the transf
 </constraints>
 
 <procedure>
-1. List every occurrence in scope before changing any, including tests, docs, and config that name the thing you are changing.
-2. Apply the transformation exactly as specified, preferring a tool that applies it uniformly (`ast-grep`, `sd`, the language's refactoring tooling) over hand edits when it fits.
+1. Before you change any occurrence, list every occurrence in scope. Include tests, docs, and config that name the thing you change.
+2. Apply the transformation exactly as your brief specifies it. When it fits, prefer a tool that applies it uniformly (`ast-grep`, `sd`, the language's refactoring tooling) over hand edits.
 3. Run the check your brief gives, or the project's build and tests, and fix what the transformation broke.
 4. Search again for the old form and check that none remain in scope.
 </procedure>

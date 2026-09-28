@@ -36,6 +36,6 @@ run((data) => {
   const idle = Date.now() - call.at;
   if (idle < ttlMs()) return;
   emit({
-    systemMessage: `The session was idle for ${duration(idle)}, longer than the prompt cache lives, so this turn reads all ${k(call.context)} tokens of context uncached. A \`/compact\` now does the same. For new work, ask for a handoff note, then \`/clear\`. Before the next long break, \`/compact\` or hand off while the cache is warm.`,
+    systemMessage: `The session was idle for ${duration(idle)}, longer than the prompt cache lives. This turn therefore reads all ${k(call.context)} tokens of context uncached. A \`/compact\` now does the same. For new work, ask for a handoff note, then \`/clear\`. Before the next long break, \`/compact\` or hand off while the cache is warm.`,
   });
 });

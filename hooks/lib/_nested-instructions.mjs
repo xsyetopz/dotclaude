@@ -117,13 +117,13 @@ export function contextFor(files, root) {
     }
     used += text.length;
     parts.push(
-      `Contents of ${rel} (instructions for files in ${path.dirname(rel)}/):\n\n${text}`,
+      `Contents of \`${rel}\` (instructions for files in \`${path.dirname(rel)}/\`):\n\n${text}`,
     );
   }
   if (named.length)
     parts.push(
-      `These instruction files also apply and were too large to add here. Open them with the Read tool: ${named.join(", ")}`,
+      `These instruction files also apply, but they are too large to add here. Open them with the \`Read\` tool: ${named.map((f) => `\`${f}\``).join(", ")}`,
     );
   if (!parts.length) return null;
-  return `The dotclaude plugin's PostToolUse hook added this note, not the command's output. The command read files in project directories that have their own CLAUDE.md files. Claude Code loads those files when the Read tool opens a file there, but not for Bash (#90450). They are project instructions, like the root CLAUDE.md. Follow them for files in those directories.\n\n${parts.join("\n\n")}`;
+  return `The dotclaude plugin's \`PostToolUse\` hook added this note, not the command's output. The command read files in project directories that have their own \`CLAUDE.md\` files. Claude Code loads those files when the \`Read\` tool opens a file there, but not for \`Bash\` (#90450). They are project instructions, like the root \`CLAUDE.md\`. Follow them for files in those directories.\n\n${parts.join("\n\n")}`;
 }

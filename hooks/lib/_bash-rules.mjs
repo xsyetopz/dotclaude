@@ -42,7 +42,7 @@ export function check(command, ctx) {
   )
     findings.push([
       "deny",
-      "the commit message has a Claude `Co-Authored-By` line, and the attribution settings leave it out. Remove the line and commit again",
+      "the commit message has a Claude `Co-Authored-By` line, but the attribution settings exclude it. Remove the line. Then commit again",
     ]);
   if (c.modelLock) findings.push(...rawSettingsWrite(command));
   findings.push(...settingsWrite(command));
@@ -69,7 +69,7 @@ function checkCommand(cmd, ctx) {
     } else {
       out.push([
         "ask",
-        `output of \`${producer}\` piped into \`${cmd.name}\` runs unreviewed commands`,
+        `the output of \`${producer}\` piped into \`${cmd.name}\` runs unreviewed commands`,
       ]);
     }
   }
@@ -143,15 +143,15 @@ function interpreterInline(cmd, ctx) {
 const RAW_PATTERNS = [
   [
     /\brm\s+-[a-zA-Z]*[rR]/,
-    "recursive rm in a command the guard could not parse",
+    "the guard could not parse this command, and it contains a recursive `rm`",
   ],
   [
     /\bgit\s+(push\s+.*(-f|--force)|reset\s+--hard|clean\s+-[a-z]*f)/,
-    "destructive git command in a command the guard could not parse",
+    "the guard could not parse this command, and it contains a destructive `git` command",
   ],
   [
     /\|\s*(ba|z|da|k)?sh\b/,
-    "pipe into a shell in a command the guard could not parse",
+    "the guard could not parse this command, and it pipes into a shell",
   ],
 ];
 

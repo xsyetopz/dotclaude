@@ -23,7 +23,7 @@ run((data) => {
   if (isFable(model)) {
     preToolDecision(
       "deny",
-      `Fable is not used for subagents: a fresh Fable context costs about 2.5x an Opus 5.5 one before any work, from the same weekly limit. ${HINT}`,
+      `dotclaude blocks Fable for subagents, because a fresh Fable context costs about 2.5x an Opus 5.5 context before any work. That cost comes from the same weekly limit. ${HINT}`,
     );
     return;
   }
@@ -31,6 +31,6 @@ run((data) => {
   if (!allowed(model, list))
     preToolDecision(
       "deny",
-      `Subagent model \`${model}\` is outside the allowed models (${list.join(", ")}).${note} ${HINT}`,
+      `Subagent model \`${model}\` is outside the allowed models (${list.map((m) => `\`${m}\``).join(", ")}).${note} ${HINT}`,
     );
 });

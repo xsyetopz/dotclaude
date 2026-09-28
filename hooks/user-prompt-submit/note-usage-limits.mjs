@@ -43,8 +43,8 @@ run((data) => {
   const asOf = new Date(usage.fetchedAtMs).toISOString().slice(11, 16);
   const advice =
     worst >= 90
-      ? "Little is left: finish the current step, start no new fan-out, and tell the user before any large piece of work."
-      : "Stretch what is left: prefer the Sonnet 5 agents for well-specified work, keep briefs and fan-out small, do not switch to Fable, and hand off before the context grows large.";
+      ? "Little usage is left. Finish the current step. Start no new fan-out. Tell the user before you start any large piece of work."
+      : "Make the remaining usage last. Prefer the Sonnet 5 agents for well-specified work. Keep briefs and fan-out small. Do not switch to Fable. Write a handoff before the context grows large.";
   emit({
     hookSpecificOutput: {
       hookEventName: "UserPromptSubmit",

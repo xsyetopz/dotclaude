@@ -5,11 +5,11 @@ allowed-tools: Bash(bun */captcha/ddddocr.mjs *)
 ---
 
 <task>
-Read the text in a CAPTCHA image with [ddddocr-rs](https://github.com/mzdk100/ddddocr-rs), a Rust implementation of ddddocr that recognizes CAPTCHA text offline with an ONNX model.
+Read the text in a CAPTCHA image with [ddddocr-rs](https://github.com/mzdk100/ddddocr-rs). It is a Rust implementation of ddddocr that recognizes CAPTCHA text offline with an ONNX model.
 </task>
 
 <approach>
-The best CAPTCHA is one that never appears, so this OCR covers only the rare challenge that appears anyway. Do not make CAPTCHA solving your default strategy, because a site that keeps challenging you keeps escalating, and prevention avoids that. Work through these in order:
+The best CAPTCHA is one that never appears, so this OCR covers only the rare challenge that appears anyway. Do not make CAPTCHA solving your default strategy. A site that keeps challenging you keeps escalating, and prevention avoids that. Do these steps in order:
 
 1. Use CloakBrowser to prevent challenges.
 2. Use residential proxies for geographic legitimacy.
@@ -58,7 +58,7 @@ bun ${CLAUDE_PLUGIN_ROOT}/src/browser/cloakbrowser-launch.mjs \
   --screenshot=/tmp/page.png \
   https://site-with-captcha.com
 
-# 2. If there's a CAPTCHA, crop or screenshot just that element
+# 2. If there is a CAPTCHA, crop or screenshot only that element
 # 3. Recognize the text
 bun ${CLAUDE_PLUGIN_ROOT}/src/captcha/ddddocr.mjs /tmp/captcha.png
 ```
@@ -86,5 +86,5 @@ The OCR works best on simple alphanumeric text CAPTCHAs, and its success rate va
 - Audio CAPTCHAs
 - Slider/puzzle CAPTCHAs
 
-For these, ask the user to complete the challenge manually, or use `--auto-connect` with agent-browser so they can solve it in their own browser.
+For these, ask the user to complete the challenge manually. Or use `--auto-connect` with agent-browser, so they can solve it in their own browser.
 </limitations>

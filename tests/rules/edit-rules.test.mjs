@@ -24,7 +24,8 @@ test("removing an assertion from a test file asks", () => {
     ctx,
   );
   expect(levels(f)).toStrictEqual(["ask"]);
-  expect(f[0][1]).toMatch(/removes 1 assertion/);
+  // The count of removed assertions.
+  expect(f[0][1]).toMatch(/\b1\b/);
 });
 
 test("removing assertions passes when the user asked to remove the tests", () => {
@@ -45,7 +46,8 @@ test("removing assertions passes when the user asked to remove the tests", () =>
     },
     { ...ctx, testRemovalRequested: true },
   );
-  expect(skip.map(([, r]) => r).join()).toMatch(/skip/);
+  // The request covers removed assertions, not a new skip marker.
+  expect(levels(skip)).toStrictEqual(["ask"]);
 });
 
 test("test-removal requests are recognized in the user's own words", () => {
@@ -73,7 +75,7 @@ test("adding a skip marker asks", () => {
     },
     ctx,
   );
-  expect(f.map(([, r]) => r).join()).toMatch(/skip/);
+  expect(levels(f)).toStrictEqual(["ask"]);
 });
 
 test("adding assertions to a test file passes", () => {
@@ -233,7 +235,7 @@ test("a Write whose frontmatter would not parse is denied", () => {
     ctx,
   );
   expect(levels(f)).toStrictEqual(["deny"]);
-  expect(f[0][1]).toMatch(/frontmatter in SKILL\.md would not parse/);
+  expect(f[0][1]).toContain("`SKILL.md`");
 });
 
 test("quoted frontmatter values and colons without a space pass", () => {

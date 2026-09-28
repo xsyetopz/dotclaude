@@ -87,7 +87,10 @@ export function rm(cmd, ctx) {
   const list = targets(cmd.args);
   if (!list.length)
     return [
-      ["ask", "`rm -r` takes its targets from input (for example via xargs)"],
+      [
+        "ask",
+        "`rm -r` takes its targets from input (for example, through `xargs`)",
+      ],
     ];
   const out = [];
   for (const t of list) {
@@ -116,7 +119,10 @@ export function rm(cmd, ctx) {
       if (git(ctx.root, ["ls-files", "--", p])?.trim())
         out.push(["warn", `\`rm -r ${t}\` deletes git-tracked files`]);
     } else if (!isTemp(p)) {
-      out.push(["ask", `\`rm -r ${t}\` deletes outside the project (${p})`]);
+      out.push([
+        "ask",
+        `\`rm -r ${t}\` deletes outside the project (\`${p}\`)`,
+      ]);
     }
   }
   return out;
@@ -186,8 +192,8 @@ export function find(cmd) {
   )
     return [];
   return args.includes("-delete")
-    ? [["warn", "`find -delete` removes every match"]]
-    : [["warn", "`find -exec rm` removes every match"]];
+    ? [["warn", "`find -delete` deletes every match"]]
+    : [["warn", "`find -exec rm` deletes every match"]];
 }
 
 const FD_VALUE_FLAGS = new Set([
@@ -238,7 +244,7 @@ export function fd(cmd) {
     (operands.length === 0 || (operands.length === 1 && operands[0] === "{}"))
   )
     return [];
-  return [["warn", "`fd --exec rm` removes every match"]];
+  return [["warn", "`fd --exec rm` deletes every match"]];
 }
 
 export function disk(cmd) {
@@ -266,7 +272,7 @@ export function chmod(cmd) {
   const t = targets(cmd.args)
     .slice(1)
     .find((x) => ROOTISH.has(x) || SYSTEM_DIRS.has(x.replace(/\/+$/, "")));
-  return t ? [["ask", `recursive \`${cmd.name}\` on ${t}`]] : [];
+  return t ? [["ask", `a recursive \`${cmd.name}\` changes \`${t}\``]] : [];
 }
 
 // --- secrets ----------------------------------------------------------------
@@ -291,5 +297,5 @@ export const READERS = [
 
 export function secretRead(cmd) {
   const t = targets(cmd.args).find((x) => SECRET_NAME.test(x));
-  return t ? [["ask", `\`${cmd.name}\` prints a secrets file (${t})`]] : [];
+  return t ? [["ask", `\`${cmd.name}\` prints a secrets file (\`${t}\`)`]] : [];
 }

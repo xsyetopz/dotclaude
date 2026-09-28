@@ -70,7 +70,8 @@ test("a file past the size bound is named for the Read tool", () => {
   const big = put("big/CLAUDE.md", "x".repeat(NESTED_INSTRUCTIONS_CHARS + 1));
   const text = contextFor([path.join(repo, "pkg/CLAUDE.md"), big], repo);
   expect(text).toContain("pkg rules");
-  expect(text).toContain("Open them with the Read tool: big/CLAUDE.md");
+  // The big file is named by its path, and its text is not added.
+  expect(text).toContain("`big/CLAUDE.md`");
   expect(text).not.toContain("xxxx");
 });
 

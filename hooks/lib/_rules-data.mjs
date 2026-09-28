@@ -31,7 +31,7 @@ export function db(cmd) {
     ? [
         [
           "ask",
-          `\`${cmd.name}\` runs a destructive statement (DROP, TRUNCATE, or DELETE without WHERE)`,
+          `\`${cmd.name}\` runs a destructive statement (\`DROP\`, \`TRUNCATE\`, or \`DELETE\` without \`WHERE\`)`,
         ],
       ]
     : [];
@@ -39,7 +39,7 @@ export function db(cmd) {
 
 export function dbReset(cmd) {
   return DB_RESET.test([cmd.name, ...cmd.args].join(" "))
-    ? [["ask", "command drops or resets a database"]]
+    ? [["ask", "the command drops or resets a database"]]
     : [];
 }
 
@@ -78,7 +78,9 @@ export function snapshotBless(cmd) {
       ([k, v]) => BLESS_ENV.has(k) && !["", "0", "no", "false"].includes(v),
     )
   ) {
-    return [["ask", "environment variable rewrites expected test output"]];
+    return [
+      ["ask", "an environment variable rewrites the expected test output"],
+    ];
   }
   if (
     cmd.name !== "git" &&
@@ -86,7 +88,10 @@ export function snapshotBless(cmd) {
     cmd.args.some((a) => BLESS_FLAGS.has(a))
   ) {
     return [
-      ["ask", "test run with snapshot update overwrites expected output"],
+      [
+        "ask",
+        "a test run with snapshot updates overwrites the expected output",
+      ],
     ];
   }
   return [];

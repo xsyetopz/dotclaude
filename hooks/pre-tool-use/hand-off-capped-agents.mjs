@@ -17,7 +17,7 @@ import {
 } from "../lib/_common.mjs";
 
 const REPORT_REQUEST =
-  "You stopped at your turn limit, and a fresh agent will continue this work. Make no more tool calls. Reply now with your final report as a handoff: the goal, what you did and how you verified it (commands and results), the files you changed, anything you left half-edited or uncommitted, what work remains and in what order, and anything the next agent must know.";
+  "You stopped at your turn limit, and a fresh agent will continue this work. Make no more tool calls. Reply now with your final report as a handoff. Include the goal, what you did, and how you verified it (commands and results). Include the files you changed and anything you left half-edited or uncommitted. Include the work that remains, in order, and anything the next agent must know.";
 
 /** True when the transcript shows agent `id` stopping at its turn limit. */
 function stoppedAtLimit(transcript, id) {

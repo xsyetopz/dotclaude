@@ -23,7 +23,7 @@ import {
 import { option, preToolDecision, run } from "../lib/_common.mjs";
 
 const REPORT =
-  "Make no more tool calls. Your next action is your report: the answer or result so far, what you changed, what ran and its result, and, if work remains, a handoff (anything half-edited, what is left in order) for a fresh agent.";
+  "Make no more tool calls. Your next action is your report. Give the answer or result so far, what you changed, and what ran and its result. If work remains, add a handoff for a fresh agent: anything half-edited, and what is left in order.";
 
 run((data) => {
   if (!option("turn_limit_handoff")) return;

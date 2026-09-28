@@ -123,7 +123,7 @@ export function gitRule(cmd, ctx) {
   const { globals, sub, rest: args } = gitSplit(cmd.args);
   const out = [];
   if (globals.join(" ").toLowerCase().includes("core.hookspath"))
-    out.push(["ask", "`git -c core.hooksPath=...` bypasses repository hooks"]);
+    out.push(["ask", "`git -c core.hooksPath=...` skips repository hooks"]);
   for (const setting of execSettings(globals, sub, args, cmd.assigns))
     out.push([
       "ask",
@@ -199,7 +199,7 @@ export function gitRule(cmd, ctx) {
       break;
     case "reflog":
       if (["expire", "delete"].includes(args[0]))
-        out.push(["ask", `\`git reflog ${args[0]}\` removes recovery points`]);
+        out.push(["ask", `\`git reflog ${args[0]}\` deletes recovery points`]);
       break;
     case "worktree":
       if (args[0] === "remove" && hasFlag(args, ["--force"], "f")) {
@@ -213,7 +213,7 @@ export function gitRule(cmd, ctx) {
         if (dirty?.trim())
           out.push([
             "ask",
-            `\`git worktree remove --force\` deletes uncommitted changes in ${target}`,
+            `\`git worktree remove --force\` deletes uncommitted changes in \`${target}\``,
           ]);
       }
       break;
@@ -222,7 +222,10 @@ export function gitRule(cmd, ctx) {
         args.some((a) => a.toLowerCase() === "core.hookspath") &&
         pos.length > 1
       )
-        out.push(["ask", "setting core.hooksPath changes which hooks run"]);
+        out.push([
+          "ask",
+          "`git config core.hooksPath` with a value changes which hooks run",
+        ]);
       break;
     default:
       break;
@@ -285,10 +288,13 @@ function commitHygiene(args, cwd) {
   const noise = [...files].filter((f) => NOISE.test(f)).sort();
   if (noise.length) {
     const shown =
-      noise.slice(0, 6).join(", ") + (noise.length > 6 ? " ..." : "");
+      noise
+        .slice(0, 6)
+        .map((f) => `\`${f}\``)
+        .join(", ") + (noise.length > 6 ? " ..." : "");
     out.push([
       "ask",
-      `commit includes files that are usually not committed: ${shown}`,
+      `the commit includes files that are usually not committed: ${shown}`,
     ]);
   }
   for (const file of files) {
@@ -297,7 +303,7 @@ function commitHygiene(args, cwd) {
     const dir = path.posix.dirname(file);
     const wanted = LOCKS[base].map((m) => (dir === "." ? m : `${dir}/${m}`));
     if (!wanted.some((m) => files.has(m)))
-      out.push(["ask", `commit changes ${file} without its manifest`]);
+      out.push(["ask", `the commit changes \`${file}\` without its manifest`]);
   }
   return out;
 }

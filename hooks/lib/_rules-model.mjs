@@ -6,7 +6,7 @@ import { allowed } from "./_models.mjs";
 // --- fast mode and model lock -----------------------------------------------
 
 const FAST_ON = /["']?fastMode["']?\s*[:=]\s*true/i;
-const FAST_DENY = "dotclaude's model lock turns off fast mode";
+const FAST_DENY = "dotclaude's model lock disables fast mode";
 
 export function claude(cmd, ctx) {
   if (!ctx.modelLock) return [];
@@ -26,7 +26,7 @@ export function claude(cmd, ctx) {
     ) {
       out.push([
         "deny",
-        `model \`${value}\` is outside the allowed models (${ctx.allowedModels.join(", ")})`,
+        `model \`${value}\` is outside the allowed models (${ctx.allowedModels.map((m) => `\`${m}\``).join(", ")}). Use an allowed model`,
       ]);
     }
   });
@@ -68,11 +68,9 @@ export function rawSettingsWrite(command) {
     FAST_ON.test(command) ||
     /CLAUDE_CODE_DISABLE_FAST_MODE["']?\s*[:=]\s*["']?0/.test(command)
   ) {
-    return [
-      ["deny", `${FAST_DENY} and blocks settings writes that turn it on`],
-    ];
+    return [["deny", `${FAST_DENY} and blocks settings writes that enable it`]];
   }
   if (/disableAllHooks["']?\s*[:=]\s*true/.test(command))
-    return [["ask", "command disables all Claude Code hooks"]];
+    return [["ask", "the command disables all Claude Code hooks"]];
   return [];
 }

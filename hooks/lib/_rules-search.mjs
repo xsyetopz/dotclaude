@@ -458,7 +458,7 @@ export function ignoredWalk(cmd, ctx) {
   return [
     [
       "deny",
-      `\`${walk.tool}\` does not skip gitignored directories and would walk ${shown}${more} (build output, dependencies, or caches). Use \`rg\`, \`fd\`, or \`git grep\` without ignore-bypass flags, which skip them; exclude those directories; or name the directories to search`,
+      `\`${walk.tool}\` does not skip gitignored directories, so this command walks ${shown}${more} (build output, dependencies, or caches). Do one of these: (1) Use \`rg\`, \`fd\`, or \`git grep\` without ignore-bypass flags, because these tools skip gitignored directories. (2) Exclude those directories. (3) Name the directories to search`,
     ],
   ];
 }

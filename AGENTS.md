@@ -9,13 +9,15 @@ A Claude Code plugin in Bun ESM. Design and evidence: `docs/dossier.md`.
 - `bunx markdownlint-cli2 README.md` lints Markdown at 80 columns.
 - `just sandbox` runs Claude Code with this checkout in a separate config.
   Read `docs/sandbox.md` first.
-- `just sandbox` runs Claude Code with this checkout in a separate config.
-  Read `docs/sandbox.md` first.
 
 ## Rules
 
 - Keep each `.md` file at 300 lines or less. Split it into linked parts.
 - Write docs in STE-flavored ASD-STE100. Use no semicolons.
+- Write each message that goes to Claude (hook output, deny reasons, skill
+  and agent prompts) in strict ASD-STE100. Follow Claude's prompting best
+  practices: give the reason, say what to do, use no forceful words, and
+  put code items in backticks.
 - Change a usage bound only in `hooks/lib/_budget.mjs`. Tests pin its copies.
 - `hooks/lib` imports only itself. Event hooks import only `hooks/lib`.
 - Tests give commands to the guards as strings. Never run a guarded command.

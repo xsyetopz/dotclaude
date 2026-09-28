@@ -56,20 +56,20 @@ run((data) => {
     );
   if (theirs.length)
     parts.push(
-      `Uncommitted files not recorded as edited through this session's tools: ${list(theirs)}. They may be the user's or another session's work, or changes from formatters or codemods this session ran. Do not revert them, and check the transcript or the diff before claiming or disclaiming them.`,
+      `Uncommitted files not recorded as edited through this session's tools: ${list(theirs)}. They may be the user's or another session's work, or changes from formatters or codemods this session ran. Do not revert them. Check the transcript or the diff before you say whether they are your changes.`,
     );
   if (state.lastCheck) {
     const c = state.lastCheck;
     const stale =
       state.lastEdit && state.lastEdit.seq > c.seq
-        ? ". Files were edited after it"
+        ? ". Files changed after it"
         : "";
     parts.push(
       `Last check run: \`${c.command}\` ${c.ok ? "passed" : `failed${c.code ? ` (exit ${c.code})` : ""}`}${stale}.`,
     );
   }
   if (!parts.length) return;
-  let text = `State carried over by the dotclaude plugin:\n\n${parts.join("\n\n")}`;
+  let text = `The dotclaude plugin kept this state from before compaction:\n\n${parts.join("\n\n")}`;
   if (text.length > CONTEXT_BUDGET)
     text = `${text.slice(0, CONTEXT_BUDGET)} [...]`;
   emit({

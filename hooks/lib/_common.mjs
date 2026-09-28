@@ -131,6 +131,16 @@ export function preToolDecision(decision, reason) {
 // the mode's own classifier or rules decide.
 const UNATTENDED = new Set(["auto", "dontAsk", "bypassPermissions"]);
 
+/** Findings' reasons as sentences: each starts with a capital and ends with a period. */
+function sentences(findings) {
+  return findings
+    .map(([, reason]) => {
+      const s = reason.charAt(0).toUpperCase() + reason.slice(1);
+      return /[.!?]$/.test(s) ? s : `${s}.`;
+    })
+    .join(" ");
+}
+
 /**
  * Turn guard findings into one PreToolUse decision. `label` names what was
  * checked ("command", "edit"). Deny wins; then ask; "warn" asks only when the
@@ -141,9 +151,9 @@ export function decide(findings, data, label) {
   if (denied.length) {
     preToolDecision(
       "deny",
-      `blocked this ${label}: ${denied.map(([, r]) => r).join("; ")}.${
+      `blocked this ${label}. ${sentences(denied)}${
         label === "command"
-          ? " If the user wants it run, they can run it themselves with `! <command>`."
+          ? " If the user wants this command to run, tell them to run it themselves with `! <command>`."
           : ""
       }`,
     );
@@ -154,8 +164,7 @@ export function decide(findings, data, label) {
   const asks = findings.filter(
     ([level]) => level === "ask" || (level === "warn" && !quiet),
   );
-  if (asks.length)
-    preToolDecision("ask", asks.map(([, reason]) => reason).join("; "));
+  if (asks.length) preToolDecision("ask", sentences(asks));
 }
 
 export async function run(body) {

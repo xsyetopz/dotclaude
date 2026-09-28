@@ -232,11 +232,21 @@ test("commit hygiene flags .DS_Store and a lockfile without its manifest", () =>
   fs.writeFileSync(path.join(repo, ".DS_Store"), "\0");
   fs.writeFileSync(path.join(repo, "package-lock.json"), "{}");
   execFileSync("git", ["-C", repo, "add", ".DS_Store", "package-lock.json"]);
-  const reasons = check("git commit -m wip", { ...ctx, root: repo, cwd: repo })
-    .map(([, r]) => r)
-    .join("\n");
-  expect(reasons).toMatch(/\.DS_Store/);
-  expect(reasons).toMatch(/without its manifest/);
+  const commit = () =>
+    check("git commit -m wip", { ...ctx, root: repo, cwd: repo });
+  // One finding names the noise file, a separate one names the lockfile.
+  const findings = commit();
+  expect(findings.map(([level]) => level)).toStrictEqual(["ask", "ask"]);
+  expect(findings.filter(([, r]) => r.includes("`.DS_Store`"))).toHaveLength(1);
+  expect(
+    findings.filter(([, r]) => r.includes("`package-lock.json`")),
+  ).toHaveLength(1);
+  // Staging the manifest clears the lockfile finding only.
+  fs.writeFileSync(path.join(repo, "package.json"), "{}");
+  execFileSync("git", ["-C", repo, "add", "package.json"]);
+  const withManifest = commit();
+  expect(withManifest).toHaveLength(1);
+  expect(withManifest[0][1]).toContain("`.DS_Store`");
   expect(
     check("git commit -m wip", {
       ...ctx,

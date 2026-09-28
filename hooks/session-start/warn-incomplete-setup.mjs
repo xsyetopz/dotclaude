@@ -77,19 +77,19 @@ run(() => {
   // DOTCLAUDE_SYSTEM_PROMPT=0 is the user's choice to run without the prompt.
   if (env.DOTCLAUDE_SYSTEM_PROMPT !== "0") {
     const RULES =
-      "so this session has none of dotclaude's engineering or git rules, only the output style's rules on how to talk and report";
+      "This session has none of dotclaude's engineering or git rules, only the output style's rules on how to talk and report";
     if (!fs.existsSync(installedPrompt())) {
       notices.push(
-        `the dotclaude system prompt is not installed, ${RULES}. Run /dotclaude:apply-settings-profile to install its launcher, or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.`,
+        `the dotclaude system prompt is not installed. ${RULES}. Run /dotclaude:apply-settings-profile to install its launcher, or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.`,
       );
     } else if (!env.DOTCLAUDE_LAUNCHER) {
       const rc = shellStartupFile(path.basename(env.SHELL ?? ""));
       const installed = rc && readText(rc).includes(LAUNCHER_BEGIN);
       const fix = installed
-        ? `\`${tilde(rc)}\` has the function, so the terminal was opened before it was added or an IDE started Claude Code. Run \`source ${tilde(rc)}\` or open a new terminal, then start \`claude\` again`
-        : "Start Claude Code from a terminal that loads the function (re-run /dotclaude:apply-settings-profile if it is out of date)";
+        ? `\`${tilde(rc)}\` has the function, so the terminal started before the function was there, or an IDE started Claude Code. Run \`source ${tilde(rc)}\` or open a new terminal, then start \`claude\` again.`
+        : "Start Claude Code from a terminal that loads the function. If the function is out of date, run /dotclaude:apply-settings-profile again.";
       notices.push(
-        `this session did not start through dotclaude's \`claude\` shell function, ${RULES}. ${fix}, or set DOTCLAUDE_SYSTEM_PROMPT=0 to run without it.`,
+        `this session did not start through dotclaude's \`claude\` shell function. ${RULES}. ${fix} To run without the prompt, set DOTCLAUDE_SYSTEM_PROMPT=0.`,
       );
     }
   }

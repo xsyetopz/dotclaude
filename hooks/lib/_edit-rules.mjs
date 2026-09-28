@@ -85,11 +85,14 @@ function testWeakening(before, after, removalRequested = false) {
   const removed = count(ASSERT, before ?? "") - count(ASSERT, after);
   // A skip marker still asks: removing tests is not hiding a failing one.
   if (removed > 0 && !removalRequested)
-    out.push(["ask", `edit removes ${removed} assertion(s) from a test file`]);
+    out.push([
+      "ask",
+      `the edit removes ${removed} assertion(s) from a test file`,
+    ]);
   if (count(SKIP, after) > count(SKIP, before ?? ""))
     out.push([
       "ask",
-      "edit adds a skip, xfail, todo, or focus marker to a test file",
+      "the edit adds a skip, xfail, todo, or focus marker to a test file",
     ]);
   return out;
 }
@@ -131,7 +134,7 @@ function frontmatter(toolName, input, filePath, posix) {
     return [
       [
         "deny",
-        `the YAML frontmatter in ${path.basename(filePath)} would not parse (${err.message}). Quote any value that contains ": " or starts with a special character, as in description: "…"`,
+        `the YAML frontmatter in \`${path.basename(filePath)}\` does not parse after this edit (${err.message}). Quote any value that contains \`: \` or starts with a special character, for example \`description: "…"\``,
       ],
     ];
   }
@@ -149,7 +152,7 @@ function generated(filePath, posix) {
     return [
       [
         "warn",
-        `${name} is generated, vendored, or a lockfile. Usually, edit its source or rerun the generator instead`,
+        `\`${name}\` is generated, vendored, or a lockfile. Usually, edit its source or rerun the generator instead`,
       ],
     ];
   let head = "";
@@ -171,7 +174,7 @@ function generated(filePath, posix) {
     ? [
         [
           "warn",
-          `${name} is marked as generated. Usually, edit its source or rerun the generator instead`,
+          `\`${name}\` is marked as generated. Usually, edit its source or rerun the generator instead`,
         ],
       ]
     : [];
@@ -184,7 +187,7 @@ function shrink(before, after) {
     ? [
         [
           "warn",
-          `Write replaces a ${oldLines}-line file with ${newLines} lines`,
+          `\`Write\` replaces a ${oldLines}-line file with ${newLines} lines`,
         ],
       ]
     : [];
@@ -195,7 +198,7 @@ function shrink(before, after) {
 const SETTINGS_NAME =
   /(^|\/)(settings(\.local)?\.json|managed-settings\.json)$/;
 const MANAGED_DROP_IN = /(^|\/)managed-settings\.d\/[^/]+\.json$/;
-const FAST_DENY = "dotclaude's model lock turns off fast mode";
+const FAST_DENY = "dotclaude's model lock disables fast mode";
 
 function isClaudeSettings(posix) {
   return (
@@ -243,9 +246,9 @@ function settings(before, after, ctx) {
     /"disableAllHooks"\s*:\s*true/.test(after) &&
     !/"disableAllHooks"\s*:\s*true/.test(before ?? "")
   ) {
-    out.push(["ask", "edit disables all Claude Code hooks"]);
+    out.push(["ask", "the edit disables all Claude Code hooks"]);
   }
   if (ctx.editGuard && !out.length)
-    out.push(["ask", "edit changes Claude Code settings"]);
+    out.push(["ask", "the edit changes Claude Code settings"]);
   return out;
 }

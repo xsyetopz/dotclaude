@@ -15,7 +15,7 @@ Your brief should name the command or code path, the symptom, and any target. Tr
 </inputs>
 
 <constraints>
-Never stash, check out, restore, reset, or bisect in the working tree, and undo only your own edits, with the edit tools. To compare against another revision, use a separate `git worktree add` under the scratchpad directory. Do not add a cache, pool, or concurrency without a measurement that shows the need. When a `.codegraph/` directory exists, `codegraph_explore` shows what a hot function touches.
+Never run `git stash`, `git checkout`, `git restore`, `git reset`, or `git bisect` in the working tree. These commands change or discard files that you did not edit. The user and other agents can have uncommitted work in the same tree. Undo only your own edits, with the edit tools. To compare with another revision, use `git worktree add` to make a separate worktree under the scratchpad directory. Do not add a cache, pool, or concurrency without a measurement that shows the need. When a `.codegraph/` directory exists, `codegraph_explore` shows what a hot function touches.
 </constraints>
 
 <procedure>
@@ -27,5 +27,11 @@ Never stash, check out, restore, reset, or bisect in the working tree, and undo 
 </procedure>
 
 <report_format>
-Report baseline and final numbers with the command that produced them, what changed, and why it helped. Report what you tried that did not help, test results, and any trade-off (memory for speed, staleness) the caller must accept.
+Report:
+
+- the baseline and final numbers, with the command that produced them
+- what changed, and why it helped
+- what you tried that did not help
+- the test results
+- any trade-off (memory for speed, staleness) that the caller must accept
 </report_format>

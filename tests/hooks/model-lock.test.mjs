@@ -3,7 +3,8 @@
 import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
-import { data, hook } from "../support/hooks.mjs";
+import { planAllowlist } from "../../hooks/lib/_plans.mjs";
+import { data, hook, noAccount } from "../support/hooks.mjs";
 
 test("model lock denies disallowed subagent models and switches", () => {
   const agent = (model, env = {}) =>
@@ -19,15 +20,31 @@ test("model lock denies disallowed subagent models and switches", () => {
   for (const model of ["sonnet", "claude-sonnet-5"])
     expect(agent(model, { ANTHROPIC_DEFAULT_SONNET_MODEL: "" })).toBe(null);
   // Fable is never a subagent model, even where the plan includes it.
+  expect(
+    planAllowlist({
+      CLAUDE_CONFIG_DIR: noAccount,
+      ANTHROPIC_API_KEY: "",
+    }).list.some((m) => /fable/.test(m)),
+  ).toBe(true);
   for (const model of ["fable", "claude-fable-5-1"]) {
     const out = agent(model, { ANTHROPIC_DEFAULT_FABLE_MODEL: "" });
     expect(out.hookSpecificOutput.permissionDecision, model).toBe("deny");
-    expect(out.hookSpecificOutput.permissionDecisionReason).toMatch(/2\.5x/);
+    // The deny names the agent to use instead.
+    expect(out.hookSpecificOutput.permissionDecisionReason).toContain(
+      "`dotclaude:mechanical-worker`",
+    );
   }
   const old = agent("claude-opus-4-1");
   expect(old.hookSpecificOutput.permissionDecision).toBe("deny");
-  expect(old.hookSpecificOutput.permissionDecisionReason).toMatch(
-    /mechanical-worker/,
+  // The deny echoes the refused model and lists the allowed ones.
+  expect(old.hookSpecificOutput.permissionDecisionReason).toContain(
+    "`claude-opus-4-1`",
+  );
+  expect(old.hookSpecificOutput.permissionDecisionReason).toContain(
+    "`claude-sonnet-5`",
+  );
+  expect(old.hookSpecificOutput.permissionDecisionReason).toContain(
+    "`dotclaude:mechanical-worker`",
   );
   for (const model of ["haiku", "claude-haiku-4-5"])
     expect(
@@ -119,8 +136,8 @@ test("general-purpose is refused, and other subagents run in the foreground", ()
   const refused = spawn({ subagent_type: "general-purpose", prompt: "x" });
   expect(refused.permissionDecision).toBe("deny");
   // A plan has a route too, so it does not go to an implementer.
-  expect(refused.permissionDecisionReason).toMatch(
-    /Draft a plan yourself.*`dotclaude:plan-reviewer`/,
+  expect(refused.permissionDecisionReason).toContain(
+    "`dotclaude:plan-reviewer`",
   );
   expect(spawn({ prompt: "x" }, forksOff).permissionDecision).toBe("deny");
   const rewritten = spawn({

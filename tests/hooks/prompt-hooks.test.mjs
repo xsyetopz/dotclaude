@@ -14,9 +14,10 @@ test("a /dotclaude: skill typed mid-message runs through the Skill tool", () => 
     "wrap up, then /dotclaude:write-session-handoff notes/h.md",
   ).hookSpecificOutput;
   expect(out.hookEventName).toBe("UserPromptSubmit");
-  expect(out.additionalContext).toMatch(
-    /Skill tool with skill "dotclaude:write-session-handoff" and args "wrap up, then notes\/h\.md"/,
-  );
+  // The tool, the skill name, and the rest of the message as its arguments.
+  expect(out.additionalContext).toContain("`Skill`");
+  expect(out.additionalContext).toContain("`dotclaude:write-session-handoff`");
+  expect(out.additionalContext).toContain('"wrap up, then notes/h.md"');
   expect(out.additionalContext).not.toMatch(/<skill /);
   expect(expand("/dotclaude:write-session-handoff h.md")).toBe(null);
   expect(expand("try /dotclaude:no-such-skill here")).toBe(null);
@@ -51,8 +52,7 @@ test("a /dotclaude: skill typed mid-message runs through the Skill tool", () => 
   // A user-only skill refuses the Skill tool, so only the user can start it.
   const user = expand("before applying, /dotclaude:apply-settings-profile")
     .hookSpecificOutput.additionalContext;
-  expect(user).toMatch(
-    /send it again beginning with \/dotclaude:apply-settings-profile/,
-  );
-  expect(user).not.toMatch(/Skill tool/);
+  expect(user).toContain("`/dotclaude:apply-settings-profile`");
+  expect(user).not.toContain("`Skill`");
+  expect(user).not.toContain('"before applying,"');
 });

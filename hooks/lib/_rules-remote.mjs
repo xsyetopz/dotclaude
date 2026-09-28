@@ -70,13 +70,16 @@ export function gh(cmd) {
     );
     if ((method && method !== "GET") || (fields && method !== "GET"))
       return [
-        ["ask", `\`gh api\` ${method ?? "POST"} writes to GitHub as you`],
+        [
+          "ask",
+          `\`gh api\` with \`${method ?? "POST"}\` writes to GitHub as the user`,
+        ],
       ];
     return [];
   }
   const action = pos[1] ?? "";
   return (GH_WRITES[pos[0]] ?? []).includes(action)
-    ? [["ask", `\`gh ${pos[0]} ${action}\` acts on GitHub as you`]]
+    ? [["ask", `\`gh ${pos[0]} ${action}\` acts on GitHub as the user`]]
     : [];
 }
 
@@ -134,7 +137,7 @@ export function curl(cmd) {
       next.startsWith("@")
     ) {
       return [
-        ["ask", `\`${cmd.name}\` sends the contents of ${next.slice(1)}`],
+        ["ask", `\`${cmd.name}\` sends the contents of \`${next.slice(1)}\``],
       ];
     }
     if (/^(-d|-F)@/.test(a) || /^--(data|data-binary|form|json)=@/.test(a))
