@@ -116,8 +116,7 @@ if (!claude) {
 const env = { ...process.env, CLAUDE_CONFIG_DIR: config };
 const token = loginToken();
 if (token) env.CLAUDE_CODE_OAUTH_TOKEN = token;
-else
-  console.error("No login token found. Run /login inside the sandbox.");
+else console.error("No login token found. Run /login inside the sandbox.");
 const r = spawnSync(claude, ["--plugin-dir", REPO, ...args], {
   cwd: project,
   env,

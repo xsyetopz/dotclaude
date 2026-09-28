@@ -231,7 +231,9 @@ test("the plugin's subagentStatusLine runs the stub that session start writes", 
   const out = spawnSync("sh", ["-c", command], {
     input: JSON.stringify({
       columns: 100,
-      tasks: [{ id: "a1", name: "", model: "claude-sonnet-5", tokenCount: 5000 }],
+      tasks: [
+        { id: "a1", name: "", model: "claude-sonnet-5", tokenCount: 5000 },
+      ],
     }),
     env: { ...process.env, CLAUDE_CONFIG_DIR: config },
     encoding: "utf8",
