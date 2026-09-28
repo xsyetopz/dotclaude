@@ -10,6 +10,81 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-28
+
+### Added
+
+- Session start checks instruction files. It warns when one file passes 150
+  lines and reports a failure when it passes 200. The check covers every
+  `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, and `.claude/rules/` file and
+  every file they `@import`, without block-level HTML comments. The text that
+  loads at session start gets a warning above about 3,000 tokens and a
+  failure above 5,000. A file above 4 MiB, an import more than four hops deep,
+  and an `AGENTS.md` that a `CLAUDE.md` hides without `@AGENTS.md` are also
+  reported. Names symlinked to one file (`CLAUDE.md`, `AGENTS.md`,
+  `GEMINI.md`) are checked once, under the original's path. A symlink to a
+  missing file gets its own warning.
+- The `git_attribution` option, on by default. The settings profile's
+  `includeGitInstructions: false` makes Claude Code drop its `Co-Authored-By`
+  commit trailer and pull request footer. The session notes now give them
+  back, and Claude Code's `attribution` setting still changes or removes them.
+- A replacement for Claude Code's built-in system prompt. It holds
+  dotclaude's engineering and git rules and names the installed Claude Code
+  version. The output style keeps only how Claude talks and reports, and
+  shrinks from about 15 KB to about 2.3 KB. Only a CLI flag
+  can replace that prompt, so `/dotclaude:apply-settings-profile` now installs
+  a `claude` shell function that passes `--system-prompt-file`. It supports
+  zsh, bash, fish, and PowerShell on macOS, Linux, and Windows. The function
+  adds nothing when you pass your own system prompt flag or set
+  `DOTCLAUDE_SYSTEM_PROMPT=0`. Session start keeps its prompt copy up to date
+  after plugin and Claude Code updates.
+- Session start tells you when a session runs without the dotclaude system
+  prompt: the launcher is not installed, or an IDE or another program started
+  Claude Code without the shell function. Such a session has only the output
+  style's rules. When `ANTHROPIC_BASE_URL` is set, the notice explains how to
+  run a proxy such as Headroom with the function: `headroom proxy` and an
+  exported `ANTHROPIC_BASE_URL`, not `headroom wrap claude`. Set
+  `DOTCLAUDE_SYSTEM_PROMPT=0` to run without the prompt and without the notice.
+  After you update, run `/dotclaude:apply-settings-profile` again to install or
+  refresh the launcher.
+- `docs/claude-code-prompt-surface.md` records the text of the lean prompt
+  that `CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT` selects, and the conditions for each
+  part.
+- `docs/letter-to-skills-developer.txt` lists dossier gaps that belong in
+  xsyetopz/skills skills. `docs/letter-to-skills-developer-skill-lint.txt`
+  gives that repository a skill lint gate and the fixes it needs first.
+
+### Changed
+
+- The output style, the agents, the skills, the plugin option descriptions,
+  and the hook messages Claude reads follow Simplified Technical English
+  (ASD-STE100) and Anthropic's current prompting guides: no semicolons, short
+  sentences, active voice with a named actor, no phrasal verbs or metaphor,
+  one word per action, and a reason kept with each rule. No rule changed
+  meaning.
+- dotclaude's tests check its own files against token and line limits in
+  place of the 21.5 KB byte cap: the output style warns above 1,000 tokens
+  and fails above 2,000, the system prompt 5,000 and 15,000, each agent body
+  2,000 and 5,000, and each `SKILL.md` 450 and 500 lines and 4,500 and 5,000
+  body tokens. Skill names and descriptions stay inside the Agent Skills
+  limits of 64 and 1,024 characters.
+- New rules from the dossier reports, now in the system prompt: apply a
+  correction to every similar case, make sure the edited file is the file that
+  runs, count a bug test only after it fails without the fix, a mock of the
+  part under test cannot catch its defect, review the whole task's diff, do
+  not remove a feature to pass a test, repeat a search or fix only when you
+  expect new evidence, open a search hit before you rely on it, revisit an
+  earlier decision that proved wrong, do not turn prose guidance into tests or
+  rule files, and wait for background jobs with `Monitor`. A priority order
+  settles conflicts between rules.
+- Eval prompts mention files as bare `@file`, which Claude Code expands.
+  The earlier `` @`file` `` form did not expand.
+
+### Fixed
+
+- The subagent test for forks no longer fails when the shell running it sets
+  `CLAUDE_CODE_FORK_SUBAGENT=false`.
+
 ## [0.7.0] - 2026-09-28
 
 ### Added
