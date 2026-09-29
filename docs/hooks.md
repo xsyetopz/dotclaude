@@ -167,7 +167,7 @@ are in `hooks/lib/_budget.mjs`.
 for `code-reviewer`, `security-reviewer`, and `plan-reviewer`) or near its
 turn limit, so its next action is its report. The work continues in a
 fresh agent. Claude cannot spawn `general-purpose` agents, and subagents run
-in the foreground.
+in the foreground. With 5 subagents running, Claude cannot start a sixth.
 
 **Why:** calls with a context over 150k tokens were 74.7% of the measured
 cost. `general-purpose` runs were 17.6% of it, in place of the cheaper
@@ -177,7 +177,9 @@ of 861 main turns. With the bound at 150k, 34 of 69 `implementer` runs still
 passed 100k, and subagent calls from 100k to 150k were 9% of the cost. The
 reviewers keep 150k: a review finds defects across files only while the whole
 change is in view, a fresh reviewer writes that view to the cache again, and 1
-of 14 `code-reviewer` runs reached 150k. See
+of 14 `code-reviewer` runs reached 150k. Claude Code refuses a start past
+its own cap, and that caused 50 of 77 measured `Agent` errors. The guard
+denies the start first and tells Claude to wait for a report. See
 [enforced bounds](dossier/design.md#2-enforced-bounds)
 and [usage evidence](dossier/usage.md).
 

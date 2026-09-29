@@ -65,6 +65,13 @@ steps after each update.
   ([#80489](https://github.com/anthropics/claude-code/issues/80489)), and
   the agent already has the text.
 
+- With 5 subagents running, an `Agent` call is denied before Claude Code
+  refuses it. The reason tells Claude to wait for a report and then send the
+  next wave. The count comes from `SubagentStart` and `SubagentStop`. An
+  agent with no activity for 10 minutes no longer counts, because an
+  interrupted agent can end without `SubagentStop`. The
+  `subagent_guidance` option turns this off.
+
 ### Changed
 
 - The settings profile and the usage bounds allow 5 agents at once, not 3.

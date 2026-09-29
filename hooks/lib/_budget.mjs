@@ -73,6 +73,14 @@ export const NESTED_INSTRUCTIONS_CHARS = 10_000;
 export const MAX_CONCURRENT_AGENTS = 5;
 
 /**
+ * Minutes with no change to a subagent's transcript or start marker after
+ * which the agent no longer counts as running. An interrupted agent can end
+ * without `SubagentStop`. In 127,283 measured gaps between two transcript
+ * entries of one subagent, 26 passed 10 minutes.
+ */
+export const RUNNING_AGENT_IDLE_MINUTES = 10;
+
+/**
  * Size limits for instruction text. A warn is reported. A fail is reported
  * as a failure, and dotclaude's own tests fail on it. Lines count newlines
  * plus a final line without one. Tokens are an estimate (see `tokens`).

@@ -3,6 +3,7 @@
 // anything unrecognized is skipped, and a missing file yields [].
 
 import fs from "node:fs";
+import path from "node:path";
 
 const MAX_BYTES = 8_000_000;
 
@@ -97,4 +98,18 @@ export function recentPrompts(transcriptPath, limit = 5, maxChars = 600) {
     );
   }
   return prompts.slice(-limit);
+}
+
+/**
+ * A subagent's transcript: Claude Code keeps it in
+ * `<session>/subagents/agent-<id>.jsonl` next to the session's transcript.
+ */
+export function subagentTranscript(transcriptPath, sessionId, agentId) {
+  const id = String(agentId).replace(/^agent-/, "");
+  return path.join(
+    path.dirname(transcriptPath),
+    String(sessionId),
+    "subagents",
+    `agent-${id}.jsonl`,
+  );
 }

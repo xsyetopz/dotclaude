@@ -8,7 +8,6 @@
 // turn limit, and asking agents to report early did not work: every capped
 // run after 0.5.0 added that request was still calling tools when it stopped.
 
-import path from "node:path";
 import {
   contextUsed,
   definition,
@@ -21,6 +20,7 @@ import {
   subagentContextTokens,
 } from "../lib/_budget.mjs";
 import { option, preToolDecision, run } from "../lib/_common.mjs";
+import { subagentTranscript } from "../lib/_transcript.mjs";
 
 const REPORT =
   "Make no more tool calls. Your next action is your report. Give the answer or result so far, what you changed, and what ran and its result. If work remains, add a handoff for a fresh agent: anything half-edited, and what is left in order.";
@@ -30,12 +30,10 @@ run((data) => {
   // The report tool must stay open, or the agent could not deliver it.
   if (data.tool_name === "SubagentHandback") return;
   if (!data.agent_id || !data.transcript_path || !data.session_id) return;
-  const id = String(data.agent_id).replace(/^agent-/, "");
-  const transcript = path.join(
-    path.dirname(data.transcript_path),
-    String(data.session_id),
-    "subagents",
-    `agent-${id}.jsonl`,
+  const transcript = subagentTranscript(
+    data.transcript_path,
+    data.session_id,
+    data.agent_id,
   );
   const context = contextUsed(transcript);
   if (context) {

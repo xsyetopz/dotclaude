@@ -6,6 +6,7 @@ import path from "node:path";
 import { expandHome, writeTargets } from "./_bash-writes.mjs";
 import { stateDir } from "./_common.mjs";
 import { parse } from "./_shell.mjs";
+import { subagentTranscript } from "./_transcript.mjs";
 
 /** Files that are not code: editing them alone needs no test run. */
 export const NON_CODE =
@@ -200,4 +201,51 @@ export function recordRead(state, abs, how) {
   const keys = Object.keys(reads);
   for (const k of keys.slice(0, -MAX_READS)) delete reads[k];
   state.reads = reads;
+}
+
+// Running subagents: one marker file per agent, written on `SubagentStart`
+// and removed on `SubagentStop`. A file per agent makes each change atomic,
+// so agents that start or stop at the same time do not lose an update.
+const RUNNING = ".running";
+const safeId = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");
+
+/** Record a started subagent, with the transcript that shows its activity. */
+export function agentStarted(sessionId, agentId, transcriptPath) {
+  // The transcript layout is not documented, so a missing file falls back
+  // to the marker's own time.
+  const transcript = transcriptPath
+    ? subagentTranscript(transcriptPath, sessionId, agentId)
+    : "";
+  fs.writeFileSync(
+    path.join(stateDir(), `${safeId(sessionId)}.${safeId(agentId)}${RUNNING}`),
+    transcript,
+  );
+}
+
+export function agentStopped(sessionId, agentId) {
+  fs.rmSync(
+    path.join(stateDir(), `${safeId(sessionId)}.${safeId(agentId)}${RUNNING}`),
+    { force: true },
+  );
+}
+
+/** Subagents of a session that started, did not stop, and are not idle. */
+export function runningAgents(sessionId, idleMs, now = Date.now()) {
+  const dir = stateDir();
+  const prefix = `${safeId(sessionId)}.`;
+  let count = 0;
+  for (const name of fs.readdirSync(dir)) {
+    if (!name.startsWith(prefix) || !name.endsWith(RUNNING)) continue;
+    try {
+      const marker = path.join(dir, name);
+      let last = fs.statSync(marker).mtimeMs;
+      const transcript = fs.readFileSync(marker, "utf8");
+      if (transcript && fs.existsSync(transcript))
+        last = Math.max(last, fs.statSync(transcript).mtimeMs);
+      if (now - last < idleMs) count += 1;
+    } catch {
+      // The agent stopped while this loop ran.
+    }
+  }
+  return count;
 }

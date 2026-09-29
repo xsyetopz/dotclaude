@@ -17,8 +17,20 @@
 // spawned it, and agents spawned in one message still run together. Claude
 // Code applies `updatedInput` only with an allow or ask decision; a deny from
 // another hook or a settings deny rule still wins over this allow.
+//
+// Concurrency: with `MAX_CONCURRENT_AGENTS` subagents running, the call is
+// denied before Claude Code refuses it with `Concurrent subagent limit
+// reached`. The count comes from `SubagentStart` and `SubagentStop`. Resumes
+// and `/subtask` forks bypass Claude Code's own count, so this check only
+// denies when it counted the running agents itself.
 
+import {
+  MAX_CONCURRENT_AGENTS,
+  RUNNING_AGENT_IDLE_MINUTES,
+} from "../lib/_budget.mjs";
 import { emit, option, preToolDecision, run } from "../lib/_common.mjs";
+import { runningAgents } from "../lib/_ledger.mjs";
+import { logVerdict } from "../lib/_verdicts.mjs";
 
 const OFF = new Set(["0", "false", "no", "off"]);
 
@@ -37,6 +49,15 @@ run((data) => {
       "deny",
       `\`general-purpose\` has no turn limit and every tool. ${AGENTS}`,
     );
+    return;
+  }
+  const running = data.session_id
+    ? runningAgents(data.session_id, RUNNING_AGENT_IDLE_MINUTES * 60_000)
+    : 0;
+  if (running >= MAX_CONCURRENT_AGENTS) {
+    const reason = `${running} subagents run now, and the limit is ${MAX_CONCURRENT_AGENTS} at once. Claude Code refuses a start past the limit. Wait until one agent reports, with \`Monitor\` if it runs in the background. Then send the next agents as a new wave.`;
+    logVerdict(data, "deny", reason);
+    preToolDecision("deny", reason);
     return;
   }
   if (input.run_in_background === false) return;

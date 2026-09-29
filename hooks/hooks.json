@@ -105,6 +105,14 @@
               "${CLAUDE_PLUGIN_ROOT}/hooks/subagent-start/inject-working-conventions.mjs"
             ],
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/subagent-start/count-running-agents.mjs"
+            ],
+            "timeout": 10
           }
         ]
       }
@@ -318,6 +326,14 @@
             "command": "bun",
             "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/stop/require-verification.mjs"
+            ],
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/stop/count-running-agents.mjs"
             ],
             "timeout": 10
           }
