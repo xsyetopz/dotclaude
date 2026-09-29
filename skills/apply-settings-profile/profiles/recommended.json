@@ -45,7 +45,8 @@
       "Read(~/.gnupg/**)",
       "Read(~/.netrc)",
       "Read(~/.docker/config.json)",
-      "Agent(model:fable*)"
+      "Agent(model:fable*)",
+      "Agent(general-purpose)"
     ]
   }
 }

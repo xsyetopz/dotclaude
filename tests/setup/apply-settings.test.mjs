@@ -121,6 +121,9 @@ test("apply-settings replaces the model policy: availableModels and Agent(model:
   expect(merged.permissions.deny.includes("Read(~/.ssh/**)")).toBeTruthy();
   // Rules match the alias Claude sends (`fable`), never a full model ID.
   expect(merged.permissions.deny.includes("Agent(model:fable*)")).toBeTruthy();
+  expect(
+    merged.permissions.deny.includes("Agent(general-purpose)"),
+  ).toBeTruthy();
   for (const gone of [
     "Agent(model:claude-fable*)",
     "Agent(model:sonnet*)",
