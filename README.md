@@ -70,12 +70,14 @@ To try an unreleased checkout, run `claude --plugin-dir /path/to/dotclaude`.
 - **Guards** ask before destructive or public commands and before edits that
   remove test assertions. They deny recursive searches through build output,
   and they redact secrets from tool output with gitleaks.
-- **Gates** send Claude back once when it stops without a check that ran, or
-  with open tasks.
+- **Gates** send Claude back once when it stops without a check that ran,
+  with open tasks, or with a reply that only announces the next step. A task
+  stays open once after a code edit that no check followed.
 - **Context** hooks load the `CLAUDE.md` of directories that Bash reads, and
   restore your exact words after compaction.
-- **Usage** hooks bound subagent context and turns, lock the model list, and
-  tell Claude when a usage limit is near.
+- **Usage** hooks bound subagent context and turns, cap agents at 5 at once,
+  deny an unchanged re-read and a foreground server or watcher, lock the
+  model list, and tell Claude when a usage limit is near.
 
 You can turn off each hook in `/config` under dotclaude. Every dotclaude
 message starts with `[dotclaude]`. To run a command that a guard denied, type

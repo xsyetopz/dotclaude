@@ -5,8 +5,17 @@ source labels.
 
 ## 8. Open Items
 
-- Re-run `bun scripts/usage-report.mjs --days 7` after a full week on the
-  0.7.0 defaults. Compare it with [section 3](usage.md).
+- Re-run `bun scripts/usage-report.mjs --days 7` after a full week on
+  0.12.0. Compare it with [section 3](usage.md), and read the guard
+  verdicts per rule to find rules that fire too often.
+- Check the shape of a usage-limit hit in a real transcript. The report
+  counts an assistant entry with `error` set to `rate_limit`. This shape
+  comes from the Claude Code bundle, and no local transcript has one yet.
+- Read the `task` lines in `verdicts.jsonl` and pin the `TaskCompleted`
+  input fields in the task gate. The hooks docs do not state them.
+- Measure one week with `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=1h` from the
+  optional profile. Keep it only if the subagent cache writes plus the
+  idle misses cost less than in the week before.
 - Measure a week at the lower bounds: compaction at 150k and the subagent
   budget at 100k. A lower bound saves more per call but compacts and hands
   off more often, and each new agent reads its files again. Compare the cost

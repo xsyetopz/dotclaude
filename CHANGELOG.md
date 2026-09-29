@@ -68,17 +68,14 @@ steps after each update.
   conventions. Claude Code fires `SubagentStart` again on a resume
   ([#80489](https://github.com/anthropics/claude-code/issues/80489)), and
   the agent already has the text.
-
 - With 5 subagents running, an `Agent` call is denied before Claude Code
   refuses it. The reason tells Claude to wait for a report and then send the
   next wave. The count comes from `SubagentStart` and `SubagentStop`. An
   agent with no activity for 10 minutes no longer counts, because an
   interrupted agent can end without `SubagentStop`. The
   `subagent_guidance` option turns this off.
-
 - The Bash guard asks before `git add` stages a file with an ELF, Mach-O,
   or PE header, because a committed binary stays in the history.
-
 - `/dotclaude:setup-integrations` sets up Ghidra. It registers the MCP
   server `pyghidra-mcp` in the reverse-engineering project only, and it
   installs the `ghidra-bridge` CLI as the fallback. The status reports
@@ -92,7 +89,9 @@ steps after each update.
   iteration log. It does not analyze the Claude Code binary.
 - `scripts/usage-report.mjs` counts the dotclaude agent runs that reached
   their turn-limit reserve. For each agent type, it gives the median files
-  and list items in the brief of those runs and of the other runs.
+  and list items in the brief of those runs and of the other runs. On one
+  week, most capped briefs named one behavior, and long runs passed the
+  100k context bound near turn 20. So the `implementer` limit stays 80.
 - The 5-hour and weekly limits on the status line show their pace, as
   CodexBar does. `▲12%→12:46` is a deficit: usage runs 12 points ahead of
   an even rate, and at this rate the limit is used up at 12:46. `▼30%` is a
@@ -218,172 +217,12 @@ run `/dotclaude:apply-settings-profile` again.
   code change is reported as done. A syntax-only check, or a command that did
   not start, does not count.
 
-## [0.10.2] - 2026-09-28
-
-### Changed
-
-- The main status line counts only prompt cache misses that something broke,
-  for example a model, tool, or system prompt change. It does not count misses
-  from idle time past the cache lifetime (`ttl_expired_5m`, `ttl_expired_1h`),
-  because they break nothing and the stale-cache notice already covers them.
-
-## [0.10.1] - 2026-09-28
-
-### Added
-
-- Public documentation in `docs/`, from `docs/README.md`. Each page tells what
-  each part of dotclaude does and why, and links to the dossier for the
-  evidence: hooks, models, agents and skills, working rules, the settings
-  profile, the status line, and development.
-- The `explain-dotclaude` skill. When you ask why Claude or dotclaude did,
-  blocked, or asked about something, Claude answers from the documentation
-  with the reason, its source, and how to change it.
-
-### Changed
-
-- The README is a short overview that links to the documentation. The hook
-  details, options, settings profile, and development notes moved to
-  `docs/`.
-- The main status line's `statusLine` setting sets `refreshInterval: 60`, so
-  an idle session's clock and cache expiry keep updating between events. Run
-  `/dotclaude:apply-settings-profile` (or `apply-statusline.mjs --apply`)
-  again to add it to an existing install.
-
-- The main status line uses two rows: where the session works, then what it
-  uses. A row that is too wide continues on the next row, so parts are not
-  cut off. Past three rows, parts drop by priority, and a limit at 75% or
-  more stays.
-- The main status line shows more of the session: the folder below the
-  project, added directories, the worktree, the `--agent` name, the vim
-  mode, the session name, prompt cache misses with the last cause, the spend
-  limit, lines added and removed, and the session time.
-
-## [0.10.0] - 2026-09-28
-
-### Added
-
-- A stale-cache notice. When you send a prompt after the main conversation's
-  prompt cache expired, and the context is 100k tokens or more, a message
-  tells you that this turn reads the whole context uncached, and that a
-  `/compact` now does the same. It suggests a handoff note and `/clear` for
-  new work. The TTL is 1 hour, or 5 minutes with
-  `CLAUDE_CODE_PROMPT_CACHE_TTL=5m` or `FORCE_PROMPT_CACHING_5M=1`. The
-  message goes to you only and adds nothing to the context. The `usage_notes`
-  option controls it.
-- The Bash guard denies a `git commit` whose message has a Claude
-  `Co-Authored-By` line when the `attribution` setting (or
-  `includeCoAuthoredBy: false`) leaves that line out. Claude Code adds it
-  anyway in some sessions
-  ([#4287](https://github.com/anthropics/claude-code/issues/4287),
-  [#93007](https://github.com/anthropics/claude-code/issues/93007)).
-- A status line. The main line shows the folder, the git state, the model
-  and effort, the context against the 200k handoff point, the prompt cache's
-  expiry and hit ratio, the usage limits, and the pull request. Colors change
-  at 75% and 90%, and parts drop by priority on a narrow terminal. The plugin
-  sets `subagentStatusLine`: each subagent row shows its context against the
-  150k subagent budget. Claude Code leaves `${CLAUDE_PLUGIN_ROOT}` empty in
-  that command, so it runs a stub in the config directory that session start
-  writes. A plugin cannot set `statusLine`, so
-  `/dotclaude:apply-settings-profile` offers it through
-  `apply-statusline.mjs`, which writes a stub that session start keeps
-  pointing at the current plugin version.
-- A nested-instructions hook. When a Bash command reads files in a
-  subdirectory with its own `CLAUDE.md`, `.claude/CLAUDE.md`, or
-  `CLAUDE.local.md`, the hook adds that file to the context once per session
-  or subagent. Claude Code loads these files only for the Read tool
-  ([#90450](https://github.com/anthropics/claude-code/issues/90450)). The
-  `nested_instructions` option controls it.
-- The usage report shows the prompt cache hit rate and the advisor's share of
-  cost.
-- An open-task check. When Claude ends a turn with tasks still pending or in
-  progress, a Stop hook sends it back once to update the task list. The same
-  set of open tasks blocks only once, so tasks left open for you do not block
-  again. The `task_check` option controls it.
-- `just sandbox` runs Claude Code with the checkout as its plugin in a
-  separate config directory. It skips onboarding and the trust dialog, and
-  it gives your login token to `claude` in its environment only.
-  `docs/sandbox.md` tells people and AI agents how to test in it.
-  `just sandbox-clean` removes it. `just usage` runs the usage report.
-
-### Changed
-
-- Every message that goes to Claude follows strict ASD-STE100 and Claude's
-  prompting best practices: hook output, guard reasons, agent and skill
-  prompts, and the system prompt. Each message gives the reason, says what
-  to do, and puts code items in backticks. A guard that finds more than one
-  problem now writes each reason as its own sentence. `AGENTS.md` has the
-  rule for new messages. Agent rules that had no reason now give one.
-- Tests check what dotclaude does, not how its messages read: the decision,
-  the file effects, and the facts a message carries (paths, IDs, numbers).
-  A reworded message no longer breaks a test.
-- The dossier uses the official prompt-caching facts: an effort change keeps
-  the cache on Opus 5.5 and Fable 5.1, `/model` loses it, and a 1-hour cache
-  write costs 2x the input price.
-- Subagents are told that Claude Code refuses their writes to `.md` files
-  whose names start with `report`, `summary`, `findings`, or `analysis`
-  ([#44657](https://github.com/anthropics/claude-code/issues/44657)).
-- The usage-note levels (75% and 90%) move to `hooks/lib/_budget.mjs` as
-  `USAGE_LEVELS`, shared with the status line.
-
-### Removed
-
-- Headroom support. Headroom compresses tool output with loss, and in this
-  repository it dropped words from text that Claude read as exact. Its saving
-  is small against a cached context, and all agents needed its retrieve tool.
-  The agents, `/dotclaude:setup-integrations`, and the session-start notice no
-  longer name it. To remove it from your setup, run `headroom unwrap claude`
-  and `claude mcp remove headroom`, and take `headroom wrap` out of your
-  `claude` shell function.
-
-### Fixed
-
-- The usage report left out advisor calls, because the call's own `usage`
-  does not count them. It now adds each `advisor_message` in
-  `usage.iterations`.
-
-## [0.9.0] - 2026-09-28
-
-### Added
-
-- Secret redaction. A new PostToolUse hook runs
-  [gitleaks](https://github.com/gitleaks/gitleaks) on the output of every tool
-  and replaces each secret that it finds with `[REDACTED:<rule>]` before
-  Claude sees it. The rest of the output and its shape stay the same, and
-  Claude gets a note that names the rules. A `tail ~/.zshrc` had put an API
-  key into the context. gitleaks runs from the temp directory with
-  `--ignore-gitleaks-allow`, so a repository's `.gitleaks.toml` or a
-  `gitleaks:allow` comment cannot turn redaction off. A run takes about
-  30 ms. The `secret_redaction` option (on by default) controls it. Without
-  gitleaks on `PATH`, output passes through and session start says so.
-- `/dotclaude:setup-integrations` reports the gitleaks version and tells how
-  to install it.
-
-### Changed
-
-- The `general-purpose` refusal now gives a route for plans: draft the plan
-  in plan mode and have `dotclaude:plan-reviewer` review it. A session had
-  sent plan drafting to `dotclaude:implementer`, which ran out of context.
-  The implementer description says that it does not draft plans.
-- One Headroom proxy recipe everywhere:
-  `DOTCLAUDE_LAUNCHER=1 headroom wrap claude --no-mcp --code-memory none --
-  --system-prompt-file ~/.claude/dotclaude/system-prompt.md`. It starts the
-  proxy, keeps the dotclaude system prompt, and stops the proxy when the
-  session ends. The README and the session-start notice told you to start
-  `headroom proxy` by hand, which nothing stopped, while the setup skill said
-  `headroom wrap claude`. `headroom unwrap claude --keep-mcp` stops a proxy
-  that stays after a crash.
-- A code comment said that a hook's "ask" lets the user approve any write to
-  Claude settings in auto mode. That is true for Bash commands only. For Edit
-  or Write on a settings file, Claude Code keeps its classifier in the
-  pipeline, and a classifier deny stands. No hook can turn that deny into a
-  prompt. To make such an edit in auto mode, state the change in your message
-  and retry, approve it in `/permissions` under recently denied, or make the
-  edit yourself.
-
 ## Older Releases
 
 | Series | Releases |
 | --- | --- |
+| [0.10](docs/changelog/0.10.md) | 0.10.2, 0.10.1, 0.10.0 |
+| [0.9](docs/changelog/0.9.md) | 0.9.0 |
 | [0.8](docs/changelog/0.8.md) | 0.8.2, 0.8.1, 0.8.0 |
 | [0.7](docs/changelog/0.7.md) | 0.7.0 |
 | [0.6](docs/changelog/0.6.md) | 0.6.2, 0.6.1, 0.6.0 |
