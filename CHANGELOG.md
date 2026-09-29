@@ -10,6 +10,14 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-09-29
+
+### Fixed
+
+- The `apply-settings-profile` skill lists the `Agent(general-purpose)` deny
+  in its group table, so the user sees the reason before applying. The
+  Models row no longer names `general-purpose` as an agent on Sonnet 5.5.
+
 ## [0.13.0] - 2026-09-29
 
 ### Changed
@@ -367,4 +375,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.13.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.13.1...HEAD
