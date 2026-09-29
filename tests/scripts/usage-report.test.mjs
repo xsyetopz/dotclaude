@@ -217,7 +217,7 @@ test("full rewrites after the first call, a compaction, or a model switch are ex
   expect(r.rewriteShare).toBeCloseTo(25.4, 0);
 });
 
-test("entrypoints, limit hits, skill use, and guard verdicts per rule", () => {
+test("entrypoints, wakes, limit hits, skill use, and guard verdicts per rule", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "usage-report-"));
   fs.mkdirSync(path.join(root, "p"));
   const at = "2026-09-27T10:00:00.000Z";
@@ -278,7 +278,14 @@ test("entrypoints, limit hits, skill use, and guard verdicts per rule", () => {
   ].entries())
     fs.writeFileSync(
       path.join(root, "p", `b${i}.jsonl`),
-      [entry(e, { message: { content: "go" } }), entry(e, {})].join("\n"),
+      [
+        entry(e, { message: { content: "go" } }),
+        entry(e, {}),
+        entry(e, {
+          message: { content: "done" },
+          origin: { kind: "task-notification" },
+        }),
+      ].join("\n"),
     );
   // A subagent transcript is not a session.
   fs.mkdirSync(path.join(root, "p", "a", "subagents"), { recursive: true });
@@ -311,6 +318,11 @@ test("entrypoints, limit hits, skill use, and guard verdicts per rule", () => {
   const r = report(root, new Date("2026-09-20"), verdicts);
   expect(r.entrypoints).toEqual({
     cli: 1,
+    "claude-vscode": 1,
+    "sdk-cli": 1,
+    "sdk-py": 2,
+  });
+  expect(r.wakesByEntrypoint).toEqual({
     "claude-vscode": 1,
     "sdk-cli": 1,
     "sdk-py": 2,

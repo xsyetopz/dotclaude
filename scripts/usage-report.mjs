@@ -20,7 +20,7 @@
 // a new cache prefix. The report counts those apart from the rewrites that
 // nothing explains.
 // It also counts main sessions by Claude Code entrypoint (`cli`, `claude-vscode`,
-// `sdk-cli`, `sdk-py`), usage-limit hits (the synthetic assistant message
+// `sdk-cli`, `sdk-py`) and the wake turns of each entrypoint, usage-limit hits (the synthetic assistant message
 // with `error: "rate_limit"` that Claude Code writes), `Skill` tool calls by
 // skill, and the dotclaude guard verdicts per rule from `verdicts.jsonl`.
 
@@ -164,6 +164,9 @@ export function report(root, since, verdictsFile = null) {
   // Main-conversation turns by what started them: a background agent's
   // report or task notification, or anything else (mostly the user).
   const turns = { wake: 0, other: 0 };
+  // Wake turns by entrypoint: the fork-mode setting that keeps agents in the
+  // foreground may not reach SDK sessions.
+  const wakes = {};
   let wakeCost = 0;
   const advisor = { calls: 0, cost: 0 };
   // Input tokens and cache reads, for all calls and for the main conversation.
@@ -239,8 +242,11 @@ export function report(root, since, verdictsFile = null) {
           const kind = entry.origin?.kind;
           wake = kind === "peer" || kind === "task-notification";
           firstPending = true;
-          if (new Date(entry.timestamp) >= since)
+          if (new Date(entry.timestamp) >= since) {
             turns[wake ? "wake" : "other"] += 1;
+            const ep = entrypoint ?? "unknown";
+            if (wake) wakes[ep] = (wakes[ep] ?? 0) + 1;
+          }
         }
         continue;
       }
@@ -323,6 +329,7 @@ export function report(root, since, verdictsFile = null) {
         share: share(cost),
       })),
     entrypoints,
+    wakesByEntrypoint: wakes,
     limitHits,
     skills: Object.entries(skills)
       .sort((a, b) => b[1] - a[1])
@@ -406,6 +413,10 @@ if (import.meta.main) {
       .map(([k, n]) => `${k} ${n}`)
       .join(", ");
     console.log(`Sessions by entrypoint: ${eps || "-"}`);
+    const wakes = Object.entries(r.wakesByEntrypoint)
+      .map(([k, n]) => `${k} ${n}`)
+      .join(", ");
+    console.log(`Wake turns by entrypoint: ${wakes || "-"}`);
     console.log(`Usage-limit hits: ${r.limitHits}`);
     console.log(
       `Skill calls: ${r.skills.map((s) => `${s.skill} ${s.uses}`).join(", ") || "-"}`,
