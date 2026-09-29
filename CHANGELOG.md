@@ -114,7 +114,9 @@ steps after each update.
 - The settings profile and the usage bounds allow 5 agents at once, not 3.
   Five is the community figure, and a cap of 3 caused 50 of 77 measured
   `Agent` errors. When you apply the profile, a value of `3` that 0.11.1
-  wrote becomes `5`, and any other value that you set stays.
+  wrote becomes `5`, and any other value that you set stays. 0.12.0 removes
+  and renames no profile value, so a settings file that 0.11.1 wrote keeps
+  all its other values. A test applies the profile to a real 0.11.1 output.
 
 ### Fixed
 

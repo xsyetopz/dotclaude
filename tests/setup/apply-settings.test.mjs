@@ -222,3 +222,46 @@ test("apply-settings removes exact entries older profiles wrote and keeps look-a
   expect(merged.env.CLAUDE_CODE_FORK_SUBAGENT).toBe("0");
   expectNoChange(home, file);
 });
+
+// The file that 0.11.1's `--apply` wrote over a user's own settings (theme,
+// model, a token path, `just` and `.ssh` rules, a Stop hook).
+const SETTINGS_0_11_1 = path.join(
+  import.meta.dirname,
+  "fixtures",
+  "settings-0.11.1.json",
+);
+
+/** Each leaf value of `obj` as [dotted path, value]; array items one by one. */
+function leaves(obj, prefix = "") {
+  return Object.entries(obj).flatMap(([key, value]) => {
+    const where = prefix ? `${prefix}.${key}` : key;
+    if (Array.isArray(value)) return value.map((v) => [where, v]);
+    if (value !== null && typeof value === "object")
+      return leaves(value, where);
+    return [[where, value]];
+  });
+}
+
+const at = (obj, where) => where.split(".").reduce((o, key) => o?.[key], obj);
+
+test("apply-settings migrates a 0.11.1 settings file and loses no value", () => {
+  const home = tempHome();
+  const file = path.join(home, ".claude", "settings.json");
+  const old = JSON.parse(fs.readFileSync(SETTINGS_0_11_1, "utf8"));
+  fs.writeFileSync(file, JSON.stringify(old, null, 2));
+  run("apply-settings.mjs", home, "--apply");
+  const merged = JSON.parse(fs.readFileSync(file, "utf8"));
+  // Only the values that 0.12.0 changed on purpose differ.
+  const changed = {
+    "env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "5",
+    "env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS": "5",
+    "env.DOTCLAUDE_SETTINGS_PROFILE": profileStamp(),
+  };
+  for (const [where, value] of leaves(old)) {
+    const now = at(merged, where);
+    if (where in changed) expect(now, where).toBe(changed[where]);
+    else if (Array.isArray(now)) expect(now, where).toContainEqual(value);
+    else expect(now, where).toStrictEqual(value);
+  }
+  expectNoChange(home, file);
+});
