@@ -116,15 +116,43 @@ export function cachePart(cache, now = Date.now()) {
   return `${C.dim("cache cold")}${ratio}`;
 }
 
-/** One usage window: "5h 23%", with its reset time once it passes a level. */
-export function limitPart(label, window, now = Date.now()) {
-  if (typeof window?.used_percentage !== "number") return null;
-  const pct = Math.round(window.used_percentage);
+/**
+ * The part of a usage window that is gone, from 0 to 1, or null when the
+ * reset time does not fall inside a window of `span` seconds.
+ */
+function windowGone(window, now, span) {
+  const left = Number(window.resets_at) - now / 1000;
+  if (!(span > 0) || !(left >= 0) || left > span) return null;
+  return (span - left) / span;
+}
+
+/**
+ * One usage window: "5h 23%", with its reset time once it passes a level.
+ * With the window length in seconds, it also shows the pace, as CodexBar
+ * does: "+12%" is a deficit (usage runs 12 points ahead of an even rate,
+ * with the time at which that rate uses all of the limit), and "-30%" is a
+ * reserve. Early in a window the pace is noise, so it shows only after 3%
+ * of the window is gone.
+ */
+export function limitPart(label, window, now = Date.now(), span = 0) {
+  if (!Number.isFinite(window?.used_percentage)) return null;
+  const used = window.used_percentage;
+  const pct = Math.round(used);
+  const gone = windowGone(window, now, span);
+  let pace = "";
+  if (gone !== null && gone >= 0.03) {
+    const delta = Math.round(used - 100 * gone);
+    if (delta > 0 && used < 100) {
+      const out = now / 1000 + ((100 - used) * gone * span) / used;
+      pace = ` ${C.yellow(`+${delta}% out ${clock(out, now)}`)}`;
+    } else if (delta > 0) pace = ` ${C.yellow(`+${delta}%`)}`;
+    else if (delta < 0) pace = ` ${C.green(`${delta}%`)}`;
+  }
   const reset =
     pct >= USAGE_LEVELS[0] && window.resets_at
       ? C.dim(` ↻${clock(window.resets_at, now)}`)
       : "";
-  return `${C.dim(label)} ${byLevel(pct, `${pct}%`)}${reset}`;
+  return `${C.dim(label)} ${byLevel(pct, `${pct}%`)}${pace}${reset}`;
 }
 
 /** Branch, dirty count, and ahead/behind from one `git status` call. */
@@ -263,14 +291,15 @@ export function renderMain(
 
   add(usage, 7, cachePart(data.prompt_cache, now));
   // A limit past the first usage level outranks all but the context.
-  const limit = (label, window, priority) =>
+  const limit = (label, window, priority, span) =>
     add(
       usage,
       window?.used_percentage >= USAGE_LEVELS[0] ? 9 : priority,
-      limitPart(label, window, now),
+      limitPart(label, window, now, span),
     );
-  limit("5h", data.rate_limits?.five_hour, 5);
-  limit("7d", data.rate_limits?.seven_day, 4);
+  limit("5h", data.rate_limits?.five_hour, 5, 5 * 3600);
+  limit("7d", data.rate_limits?.seven_day, 4, 7 * 86_400);
+  // A spend limit has no fixed window, so it has no pace.
   limit("spend", data.rate_limits?.spend_limit, 4);
   // Subscribers see limits. Others pay per token, so they see the estimate.
   if (!data.rate_limits && typeof data.cost?.total_cost_usd === "number")

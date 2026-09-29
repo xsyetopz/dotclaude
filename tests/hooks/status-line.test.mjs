@@ -31,6 +31,7 @@ const NOW = Date.parse("2026-09-28T12:00:00");
 const sec = (ms) => Math.floor(ms / 1000);
 const RED = "\x1b[31m";
 const YELLOW = "\x1b[33m";
+const GREEN = "\x1b[32m";
 
 test("model IDs shorten to name and version", () => {
   expect(shortModel("claude-opus-5-5")).toBe("Opus 5.5");
@@ -117,6 +118,52 @@ test("a usage limit shows its reset only from the first usage level", () => {
   expect(plain(high)).toBe("5h 91% ↻13:30");
   expect(high).toContain(`${RED}91%`);
   expect(limitPart("7d", undefined, NOW)).toBe(null);
+});
+
+test("a usage limit shows its pace as a deficit or a reserve", () => {
+  const FIVE_H = 5 * 3600;
+  // 90 minutes left of 5 hours: 70% of the window is gone.
+  const reset = sec(NOW + 90 * 60_000);
+  const ahead = limitPart(
+    "5h",
+    { used_percentage: 82, resets_at: reset },
+    NOW,
+    FIVE_H,
+  );
+  // A deficit: 82% used in 210 minutes runs out 46 minutes from now, at
+  // 12:46, before the reset at 13:30.
+  expect(plain(ahead)).toBe("5h 82% +12% out 12:46 ↻13:30");
+  expect(ahead).toContain(`${YELLOW}+12% out 12:46`);
+  // A reserve: 40% used when 70% of the window is gone.
+  const behind = { used_percentage: 40, resets_at: reset };
+  const reserve = limitPart("5h", behind, NOW, FIVE_H);
+  expect(plain(reserve)).toBe("5h 40% -30%");
+  expect(reserve).toContain(`${GREEN}-30%`);
+  const even = { used_percentage: 70, resets_at: reset };
+  expect(plain(limitPart("5h", even, NOW, FIVE_H))).toBe("5h 70%");
+  const full = { used_percentage: 100, resets_at: reset };
+  expect(plain(limitPart("5h", full, NOW, FIVE_H))).toBe("5h 100% +30% ↻13:30");
+  // 6 days of 7 left: 14% of the week is gone. 30% in one day runs out 2.3 days from Monday noon.
+  const week = { used_percentage: 30, resets_at: sec(NOW + 6 * 86_400_000) };
+  expect(plain(limitPart("7d", week, NOW, 7 * 86_400))).toBe(
+    "7d 30% +16% out Wed",
+  );
+  expect(plain(limitPart("5h", { used_percentage: 60 }, NOW, FIVE_H))).toBe(
+    "5h 60%",
+  );
+  // Before 3% of the window is gone, the pace is noise: 10% of 5 hours
+  // used after 6 minutes.
+  const early = { used_percentage: 10, resets_at: sec(NOW + 294 * 60_000) };
+  expect(plain(limitPart("5h", early, NOW, FIVE_H))).toBe("5h 10%");
+  // A reset that is past or outside the window gives no pace.
+  const past = { used_percentage: 60, resets_at: sec(NOW - 60_000) };
+  expect(plain(limitPart("5h", past, NOW, FIVE_H))).toBe("5h 60%");
+  const far = { used_percentage: 60, resets_at: sec(NOW + 6 * 3600_000) };
+  expect(plain(limitPart("5h", far, NOW, FIVE_H))).toBe("5h 60%");
+  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, "82"])
+    expect(
+      limitPart("5h", { used_percentage: bad, resets_at: reset }, NOW, FIVE_H),
+    ).toBe(null);
 });
 
 const DATA = {

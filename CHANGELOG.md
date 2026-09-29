@@ -89,6 +89,10 @@ steps after each update.
 - `scripts/usage-report.mjs` counts the dotclaude agent runs that reached
   their turn-limit reserve. For each agent type, it gives the median files
   and list items in the brief of those runs and of the other runs.
+- The 5-hour and weekly limits on the status line show their pace, as
+  CodexBar does. `+12% out 12:46` is a deficit: usage runs 12 points ahead
+  of an even rate, and at this rate the limit is used up at 12:46. `-30%` is
+  a reserve. The pace shows after 3% of the window is gone.
 
 ### Changed
 

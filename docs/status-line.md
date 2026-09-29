@@ -22,6 +22,8 @@ The second row shows what the session uses:
   on 100k or more
 - the 5-hour, weekly, and spend limits with their reset times from 75%, or
   the session cost when you pay per token
+- the pace of the 5-hour and weekly limits: `+12% out 12:46` in yellow is a
+  deficit, and `-30%` in green is a reserve
 - the lines added and removed, and the session time
 
 ## Why Each Part
@@ -40,6 +42,14 @@ The second row shows what the session uses:
 - **Limits from 75%:** the same levels as the
   [usage notes](hooks.md#usage-notes-usage_notes). Below 75% a limit does not
   change what you do, so it takes little space.
+- **Pace:** the percentage alone does not tell you if the limit comes before
+  the reset. The pace compares usage with an even rate over the window, as
+  [CodexBar](https://github.com/steipete/CodexBar) does. `+12%` means usage
+  is 12 points ahead of that rate, and `out 12:46` is the time at which the
+  current rate uses up the limit. A reserve (`-30%`) tells you that you can
+  spend more, for example on a review agent. In the first 3% of a window a
+  few requests move the pace far, so it shows only after that. A spend limit
+  has no fixed window, so it has no pace.
 - **Place, agent, and session name:** with several sessions and worktrees
   open, the row tells you which one you are in before you approve an action.
 - **Lines and time:** the size of the change and how long the session ran,
