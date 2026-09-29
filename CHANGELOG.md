@@ -38,6 +38,11 @@ steps after each update.
   was 2.2% of the context with hook context and 1.6% without, so hook
   context did not rewrite the cached prefix
   ([#83913](https://github.com/anthropics/claude-code/issues/83913)).
+- Two usage notes for you. On your third correction in a row, a note
+  suggests a rewind to before the failed attempts, or a handoff and
+  `/clear`. After a reply that stopped with a refusal, a note says to start
+  a new session, because the refusal stays in the context. The
+  `usage_notes` option turns them off.
 
 ### Fixed
 

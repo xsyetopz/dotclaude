@@ -174,12 +174,16 @@ and [usage evidence](dossier/usage.md).
 limit, its reset time, and the `claude --resume` command. When a prompt
 arrives after the prompt cache expired on a context of 100k tokens or more,
 a message tells you that a handoff and `/clear` cost less than going on or
-`/compact`.
+`/compact`. On your third correction in a row, a note suggests a rewind or a
+handoff and `/clear`. After a reply that stopped with a refusal, a note says
+to start a new session.
 
 **Why:** near a limit, Claude can route the remaining work to use less. A
 prompt after the cache expired, and a `/compact` after it, write the whole
 context to the cache again ([prices](dossier/plans-and-models.md#prices)).
 A handoff note and `/clear` start from a small context.
+Failed attempts and a refusal stay in the context and steer later replies,
+so a correction on top of them often fails again.
 
 ### Model Lock And Plan Awareness (`model_lock`, `claude_plan`)
 

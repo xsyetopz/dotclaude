@@ -83,6 +83,14 @@
               "${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/note-stale-cache.mjs"
             ],
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/note-rewind.mjs"
+            ],
+            "timeout": 10
           }
         ]
       }
