@@ -11,9 +11,8 @@
 export const MAIN_CONTEXT_TOKENS = 150_000;
 
 /**
- * Main-conversation context (tokens) at which a prompt that arrives after the
- * prompt cache expired gets a notice: that turn writes the whole context to
- * the cache again, at 1.25x the input price instead of reads at 0.05x on
+ * Main-conversation context (tokens) at which the status line shows a cold
+ * cache in red: the next turn writes the whole context to the cache again, at 1.25x the input price instead of reads at 0.05x on
  * Opus 5.5.
  */
 export const STALE_CACHE_CONTEXT_TOKENS = 100_000;

@@ -1,11 +1,7 @@
-// User prompt hooks: mid-message /dotclaude: skills, and the rewind and
-// refusal notes.
+// User prompt hook: /dotclaude: skills typed mid-message.
 
 import { expect, test } from "bun:test";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { hook, session } from "../support/hooks.mjs";
+import { hook } from "../support/hooks.mjs";
 
 test("a /dotclaude: skill typed mid-message runs through the Skill tool", () => {
   const expand = (prompt, env = {}) =>
@@ -59,36 +55,4 @@ test("a /dotclaude: skill typed mid-message runs through the Skill tool", () => 
   expect(user).toContain("`/dotclaude:apply-settings-profile`");
   expect(user).not.toContain("`Skill`");
   expect(user).not.toContain('"before applying,"');
-});
-
-test("the third correction in a row and a refusal each add one note", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-rewind-"));
-  const transcript = path.join(dir, "t.jsonl");
-  fs.writeFileSync(transcript, "");
-  const sid = session();
-  const note = (prompt) =>
-    hook("user-prompt-submit/note-rewind.mjs", {
-      session_id: sid,
-      hook_event_name: "UserPromptSubmit",
-      transcript_path: transcript,
-      prompt,
-    })?.systemMessage ?? null;
-  expect(note("No, that still fails with the same error.")).toBe(null);
-  expect(note("Still broken. The test fails again.")).toBe(null);
-  expect(note("That's wrong, the parser still drops the last row.")).toMatch(
-    /rewind/i,
-  );
-  expect(note("Now add a README line."), "a new request resets").toBe(null);
-  expect(note("No, that's wrong.")).toBe(null);
-  const reply = (id, stop_reason) =>
-    JSON.stringify({
-      type: "assistant",
-      message: { id, role: "assistant", stop_reason, content: [] },
-    });
-  fs.writeFileSync(transcript, `${reply("m1", "refusal")}\n`);
-  expect(note("Why did you stop?")).toMatch(/new session/);
-  expect(note("Try again."), "one note per refusal").toBe(null);
-  fs.writeFileSync(transcript, `${reply("m2", "end_turn")}\n`);
-  expect(note("Next task.")).toBe(null);
-  fs.rmSync(dir, { recursive: true });
 });

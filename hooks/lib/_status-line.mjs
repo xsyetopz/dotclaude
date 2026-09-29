@@ -111,7 +111,7 @@ export function cachePart(cache, now = Date.now()) {
     hit === null ? "" : ` ${(hit < 80 ? C.yellow : C.dim)(`${hit}%`)}`;
   // Misses tell an advanced user that something breaks the cache, and the
   // last cause tells them what. Idle time past the TTL breaks nothing, and the
-  // stale-cache notice covers it. A model switch starts a new cache, so its
+  // expiry countdown shows it. A model switch starts a new cache, so its
   // rebuild is expected. Those misses do not count. Claude Code records a TTL
   // cause only when no other cause applies, and each miss adds 1 to each of
   // its causes, so subtracting these counts is exact. Claude Code itself
