@@ -48,7 +48,8 @@ const withHeading = (text) =>
 
 // CLI tools worth naming in CLAUDE.md, listed only when present on PATH.
 // Browser CLIs are left out: naming them here led Claude to drive them from
-// Bash without loading the drive-web-browser skill that explains them.
+// Bash without loading the drive-web-browser skill that explains them. The
+// dotclaude-browser plugin says when to load that skill.
 const TOOLS = [
   "rg",
   "tgrep",

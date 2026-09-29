@@ -72,7 +72,6 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
 5. Offer the global `CLAUDE.md` section. It adds a short, marked block to `~/.claude/CLAUDE.md` that names:
 
    - the CLI tools found on this machine
-   - when to load the `drive-web-browser` skill
    - reading the branch and `git status` before git work
    - that a repository's own files define its commands
    - a `# Compact instructions` section that tells the compaction summary what to keep word for word

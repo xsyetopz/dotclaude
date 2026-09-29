@@ -117,9 +117,14 @@ const env = { ...process.env, CLAUDE_CONFIG_DIR: config };
 const token = loginToken();
 if (token) env.CLAUDE_CODE_OAUTH_TOKEN = token;
 else console.error("No login token found. Run /login inside the sandbox.");
-const r = spawnSync(claude, ["--plugin-dir", REPO, ...args], {
-  cwd: project,
-  env,
-  stdio: "inherit",
-});
+const pluginDirs = [REPO, path.join(REPO, "plugins", "dotclaude-browser")];
+const r = spawnSync(
+  claude,
+  [...pluginDirs.flatMap((dir) => ["--plugin-dir", dir]), ...args],
+  {
+    cwd: project,
+    env,
+    stdio: "inherit",
+  },
+);
 process.exit(r.status ?? 1);

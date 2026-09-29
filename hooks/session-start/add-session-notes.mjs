@@ -1,33 +1,14 @@
 #!/usr/bin/env bun
-// SessionStart: short notes Claude cannot get any other way. Plugin options
-// reach hooks as CLAUDE_PLUGIN_OPTION_* but never skill text, so the browser
-// and CAPTCHA options are passed on here, only when they differ from their
-// defaults. On Fable 5.1 it also adds the model's adjustments to the
-// Opus-tuned output style. It names the user's Claude plan and what that
-// means for model choice, and gives the commit and pull request attribution
-// lines that the profile's `includeGitInstructions: false` drops.
+// SessionStart: short notes Claude cannot get any other way. On Fable 5.1 it
+// adds the model's adjustments to the Opus-tuned output style. It names the
+// user's Claude plan and what that means for model choice, and gives the
+// commit and pull request attribution lines that the profile's
+// `includeGitInstructions: false` drops.
 
 import { attributionNote } from "../lib/_attribution.mjs";
 import { emit, option, projectRoot, pruneState, run } from "../lib/_common.mjs";
 import { FABLE, isFable } from "../lib/_model-notes.mjs";
 import { planNote } from "../lib/_plans.mjs";
-
-function browserNotes() {
-  const notes = [];
-  if (option("cloakbrowser", false))
-    notes.push(
-      "Use CloakBrowser (the `drive-web-browser` skill's launcher) as the browser backend, not `agent-browser`.",
-    );
-  if (option("cloakbrowser_headless", false))
-    notes.push("Pass `--headless` to the CloakBrowser launcher.");
-  if (!option("cloakbrowser_humanize", true))
-    notes.push("Pass `--no-humanize` to the CloakBrowser launcher.");
-  if (option("captcha_ocr_ddddocr", false))
-    notes.push(
-      "Offline CAPTCHA OCR is on, so you may use the `recognize-captcha` skill when a text CAPTCHA appears despite CloakBrowser.",
-    );
-  return notes;
-}
 
 run((data) => {
   const parts = [];
@@ -44,11 +25,6 @@ run((data) => {
       if (attribution) parts.push(attribution);
     }
   }
-  const browser = browserNotes();
-  if (browser.length)
-    parts.push(
-      `<browser_preferences>These preferences come from the user's dotclaude settings. ${browser.join(" ")}</browser_preferences>`,
-    );
   if (!parts.length) return;
   emit({
     hookSpecificOutput: {

@@ -1,4 +1,4 @@
-// Session start notes: setup warnings, model adjustments, and browser options.
+// Session start notes: setup warnings and model adjustments.
 
 import { expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
@@ -127,28 +127,6 @@ test("a switch to Fable adds its adjustments and a switch away retracts them", (
   expect(away.additionalContext).not.toMatch(/<\/fable_adjustments>/);
   expect(away.additionalContext).not.toBe(toFable.additionalContext);
   expect(sw("claude-sonnet-5-5", "claude-opus-5-5")).toBe(null);
-});
-
-test("non-default browser options reach Claude through the session notes", () => {
-  const notes = (env) =>
-    hook(
-      "session-start/add-session-notes.mjs",
-      {
-        hook_event_name: "SessionStart",
-        source: "startup",
-        model: "claude-opus-5-5",
-      },
-      env,
-    );
-  expect(notes({}), "defaults add nothing").toBe(null);
-  const text = notes({
-    CLAUDE_PLUGIN_OPTION_CLOAKBROWSER: "true",
-    CLAUDE_PLUGIN_OPTION_CLOAKBROWSER_HUMANIZE: "false",
-    CLAUDE_PLUGIN_OPTION_CAPTCHA_OCR_DDDDOCR: "true",
-  }).hookSpecificOutput.additionalContext;
-  expect(text).toMatch(/CloakBrowser/);
-  expect(text).toMatch(/--no-humanize/);
-  expect(text).toMatch(/recognize-captcha/);
 });
 
 function instructionProject() {

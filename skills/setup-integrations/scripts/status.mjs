@@ -9,7 +9,9 @@
 // fast-compact whether the plugin is installed and which settings are
 // present (key names only, never values), the betterleaks version, and for
 // Ghidra the versions of `uvx`, Python, and Java, `GHIDRA_INSTALL_DIR`, the
-// `ghidra` MCP entry, and the `ghidra-bridge` CLI.
+// `ghidra` MCP entry, and the `ghidra-bridge` CLI. For dotclaude-browser it
+// reads whether the plugin, agent-browser, CloakBrowser, ddddocr, and the
+// ddddocr model are installed.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -75,16 +77,50 @@ function globalIgnore() {
   return { file, lists_tgrep: /^\/?\.tgrep\/?$/m.test(text) };
 }
 
+/** Whether a plugin with this name is installed from any marketplace. */
+function pluginInstalled(name) {
+  const plugins = readJson(
+    path.join(home, ".claude", "plugins", "installed_plugins.json"),
+  );
+  return Object.keys(plugins?.plugins ?? {}).some((id) =>
+    id.startsWith(`${name}@`),
+  );
+}
+
+/**
+ * dotclaude-browser: the plugin, the agent-browser CLI, CloakBrowser as a
+ * global bun package, and the ddddocr CLI with its model file.
+ */
+function browser() {
+  const models = [
+    process.env.DDDDOCR_MODEL_PATH,
+    path.join(home, ".local/share/ddddocr/ddddocr.onnx"),
+    path.join(home, ".ddddocr/ddddocr.onnx"),
+    "/usr/local/share/ddddocr/ddddocr.onnx",
+  ].filter(Boolean);
+  const bunGlobal =
+    process.env.BUN_INSTALL_GLOBAL_DIR ||
+    path.join(
+      process.env.BUN_INSTALL || path.join(home, ".bun"),
+      "install",
+      "global",
+    );
+  return {
+    installed: pluginInstalled("dotclaude-browser"),
+    agent_browser: version("agent-browser"),
+    cloakbrowser: fs.existsSync(
+      path.join(bunGlobal, "node_modules", "cloakbrowser"),
+    ),
+    ddddocr: Bun.which("ddddocr") ?? Bun.which("ddddocr-cli") ?? null,
+    ddddocr_model: models.find((m) => fs.existsSync(m)) ?? null,
+  };
+}
+
 /** fast-compact: plugin installed, function hooks on, which Jev key exists. */
 function fastCompact() {
   const settings = readJson(path.join(home, ".claude", "settings.json")) ?? {};
   const env = { ...settings.env, ...process.env };
-  const plugins = readJson(
-    path.join(home, ".claude", "plugins", "installed_plugins.json"),
-  );
-  const installed = Object.keys(plugins?.plugins ?? {}).some((id) =>
-    id.startsWith("fast-compact@"),
-  );
+  const installed = pluginInstalled("fast-compact");
   const config = settings.pluginConfigs?.["fast-compact@fast-compact"] ?? {};
   return {
     installed,
@@ -148,6 +184,7 @@ console.log(
       fast_compact: fastCompact(),
       betterleaks: { cli: version("betterleaks", "version") },
       ghidra: ghidra(servers),
+      browser: browser(),
     },
     null,
     2,

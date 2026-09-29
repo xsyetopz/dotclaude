@@ -1,7 +1,7 @@
 ---
 name: setup-integrations
-description: Install, check, and configure dotclaude's optional integrations (CodeGraph code-graph MCP, tgrep indexed search, fast-compact tool-output trimming, the Betterleaks scanner behind secret redaction, and Ghidra for reverse engineering). Use when the user asks to set up, install, check, repair, or reconfigure CodeGraph, tgrep, fast-compact, Betterleaks, or Ghidra, or a dotclaude agent reports one missing.
-argument-hint: "[status|codegraph|tgrep|fast-compact|betterleaks|ghidra] [what to change]"
+description: Install, check, or configure the optional integrations of dotclaude (CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, and the dotclaude-browser plugin). Use when the user asks, or when an agent reports one missing.
+argument-hint: "[status|codegraph|tgrep|fast-compact|betterleaks|ghidra|browser] [what to change]"
 context: fork
 agent: integration-setup
 allowed-tools: Bash(bun *status.mjs*)
@@ -66,3 +66,14 @@ Ghidra decompiles and analyzes binaries for reverse engineering. dotclaude uses 
 - CLI fallback: `uv tool install ghidra-ai-bridge`, which installs `ghidra-bridge`. Read `ghidra-bridge --help` for its commands.
 - After a restart, `/mcp` in that project lists `ghidra`, and the status shows `mcp: "project"`.
 </ghidra>
+
+<browser>
+The `dotclaude-browser` plugin adds the `drive-web-browser` skill (agent-browser, or CloakBrowser for sites with bot checks) and the `recognize-captcha` skill (offline OCR for text CAPTCHAs). It is a separate plugin, so sessions that do not use a browser do not load it.
+
+- Install the plugin: `claude plugin install dotclaude-browser@dotclaude`. The `dotclaude` marketplace is already added when dotclaude is installed.
+- agent-browser, the default backend: `bun install -g agent-browser`.
+- CloakBrowser, only when the user asks for it: `bun install -g cloakbrowser playwright-core`. A license key goes in `CLOAKBROWSER_LICENSE_KEY`, which the user sets in their shell profile.
+- ddddocr, only when the user asks for CAPTCHA OCR: `cargo install ddddocr-cli`, then download the model to `~/.local/share/ddddocr/ddddocr.onnx` with `curl -L -o ~/.local/share/ddddocr/ddddocr.onnx https://github.com/mzdk100/ddddocr-rs/raw/main/models/ddddocr.onnx`. Create the folder first.
+- The options `cloakbrowser`, `cloakbrowser_humanize`, `cloakbrowser_headless`, and `captcha_ocr_ddddocr` are in `/config` under dotclaude-browser. Tell the user to set them there, because settings edits are theirs to make.
+- After a restart or `/reload-plugins`, the status shows `installed: true`.
+</browser>

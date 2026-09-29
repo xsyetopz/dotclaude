@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-// Bump the plugin version by semver in .claude-plugin/plugin.json and
-// package.json together, and move the CHANGELOG's [Unreleased] entries under
+// Bump the plugin version by semver in .claude-plugin/plugin.json,
+// package.json, and each plugins/*/.claude-plugin/plugin.json together, and move the CHANGELOG's [Unreleased] entries under
 // a new dated heading, and point the [unreleased] compare link at the new tag.
 //
 //   bun scripts/bump-version.mjs <major|minor|patch|X.Y.Z> [--dry-run] [--root DIR]
@@ -39,19 +39,30 @@ export function nextVersion(current, level) {
 
 /** The files and new contents a bump writes; throws before anything is written. */
 export function plan(root, level, today) {
-  const manifests = [".claude-plugin/plugin.json", "package.json"].map(
-    (rel) => {
-      const file = path.join(root, rel);
-      const text = fs.readFileSync(file, "utf8");
-      const m = VERSION_LINE.exec(text);
-      if (!m) throw new Error(`${rel} has no "version" line`);
-      return { file, text, version: m[2] };
-    },
-  );
+  const plugins = path.join(root, "plugins");
+  const bundled = fs.existsSync(plugins)
+    ? fs
+        .readdirSync(plugins)
+        .map((name) =>
+          path.join("plugins", name, ".claude-plugin", "plugin.json"),
+        )
+        .filter((rel) => fs.existsSync(path.join(root, rel)))
+    : [];
+  const manifests = [
+    ".claude-plugin/plugin.json",
+    "package.json",
+    ...bundled,
+  ].map((rel) => {
+    const file = path.join(root, rel);
+    const text = fs.readFileSync(file, "utf8");
+    const m = VERSION_LINE.exec(text);
+    if (!m) throw new Error(`${rel} has no "version" line`);
+    return { rel, file, text, version: m[2] };
+  });
   const versions = new Set(manifests.map((m) => m.version));
   if (versions.size !== 1)
     throw new Error(
-      `plugin.json and package.json disagree (${[...versions].join(" vs ")}); fix them first`,
+      `the manifests disagree (${manifests.map((m) => `${m.rel} ${m.version}`).join(", ")}); fix them first`,
     );
   const current = manifests[0].version;
   const next = nextVersion(current, level);

@@ -1,4 +1,4 @@
-// The version bump keeps both manifests and the CHANGELOG in step.
+// The version bump keeps the manifests and the CHANGELOG in step.
 
 import { expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
@@ -98,4 +98,24 @@ test("mismatched manifests or an existing section stop the bump before any write
   expect(again.status).toBe(1);
   expect(again.stderr).toContain("0.6.0");
   expect(snapshot(taken)).toStrictEqual(untouched);
+});
+
+test("a bump also rewrites each bundled plugin's manifest", () => {
+  const root = project();
+  const rel = "plugins/extra/.claude-plugin/plugin.json";
+  fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, rel),
+    '{\n  "name": "extra",\n  "version": "0.6.0"\n}\n',
+  );
+  const res = bump(root, "patch");
+  expect(res.status, res.stderr).toBe(0);
+  expect(read(root, rel)).toMatch(/"version": "0\.6\.1"/);
+  fs.writeFileSync(
+    path.join(root, rel),
+    '{\n  "name": "extra",\n  "version": "0.1.0"\n}\n',
+  );
+  const off = bump(root, "patch");
+  expect(off.status).toBe(1);
+  expect(off.stderr).toMatch(/plugins\/extra\/.* 0\.1\.0/);
 });
