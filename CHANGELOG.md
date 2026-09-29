@@ -32,6 +32,12 @@ steps after each update.
 - Each `TaskCompleted` call adds a `task` line to `verdicts.jsonl` with the
   names of its input fields, because the hooks docs do not pin that input
   yet.
+- `scripts/usage-report.mjs` reports the cache write on the first call
+  after a prompt while the cache is warm, with and without hook context in
+  the history (`firstCallAfterPrompt`). On one week of sessions, the write
+  was 2.2% of the context with hook context and 1.6% without, so hook
+  context did not rewrite the cached prefix
+  ([#83913](https://github.com/anthropics/claude-code/issues/83913)).
 
 ### Fixed
 

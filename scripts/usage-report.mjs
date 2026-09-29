@@ -73,6 +73,10 @@ export function report(root, since) {
   const advisor = { calls: 0, cost: 0 };
   // Input tokens and cache reads, for all calls and for the main conversation.
   const cache = { all: [0, 0], main: [0, 0] };
+  // Issue #83913: the first call after a prompt, while the 5-minute cache is
+  // still warm, split by whether tool or prompt hook `additionalContext` is
+  // in the history. [calls, cache writes, context] per bucket.
+  const first = { with: [0, 0, 0], without: [0, 0, 0] };
   const files = fs
     .readdirSync(root, { recursive: true })
     .map(String)
@@ -83,6 +87,9 @@ export function report(root, since) {
     const type = agentType(file);
     const seen = new Set();
     let wake = false;
+    let hookContext = false;
+    let firstPending = false;
+    let lastCallAt = null;
     for (const line of fs.readFileSync(file, "utf8").split("\n")) {
       let entry;
       try {
@@ -90,6 +97,12 @@ export function report(root, since) {
       } catch {
         continue;
       }
+      if (
+        entry.type === "attachment" &&
+        entry.attachment?.type === "hook_additional_context" &&
+        entry.attachment.hookEvent !== "SessionStart"
+      )
+        hookContext = true;
       if (type === "main" && entry.type === "user") {
         const content = entry.message?.content;
         const toolResult =
@@ -99,6 +112,7 @@ export function report(root, since) {
         if (!toolResult && !(entry.isMeta && !entry.origin)) {
           const kind = entry.origin?.kind;
           wake = kind === "peer" || kind === "task-notification";
+          firstPending = true;
           if (new Date(entry.timestamp) >= since)
             turns[wake ? "wake" : "other"] += 1;
         }
@@ -109,6 +123,15 @@ export function report(root, since) {
       if (new Date(entry.timestamp) < since || seen.has(m.id)) continue;
       seen.add(m.id);
       const c = callCost(m.model, m.usage);
+      const at = Date.parse(entry.timestamp);
+      if (firstPending && lastCallAt !== null && at - lastCallAt < 300_000) {
+        const b = first[hookContext ? "with" : "without"];
+        b[0] += 1;
+        b[1] += m.usage.cache_creation_input_tokens ?? 0;
+        b[2] += c.context;
+      }
+      firstPending = false;
+      lastCallAt = at;
       for (const it of m.usage.iterations ?? []) {
         if (it.type !== "advisor_message") continue;
         const a = callCost(it.model, it).total;
@@ -145,6 +168,16 @@ export function report(root, since) {
     wakeShare: share(wakeCost),
     advisor: { calls: advisor.calls, share: share(advisor.cost) },
     cacheHitRate: { all: hit(cache.all), main: hit(cache.main) },
+    firstCallAfterPrompt: Object.fromEntries(
+      Object.entries(first).map(([k, [calls, write, context]]) => [
+        k,
+        {
+          calls,
+          avgWrite: calls ? Math.round(write / calls) : 0,
+          writeShare: context ? Math.round((1000 * write) / context) / 10 : 0,
+        },
+      ]),
+    ),
   };
 }
 
@@ -182,6 +215,10 @@ if (import.meta.main) {
     // The cost guide: below about 80%, something is breaking the cache.
     console.log(
       `Cache hit rate: ${r.cacheHitRate.all ?? "-"}% of input tokens (main conversation ${r.cacheHitRate.main ?? "-"}%). Below about 80%, something breaks the cache.`,
+    );
+    const f = r.firstCallAfterPrompt;
+    console.log(
+      `First warm call after a prompt: ${f.with.writeShare}% of context written with hook context in history (${f.with.calls} calls), ${f.without.writeShare}% without (${f.without.calls} calls)`,
     );
   }
 }

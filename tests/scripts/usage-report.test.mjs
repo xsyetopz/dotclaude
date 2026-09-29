@@ -91,3 +91,53 @@ test("advisor calls in `usage.iterations` count toward the cost", () => {
   expect(r.advisor.calls).toBe(1);
   expect(r.advisor.share).toBeCloseTo(95.2, 0);
 });
+
+test("first warm call after a prompt, split by hook context in history", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "usage-report-"));
+  fs.mkdirSync(path.join(root, "p"));
+  const at = (min) => new Date(Date.UTC(2026, 8, 27, 10, min)).toISOString();
+  const prompt = (min) =>
+    JSON.stringify({
+      type: "user",
+      timestamp: at(min),
+      message: { content: "go" },
+    });
+  const use = (id, min, write, read) =>
+    JSON.stringify({
+      type: "assistant",
+      timestamp: at(min),
+      message: {
+        id,
+        model: "claude-opus-5-5",
+        usage: {
+          cache_creation_input_tokens: write,
+          cache_read_input_tokens: read,
+        },
+      },
+    });
+  const hookContext = (event) =>
+    JSON.stringify({
+      type: "attachment",
+      timestamp: at(0),
+      attachment: { type: "hook_additional_context", hookEvent: event },
+    });
+  fs.writeFileSync(
+    path.join(root, "p", "s.jsonl"),
+    [
+      hookContext("SessionStart"),
+      prompt(0),
+      use("a", 0, 50_000, 0), // cold: no earlier call
+      use("b", 1, 1_000, 49_000), // not the first call after a prompt
+      prompt(2),
+      use("c", 2, 2_000, 48_000), // warm, no tool-hook context yet
+      hookContext("PostToolUse"),
+      prompt(3),
+      use("d", 3, 40_000, 10_000), // warm, with hook context
+      prompt(30),
+      use("e", 30, 60_000, 0), // cold: the cache expired
+    ].join("\n"),
+  );
+  const r = report(root, new Date("2026-09-20")).firstCallAfterPrompt;
+  expect(r.without).toEqual({ calls: 1, avgWrite: 2_000, writeShare: 4 });
+  expect(r.with).toEqual({ calls: 1, avgWrite: 40_000, writeShare: 80 });
+});
