@@ -48,6 +48,9 @@ steps after each update.
   `cat`, a `Read` after a `cat`, and a `cat` after a `Read`. Claude Code
   already skips a `Read` after a `Read`. A partial `Read`, a piped `cat`,
   and a read after compaction pass.
+- A usage note for Claude: on the third identical Bash command in a row
+  with identical output in one agent, it says to change the approach or
+  wait with `Monitor`. The `usage_notes` option turns it off.
 
 ### Fixed
 
