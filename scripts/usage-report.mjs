@@ -19,6 +19,10 @@
 // call after a compaction, and after a model switch, because each one starts
 // a new cache prefix. The report counts those apart from the rewrites that
 // nothing explains.
+// It also counts main sessions by Claude Code entrypoint (`cli`, `claude-vscode`,
+// `sdk-cli`, `sdk-py`), usage-limit hits (the synthetic assistant message
+// with `error: "rate_limit"` that Claude Code writes), `Skill` tool calls by
+// skill, and the dotclaude guard verdicts per rule from `verdicts.jsonl`.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -115,8 +119,43 @@ function briefStats(runs) {
     .sort((a, b) => b.runs - a.runs);
 }
 
-export function report(root, since) {
+// A deny reason starts with "blocked this <label>." Its next sentence names
+// the first rule that fired.
+function verdictRule(reason) {
+  const text = String(reason).replace(/^blocked this [\w ]+?\. /, "");
+  return text.match(/^.*?\.(?=\s|$)/)?.[0] ?? text;
+}
+
+function verdictCounts(file, since) {
+  let lines;
+  try {
+    lines = fs.readFileSync(file, "utf8").split("\n");
+  } catch {
+    return [];
+  }
+  const counts = new Map();
+  for (const line of lines) {
+    let v;
+    try {
+      v = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (!(new Date(v.time) >= since)) continue;
+    const rule = verdictRule(v.reason ?? "");
+    const key = `${v.level}\0${rule}`;
+    const c = counts.get(key) ?? { level: v.level, rule, count: 0 };
+    c.count += 1;
+    counts.set(key, c);
+  }
+  return [...counts.values()].sort((a, b) => b.count - a.count);
+}
+
+export function report(root, since, verdictsFile = null) {
   const byAgent = {};
+  const entrypoints = {};
+  const skills = {};
+  let limitHits = 0;
   let total = 0;
   let over150k = 0;
   let rewrites = 0;
@@ -158,6 +197,7 @@ export function report(root, since) {
     let lastCallAt = null;
     let lastModel = null;
     let compacted = false;
+    let entrypoint = null;
     for (const line of fs.readFileSync(file, "utf8").split("\n")) {
       let entry;
       try {
@@ -166,6 +206,22 @@ export function report(root, since) {
         continue;
       }
       if (
+        type === "main" &&
+        !entrypoint &&
+        entry.entrypoint &&
+        new Date(entry.timestamp) >= since
+      ) {
+        entrypoint = entry.entrypoint;
+        entrypoints[entrypoint] = (entrypoints[entrypoint] ?? 0) + 1;
+      }
+      if (
+        entry.type === "assistant" &&
+        entry.error === "rate_limit" &&
+        new Date(entry.timestamp) >= since
+      )
+        limitHits += 1;
+      if (
+        entry.attachment?.type === "hook_additional_context" &&
         entry.type === "attachment" &&
         entry.attachment?.type === "hook_additional_context" &&
         entry.attachment.hookEvent !== "SessionStart"
@@ -189,6 +245,19 @@ export function report(root, since) {
         continue;
       }
       const m = entry.message;
+      // One API message can span several entries, one per content block,
+      // so a tool call is counted by its own id and not by the message id.
+      if (entry.type === "assistant" && new Date(entry.timestamp) >= since)
+        for (const b of Array.isArray(m?.content) ? m.content : [])
+          if (
+            b.type === "tool_use" &&
+            b.name === "Skill" &&
+            b.input?.skill &&
+            !seen.has(b.id)
+          ) {
+            seen.add(b.id);
+            skills[b.input.skill] = (skills[b.input.skill] ?? 0) + 1;
+          }
       if (entry.type !== "assistant" || !m?.usage) continue;
       if (new Date(entry.timestamp) < since || seen.has(m.id)) continue;
       seen.add(m.id);
@@ -253,6 +322,12 @@ export function report(root, since) {
         cost: Math.round(cost * 100) / 100,
         share: share(cost),
       })),
+    entrypoints,
+    limitHits,
+    skills: Object.entries(skills)
+      .sort((a, b) => b[1] - a[1])
+      .map(([skill, uses]) => ({ skill, uses })),
+    verdicts: verdictsFile ? verdictCounts(verdictsFile, since) : [],
     over150kShare: share(over150k),
     rewriteShare: share(rewrites),
     expectedRewrites: expected,
@@ -288,7 +363,18 @@ if (import.meta.main) {
       "projects",
     ),
   );
-  const r = report(root, new Date(Date.now() - days * 86_400_000));
+  // The plugin data directory of the marketplace install.
+  const verdicts = opt(
+    "--verdicts",
+    path.join(
+      process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude"),
+      "plugins",
+      "data",
+      "dotclaude-dotclaude",
+      "verdicts.jsonl",
+    ),
+  );
+  const r = report(root, new Date(Date.now() - days * 86_400_000), verdicts);
   if (args.includes("--json")) {
     console.log(JSON.stringify(r, null, 2));
   } else {
@@ -316,6 +402,21 @@ if (import.meta.main) {
     console.log(
       `First warm call after a prompt: ${f.with.writeShare}% of context written with hook context in history (${f.with.calls} calls), ${f.without.writeShare}% without (${f.without.calls} calls)`,
     );
+    const eps = Object.entries(r.entrypoints)
+      .map(([k, n]) => `${k} ${n}`)
+      .join(", ");
+    console.log(`Sessions by entrypoint: ${eps || "-"}`);
+    console.log(`Usage-limit hits: ${r.limitHits}`);
+    console.log(
+      `Skill calls: ${r.skills.map((s) => `${s.skill} ${s.uses}`).join(", ") || "-"}`,
+    );
+    console.log(
+      `Guard verdicts per rule (${verdicts}): ${r.verdicts.length ? "" : "none"}`,
+    );
+    for (const v of r.verdicts.slice(0, 10))
+      console.log(
+        `  ${v.level.padEnd(10)} ${String(v.count).padStart(5)}  ${v.rule.slice(0, 100)}`,
+      );
     const other = new Map(r.turnCap.other.map((o) => [o.type, o]));
     console.log(
       `Runs that reached the turn-limit reserve: ${r.turnCap.capped.reduce((n, c) => n + c.runs, 0)} of ${r.turnCap.runs} (median files and list items in the brief, capped vs other)`,

@@ -216,3 +216,121 @@ test("full rewrites after the first call, a compaction, or a model switch are ex
   expect(r.expectedRewriteShare).toBeCloseTo(72.5, 0);
   expect(r.rewriteShare).toBeCloseTo(25.4, 0);
 });
+
+test("entrypoints, limit hits, skill use, and guard verdicts per rule", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "usage-report-"));
+  fs.mkdirSync(path.join(root, "p"));
+  const at = "2026-09-27T10:00:00.000Z";
+  const entry = (entrypoint, extra) =>
+    JSON.stringify({ type: "user", entrypoint, timestamp: at, ...extra });
+  const skill = (id, name) =>
+    JSON.stringify({
+      type: "assistant",
+      entrypoint: "cli",
+      timestamp: at,
+      message: {
+        id,
+        model: "claude-opus-5-5",
+        usage: {},
+        content: [
+          {
+            type: "tool_use",
+            id: `t-${id}`,
+            name: "Skill",
+            input: { skill: name },
+          },
+        ],
+      },
+    });
+  // Claude Code writes a limit hit as a synthetic assistant message.
+  const limit = JSON.stringify({
+    type: "assistant",
+    entrypoint: "cli",
+    timestamp: at,
+    error: "rate_limit",
+    isApiErrorMessage: true,
+    message: { model: "<synthetic>", content: [{ type: "text", text: "x" }] },
+  });
+  const old = JSON.stringify({
+    type: "assistant",
+    timestamp: "2026-09-01T10:00:00.000Z",
+    error: "rate_limit",
+    message: { model: "<synthetic>" },
+  });
+  fs.writeFileSync(
+    path.join(root, "p", "a.jsonl"),
+    [
+      entry("cli", { message: { content: "go" } }),
+      skill("m1", "dotclaude:write-tests"),
+      skill("m2", "dotclaude:write-tests"),
+      skill("m3", "commit"),
+      skill("m3", "commit"), // the same tool call in a streamed duplicate
+      limit,
+      old,
+    ].join("\n"),
+  );
+  // One main session per entrypoint, counted once however many entries it has.
+  for (const [i, e] of [
+    "claude-vscode",
+    "sdk-cli",
+    "sdk-py",
+    "sdk-py",
+  ].entries())
+    fs.writeFileSync(
+      path.join(root, "p", `b${i}.jsonl`),
+      [entry(e, { message: { content: "go" } }), entry(e, {})].join("\n"),
+    );
+  // A subagent transcript is not a session.
+  fs.mkdirSync(path.join(root, "p", "a", "subagents"), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, "p", "a", "subagents", "agent-x.jsonl"),
+    entry("cli", { message: { content: "brief" } }),
+  );
+  const verdicts = path.join(root, "verdicts.jsonl");
+  const v = (time, level, reason, tool = "Bash") =>
+    JSON.stringify({ time, session: "s", tool, level, reason, target: "t" });
+  fs.writeFileSync(
+    verdicts,
+    [
+      v(
+        at,
+        "deny",
+        "blocked this command. `rm -rf /` deletes the root. Use a path.",
+      ),
+      v(
+        at,
+        "deny",
+        "blocked this command. `rm -rf /` deletes the root. Other.",
+      ),
+      v(at, "ask", "`git push --force` rewrites the remote branch."),
+      v(at, "task", "completed", "TaskCompleted"),
+      v("2026-09-01T10:00:00.000Z", "deny", "blocked this command. Old."),
+      "not json",
+    ].join("\n"),
+  );
+  const r = report(root, new Date("2026-09-20"), verdicts);
+  expect(r.entrypoints).toEqual({
+    cli: 1,
+    "claude-vscode": 1,
+    "sdk-cli": 1,
+    "sdk-py": 2,
+  });
+  expect(r.limitHits).toBe(1);
+  expect(r.skills).toEqual([
+    { skill: "dotclaude:write-tests", uses: 2 },
+    { skill: "commit", uses: 1 },
+  ]);
+  expect(r.verdicts).toEqual([
+    { level: "deny", rule: "`rm -rf /` deletes the root.", count: 2 },
+    {
+      level: "ask",
+      rule: "`git push --force` rewrites the remote branch.",
+      count: 1,
+    },
+    { level: "task", rule: "completed", count: 1 },
+  ]);
+  // Without a verdict log the report still runs.
+  expect(
+    report(root, new Date("2026-09-20"), path.join(root, "none")).verdicts,
+  ).toEqual([]);
+});

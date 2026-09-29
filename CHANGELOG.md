@@ -20,6 +20,10 @@ steps after each update.
   `verdicts.jsonl` in the plugin data directory, one JSON line each, with
   the target cut to 200 characters. The log shows which rules fire too
   often. It moves to `verdicts.1.jsonl` above about 1 MB.
+- `scripts/usage-report.mjs` also counts the main sessions by entrypoint
+  (`cli`, `claude-vscode`, `sdk-cli`, `sdk-py`), the usage-limit hits, the
+  `Skill` calls by skill, and the guard verdicts per rule from
+  `verdicts.jsonl`. `--verdicts FILE` reads a different verdict log.
 - When you approve an ask and the tool runs, the guards do not ask again
   in that session for the same command, or the same edit, with the same
   reason. The guard then makes no decision, so your permission rules

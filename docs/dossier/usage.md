@@ -36,6 +36,8 @@ Three things drive the limit. Model choice is not one of them.
    preferred dotclaude agents in prose. That preference did not hold.
 
 `bun scripts/usage-report.mjs --days 7` repeats this scan on any machine.
+It also counts the sessions by entrypoint, the usage-limit hits, the skill
+calls, and the guard verdicts per rule.
 
 ### What This Means On Pro
 
