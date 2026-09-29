@@ -17,6 +17,11 @@ steps after each update.
   ran in the project, and the guard denied it for the project's ignored
   directories. After `cd $DIR`, the guard now treats the directory as
   unknown and does not guess the project root.
+- The Bash guard no longer treats a backtick in Python, Node, Bun, or Deno
+  code as a shell command. Before, a Python heredoc that wrote Markdown with
+  code spans, such as a CHANGELOG entry, was checked string by string as
+  shell commands and could be denied. Backticks still count in Perl, Ruby,
+  and PHP, where they run a shell.
 
 ## [0.11.1] - 2026-09-29
 

@@ -111,7 +111,11 @@ const DESTRUCTIVE_CODE =
   /(shutil\.rmtree|os\.(remove|unlink|rmdir|removedirs)|Path\([^)]*\)\.(unlink|rmdir)|\.rmSync|\.rmdirSync|\.unlinkSync|fs\.rm\(|fs\.promises\.rm|rimraf|FileUtils\.rm|File\.delete|unlink\s*\(|rmtree|Deno\.remove)/;
 
 const SHELL_OUT =
-  /(os\.system|subprocess|child_process|execSync|spawnSync|exec\(|system\(|popen|`|Bun\.\$|Deno\.Command|%x)/;
+  /(os\.system|subprocess|child_process|execSync|spawnSync|exec\(|system\(|popen|Bun\.\$|Deno\.Command)/;
+
+// Backticks and `%x` run a shell only in these languages. In Python they are
+// plain text (often Markdown), and in JavaScript they are template literals.
+const BACKTICK_SHELL = new Set(["perl", "ruby", "php"]);
 
 const STRING_LIT = /'([^'\\]*(?:\\.[^'\\]*)*)'|"([^"\\]*(?:\\.[^"\\]*)*)"/g;
 
@@ -129,7 +133,10 @@ function interpreterInline(cmd, ctx) {
   const out = [];
   if (DESTRUCTIVE_CODE.test(code))
     out.push(["warn", `inline \`${cmd.name}\` code deletes files`]);
-  if (SHELL_OUT.test(code)) {
+  if (
+    SHELL_OUT.test(code) ||
+    (BACKTICK_SHELL.has(cmd.name) && /`|%x/.test(code))
+  ) {
     for (const match of code.matchAll(STRING_LIT)) {
       const literal = match[1] ?? match[2] ?? "";
       if (literal.includes(" ")) out.push(...check(literal, ctx));
