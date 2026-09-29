@@ -14,7 +14,7 @@ subagent call to another model is blocked. `allowed_models` changes the list.
 | Opus 5.5 | the session, the advisor, and most agents | Many subscribers report that it gives the most quality per quota. Users report that it matches or beats Fable 5.1 on coding at a much lower cost. |
 | Sonnet 5.5 | cheap delegated subagent work, never the main model | Anthropic says that Sonnet 5 follows instructions literally and that Sonnet 5 prompts work on Sonnet 5.5. dotclaude uses it only for agents that get a full specification. Cache reads cost the same as on Opus 5.5, so it saves only on writes and output. |
 | Fable 5.1 | planning or advice in the main conversation, when Opus 5.5 did not solve the problem | Users report that it does too much: whole-file rewrites and invented tests. It costs 2.5 times Opus 5.5 per token and uses up to half of the weekly limit. |
-| Haiku 4.5 | background tasks, `integration-setup`, and `test-runner` | the latest small model, for scripted work that needs no judgment |
+| Haiku 4.5 | background tasks, `integration-setup`, and `test-runner` | The latest small model, for scripted work that needs no judgment. Anthropic recommends it for subagents that a larger model plans for. Its reliable knowledge ends in Feb 2025, so its agents read tool `--help` output instead of memory. |
 
 Older models are left out, because the latest model in each tier gives more
 quality for the same quota. The model roles come from community reports
@@ -62,6 +62,11 @@ Claude what the plan means for model choice.
   picker warns that `max` uses about 5.5 times the usage on Opus 5.5.
 - **Each agent file sets its effort,** because Claude Code ignores an effort
   passed at spawn time. See [Agents And Skills](agents-and-skills.md).
+- **Haiku 4.5 has no effort setting.** It uses extended thinking with a
+  token budget, not adaptive thinking (**official**,
+  [Haiku 4.5](https://platform.claude.com/docs/en/models/haiku-4-5/overview)).
+  So its agent files set no `effort`. `claude plugin validate` does not
+  catch this, so a test does.
 - **Do not set `CLAUDE_CODE_EFFORT_LEVEL`.** It overrides every agent's
   effort.
 
