@@ -1,5 +1,5 @@
 // dotclaude's status lines. The main line measures the session against
-// dotclaude's own bounds: context against the 200k handoff point, not the
+// dotclaude's own bounds: context against the 150k handoff point, not the
 // model's window; the prompt cache's expiry and hit ratio; and the usage
 // limits at the levels the usage notes use. The subagent rows measure each
 // agent's context against the subagent budget.
@@ -21,7 +21,7 @@ import {
   k,
   MAIN_CONTEXT_TOKENS,
   STALE_CACHE_CONTEXT_TOKENS,
-  SUBAGENT_CONTEXT_TOKENS,
+  subagentContextTokens,
   USAGE_LEVELS,
 } from "./_budget.mjs";
 
@@ -311,7 +311,12 @@ export function renderTask(task, { columns = 100, now = Date.now() } = {}) {
   if (model || effort)
     head.push(C.dim([model, effort].filter(Boolean).join(" ")));
   if (typeof task.tokenCount === "number" && task.tokenCount > 0)
-    head.push(contextPart(task.tokenCount, SUBAGENT_CONTEXT_TOKENS));
+    head.push(
+      contextPart(
+        task.tokenCount,
+        subagentContextTokens(task.agentType ?? task.name),
+      ),
+    );
   const time = elapsed(task.startTime, now);
   if (time) head.push(C.dim(time));
   let line = head.join(SEP);

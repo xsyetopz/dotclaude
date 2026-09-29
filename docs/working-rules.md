@@ -61,7 +61,7 @@ can check a rule, a hook enforces it, and the prompt only explains it
 | --- | --- |
 | Send independent tool calls in one response, and combine reads in one Bash call. | Each turn re-reads the whole context. Calls in one response take one turn ([turns, not tool calls](dossier/usage.md#turns-not-tool-calls)). |
 | Work in the main conversation. Use a subagent only when its output would fill the context, for parallel work that you ask for, or for a fresh-context review. | Subagents were over half of the measured week's cost ([Agents And Skills](agents-and-skills.md)). |
-| Near 200k tokens of context, write a handoff note or compact. | Calls over 150k tokens were 74.7% of the measured cost ([usage evidence](dossier/usage.md)). |
+| Near 150k tokens of context, write a handoff note or compact. | Calls over 150k tokens were 74.7% of the measured cost ([usage evidence](dossier/usage.md)). |
 | Use CodeGraph or a search tool before reading whole files. | Text that enters the context costs usage on every later turn. |
 
 ## Communication
@@ -81,7 +81,8 @@ skill and agent prompts) in ASD-STE100 Simplified Technical English. Each
 message gives the reason, says what to do, and uses no forceful words.
 
 **Why:** one meaning for each word and short sentences leave less to
-misread. Sonnet 5 follows instructions literally, so a rule must say exactly
+misread. Sonnet 5 follows instructions literally, and Sonnet 5.5 keeps its
+prompts, so a rule must say exactly
 what it covers ([Models](models.md)). Forceful words make Claude apply a rule
 too widely. This is Anthropic's prompting guidance and the maintainer's
 decision, not a measurement.

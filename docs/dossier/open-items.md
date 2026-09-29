@@ -7,8 +7,10 @@ source labels.
 
 - Re-run `bun scripts/usage-report.mjs --days 7` after a full week on the
   0.7.0 defaults. Compare it with [section 3](usage.md).
-- Decide the subagent budget after a week at 150k. A lower cap saves more per
-  run but hands off more often.
+- Measure a week at the lower bounds: compaction at 150k and the subagent
+  budget at 100k. A lower bound saves more per call but compacts and hands
+  off more often, and each new agent reads its files again. Compare the cost
+  and the number of handoffs with 2026-09-28 to 2026-09-29.
 - Check that a foreground agent stopped at its turn limit still gets a
   handoff. `hand-off-capped-agents.mjs` reads the task notification, which a
   foreground agent may not produce.
@@ -18,8 +20,10 @@ source labels.
   cover long sessions across a compaction, corrections over several turns,
   large repositories, and terse-answer requests.
 - Measure per-turn effort changes in one long-lived process.
-- Measure `implementer` on Opus 5.5 against Sonnet 5 on the same tasks. The
-  runs on this machine had different tasks (see
+- Measure `implementer` on Opus 5.5 against Sonnet 5.5 on the same tasks.
+  Anthropic recalibrated Sonnet 5.5's effort levels, so also re-check the
+  `low` and `medium` settings of the Sonnet agents. The runs on this machine
+  had different tasks (see
   [Model Fit](plans-and-models.md#model-fit)).
 - Load path-scoped `.claude/rules` files for Bash reads too.
   `load-nested-instructions.mjs` covers only `CLAUDE.md`, `.claude/CLAUDE.md`,

@@ -15,7 +15,7 @@ you choose and can review.
 
 ## Settings And Their Reasons
 
-- **Models:** Opus 5.5 for the session and the advisor, Sonnet 5 for
+- **Models:** Opus 5.5 for the session and the advisor, Sonnet 5.5 for
   built-in subagents, and Haiku 4.5 for background tasks. Fable is denied as a
   subagent model. Fast mode and `ultracode` are off, and
   `fastModePerSessionOptIn` makes each session start with fast mode off. See
@@ -23,9 +23,11 @@ you choose and can review.
 - **Effort:** `maxEffortLevel: "xhigh"` blocks `max`, which uses about 5.5
   times the usage on Opus 5.5. Opus 5.5 defaults to medium. See
   [Effort](models.md#effort).
-- **Compaction at 200k tokens on every plan** (`autoCompactWindow`). The
+- **Compaction at 150k tokens on every plan** (`autoCompactWindow`). The
   default on current models is about 967k. Each turn re-reads the whole
-  context, and calls over 150k tokens were 74.7% of the measured cost. The
+  context, and calls over 150k tokens were 74.7% of the measured cost. With
+  compaction at 200k, main-conversation calls over 150k were still 13% of the
+  cost. Claude Code accepts values from 100k to 1M. The
   bound is sized for Pro, and larger plans reach their limits later
   ([design](dossier/design.md)).
 - **No background re-reads:** prompt suggestions, automatic recaps, and idle

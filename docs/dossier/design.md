@@ -33,8 +33,8 @@ source labels.
 
 | # | Scenario | Bound | Mechanism | Check |
 | --- | --- | --- | --- | --- |
-| Q1 | A subagent works a long task | No tool call past 150k tokens of context. A fork gets its first call plus 50k. The report tool stays open. | `PreToolUse` hook on every tool | `tests/hooks/agent-budget.test.mjs` |
-| Q2 | The main conversation grows | Compaction at 200k | `autoCompactWindow` in the profile | `tests/lib/budget.test.mjs` |
+| Q1 | A subagent works a long task | No tool call past 100k tokens of context, or 150k for the reviewers. A fork gets its first call plus 50k. The report tool stays open. | `PreToolUse` hook on every tool | `tests/hooks/agent-budget.test.mjs` |
+| Q2 | The main conversation grows | Compaction at 150k | `autoCompactWindow` in the profile | `tests/lib/budget.test.mjs` |
 | Q3 | Claude spawns `general-purpose` | Refused, with the dotclaude agent for the job | `PreToolUse(Agent)` hook | `tests/hooks/model-lock.test.mjs` |
 | Q4 | Fan-out | 3 subagents, and 3 agents per workflow, at once | profile env | `tests/lib/budget.test.mjs` |
 | Q5 | dotclaude's text on every request | token limits in `LIMITS` | footprint test | `tests/lib/budget.test.mjs` |

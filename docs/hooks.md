@@ -141,8 +141,9 @@ are in `hooks/lib/_budget.mjs`.
 
 ### Usage Bounds (`turn_limit_handoff`, `subagent_guidance`)
 
-**What:** refuses a subagent's tool calls past 150k tokens of context or near
-its turn limit, so its next action is its report. The work continues in a
+**What:** refuses a subagent's tool calls past 100k tokens of context (150k
+for `code-reviewer`, `security-reviewer`, and `plan-reviewer`) or near its
+turn limit, so its next action is its report. The work continues in a
 fresh agent. Claude cannot spawn `general-purpose` agents, and subagents run
 in the foreground.
 
@@ -150,7 +151,12 @@ in the foreground.
 cost. `general-purpose` runs were 17.6% of it, in place of the cheaper
 dotclaude agents. Claude Code delivers nothing from an agent that it stops at
 its turn limit, so the agent must report first. Background agents started 501
-of 861 main turns. See [enforced bounds](dossier/design.md#2-enforced-bounds)
+of 861 main turns. With the bound at 150k, 34 of 69 `implementer` runs still
+passed 100k, and subagent calls from 100k to 150k were 9% of the cost. The
+reviewers keep 150k: a review finds defects across files only while the whole
+change is in view, a fresh reviewer writes that view to the cache again, and 1
+of 14 `code-reviewer` runs reached 150k. See
+[enforced bounds](dossier/design.md#2-enforced-bounds)
 and [usage evidence](dossier/usage.md).
 
 ### Usage Notes (`usage_notes`)

@@ -17,7 +17,7 @@ When the user must run a shell command, such as an interactive login, tell them 
 
 Follow `CLAUDE.md` and `AGENTS.md`. When the user's current message conflicts with one of them or with a skill, follow the user and name the conflict in one line. When the user wants a lasting rule, offer to add one line there.
 
-Claude Code compacts the conversation automatically near the context limit, so keep working at full depth however long it grows. Every turn re-reads the whole context, so once the main context passes about 200k tokens, write a handoff note or compact. A compaction summary keeps the user's requests and constraints in their own words. It also keeps decisions and rejected approaches with reasons, the current state, and open items. It keeps exact paths, commands, errors, and numbers. After compaction, re-read the files and rerun the last check before you rely on the summary.
+Claude Code compacts the conversation automatically near the context limit, so keep working at full depth however long it grows. Every turn re-reads the whole context, so once the main context passes about 150k tokens, write a handoff note or compact. A compaction summary keeps the user's requests and constraints in their own words. It also keeps decisions and rejected approaches with reasons, the current state, and open items. It keeps exact paths, commands, errors, and numbers. After compaction, re-read the files and rerun the last check before you rely on the summary.
 </claude_code>
 
 <tools>
@@ -27,7 +27,7 @@ CodeGraph indexes, background shells, worktrees, and the loaded plugin can lag t
 
 Keep the task list true for multi-step work: mark items done as they finish, and rewrite it when the user redirects. Propose plan mode only for multi-file changes or real design choices. Move the session into a worktree only when the user asks.
 
-Work in the main conversation by default. Delegate only work whose output would fill the context (a sweep across many files, a large log, a long test run). Also delegate parallel slices that the user asks for. Do not spawn a subagent to check your own work. Use a reviewer when the user asks, or when the change is large and risky. Subagents do not see this conversation: brief them with the goal, constraints, paths, and how to check the result, then check their claims. Spawn independent agents in one message so they run together. Pick the most specific dotclaude agent by its description (`mechanical-worker` for fully specified edits). Do not set `model`, except `model: "opus"` for an `implementer` slice that needs design judgment or that failed on its default model. Size each brief to finish well inside the agent's turn limit and about 150k tokens of context.
+Work in the main conversation by default. Delegate only work whose output would fill the context (a sweep across many files, a large log, a long test run). Also delegate parallel slices that the user asks for. Do not spawn a subagent to check your own work. Use a reviewer when the user asks, or when the change is large and risky. Subagents do not see this conversation: brief them with the goal, constraints, paths, and how to check the result, then check their claims. Spawn independent agents in one message so they run together. Pick the most specific dotclaude agent by its description (`mechanical-worker` for fully specified edits). Do not set `model`, except `model: "opus"` for an `implementer` slice that needs design judgment or that failed on its default model. Size each brief to finish well inside the agent's turn limit and about 100k tokens of context. Give an `implementer` one slice: one behavior and the few files it touches. Split larger work into slices and give each slice a new agent, because every turn re-reads the agent's whole context.
 </tools>
 
 <grounding>
@@ -85,5 +85,5 @@ Commit, push, or open pull requests only when the user asks. First read the stat
 </git>
 
 <environment>
-The current Claude models are Opus 5.5 (`claude-opus-5-5`), Sonnet 5 (`claude-sonnet-5`), Fable 5.1 (`claude-fable-5-1`), and Haiku 4.5 (`claude-haiku-4-5`). When code calls the Claude API, use these IDs, because IDs from memory go stale.
+The current Claude models are Opus 5.5 (`claude-opus-5-5`), Sonnet 5.5 (`claude-sonnet-5-5`), Fable 5.1 (`claude-fable-5-1`), and Haiku 4.5 (`claude-haiku-4-5`). When code calls the Claude API, use these IDs, because IDs from memory go stale.
 </environment>

@@ -3,7 +3,7 @@
 // reach only the main conversation, so subagents get this short version.
 
 import { definition, reserve } from "../lib/_agents.mjs";
-import { k, SUBAGENT_CONTEXT_TOKENS } from "../lib/_budget.mjs";
+import { k, subagentContextTokens } from "../lib/_budget.mjs";
 import { emit, option, run } from "../lib/_common.mjs";
 
 const GUIDANCE = `<working_conventions source="dotclaude">
@@ -36,12 +36,15 @@ function budget(limit) {
   return `<turn_budget source="dotclaude">You have at most ${limit} turns. ${cutoff}. If work remains, make the report a handoff, because a fresh agent will continue from it, not you. Include what is done and how you verified it, and the files you changed. Include anything half-edited, and what is left in order.</turn_budget>`;
 }
 
-// Every subagent, of any type, is refused tool calls past this context size.
-const CONTEXT = `<context_budget source="dotclaude">Every turn re-reads your whole context. Once it passes about ${k(SUBAGENT_CONTEXT_TOKENS)} tokens, tool calls are refused and your next action must be your report. To stay under it, read files by line range. Keep command output short. Do not re-read what you already have.</context_budget>`;
+// Every subagent, of any type, is refused tool calls past its context bound.
+const context = (agentType) =>
+  `<context_budget source="dotclaude">Every turn re-reads your whole context. Once it passes about ${k(subagentContextTokens(agentType))} tokens, tool calls are refused and your next action must be your report. To stay under it, read files by line range. Keep command output short. Do not re-read what you already have.</context_budget>`;
 
 // Anthropic's Sonnet 5 prompting guide: it "does not silently generalize an
-// instruction from one item to another", most of all at lower effort.
-const SONNET = `<scope_note source="dotclaude">Apply each instruction in your brief to everything it covers, not only the first match or file. Name in your report anything you left out and why.</scope_note>`;
+// instruction from one item to another", most of all at lower effort. The
+// Sonnet 5.5 guide keeps Sonnet 5 prompts, and says that at `low` effort it
+// sometimes reports a change as done without a check that exercises it.
+const SONNET = `<scope_note source="dotclaude">Apply each instruction in your brief to everything it covers, not only the first match or file. Name in your report anything you left out and why. Before you report a code change as done, run a check that exercises it: the project's tests, type-checker, or build, or the changed command. A syntax-only check, or a check command that did not start, is not a check. If no real check can run, name the check you did not run and why.</scope_note>`;
 
 run((data) => {
   if (!option("subagent_guidance")) return;
@@ -50,7 +53,7 @@ run((data) => {
   const parts = OWN_PROMPT.has(type) ? [] : [GUIDANCE];
   const def = definition(agentType);
   if (def?.maxTurns) parts.push(budget(def.maxTurns));
-  if (option("turn_limit_handoff")) parts.push(CONTEXT);
+  if (option("turn_limit_handoff")) parts.push(context(agentType));
   if (/sonnet/.test(def?.model ?? "")) parts.push(SONNET);
   if (!parts.length) return;
   emit({

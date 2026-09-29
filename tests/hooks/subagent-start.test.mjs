@@ -1,7 +1,11 @@
 // Subagent start guidance injection.
 
 import { expect, test } from "bun:test";
-import { k, SUBAGENT_CONTEXT_TOKENS } from "../../hooks/lib/_budget.mjs";
+import {
+  k,
+  REVIEWER_CONTEXT_TOKENS,
+  SUBAGENT_CONTEXT_TOKENS,
+} from "../../hooks/lib/_budget.mjs";
 import { hook } from "../support/hooks.mjs";
 
 const CONVENTIONS = '<working_conventions source="dotclaude">';
@@ -50,6 +54,9 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
     const text = start(agentType);
     expect(text, agentType).not.toContain(CONVENTIONS);
     expect(numbers(block(text, "turn_budget")), agentType).toContain(limit);
+    expect(block(text, "context_budget"), agentType).toContain(
+      k(REVIEWER_CONTEXT_TOKENS),
+    );
   }
   expect(
     hook(

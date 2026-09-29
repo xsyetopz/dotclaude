@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // PreToolUse (all tools) in subagents: refuse tool calls once the agent's
-// context passes dotclaude's subagent budget (any agent type), or once only a
+// context passes dotclaude's budget for its type (any agent type), or once only a
 // few turns of a dotclaude agent's `maxTurns` remain, so the next action is a
 // report. Every turn re-reads the whole context, so most of a long agent's
 // cost comes from its late turns; a fresh agent briefed from the report
@@ -18,7 +18,7 @@ import {
 import {
   k,
   SUBAGENT_CONTEXT_GROWTH,
-  SUBAGENT_CONTEXT_TOKENS,
+  subagentContextTokens,
 } from "../lib/_budget.mjs";
 import { option, preToolDecision, run } from "../lib/_common.mjs";
 
@@ -41,7 +41,7 @@ run((data) => {
   if (context) {
     // A fork starts with the parent's context, so it gets room to grow.
     const cap = Math.max(
-      SUBAGENT_CONTEXT_TOKENS,
+      subagentContextTokens(data.agent_type),
       context.first + SUBAGENT_CONTEXT_GROWTH,
     );
     if (context.last >= cap) {

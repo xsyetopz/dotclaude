@@ -65,6 +65,37 @@ test("session start says when secret redaction has no gitleaks", () => {
   expect(start("false")).toBe(null);
 });
 
+test("session start says when Claude Code is older than the plugin needs", () => {
+  // A stand-in for the running binary that prints a given version.
+  const claude = (output) => {
+    const file = path.join(tmp("dotclaude-claude-"), "claude");
+    fs.writeFileSync(file, `#!/bin/sh\necho "${output}"\n`);
+    fs.chmodSync(file, 0o755);
+    return file;
+  };
+  const start = (execpath) =>
+    hook(
+      "session-start/warn-incomplete-setup.mjs",
+      { hook_event_name: "SessionStart", source: "startup" },
+      {
+        CLAUDE_CODE_EXECPATH: execpath,
+        CLAUDE_CODE_EFFORT_LEVEL: "",
+        DOTCLAUDE_SYSTEM_PROMPT: "0",
+        DOTCLAUDE_SETTINGS_PROFILE: profileStamp(),
+        CLAUDE_PLUGIN_OPTION_SECRET_REDACTION: "false",
+      },
+    );
+  const old = start(claude("2.1.283 (Claude Code)")).systemMessage;
+  expect(old).toContain("2.1.284 or later");
+  expect(old).toContain("`claude update`");
+  // Numeric order, not string order: 2.1.1000 is newer than 2.1.284.
+  expect(start(claude("2.1.284 (Claude Code)"))).toBe(null);
+  expect(start(claude("2.1.1000 (Claude Code)"))).toBe(null);
+  expect(start(claude("2.2.0 (Claude Code)"))).toBe(null);
+  // An unknown version gives no notice, because the check cannot tell.
+  expect(start(claude("not a version"))).toBe(null);
+});
+
 test("Fable sessions get the Fable adjustments; Opus sessions get nothing", () => {
   const start = (model, source = "startup") =>
     hook("session-start/add-session-notes.mjs", {
@@ -95,7 +126,7 @@ test("a switch to Fable adds its adjustments and a switch away retracts them", (
   expect(away.additionalContext).toMatch(/fable_adjustments/);
   expect(away.additionalContext).not.toMatch(/<\/fable_adjustments>/);
   expect(away.additionalContext).not.toBe(toFable.additionalContext);
-  expect(sw("claude-sonnet-5", "claude-opus-5-5")).toBe(null);
+  expect(sw("claude-sonnet-5-5", "claude-opus-5-5")).toBe(null);
 });
 
 test("non-default browser options reach Claude through the session notes", () => {

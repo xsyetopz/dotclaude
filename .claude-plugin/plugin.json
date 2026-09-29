@@ -1,8 +1,8 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.10.2",
-  "description": "Guardrails, working conventions, and a set of task agents for Claude Code: destructive-command and test-weakening guards that stay quiet on recoverable actions in auto mode, a verify-before-stop gate for the session and its subagents, compaction carry-over, a fast-mode/model lock (Opus 5.5, Sonnet 5, Fable 5.1, Haiku 4.5) with an xhigh effort cap that adapts to the Claude plan, reviewers, workers, and researchers on tiered models and effort, and an always-on output style.",
+  "version": "0.11.0",
+  "description": "Guardrails, working conventions, and a set of task agents for Claude Code: destructive-command and test-weakening guards that stay quiet on recoverable actions in auto mode, a verify-before-stop gate for the session and its subagents, compaction carry-over, a fast-mode/model lock (Opus 5.5, Sonnet 5.5, Fable 5.1, Haiku 4.5) with an xhigh effort cap that adapts to the Claude plan, reviewers, workers, and researchers on tiered models and effort, and an always-on output style.",
   "author": {
     "name": "xsyetopz"
   },
@@ -86,7 +86,7 @@
     "turn_limit_handoff": {
       "type": "boolean",
       "title": "Hand off agents at their turn or context limit",
-      "description": "Once any subagent's context passes about 150k tokens, or a dotclaude agent nears its turn limit, refuse its tool calls. Its next action is then a report. When a subagent stops at its turn limit anyway, rewrite the first message to it into a request for a handoff report. Block any later messages to it. The work then continues in a fresh agent with a small context, instead of a resumed one that re-reads its whole history on every turn.",
+      "description": "Once any subagent's context passes about 100k tokens (150k for the dotclaude reviewers), or a dotclaude agent nears its turn limit, refuse its tool calls. Its next action is then a report. When a subagent stops at its turn limit anyway, rewrite the first message to it into a request for a handoff report. Block any later messages to it. The work then continues in a fresh agent with a small context, instead of a resumed one that re-reads its whole history on every turn.",
       "default": true
     },
     "model_lock": {
@@ -111,7 +111,7 @@
       "type": "string",
       "title": "Allowed models",
       "description": "Comma-separated model IDs or version prefixes the model lock permits.",
-      "default": "claude-opus-5-5,claude-sonnet-5,claude-fable-5-1,claude-haiku-4-5"
+      "default": "claude-opus-5-5,claude-sonnet-5-5,claude-fable-5-1,claude-haiku-4-5"
     },
     "commit_hygiene": {
       "type": "boolean",

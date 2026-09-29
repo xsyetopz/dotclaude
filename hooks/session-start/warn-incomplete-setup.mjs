@@ -2,7 +2,8 @@
 
 // SessionStart(startup|resume): tell the user (not Claude) when the settings
 // profile is missing or stale, when a global effort override flattens the
-// agents' effort levels, or when the Bun on PATH is older than the hooks need.
+// agents' effort levels, or when Claude Code or the Bun on PATH is older than
+// the plugin needs.
 // It also updates the launcher's copy of the dotclaude system prompt when this
 // plugin version ships a different one, and says when the session started
 // without that prompt: the launcher is not installed, or an IDE or another
@@ -20,6 +21,7 @@ import {
   syncSubagentStatusLine,
 } from "../lib/_status-line.mjs";
 import {
+  claudeVersion,
   installedPrompt,
   LAUNCHER_BEGIN,
   shellStartupFile,
@@ -27,6 +29,8 @@ import {
 } from "../lib/_system-prompt.mjs";
 
 const MIN_BUN = "1.4.2";
+// The first release with Sonnet 5.5, which the agents and the profile use.
+const MIN_CLAUDE_CODE = "2.1.284";
 
 function readText(file) {
   try {
@@ -69,6 +73,12 @@ run(() => {
       `CLAUDE_CODE_EFFORT_LEVEL=${env.CLAUDE_CODE_EFFORT_LEVEL} overrides every subagent's own effort, so the dotclaude agents all run at that level. Unset it and use /effort for the session instead.`,
     );
   }
+  const version = claudeVersion();
+  if (version && olderThan(version, MIN_CLAUDE_CODE)) {
+    notices.push(
+      `it needs Claude Code ${MIN_CLAUDE_CODE} or later, and this session runs ${version}. Run \`claude update\`, then restart Claude Code.`,
+    );
+  }
   if (typeof Bun !== "undefined" && olderThan(Bun.version, MIN_BUN)) {
     notices.push(
       `its hooks need Bun ${MIN_BUN} or later, and ${Bun.version} is on PATH. Run \`bun upgrade\`.`,
@@ -100,7 +110,7 @@ run(() => {
   }
   syncStatusLine();
   syncSubagentStatusLine();
-  if (syncPrompt() === "content") {
+  if (syncPrompt(undefined, version) === "content") {
     notices.push(
       "this plugin version changed the dotclaude system prompt. The launcher's copy is updated, and new sessions use it.",
     );

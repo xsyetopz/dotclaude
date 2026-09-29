@@ -3,8 +3,12 @@
 // notes, and the settings profile repeat these numbers; a test keeps them in
 // step with this file.
 
-/** Main-conversation context (tokens) at which to hand off or compact. */
-export const MAIN_CONTEXT_TOKENS = 200_000;
+/**
+ * Main-conversation context (tokens) at which to hand off or compact. From
+ * 2026-09-28 to 2026-09-29, with compaction at 200k, main-conversation calls
+ * above 150k were 13% of all cost. Claude Code accepts 100k to 1M.
+ */
+export const MAIN_CONTEXT_TOKENS = 150_000;
 
 /**
  * Main-conversation context (tokens) at which a prompt that arrives after the
@@ -17,9 +21,31 @@ export const STALE_CACHE_CONTEXT_TOKENS = 100_000;
 /**
  * Subagent context (tokens) at which tool calls are refused and the agent
  * reports. In the week of 2026-09-21, 83% of implementer and 85% of
- * general-purpose cost came from calls above 100k.
+ * general-purpose cost came from calls above 100k. From 2026-09-28 to
+ * 2026-09-29, with the bound at 150k, 34 of 69 implementer runs passed 100k,
+ * and subagent calls from 100k to 150k were 9% of all cost.
  */
-export const SUBAGENT_CONTEXT_TOKENS = 150_000;
+export const SUBAGENT_CONTEXT_TOKENS = 100_000;
+
+/**
+ * The context bound for the read-only reviewers. A review finds defects that
+ * cross files only while the whole change is in view, and a fresh reviewer
+ * writes that view to the cache again. With the 150k bound, 1 of 14
+ * code-reviewer runs from 2026-09-28 to 2026-09-29 reached it.
+ */
+export const REVIEWER_CONTEXT_TOKENS = 150_000;
+
+const REVIEWERS = new Set([
+  "code-reviewer",
+  "security-reviewer",
+  "plan-reviewer",
+]);
+
+/** The context bound for a subagent type, with or without its plugin prefix. */
+export const subagentContextTokens = (agentType) =>
+  REVIEWERS.has(String(agentType ?? "").replace(/^dotclaude:/, ""))
+    ? REVIEWER_CONTEXT_TOKENS
+    : SUBAGENT_CONTEXT_TOKENS;
 
 /**
  * Growth allowed over a run's first call when that call is already large

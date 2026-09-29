@@ -2,7 +2,7 @@
 name: docs-writer
 description: Updates docs (README, usage docs, changelog, docstrings, examples) to match a code change. Use after a change to public behavior, commands, config, or APIs. Give it the change (diff or summary) and which docs the project keeps.
 disallowedTools: Agent
-model: claude-sonnet-5
+model: claude-sonnet-5-5
 effort: medium
 maxTurns: 40
 color: pink

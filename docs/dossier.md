@@ -22,7 +22,8 @@ Read only the part that answers your question.
 
 ## Sources
 
-The facts date from 2026-09-26 to 2026-09-28 and Claude Code 2.1.283. Each
+The facts date from 2026-09-26 to 2026-09-29 and Claude Code 2.1.283 to
+2.1.284. Each
 fact carries one of these source labels:
 
 | Label | Source |

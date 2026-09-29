@@ -58,7 +58,7 @@ test("apply-settings keeps a user's own sonnet mapping and leaves Fable out on P
   fs.writeFileSync(
     file,
     JSON.stringify({
-      env: { ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-5" },
+      env: { ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-5-5" },
     }),
   );
   fs.writeFileSync(
@@ -72,18 +72,18 @@ test("apply-settings keeps a user's own sonnet mapping and leaves Fable out on P
   );
   const preview = run("apply-settings.mjs", home);
   expect(preview).toContain(
-    'availableModels: add "claude-opus-5-5", "claude-sonnet-5", "claude-haiku-4-5"\n',
+    'availableModels: add "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5"\n',
   );
   expect(preview).not.toContain("claude-fable");
   run("apply-settings.mjs", home, "--apply");
   const merged = JSON.parse(fs.readFileSync(file, "utf8"));
   expect(merged.availableModels).toStrictEqual([
     "claude-opus-5-5",
-    "claude-sonnet-5",
+    "claude-sonnet-5-5",
     "claude-haiku-4-5",
   ]);
-  expect(merged.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe("claude-sonnet-5");
-  expect(merged.autoCompactWindow).toBe(200000);
+  expect(merged.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe("claude-sonnet-5-5");
+  expect(merged.autoCompactWindow).toBe(150000);
 });
 
 test("apply-settings replaces the model policy: availableModels and Agent(model:) denies", () => {
@@ -92,7 +92,7 @@ test("apply-settings replaces the model policy: availableModels and Agent(model:
   fs.writeFileSync(
     file,
     JSON.stringify({
-      availableModels: ["claude-opus-5-5", "claude-sonnet-5"],
+      availableModels: ["claude-opus-5-5", "claude-sonnet-5-5"],
       env: {
         KEEP_ME: "1",
       },
@@ -114,7 +114,7 @@ test("apply-settings replaces the model policy: availableModels and Agent(model:
   const merged = JSON.parse(fs.readFileSync(file, "utf8"));
   expect(merged.availableModels).toStrictEqual([
     "claude-opus-5-5",
-    "claude-sonnet-5",
+    "claude-sonnet-5-5",
     "claude-fable-5-1",
     "claude-haiku-4-5",
   ]);
@@ -129,7 +129,7 @@ test("apply-settings replaces the model policy: availableModels and Agent(model:
     "Agent(model:claude-haiku*)",
   ])
     expect(!merged.permissions.deny.includes(gone), gone).toBeTruthy();
-  expect(merged.autoCompactWindow).toBe(200000);
+  expect(merged.autoCompactWindow).toBe(150000);
   expect(merged.env.CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT).toBe("1");
   expect(merged.env.CLAUDE_CODE_GLOB_NO_IGNORE).toBe("false");
   expect(merged.promptSuggestionEnabled).toBe(false);

@@ -3,7 +3,7 @@
 // `claude-opus-5-5-20260901`), or a full model ID.
 
 export const DEFAULT_ALLOWED =
-  "claude-opus-5-5,claude-sonnet-5,claude-fable-5-1,claude-haiku-4-5";
+  "claude-opus-5-5,claude-sonnet-5-5,claude-fable-5-1,claude-haiku-4-5";
 const FAMILIES = new Set(["opus", "sonnet", "haiku", "fable", "mythos"]);
 const ALWAYS = new Set(["", "inherit", "default"]);
 

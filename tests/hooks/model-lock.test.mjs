@@ -17,7 +17,7 @@ test("model lock denies disallowed subagent models and switches", () => {
       },
       env,
     );
-  for (const model of ["sonnet", "claude-sonnet-5"])
+  for (const model of ["sonnet", "claude-sonnet-5-5"])
     expect(agent(model, { ANTHROPIC_DEFAULT_SONNET_MODEL: "" })).toBe(null);
   // Fable is never a subagent model, even where the plan includes it.
   expect(
@@ -41,7 +41,7 @@ test("model lock denies disallowed subagent models and switches", () => {
     "`claude-opus-4-1`",
   );
   expect(old.hookSpecificOutput.permissionDecisionReason).toContain(
-    "`claude-sonnet-5`",
+    "`claude-sonnet-5-5`",
   );
   expect(old.hookSpecificOutput.permissionDecisionReason).toContain(
     "`dotclaude:mechanical-worker`",
@@ -76,7 +76,7 @@ test("model lock denies disallowed subagent models and switches", () => {
   expect(
     hook("pre-model-switch/restrict-models.mjs", {
       hook_event_name: "PreModelSwitch",
-      to_model: "claude-sonnet-5",
+      to_model: "claude-sonnet-5-5",
     }),
   ).toBe(null);
   expect(

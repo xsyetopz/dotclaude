@@ -9,7 +9,7 @@
     "CLAUDE_CODE_GLOB_NO_IGNORE": "false",
     "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "3",
     "CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT": "1",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-5",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-5-5",
     "CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS": "3",
     "DISABLE_ERROR_REPORTING": "1",
     "DISABLE_FEEDBACK_COMMAND": "1"
@@ -17,14 +17,14 @@
   "fastMode": false,
   "fastModePerSessionOptIn": true,
   "maxEffortLevel": "xhigh",
-  "autoCompactWindow": 200000,
+  "autoCompactWindow": 150000,
   "promptSuggestionEnabled": false,
   "awaySummaryEnabled": false,
   "crossSessionInbound": "hold",
   "model": "claude-opus-5-5",
   "availableModels": [
     "claude-opus-5-5",
-    "claude-sonnet-5",
+    "claude-sonnet-5-5",
     "claude-fable-5-1",
     "claude-haiku-4-5"
   ],

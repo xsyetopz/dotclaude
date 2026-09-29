@@ -93,7 +93,7 @@ test("fableAccess matches the plans Anthropic includes Fable in", () => {
 test("planAllowlist drops Fable only where the plan cannot run it", () => {
   const pro = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(PRO) });
   expect(!pro.list.some((m) => /fable/.test(m))).toBeTruthy();
-  expect(pro.list.includes("claude-sonnet-5")).toBeTruthy();
+  expect(pro.list.includes("claude-sonnet-5-5")).toBeTruthy();
   // The note names the plan that caused the removal.
   expect(pro.note).toContain("Claude Pro");
   const max = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(MAX_20X) });
@@ -153,7 +153,7 @@ test("on Pro without extra usage, a switch to Fable is blocked with the reason",
   );
   expect(out.decision).toBe("block");
   // The reason lists what is allowed, without Fable, and names the plan.
-  expect(out.reason).toContain("claude-sonnet-5");
+  expect(out.reason).toContain("claude-sonnet-5-5");
   expect(out.reason).not.toMatch(/fable/);
   expect(out.reason).toContain("Claude Pro");
   expect(

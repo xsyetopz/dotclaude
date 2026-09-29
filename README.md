@@ -42,7 +42,7 @@ For the optional integrations (CodeGraph, tgrep, fast-compact, gitleaks), run
 `/dotclaude:setup-integrations`, or ask Claude, for example "set up codegraph
 for this project".
 
-Requirements: Claude Code 2.1.283 or later, [Bun](https://bun.sh) 1.4.2 or
+Requirements: Claude Code 2.1.284 or later, [Bun](https://bun.sh) 1.4.2 or
 later on `PATH`, and git.
 
 ## Update
@@ -82,7 +82,7 @@ message starts with `[dotclaude]`. To run a command that a guard denied, type
 
 ### [Models](docs/models.md)
 
-Opus 5.5 for the session, Sonnet 5 for cheap delegated work, Haiku 4.5 for
+Opus 5.5 for the session, Sonnet 5.5 for cheap delegated work, Haiku 4.5 for
 the simplest tasks, and Fable 5.1 only for planning in the main conversation.
 Fast mode is off, and `max` effort is blocked.
 
@@ -99,9 +99,8 @@ reports that start with the outcome.
 | `code-reviewer`, `security-reviewer`, `plan-reviewer`, `debugger`, `performance-engineer` | Opus 5.5, high |
 | `test-writer`, `ci-investigator`, `dependency-auditor` | Opus 5.5, medium |
 | `history-investigator`, `web-researcher` | Opus 5.5, low |
-| `implementer`, `docs-writer` | Sonnet 5, medium |
-| `mechanical-worker`, `test-runner` | Sonnet 5, low |
-| `integration-setup` | Haiku 4.5 |
+| `implementer`, `docs-writer`, `mechanical-worker` | Sonnet 5.5, medium |
+| `test-runner`, `integration-setup` | Haiku 4.5 |
 
 | Skill | Use |
 | --- | --- |
@@ -114,13 +113,13 @@ reports that start with the outcome.
 ### [Status Line](docs/status-line.md)
 
 Two rows: where the session works, and what it uses. The context bar measures
-against the 200k handoff point. The cache row shows when the prompt cache
+against the 150k handoff point. The cache row shows when the prompt cache
 expires. Usage limits show from 75%. A row that is too wide continues on the
 next row, so nothing is cut off.
 
 ### [Settings Profile](docs/settings-profile.md)
 
-Compaction at 200k tokens, no background requests that re-read the context,
+Compaction at 150k tokens, no background requests that re-read the context,
 3 subagents at once, read denies for `.env` files and credentials, auto
 memory off, and a shell launcher for the system prompt. Each setting has its
 reason on the page.

@@ -28,19 +28,21 @@ Anthropic's guidance is to start low and raise effort on failure.
 | --- | --- | --- | --- |
 | `code-reviewer`, `security-reviewer`, `plan-reviewer` | Opus 5.5, high | fresh-context review of a change, its security, or a plan | Review is judgment. A fresh context does not share the author's assumptions. |
 | `debugger`, `performance-engineer` | Opus 5.5, high | root cause by measurement, speed or memory work | A wrong root cause costs more than the extra effort. |
-| `implementer` | Sonnet 5, medium | one well-scoped piece of work | It follows a plan. `model: "opus"` gives it design judgment when a slice needs it. |
+| `implementer` | Sonnet 5.5, medium | one well-scoped piece of work | It follows a plan. `model: "opus"` gives it design judgment when a slice needs it. |
 | `test-writer` | Opus 5.5, medium | tests in the repository's style | Expected values need judgment that is independent of the code. |
 | `ci-investigator`, `dependency-auditor` | Opus 5.5, medium | CI failures, dependency health | They keep long logs out of the main context. |
-| `mechanical-worker`, `test-runner` | Sonnet 5, low | fully specified bulk edits, test runs without log noise | No design judgment. Anthropic keeps `low` for short, scoped tasks. |
-| `docs-writer` | Sonnet 5, medium | docs that match a change | The change gives the content. |
+| `mechanical-worker` | Sonnet 5.5, medium | fully specified bulk edits | No design judgment. Anthropic's start for well-specified agentic coding on Sonnet 5.5 is `medium`, and at `low` it sometimes skips the check. |
+| `test-runner` | Haiku 4.5 | test runs without log noise | It runs one command, searches the log, and copies the failure lines. It changes no code, so it needs no Sonnet judgment. Haiku costs half as much per token. It loads no `CLAUDE.md` at start and has no MCP tool, so its context starts small. |
+| `docs-writer` | Sonnet 5.5, medium | docs that match a change | The change gives the content. |
 | `history-investigator` | Opus 5.5, low | why code looks the way it does | Reading and summary. |
 | `web-researcher` | Opus 5.5, low | web answers with sources, read from raw pages | Reading and summary. Raw pages keep the source exact. |
 | `integration-setup` | Haiku 4.5 | integration install and setup | Scripted steps. |
 
-**Why `implementer` is on Sonnet 5:** on this machine, 169 `implementer` runs
+**Why `implementer` is on Sonnet 5.5:** on this machine, 169 `implementer` runs
 on Opus 5.5 took 66 tool calls and $2.50 at the median, and 28 runs on
 Sonnet 5 took 50 calls and $1.03 (**measured**). The tasks were not the same,
-so this is not a controlled test. See
+so this is not a controlled test. Sonnet 5.5 replaced Sonnet 5 at the same
+prices, and its runs are not measured yet. See
 [Model Fit](dossier/plans-and-models.md#model-fit).
 
 **Why subagents run in the foreground:** a background agent wakes the main

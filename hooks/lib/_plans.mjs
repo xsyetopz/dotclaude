@@ -162,7 +162,7 @@ export function planNote(env = process.env) {
       break;
     case "api":
       lines.push(
-        "Usage is billed per token. For input, output, and cache writes, Fable 5.1 costs 2.5x Opus 5.5, Opus 5.5 2x Sonnet 5, and Sonnet 5 2x Haiku 4.5. Cache reads are most of a long session's cost. They cost $0.25 per million on Fable 5.1, $0.20 on Opus 5.5 and Sonnet 5, and $0.10 on Haiku 4.5.",
+        "Usage is billed per token. For input, output, and cache writes, Fable 5.1 costs 2.5x Opus 5.5, Opus 5.5 2x Sonnet 5.5, and Sonnet 5.5 2x Haiku 4.5. Cache reads are most of a long session's cost. They cost $0.25 per million on Fable 5.1, $0.20 on Opus 5.5 and Sonnet 5.5, and $0.10 on Haiku 4.5.",
       );
       break;
   }

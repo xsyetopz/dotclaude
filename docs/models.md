@@ -12,9 +12,9 @@ subagent call to another model is blocked. `allowed_models` changes the list.
 | Model | Role | Why |
 | --- | --- | --- |
 | Opus 5.5 | the session, the advisor, and most agents | Many subscribers report that it gives the most quality per quota. Users report that it matches or beats Fable 5.1 on coding at a much lower cost. |
-| Sonnet 5 | cheap delegated subagent work, never the main model | Anthropic says that it follows instructions literally. dotclaude uses it only for agents that get a full specification. Cache reads cost the same as on Opus 5.5, so it saves only on writes and output. |
+| Sonnet 5.5 | cheap delegated subagent work, never the main model | Anthropic says that Sonnet 5 follows instructions literally and that Sonnet 5 prompts work on Sonnet 5.5. dotclaude uses it only for agents that get a full specification. Cache reads cost the same as on Opus 5.5, so it saves only on writes and output. |
 | Fable 5.1 | planning or advice in the main conversation, when Opus 5.5 did not solve the problem | Users report that it does too much: whole-file rewrites and invented tests. It costs 2.5 times Opus 5.5 per token and uses up to half of the weekly limit. |
-| Haiku 4.5 | background tasks and `integration-setup` | the latest small model, for the simplest single-turn work |
+| Haiku 4.5 | background tasks, `integration-setup`, and `test-runner` | the latest small model, for scripted work that needs no judgment |
 
 Older models are left out, because the latest model in each tier gives more
 quality for the same quota. The model roles come from community reports
@@ -68,6 +68,8 @@ Claude what the plan means for model choice.
 ## Session Notes For Models
 
 On Fable 5.1, a session note adds that model's adjustments. Agents on
-Sonnet 5 get a reminder to apply each instruction to everything it covers,
-because Sonnet 5 follows instructions literally. Every dotclaude agent learns
+Sonnet 5.5 get a reminder to apply each instruction to everything it covers,
+because Sonnet 5 follows instructions literally. The reminder also tells
+them to run a real check before "done", because Anthropic says Sonnet 5.5 at
+`low` effort sometimes skips it. Every dotclaude agent learns
 its turn limit at start, so it can report before the limit stops it.

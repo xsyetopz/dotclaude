@@ -99,10 +99,15 @@ test("other agents, missing transcripts, and the option switch pass", () => {
 });
 
 test("any subagent is refused tools past the context budget, a fork past its growth", () => {
-  const grown = [...brief, call(0), result(), call(1, 150_000), result()];
-  expect(decide([...brief, call(0), result(), call(1, 149_000)])).toBe("pass");
+  const grown = [...brief, call(0), result(), call(1, 100_000), result()];
+  expect(decide([...brief, call(0), result(), call(1, 99_000)])).toBe("pass");
   expect(decide(grown, { agent_type: "general-purpose" })).toBe("deny");
   expect(decide(grown, { tool_name: "SubagentHandback" })).toBe("pass");
+  // A reviewer keeps the whole change in view up to its own, larger bound.
+  const review = (context) => [...brief, call(0), result(), call(1, context)];
+  const reviewer = { agent_type: "dotclaude:code-reviewer" };
+  expect(decide(review(120_000), reviewer)).toBe("pass");
+  expect(decide(review(150_000), reviewer)).toBe("deny");
   const fork = [...brief, call(0, 300_000), result()];
   expect(decide([...fork, call(1, 349_000)], { agent_type: "fork" })).toBe(
     "pass",

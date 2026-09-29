@@ -85,7 +85,7 @@ Rules for agents:
 reply shows:
 
 ```sh
-just sandbox --model claude-sonnet-5 -p "Run cat pkg/a.ts and describe it."
+just sandbox --model claude-sonnet-5-5 -p "Run cat pkg/a.ts and describe it."
 ```
 
 - Put the prompt before variadic flags such as `--allowedTools`. A variadic
@@ -123,7 +123,7 @@ tmux kill-session -t sandbox
 To test a status line script without a session, give it input on stdin:
 
 ```sh
-echo '{"columns":100,"tasks":[{"id":"a1","model":"claude-sonnet-5",
+echo '{"columns":100,"tasks":[{"id":"a1","model":"claude-sonnet-5-5",
   "tokenCount":5000}]}' | bun hooks/status-line/subagents.mjs
 ```
 

@@ -15,7 +15,7 @@ The first row shows where the session works:
 
 The second row shows what the session uses:
 
-- the model with its effort, and the context against the 200k handoff point,
+- the model with its effort, and the context against the 150k handoff point,
   with a bar that turns yellow at 75% and red at 90%, and `handoff` past it
 - the prompt cache: the time it expires, its hit ratio, and its misses with
   the last cause, or the tokens that the next turn re-reads when it is cold
@@ -26,8 +26,8 @@ The second row shows what the session uses:
 
 ## Why Each Part
 
-- **Context against 200k, not the model's window:** the settings profile
-  compacts at 200k, and calls over 150k tokens were 74.7% of the measured
+- **Context against 150k, not the model's window:** the settings profile
+  compacts at 150k, and calls over 150k tokens were 74.7% of the measured
   cost ([usage evidence](dossier/usage.md)). A bar against a 1M window stays
   near empty while usage climbs.
 - **Cache expiry and misses:** a prompt after the cache expired writes the
@@ -69,8 +69,8 @@ spawns no more often than that.
 ## Subagent Rows
 
 Each subagent row shows the agent, its model and effort, its context against
-the 150k subagent budget, and its run time. The plugin sets these rows
-through a stub that session start writes to
+its budget (100k, or 150k for the reviewers), and its run time. The plugin
+sets these rows through a stub that session start writes to
 `~/.claude/dotclaude/subagent-statusline.mjs`.
 
 **Why a stub:** Claude Code leaves `${CLAUDE_PLUGIN_ROOT}` empty in the

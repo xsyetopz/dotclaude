@@ -66,7 +66,7 @@ test("usage notes fire once per level: 75%, then 90%", () => {
   expect(at87).toMatch(/^\[dotclaude\] <usage_limits/);
   expect(at87).toMatch(/session 28%/);
   expect(at87).toMatch(/weekly 87%/);
-  expect(at87).toContain("Sonnet 5");
+  expect(at87).toContain("Sonnet 5.5");
   expect(prompt(usageDir(60_000, { session: 30, weekly: 88 }))).toBe(null);
   const at91 = prompt(usageDir(60_000, { session: 91, weekly: 88 }))
     .hookSpecificOutput.additionalContext;

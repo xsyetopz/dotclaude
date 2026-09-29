@@ -34,7 +34,7 @@ const YELLOW = "\x1b[33m";
 
 test("model IDs shorten to name and version", () => {
   expect(shortModel("claude-opus-5-5")).toBe("Opus 5.5");
-  expect(shortModel("claude-sonnet-5")).toBe("Sonnet 5");
+  expect(shortModel("claude-sonnet-5-5")).toBe("Sonnet 5.5");
   expect(shortModel("claude-fable-5-1[1m]")).toBe("Fable 5.1");
   expect(shortModel("claude-haiku-4-5-20251001")).toBe("Haiku 4.5");
   expect(shortModel("gpt-x")).toBe("gpt-x");
@@ -42,13 +42,13 @@ test("model IDs shorten to name and version", () => {
 
 test("context is measured against the budget, with a handoff mark past it", () => {
   const low = contextPart(40_000, MAIN_CONTEXT_TOKENS);
-  expect(plain(low)).toBe("40k/200k ██░░░░░░");
+  expect(plain(low)).toBe("40k/150k ██░░░░░░");
   expect(low).not.toContain(YELLOW);
   expect(contextPart(0.8 * MAIN_CONTEXT_TOKENS, MAIN_CONTEXT_TOKENS)).toContain(
     YELLOW,
   );
   const over = contextPart(MAIN_CONTEXT_TOKENS + 10_000, MAIN_CONTEXT_TOKENS);
-  expect(plain(over)).toBe("210k/200k ████████ handoff");
+  expect(plain(over)).toBe("160k/150k ████████ handoff");
   expect(over).toContain(`${RED}handoff`);
 });
 
@@ -143,7 +143,7 @@ test("the main line shows the place on one row and the usage on the next, with c
   const line = renderMain(DATA, { columns: 200, now: NOW, git: GIT });
   expect(plain(line).split("\n")).toEqual([
     "dotclaude · main ±3 ↑1 · #42",
-    "Opus 5.5 medium · 87k/200k ███░░░░░ · cache till 12:40 93% · 5h 23% · 7d 41%",
+    "Opus 5.5 medium · 87k/150k █████░░░ · cache till 12:40 93% · 5h 23% · 7d 41%",
   ]);
   expect(line).toContain("\x1b]8;;https://github.com/o/r/pull/42\x07");
   const api = renderMain(
@@ -185,7 +185,7 @@ test("the main line shows the session facts that advanced users check", () => {
   const text = plain(renderMain(FULL, { columns: 400, now: NOW, git: GIT }));
   expect(text.split("\n")).toEqual([
     "dotclaude/hooks +2 dirs · worktree feature-x · main ±3 ↑1 · #42 · @security-reviewer · NORMAL · status line rows",
-    "Opus 5.5 medium · 87k/200k ███░░░░░ · cache till 12:40 93% 2 miss tools_changed · 5h 23% · 7d 41% · spend 63% · +156 -23 · 1h12m",
+    "Opus 5.5 medium · 87k/150k █████░░░ · cache till 12:40 93% 2 miss tools_changed · 5h 23% · 7d 41% · spend 63% · +156 -23 · 1h12m",
   ]);
 });
 
@@ -196,7 +196,7 @@ test("a narrow terminal wraps parts to new rows instead of cutting them off", ()
   expect(rows.length).toBeLessThanOrEqual(3);
   for (const row of rows) expect(width(row)).toBeLessThanOrEqual(80);
   const text = plain(rows.join("\n"));
-  for (const part of ["87k/200k", "Opus 5.5", "5h 23%", "cache till 12:40"])
+  for (const part of ["87k/150k", "Opus 5.5", "5h 23%", "cache till 12:40"])
     expect(text).toContain(part);
 });
 
@@ -206,7 +206,7 @@ test("past three rows the lowest-priority parts go first", () => {
   );
   expect(rows).toHaveLength(3);
   const text = plain(rows.join("\n"));
-  expect(text).toContain("87k/200k");
+  expect(text).toContain("87k/150k");
   expect(text).not.toContain("1h12m");
   expect(text).not.toContain("status line rows");
   expect(text).not.toContain("5h");
@@ -222,7 +222,7 @@ test("a subagent row measures its context against the subagent budget", () => {
   const row = renderTask(
     {
       name: "implementer",
-      model: "claude-sonnet-5",
+      model: "claude-sonnet-5-5",
       effort: "medium",
       tokenCount: SUBAGENT_CONTEXT_TOKENS + 5_000,
       startTime: NOW - 7 * 60_000,
@@ -231,7 +231,7 @@ test("a subagent row measures its context against the subagent budget", () => {
     { columns: 200, now: NOW },
   );
   expect(plain(row)).toBe(
-    "implementer · Sonnet 5 medium · 155k/150k ████████ handoff · 7m · Add the stale cache notice and its tests",
+    "implementer · Sonnet 5.5 medium · 105k/100k ████████ handoff · 7m · Add the stale cache notice and its tests",
   );
   const narrow = renderTask(
     { name: "x", description: "a long description ".repeat(10) },
@@ -253,13 +253,18 @@ test("the entry points print a line and one JSON row per task", () => {
   expect(plain(main.stdout)).toContain("Opus 5.5 medium");
   const rows = bun(path.join(HOOKS, "status-line/subagents.mjs"), {
     columns: 80,
-    tasks: [{ id: "t1", name: "test-runner", tokenCount: 20_000 }, {}],
+    tasks: [
+      { id: "t1", name: "test-runner", tokenCount: 20_000 },
+      {},
+      { id: "t2", name: "code-reviewer", tokenCount: 120_000 },
+    ],
   })
     .stdout.trim()
     .split("\n")
     .map((l) => JSON.parse(l));
-  expect(rows.map((r) => r.id)).toEqual(["t1"]);
-  expect(plain(rows[0].content)).toStartWith("test-runner · 20k/150k");
+  expect(rows.map((r) => r.id)).toEqual(["t1", "t2"]);
+  expect(plain(rows[0].content)).toStartWith("test-runner · 20k/100k");
+  expect(plain(rows[1].content)).toStartWith("code-reviewer · 120k/150k");
 });
 
 test("a row without a name takes the agent type from its meta file", () => {
@@ -282,7 +287,7 @@ test("a row without a name takes the agent type from its meta file", () => {
     .stdout.trim()
     .split("\n")
     .map((l) => plain(JSON.parse(l).content));
-  expect(rows[0]).toStartWith("test-runner · 5k/150k");
+  expect(rows[0]).toStartWith("test-runner · 5k/100k");
   expect(rows[1]).toStartWith("agent");
   fs.rmSync(dir, { recursive: true });
 });
@@ -320,7 +325,7 @@ test("the plugin's subagentStatusLine runs the stub that session start writes", 
     input: JSON.stringify({
       columns: 100,
       tasks: [
-        { id: "a1", name: "", model: "claude-sonnet-5", tokenCount: 5000 },
+        { id: "a1", name: "", model: "claude-sonnet-5-5", tokenCount: 5000 },
       ],
     }),
     env: { ...process.env, CLAUDE_CONFIG_DIR: config },
