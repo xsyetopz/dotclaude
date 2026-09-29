@@ -1,7 +1,7 @@
 ---
 name: setup-integrations
-description: Install, check, and configure dotclaude's optional integrations (CodeGraph code-graph MCP, tgrep indexed search, fast-compact tool-output trimming, the gitleaks scanner behind secret redaction, and Ghidra for reverse engineering). Use when the user asks to set up, install, check, repair, or reconfigure CodeGraph, tgrep, fast-compact, gitleaks, or Ghidra, or a dotclaude agent reports one missing.
-argument-hint: "[status|codegraph|tgrep|fast-compact|gitleaks|ghidra] [what to change]"
+description: Install, check, and configure dotclaude's optional integrations (CodeGraph code-graph MCP, tgrep indexed search, fast-compact tool-output trimming, the Betterleaks scanner behind secret redaction, and Ghidra for reverse engineering). Use when the user asks to set up, install, check, repair, or reconfigure CodeGraph, tgrep, fast-compact, Betterleaks, or Ghidra, or a dotclaude agent reports one missing.
+argument-hint: "[status|codegraph|tgrep|fast-compact|betterleaks|ghidra] [what to change]"
 context: fork
 agent: integration-setup
 allowed-tools: Bash(bun *status.mjs*)
@@ -50,12 +50,13 @@ Before installing, tell the user what dotclaude measured on their transcripts (`
 - After a restart or `/reload-plugins`, `/fc` should report the model and a cost line. If it reports that it found no key, the key or provider setting is missing.
 </fast_compact>
 
-<gitleaks>
-dotclaude's secret redaction (the `secret_redaction` option, on by default) runs gitleaks on every tool output. It replaces each secret that gitleaks finds with `[REDACTED:<rule>]` before Claude sees it. Without gitleaks on `PATH`, tool output goes to Claude without redaction, and session start says so.
+<betterleaks>
+dotclaude's secret redaction (the `secret_redaction` option, on by default) runs Betterleaks on every tool output. It replaces each secret that Betterleaks finds with `[REDACTED:<rule>]` before Claude sees it. Without `betterleaks` on `PATH`, tool output goes to Claude without redaction, and session start says so.
 
-- Install: `brew install gitleaks`, or a release binary from <https://github.com/gitleaks/gitleaks/releases>.
-- It needs no configuration. `GITLEAKS_CONFIG` in the environment changes the rules. A repository's own `.gitleaks.toml` and `gitleaks:allow` comments do not disable redaction.
-</gitleaks>
+- Install: `brew install betterleaks`, `go install github.com/betterleaks/betterleaks@latest`, or a release binary from <https://github.com/betterleaks/betterleaks/releases>.
+- It needs no configuration. `BETTERLEAKS_CONFIG` or `GITLEAKS_CONFIG` in the environment changes the rules. A repository's own `.betterleaks.toml` or `.gitleaks.toml` and `betterleaks:allow` or `gitleaks:allow` comments do not disable redaction. Redaction never sends a secret to a live API for validation.
+- gitleaks is not part of dotclaude. The user can keep gitleaks for pre-commit hooks. Do not remove it.
+</betterleaks>
 
 <ghidra>
 Ghidra decompiles and analyzes binaries for reverse engineering. dotclaude uses it in two parts. The MCP server `pyghidra-mcp` comes first. The `ghidra-bridge` CLI is the fallback when the MCP server is missing or a call fails. The `dotclaude:reverse-engineer` agent follows that order.

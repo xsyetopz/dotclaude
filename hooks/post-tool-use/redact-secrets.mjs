@@ -1,18 +1,18 @@
 #!/usr/bin/env bun
 // PostToolUse(*): replace secrets in a tool's output before the model sees
-// it. gitleaks scans every string in the output, and each secret it finds
+// it. Betterleaks scans every string in the output, and each secret it finds
 // becomes `[REDACTED:<rule>]`; the rest of the output and its shape stay.
 // Claude Code applies `updatedToolOutput` to every tool (2.1.283). Without
-// gitleaks on PATH, output passes through and session start says so.
+// betterleaks on PATH, output passes through and session start says so.
 
 import { emit, option, run } from "../lib/_common.mjs";
 import { redact, scan, strings } from "../lib/_secrets.mjs";
 
-run((data) => {
+run(async (data) => {
   if (!option("secret_redaction")) return;
   const output = data.tool_response;
   if (output === undefined || output === null) return;
-  const findings = scan(strings(output).join("\n"));
+  const findings = await scan(strings(output).join("\n"));
   if (!findings?.length) return;
   const { value, count } = redact(output, findings);
   if (!count) return;

@@ -1,13 +1,13 @@
-// Secret redaction end to end: the hook runs gitleaks on a tool's output.
+// Secret redaction end to end: the hook runs Betterleaks on a tool's output.
 // The fake tokens are built at run time, so this file holds no secret.
 
 import { expect, test } from "bun:test";
 import { hook } from "../support/hooks.mjs";
 
 const HOOK = "post-tool-use/redact-secrets.mjs";
-const hasGitleaks = Bun.which("gitleaks") !== null;
-if (!hasGitleaks)
-  console.warn("gitleaks is not on PATH: skipping the redaction hook tests");
+const hasScanner = Bun.which("betterleaks") !== null;
+if (!hasScanner)
+  console.warn("betterleaks is not on PATH: skipping the redaction hook tests");
 
 const alnum = (n) => {
   const chars =
@@ -30,7 +30,7 @@ const post = (tool_name, tool_response, env) =>
     env,
   );
 
-test.skipIf(!hasGitleaks)(
+test.skipIf(!hasScanner)(
   "a GitHub token in Bash output is redacted and the shape kept",
   () => {
     const token = `ghp_${alnum(36)}`;
@@ -53,7 +53,7 @@ test.skipIf(!hasGitleaks)(
   },
 );
 
-test.skipIf(!hasGitleaks)(
+test.skipIf(!hasScanner)(
   "a generic API key in a Read result is redacted",
   () => {
     const hex = Array.from({ length: 100 }, () =>
@@ -70,7 +70,7 @@ test.skipIf(!hasGitleaks)(
   },
 );
 
-test.skipIf(!hasGitleaks)("clean output passes unchanged", () => {
+test.skipIf(!hasScanner)("clean output passes unchanged", () => {
   expect(post("Bash", { stdout: "hello world\n", stderr: "" })).toBeNull();
 });
 

@@ -8,14 +8,14 @@
 // plugin version ships a different one, and says when the session started
 // without that prompt: the launcher is not installed, or an IDE or another
 // program started Claude Code without the shell function. With secret
-// redaction on, it says when gitleaks is missing.
+// redaction on, it says when betterleaks is missing.
 
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { emit, option, run } from "../lib/_common.mjs";
 import { profileStamp, STAMP_KEY } from "../lib/_profile.mjs";
-import { gitleaksInstalled } from "../lib/_secrets.mjs";
+import { scannerInstalled } from "../lib/_secrets.mjs";
 import {
   syncStatusLine,
   syncSubagentStatusLine,
@@ -103,9 +103,9 @@ run(() => {
       );
     }
   }
-  if (option("secret_redaction") && !gitleaksInstalled()) {
+  if (option("secret_redaction") && !scannerInstalled()) {
     notices.push(
-      "secret redaction is on, but gitleaks is not on PATH, so tool output reaches Claude unscanned. Run `brew install gitleaks`, or turn off the secret_redaction option.",
+      "secret redaction is on, but betterleaks is not on PATH, so tool output reaches Claude unscanned. Run `brew install betterleaks`, or turn off the secret_redaction option.",
     );
   }
   syncStatusLine();

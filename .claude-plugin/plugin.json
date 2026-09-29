@@ -38,7 +38,7 @@
     "secret_redaction": {
       "type": "boolean",
       "title": "Secret redaction",
-      "description": "Scan every tool output with gitleaks and replace each secret it finds with [REDACTED:<rule>] before the model sees it. Needs gitleaks on PATH. Without it, output passes through and session start says so.",
+      "description": "Scan every tool output with Betterleaks and replace each secret it finds with [REDACTED:<rule>] before the model sees it. Needs betterleaks on PATH. Without it, output passes through and session start says so.",
       "default": true
     },
     "nested_instructions": {

@@ -1,12 +1,16 @@
-// Secret redaction for tool output, with gitleaks as the detector.
+// Secret redaction for tool output, with Betterleaks as the detector
+// (https://github.com/betterleaks/betterleaks). gitleaks stays a pre-commit
+// tool, outside dotclaude.
 //
-// gitleaks runs from the temp directory so that a repository's own
-// .gitleaks.toml or .gitleaksignore cannot turn detection off, and with
-// --ignore-gitleaks-allow so that a `gitleaks:allow` comment in a file does not
-// let its secret through. GITLEAKS_CONFIG from the user's environment still
-// applies. A run takes about 30 ms.
+// Betterleaks runs from the temp directory so that a repository's own
+// .betterleaks.toml, .gitleaks.toml, or ignore file cannot turn detection off,
+// and with --ignore-gitleaks-allow so that a `betterleaks:allow` or
+// `gitleaks:allow` comment in a file does not let its secret through.
+// BETTERLEAKS_CONFIG or GITLEAKS_CONFIG from the user's environment still
+// applies. Live validation stays off, so no secret leaves the machine. A run
+// takes about 30 ms.
 
-import { spawnSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import os from "node:os";
 
 const ARGS = [
@@ -23,24 +27,34 @@ const ARGS = [
   "-",
 ];
 
-export const gitleaksInstalled = () => Bun.which("gitleaks") !== null;
+export const scannerInstalled = () => Bun.which("betterleaks") !== null;
 
 /**
  * Secrets that gitleaks finds in `text`, as `[{rule, secret}]`, or null when
  * gitleaks is missing or fails.
  */
-export function scan(text) {
-  if (!text || !gitleaksInstalled()) return null;
-  const res = spawnSync("gitleaks", ARGS, {
-    input: text,
-    encoding: "utf8",
-    cwd: os.tmpdir(),
-    timeout: 8000,
-    maxBuffer: 64 * 1024 * 1024,
+export async function scan(text) {
+  if (!text || !scannerInstalled()) return null;
+  // Async, so the dispatcher runs the other PostToolUse actions while
+  // Betterleaks runs.
+  const stdout = await new Promise((resolve) => {
+    const child = execFile(
+      "betterleaks",
+      ARGS,
+      {
+        encoding: "utf8",
+        cwd: os.tmpdir(),
+        timeout: 8000,
+        maxBuffer: 64 * 1024 * 1024,
+      },
+      (err, out) => resolve(err ? null : out),
+    );
+    child.stdin.on("error", () => {});
+    child.stdin.end(text);
   });
-  if (res.error || res.status !== 0) return null;
+  if (stdout === null) return null;
   try {
-    const report = JSON.parse(res.stdout || "[]");
+    const report = JSON.parse(stdout || "[]");
     return report
       .filter((f) => typeof f.Secret === "string" && f.Secret)
       .map((f) => ({ rule: String(f.RuleID || "secret"), secret: f.Secret }));

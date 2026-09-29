@@ -45,8 +45,8 @@ test("session start warns about incomplete setup and notes a CodeGraph index", (
   ).toMatch(/CLAUDE_CODE_EFFORT_LEVEL=max/);
 });
 
-test("session start says when secret redaction has no gitleaks", () => {
-  // A PATH that holds bun and nothing else, so gitleaks is missing.
+test("session start says when secret redaction has no betterleaks", () => {
+  // A PATH that holds bun and nothing else, so betterleaks is missing.
   const bin = tmp("dotclaude-bin-");
   fs.symlinkSync(Bun.which("bun"), path.join(bin, "bun"));
   const start = (option) =>
@@ -61,7 +61,7 @@ test("session start says when secret redaction has no gitleaks", () => {
         CLAUDE_PLUGIN_OPTION_SECRET_REDACTION: option,
       },
     );
-  expect(start("true").systemMessage).toContain("`brew install gitleaks`");
+  expect(start("true").systemMessage).toContain("`brew install betterleaks`");
   expect(start("false")).toBe(null);
 });
 
