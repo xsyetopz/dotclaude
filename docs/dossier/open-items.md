@@ -11,8 +11,6 @@ source labels.
 - Check the shape of a usage-limit hit in a real transcript. The report
   counts an assistant entry with `error` set to `rate_limit`. This shape
   comes from the Claude Code bundle, and no local transcript has one yet.
-- Read the `task` lines in `verdicts.jsonl` and pin the `TaskCompleted`
-  input fields in the task gate. The hooks docs do not state them.
 - Measure one week with `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=1h` from the
   optional profile. Keep it only if the subagent cache writes plus the
   idle misses cost less than in the week before.
