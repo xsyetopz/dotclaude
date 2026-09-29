@@ -32,6 +32,7 @@ run((data) => {
     editGuard: option("edit_guard"),
     commitHygiene: option("commit_hygiene"),
     claudeTrailerOff: claudeTrailerOff(root),
+    background: Boolean(data.tool_input?.run_in_background),
   });
   if (!guard)
     findings = findings.filter(([, reason]) => LOCK_ONLY.test(reason));

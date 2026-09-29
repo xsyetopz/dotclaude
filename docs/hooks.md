@@ -45,6 +45,12 @@ already read in full, when the file did not change. A partial `Read` with
 copy is still in the context, so the second copy only adds usage. Claude
 Code already skips a `Read` after a `Read`, but not a `cat`.
 
+**What:** denies a dev server, a watcher, `tail -f`, or `analyzeHeadless` in
+the foreground. The same command with `run_in_background` passes.
+
+**Why:** a command that does not end blocks the turn until the Bash timeout,
+and then Claude runs it again in the background.
+
 ### Edit Guard (`edit_guard`)
 
 **What:** asks before an edit removes test assertions or skips an existing

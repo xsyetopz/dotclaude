@@ -28,7 +28,7 @@ import { settingsWrite } from "./_rules-settings.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /**
- * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean}} Context
+ * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean, background?: boolean}} Context
  * @typedef {["deny" | "ask" | "warn", string]} Finding
  */
 
@@ -38,6 +38,8 @@ export function check(command, ctx) {
   const parsed = parse(command);
   const findings = parsed.commands.flatMap((cmd) => checkCommand(cmd, c));
   if (parsed.unparsed.length) findings.push(...rawScan(command));
+  if (!c.background && !BOUNDED.test(command))
+    findings.push(...parsed.commands.flatMap(endless));
   if (
     c.claudeTrailerOff &&
     CLAUDE_TRAILER.test(command) &&
@@ -172,6 +174,32 @@ function fileWrites(cmd, ctx) {
       out.push([level, `\`${cmd.name}\` writes \`${target}\`: ${reason}`]);
   }
   return out;
+}
+
+// --- commands that do not end -----------------------------------------------
+
+// A shell `&` (not `&&`, `>&`, or `&>`) or a `timeout` wrapper ends the call.
+const BOUNDED = /(?:^|[^&>|])&(?![&>])|(?:^|[\s;&|(])g?timeout\s/;
+const SCRIPT_RUNNERS = new Set(["npm", "pnpm", "yarn", "bun"]);
+const SERVER_SCRIPTS = new Set(["dev", "serve", "watch"]);
+
+/** A dev server, a watcher, `tail -f`, or Ghidra's headless analyzer. */
+function endless(cmd) {
+  const args = cmd.args;
+  const script = args[0] === "run" ? args[1] : args[0];
+  const found =
+    (SCRIPT_RUNNERS.has(cmd.name) && SERVER_SCRIPTS.has(script)) ||
+    args.some((a) => /^--watch(?:All)?(?:=true)?$/.test(a)) ||
+    (cmd.name === "tail" &&
+      args.some((a) => a === "--follow" || /^-[a-zA-Z]*[fF]/.test(a))) ||
+    cmd.name === "analyzeHeadless";
+  if (!found) return [];
+  return [
+    [
+      "deny",
+      `\`${cmd.argv.join(" ")}\` does not end by itself or runs for a long time, so in the foreground it blocks the turn until the Bash timeout. Run the same command with \`run_in_background: true\`. Then read its output file, or wait for a line with \`Monitor\``,
+    ],
+  ];
 }
 
 // --- fallback ---------------------------------------------------------------

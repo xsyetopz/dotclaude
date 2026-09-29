@@ -183,7 +183,7 @@ const PASS = [
   "bun run build 2>&1 | tail -20",
   'psql -c "select 1"',
   'sqlite3 db "DELETE FROM users WHERE id=1;"',
-  "jest --watch",
+  "jest --coverage",
   "cat .env.example",
   "claude --model opus -p hi",
   "claude --model claude-fable-5-1 -p hi",
@@ -362,4 +362,35 @@ describe("Bash writes get the Edit rules of their target path", () => {
   for (const [command, want] of cases)
     test(`${want}: ${command.split("\n")[0]}`, () =>
       expect(level(command, c), JSON.stringify(check(command, c))).toBe(want));
+});
+
+describe("a foreground command that does not end is denied", () => {
+  const endless = [
+    "npm run dev",
+    "pnpm dev",
+    "cd web && bun run serve",
+    "tsc --watch",
+    "jest --watchAll",
+    "tail -f app.log",
+    "tail -n 20 -F app.log | grep ERROR",
+    "/opt/ghidra/support/analyzeHeadless /tmp/p proj -import a.out",
+  ];
+  for (const command of endless) {
+    test(`deny: ${command}`, () => {
+      const findings = check(command, ctx);
+      expect(level(command), JSON.stringify(findings)).toBe("deny");
+      expect(findings[0][1]).toContain("`run_in_background: true`");
+    });
+    test(`pass in the background: ${command}`, () =>
+      expect(level(command, { ...ctx, background: true })).toBe("pass"));
+  }
+  for (const command of [
+    "npm run build",
+    "npm test",
+    "tail -n 20 app.log",
+    "jest --watchAll=false",
+    "npm run dev &",
+    "timeout 30 npm run dev",
+  ])
+    test(`pass: ${command}`, () => expect(level(command)).toBe("pass"));
 });

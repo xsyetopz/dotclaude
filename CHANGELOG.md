@@ -51,6 +51,11 @@ steps after each update.
 - A usage note for Claude: on the third identical Bash command in a row
   with identical output in one agent, it says to change the approach or
   wait with `Monitor`. The `usage_notes` option turns it off.
+- The Bash guard denies a foreground command that does not end by itself
+  or runs for a long time: a `dev`, `serve`, or `watch` script, `--watch`,
+  `tail -f`, and Ghidra's `analyzeHeadless`. The reason says to run the
+  same command with `run_in_background`. A shell `&` or a `timeout`
+  wrapper passes.
 
 ### Fixed
 

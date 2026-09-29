@@ -256,3 +256,15 @@ test("an approved edit ask covers only the same edit", () => {
   expect(pre(2, "e2"), "the same edit").toBe(null);
   expect(pre(3, "e3"), "another edit to the file").toBe("ask");
 });
+
+test("a dev server passes only with `run_in_background`", () => {
+  const decision = (tool_input) =>
+    hook("pre-tool-use/block-destructive-commands.mjs", {
+      tool_name: "Bash",
+      tool_input,
+    })?.hookSpecificOutput.permissionDecision ?? null;
+  expect(decision({ command: "npm run dev" })).toBe("deny");
+  expect(decision({ command: "npm run dev", run_in_background: true })).toBe(
+    null,
+  );
+});
