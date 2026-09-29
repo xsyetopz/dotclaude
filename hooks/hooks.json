@@ -1,58 +1,17 @@
 {
-  "description": "dotclaude hooks: one directory per event, one file per action",
+  "description": "dotclaude hooks: one dispatcher process per event, one file per action (see hooks/dispatch.mjs)",
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "compact",
         "hooks": [
           {
             "type": "command",
             "command": "bun",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/restore-context-after-compact.mjs"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "SessionStart"
             ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "startup|resume",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/warn-incomplete-setup.mjs"
-            ],
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/prune-scratchpads.mjs"
-            ],
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/warn-instruction-size.mjs"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/add-session-notes.mjs"
-            ],
-            "timeout": 10
+            "timeout": 30
           }
         ]
       }
@@ -64,17 +23,10 @@
             "type": "command",
             "command": "bun",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/expand-inline-skill.mjs"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "UserPromptSubmit"
             ],
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/note-usage-limits.mjs"
-            ],
-            "timeout": 10
+            "timeout": 30
           }
         ]
       }
@@ -86,146 +38,34 @@
             "type": "command",
             "command": "bun",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/subagent-start/inject-working-conventions.mjs"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "SubagentStart"
             ],
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/subagent-start/count-running-agents.mjs"
-            ],
-            "timeout": 10
+            "timeout": 30
           }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
             "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/block-destructive-commands.mjs"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/skip-unchanged-rereads.mjs"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/confirm-risky-edits.mjs"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/restrict-subagent-models.mjs"
-            ],
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/prefer-dotclaude-agents.mjs"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "SendMessage",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/hand-off-capped-agents.mjs"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/enforce-agent-budget.mjs"
-            ],
-            "timeout": 10
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs", "PreToolUse"],
+            "timeout": 30
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",
             "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/record-edits-and-checks.mjs"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/load-nested-instructions.mjs"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/redact-secrets.mjs"
-            ],
-            "timeout": 10
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs", "PostToolUse"],
+            "timeout": 30
           }
         ]
       }
@@ -238,9 +78,10 @@
             "type": "command",
             "command": "bun",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use-failure/record-failed-checks.mjs"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "PostToolUseFailure"
             ],
-            "timeout": 10
+            "timeout": 30
           }
         ]
       }
@@ -251,30 +92,8 @@
           {
             "type": "command",
             "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/stop/require-verification.mjs"
-            ],
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bun",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/stop/end-goal-loops.mjs"],
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bun",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/stop/check-open-tasks.mjs"],
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/stop/finish-announced-work.mjs"
-            ],
-            "timeout": 10
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs", "Stop"],
+            "timeout": 30
           }
         ]
       }
@@ -286,10 +105,8 @@
           {
             "type": "command",
             "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/stop-failure/notify-rate-limit.mjs"
-            ],
-            "timeout": 10
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs", "StopFailure"],
+            "timeout": 30
           }
         ]
       }
@@ -301,17 +118,10 @@
             "type": "command",
             "command": "bun",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/stop/require-verification.mjs"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "SubagentStop"
             ],
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/stop/count-running-agents.mjs"
-            ],
-            "timeout": 10
+            "timeout": 30
           }
         ]
       }
@@ -322,10 +132,8 @@
           {
             "type": "command",
             "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact/save-recent-prompts.mjs"
-            ],
-            "timeout": 10
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs", "PreCompact"],
+            "timeout": 30
           }
         ]
       }
@@ -337,9 +145,10 @@
             "type": "command",
             "command": "bun",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/pre-model-switch/restrict-models.mjs"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "PreModelSwitch"
             ],
-            "timeout": 10
+            "timeout": 30
           }
         ]
       }
@@ -351,9 +160,10 @@
             "type": "command",
             "command": "bun",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/post-model-switch/add-model-notes.mjs"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "PostModelSwitch"
             ],
-            "timeout": 10
+            "timeout": 30
           }
         ]
       }
@@ -366,9 +176,10 @@
             "type": "command",
             "command": "bun",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/config-change/block-fast-mode.mjs"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "ConfigChange"
             ],
-            "timeout": 10
+            "timeout": 30
           }
         ]
       }
@@ -380,9 +191,10 @@
             "type": "command",
             "command": "bun",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/task-completed/require-check.mjs"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "TaskCompleted"
             ],
-            "timeout": 10
+            "timeout": 30
           }
         ]
       }

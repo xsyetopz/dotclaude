@@ -241,8 +241,7 @@ function completeTask(input) {
         cwd: repo,
         hook_event_name: "TaskCompleted",
         task_id: "1",
-        task_name: "Fix the parser",
-        task_status: "completed",
+        task_subject: "Fix the parser",
         ...input,
       }),
       encoding: "utf8",
@@ -262,6 +261,7 @@ test("a task completion after an unchecked edit is blocked once", () => {
   const first = completeTask({ session_id: sid });
   expect(first.code).toBe(2);
   expect(first.stderr).toMatch(/src\/app\.js/);
+  expect(first.stderr).toContain('#1 "Fix the parser"');
   expect(completeTask({ session_id: sid }).code, "blocks once").toBe(0);
 });
 
@@ -272,23 +272,4 @@ test("a task completion passes after a check, with no edit, or without fields", 
   expect(completeTask({ session_id: sid }).code).toBe(0);
   expect(completeTask({ session_id: session() }).code).toBe(0);
   expect(completeTask({}).code).toBe(0);
-  const sid2 = session();
-  edit(sid2);
-  expect(
-    completeTask({ session_id: sid2, task_status: "in_progress" }).code,
-  ).toBe(0);
-});
-
-test("each task completion logs its input field names", () => {
-  const sid = session();
-  completeTask({ session_id: sid, transcript_path: "/t.jsonl" });
-  const entry = fs
-    .readFileSync(path.join(data, "verdicts.jsonl"), "utf8")
-    .trim()
-    .split("\n")
-    .map((line) => JSON.parse(line))
-    .findLast((e) => e.session === sid);
-  expect(entry.level).toBe("task");
-  expect(entry.fields).toContain("transcript_path");
-  expect(entry.fields).toContain("task_name");
 });

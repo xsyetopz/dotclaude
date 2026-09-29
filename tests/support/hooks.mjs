@@ -1,6 +1,6 @@
-// Shared helpers for the hook end-to-end tests: run each hook script with JSON
-// on stdin, as Claude Code does. Hooks only read their input and write the
-// ledger under a temp data dir.
+// Shared helpers for the hook end-to-end tests: run each hook action through
+// `hooks/dispatch.mjs` with JSON on stdin, as Claude Code does. Hooks only
+// read their input and write the ledger under a temp data dir.
 
 import { expect } from "bun:test";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -20,8 +20,10 @@ export const noAccount = fs.mkdtempSync(
   path.join(os.tmpdir(), "dotclaude-home-"),
 );
 
+const DISPATCH = path.join(HOOKS, "dispatch.mjs");
+
 export function hook(script, input, env = {}) {
-  const res = spawnSync("bun", [path.join(HOOKS, script)], {
+  const res = spawnSync("bun", [DISPATCH, "--only", script], {
     input: JSON.stringify({ cwd: repo, ...input }),
     encoding: "utf8",
     env: {
@@ -77,7 +79,7 @@ export const tmp = (prefix) => fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 // Runs a hook with its own plugin data directory per call unless the
 // caller passes CLAUDE_PLUGIN_DATA, for state that must not leak between calls.
 export function isolatedHook(script, input, env = {}) {
-  const res = spawnSync("bun", [path.join(HOOKS, script)], {
+  const res = spawnSync("bun", [DISPATCH, "--only", script], {
     input: JSON.stringify(input),
     encoding: "utf8",
     env: {

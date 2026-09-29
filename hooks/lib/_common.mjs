@@ -103,6 +103,16 @@ function tagged(text) {
     : text;
 }
 
+// `hooks/dispatch.mjs` runs several actions in one process. It sets this
+// before it imports the actions: `run` then registers each body, and `emit`
+// and `exitBlocking` record their output, with the index of the action that
+// runs now (`mode.action()`), for the dispatcher to merge in action order.
+const DISPATCH = Symbol.for("dotclaude.dispatch");
+
+export function dispatchMode() {
+  return globalThis[DISPATCH];
+}
+
 export function emit(obj) {
   const out = { ...obj };
   for (const key of ["reason", "systemMessage", "stopReason"])
@@ -113,7 +123,23 @@ export function emit(obj) {
       if (key in h) h[key] = tagged(h[key]);
     out.hookSpecificOutput = h;
   }
-  process.stdout.write(JSON.stringify(out));
+  const mode = dispatchMode();
+  if (mode) mode.outputs.push([mode.action(), out]);
+  else process.stdout.write(JSON.stringify(out));
+}
+
+/**
+ * Block with exit code 2: Claude Code gives `message` to Claude and ignores
+ * stdout. Under the dispatcher the exit waits until every action has run.
+ */
+export function exitBlocking(message) {
+  const mode = dispatchMode();
+  if (mode) {
+    mode.blocking.push([mode.action(), message]);
+    return;
+  }
+  fs.writeSync(2, message.endsWith("\n") ? message : `${message}\n`);
+  process.exit(2);
 }
 
 export function preToolDecision(decision, reason) {
@@ -172,6 +198,11 @@ export function verdict(findings, data, label) {
 }
 
 export async function run(body) {
+  const mode = dispatchMode();
+  if (mode) {
+    mode.bodies.push(body);
+    return;
+  }
   try {
     await body(readInput());
   } catch (err) {
