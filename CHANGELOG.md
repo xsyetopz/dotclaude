@@ -10,8 +10,16 @@ steps after each update.
 
 ## [Unreleased]
 
-Run `/dotclaude:apply-settings-profile` again to get the new compaction point
-and system prompt.
+## [0.11.0] - 2026-09-29
+
+Requires Claude Code 2.1.284 or later, the first release with Sonnet 5.5.
+After updating, run `claude update` if you need to, restart Claude Code, and
+run `/dotclaude:apply-settings-profile` again.
+
+### Added
+
+- Session start tells you when Claude Code is older than 2.1.284, from
+  `claude --version` of the running binary, and says to run `claude update`.
 
 ### Changed
 
@@ -27,20 +35,6 @@ and system prompt.
   context budget and the subagent status line row show each agent's bound.
 - The system prompt and the `implementer` description ask for one small slice
   for each `implementer`, with larger work split across new agents.
-
-## [0.11.0] - 2026-09-29
-
-Requires Claude Code 2.1.284 or later, the first release with Sonnet 5.5.
-After updating, run `claude update` if you need to, restart Claude Code, and
-run `/dotclaude:apply-settings-profile` again.
-
-### Added
-
-- Session start tells you when Claude Code is older than 2.1.284, from
-  `claude --version` of the running binary, and says to run `claude update`.
-
-### Changed
-
 - Sonnet 5.5 (`claude-sonnet-5-5`) replaces Sonnet 5 everywhere: the
   `implementer`, `docs-writer`, and `mechanical-worker` agents, the profile's
   `CLAUDE_CODE_SUBAGENT_MODEL` and `availableModels`,
