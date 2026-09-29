@@ -93,6 +93,12 @@ export const RUNNING_AGENT_IDLE_MINUTES = 10;
  *   without `paths:`).
  * - instructionFileBytes: Claude Code skips a larger file.
  * - importHops: Claude Code follows at most four `@path` hops.
+ * - outputStyleTokens: the output style loads into every main turn. It
+ *   measured 515 tokens in 0.13.0, inside the ~900-token rule set that the
+ *   plan targets, so the ceiling keeps it there.
+ * - skillDescriptionChars: the description and `when_to_use` of one skill.
+ *   Claude Code lists them in every main turn. They were 190 to 540
+ *   characters before 0.13.0 and 150 to 230 after the cut.
  * - The rest are dotclaude's own files.
  */
 export const LIMITS = {
@@ -102,7 +108,8 @@ export const LIMITS = {
   importHops: { fail: 4 },
   skillLines: { warn: 450, fail: 500 },
   skillBodyTokens: { warn: 4500, fail: 5000 },
-  outputStyleTokens: { warn: 1000, fail: 2000 },
+  skillDescriptionChars: { fail: 250 },
+  outputStyleTokens: { warn: 700, fail: 900 },
   agentBodyTokens: { warn: 2000, fail: 5000 },
   systemPromptTokens: { warn: 5000, fail: 15000 },
 };

@@ -1,6 +1,6 @@
 ---
 name: apply-settings-profile
-description: "Preview and apply the dotclaude settings profile to a Claude Code settings file. The profile sets models, fast mode off, effort cap, secret-file denies, git instructions, and agent bounds. It also covers the system-prompt launcher, and optional managed-settings and global `CLAUDE.md` additions. Run when the user types `/dotclaude:apply-settings-profile` or asks to apply, update, or check the dotclaude settings."
+description: Preview and apply the dotclaude settings profile (models, permissions, agent bounds, and the system-prompt launcher) to a Claude Code settings file.
 disable-model-invocation: true
 argument-hint: "[user|project|local]"
 allowed-tools: Bash(bun *apply-settings.mjs*) Bash(bun *apply-claude-md.mjs*) Bash(bun *apply-launcher.mjs*) Bash(bun *apply-statusline.mjs*) Bash(bun *install-managed.mjs*)

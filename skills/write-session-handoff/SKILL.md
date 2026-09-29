@@ -1,6 +1,6 @@
 ---
 name: write-session-handoff
-description: Write a handoff note so a fresh session can continue the current task without this conversation. Use it when the user wants to hand off, wrap up for a new session, or start fresh. Also use it to save progress before `/clear` or `/compact`, or to pause and resume later. Also use it when the user asks "what would a new session need to know", even without the word "handoff".
+description: Write a handoff note so that a fresh session can continue the current task. Use when the user wants to hand off, start fresh, or pause, or to save progress before `/clear` or `/compact`.
 argument-hint: "[output path, default .claude/handoff.md]"
 ---
 

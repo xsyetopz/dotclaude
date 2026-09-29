@@ -1,6 +1,6 @@
 ---
 name: explain-dotclaude
-description: Explain why dotclaude makes Claude work the way it does, from the plugin's own documentation and evidence. Use when the user asks why Claude or dotclaude did, blocked, denied, asked about, or refused something. Examples are "why did you ask before pushing", "why was this command denied", "why can't I use fast mode", "why is Fable blocked", "why did you reproduce the bug first", and "why does dotclaude set X". Also use when the user asks what a dotclaude hook, option, agent, skill, setting, or status-line part does, or how to change it.
+description: Explain why dotclaude makes Claude work as it does, from the plugin's documentation. Use when the user asks why something was done, asked about, or denied, or what a dotclaude hook, agent, skill, or setting does.
 argument-hint: "[the behavior to explain]"
 ---
 

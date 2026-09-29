@@ -88,7 +88,13 @@ const listed = (dir, pick) =>
     .map(pick)
     .filter((f) => f.endsWith(".md") && fs.existsSync(path.join(root, f)));
 const agents = listed("agents", (f) => `agents/${f}`);
-const skills = listed("skills", (d) => `skills/${d}/SKILL.md`);
+const skills = [
+  ...listed("skills", (d) => `skills/${d}/SKILL.md`),
+  ...listed(
+    "plugins/dotclaude-browser/skills",
+    (d) => `plugins/dotclaude-browser/skills/${d}/SKILL.md`,
+  ),
+];
 
 /** Fail above the limit's fail value, and print above its warn value. */
 function within(file, value, limit, unit) {
@@ -124,5 +130,12 @@ test("each skill stays inside LIMITS and the Agent Skills name and description l
     within(f, tokens(body(read(f))), LIMITS.skillBodyTokens, "tokens");
     expect(frontmatter(f, "name").length, f).toBeLessThanOrEqual(64);
     expect(frontmatter(f, "description").length, f).toBeLessThanOrEqual(1024);
+    within(
+      f,
+      frontmatter(f, "description").length +
+        frontmatter(f, "when_to_use").length,
+      LIMITS.skillDescriptionChars,
+      "description characters",
+    );
   }
 });
