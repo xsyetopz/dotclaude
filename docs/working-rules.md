@@ -6,7 +6,8 @@ works when dotclaude is on:
 - **The system prompt**
   (`skills/apply-settings-profile/profiles/system-prompt.md`) holds the
   engineering and git rules. The
-  [launcher](settings-profile.md#system-prompt-launcher) passes it. Without the launcher, Claude Code's own prompt is used.
+  [launcher](settings-profile.md#system-prompt-launcher) passes it. Without
+  the launcher, Claude Code's own prompt is used.
 - **The output style** (`output-styles/dotclaude.md`) sets how Claude talks
   and reports. It is always on while the plugin is on. To use a different
   style, disable the plugin, or copy the file to `~/.claude/output-styles/`
@@ -61,7 +62,7 @@ can check a rule, a hook enforces it, and the prompt only explains it
 | --- | --- |
 | Send independent tool calls in one response, and combine reads in one Bash call. | Each turn re-reads the whole context. Calls in one response take one turn ([turns, not tool calls](dossier/usage.md#turns-not-tool-calls)). |
 | Work in the main conversation. Use a subagent only when its output would fill the context, for parallel work that you ask for, or for a fresh-context review. | Subagents were over half of the measured week's cost ([Agents And Skills](agents-and-skills.md)). |
-| Near 150k tokens of context, write a handoff note or compact. | Calls over 150k tokens were 74.7% of the measured cost ([usage evidence](dossier/usage.md)). |
+| Near 150k tokens of context, write a handoff note and ask the user to run `/clear`. | Calls over 150k tokens were 74.7% of the measured cost ([usage evidence](dossier/usage.md)). |
 | Use CodeGraph or a search tool before reading whole files. | Text that enters the context costs usage on every later turn. |
 
 ## Communication
@@ -79,6 +80,13 @@ can check a rule, a hook enforces it, and the prompt only explains it
 dotclaude writes every message that goes to Claude (hook output, deny reasons,
 skill and agent prompts) in ASD-STE100 Simplified Technical English. Each
 message gives the reason, says what to do, and uses no forceful words.
+
+Agent and skill prompts use one set of XML tags in one order: `<task>` for a
+skill, or a role paragraph for an agent, then `<context>`, `<inputs>`,
+`<constraints>`, `<procedure>`, the sections for the topic, `<report_format>`
+for an agent or `<output_format>` for a skill, and last `<example>`. A prompt
+leaves out the tags that it does not need. One order lets you find the same
+part in every prompt.
 
 **Why:** one meaning for each word and short sentences leave less to
 misread. Sonnet 5 follows instructions literally, and Sonnet 5.5 keeps its

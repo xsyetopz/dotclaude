@@ -25,6 +25,14 @@ source labels.
   Code.
 - **Fail open.** A bug in a guard must not stop the user's work. The guards
   are a best-effort parser, not a sandbox.
+- **One process per event.** `hooks.json` starts `hooks/dispatch.mjs` once
+  for each event. The dispatcher runs the actions whose matcher fits, all at
+  the same time, and merges their output in table order. **measured**
+  (2026-09-29, 50 `Bash` calls): 7 hook processes per call became 2, and CPU
+  time fell from about 164 ms to 86 ms per call. Wall time per event stayed
+  the same (Pre about 25 ms, Post about 50 ms), because the slowest action
+  sets it: `betterleaks` in PostToolUse and the load of the Bash guard's rule
+  modules in PreToolUse. A bare `bun` start takes 5 ms.
 - **Layered imports.** Event hooks import only `hooks/lib`. `hooks/lib`
   imports only itself (`tests/lib/layers.test.mjs`). Skill scripts may import
   `hooks/lib`.
@@ -36,7 +44,7 @@ source labels.
 | Q1 | A subagent works a long task | No tool call past 100k tokens of context, or 150k for the reviewers. A fork gets its first call plus 50k. The report tool stays open. | `PreToolUse` hook on every tool | `tests/hooks/agent-budget.test.mjs` |
 | Q2 | The main conversation grows | Compaction at 150k | `autoCompactWindow` in the profile | `tests/lib/budget.test.mjs` |
 | Q3 | Claude spawns `general-purpose` | Refused, with the dotclaude agent for the job | `PreToolUse(Agent)` hook | `tests/hooks/model-lock.test.mjs` |
-| Q4 | Fan-out | 3 subagents, and 3 agents per workflow, at once | profile env | `tests/lib/budget.test.mjs` |
+| Q4 | Fan-out | 5 subagents, and 5 agents per workflow, at once | profile env | `tests/lib/budget.test.mjs` |
 | Q5 | dotclaude's text on every request | token limits in `LIMITS` | footprint test | `tests/lib/budget.test.mjs` |
 | Q6 | A bound changes | One edit in `_budget.mjs` | pinned copies | `tests/lib/budget.test.mjs` |
 | Q7 | Claude spawns any other subagent | It runs in the foreground and causes no wake turns | `Agent` hook, `CLAUDE_CODE_FORK_SUBAGENT=0` | `tests/hooks/model-lock.test.mjs` |
@@ -74,6 +82,31 @@ Claude Code delivers nothing from an agent that it stops at its turn limit.
   context near turn 20, so the context bound now ends them first. A higher
   limit gives no more finished work.
 
+### The Agent Loop
+
+The `run-agent-loop` skill takes the workflow of the Bun, GitHub Copilot,
+and pnpm v12 Rust ports (**reported**). Each port used four parts:
+
+- A guide, written first. `.dotclaude/loop/GUIDE.md` holds the goal, the
+  invariants, and the idiom map.
+- Slices that start at the leaves. Each slice has one behavior and at most 5
+  files.
+- A frozen test oracle. `loop.json` lists it as `protected` globs, and the
+  edit and Bash guards deny a subagent's change to a match.
+- A reviewer that sees only the diff. `diff-reviewer` gets the git range and
+  the guide, not the implementer's report. The Stop hook blocks once for a
+  slice with the status `implemented`.
+
+The mechanisms are hooks because an oracle that the implementer can edit
+does not show anything. The main conversation is not limited, so the user
+can still fix a wrong oracle.
+
+A hypothesis was wrong. It said that worktree agents ran commands outside
+their worktree. **measured:** the 50 errors were Claude Code's own refusals
+of commands that it cannot verify stay in the worktree. The skill's brief
+tells each agent to run plain commands from the worktree root. dotclaude adds
+no guard for this, because the refusal already stops the command.
+
 ### Rejected Alternatives
 
 - **A 1-hour subagent cache TTL.** Subagent cache writes in the measured week
@@ -88,8 +121,9 @@ Claude Code delivers nothing from an agent that it stops at its turn limit.
 - **Fixing cache invalidation first.** Full cache rewrites were 6% of cost.
   Most open issues about them (#96101, #96163, #97262, #97342, #97335) are in
   Claude Code, where a plugin cannot fix them.
-- **Trimming the skill listing.** The user skills total 1.4 KB of
-  descriptions.
+- **Trimming the user's skill listing.** The user skills total 1.4 KB of
+  descriptions. dotclaude cuts only its own skill descriptions, to 250
+  characters or less each (`skillDescriptionChars` in `LIMITS`).
 - **A per-session subagent count cap.** Concurrency and the context budget
   already bound the cost. A hard count stops legitimate long sessions.
 - **Headroom.** Removed in 0.10.0. It compresses tool output with loss. In

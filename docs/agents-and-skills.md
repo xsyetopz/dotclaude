@@ -30,6 +30,7 @@ Anthropic's guidance is to start low and raise effort on failure.
 | `debugger`, `performance-engineer` | Opus 5.5, high | root cause by measurement, speed or memory work | A wrong root cause costs more than the extra effort. |
 | `reverse-engineer` | Opus 5.5, high | Ghidra analysis of a binary, protocol, or file format, and byte matching | A wrong reading of machine code is hard to find later. It uses the `ghidra` MCP tools of the session, so it has no tool allowlist. |
 | `implementer` | Sonnet 5.5, medium | one well-scoped piece of work | It follows a plan. `model: "opus"` gives it design judgment when a slice needs it. |
+| `diff-reviewer` | Sonnet 5.5, medium | read-only review of one agent-loop slice from its diff and `GUIDE.md` only | A reviewer that does not see the implementer's reasoning finds what the implementer rationalized. It has no edit tools. A slice is small, and Sonnet 5.5 costs half as much as Opus 5.5 per token. |
 | `test-writer` | Opus 5.5, medium | tests in the repository's style | Expected values need judgment that is independent of the code. |
 | `ci-investigator`, `dependency-auditor` | Opus 5.5, medium | CI failures, dependency health | They keep long logs out of the main context. |
 | `mechanical-worker` | Sonnet 5.5, medium | fully specified bulk edits | No design judgment. Anthropic's start for well-specified agentic coding on Sonnet 5.5 is `medium`, and at `low` it sometimes skips the check. |
@@ -60,10 +61,11 @@ from an agent that it stops at its turn limit. See
 | Skill | Use | Why it is in dotclaude |
 | --- | --- | --- |
 | `/dotclaude:apply-settings-profile` | applies the [settings profile](settings-profile.md) | A plugin cannot set permissions, environment variables, or models. |
-| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, fast-compact, gitleaks, and Ghidra | Each one cuts reads or protects the context. See below. |
+| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, and `dotclaude-browser` | Each one cuts reads or protects the context. See below. |
+| `run-agent-loop` | runs a large change as slices: implementer, diff-only reviewer, fixer, frozen test oracle | Bun, GitHub Copilot, and pnpm v12 ported large code bases this way. [Hooks](hooks.md#agent-loop-oracle-edit_guard) enforce the oracle and the review. See the [agent loop](dossier/design.md#the-agent-loop). |
 | `write-session-handoff` | writes a note that a fresh session can continue from | A handoff and `/clear` cost less than `/compact` on a large or cold context. |
 | `explain-dotclaude` | answers "why did you do that?" from these pages | The reason for each dotclaude behavior is in these pages. |
-| `drive-web-browser`, `recognize-captcha` | browser automation with agent-browser or CloakBrowser, offline CAPTCHA OCR | The working rules require a browser check of UI changes. Research and tests meet sites with bot checks. CloakBrowser prevents CAPTCHAs, and the offline OCR is a fallback that needs no paid service. |
+| `drive-web-browser`, `recognize-captcha` | browser automation with agent-browser or CloakBrowser, offline CAPTCHA OCR, in the optional `dotclaude-browser` plugin | The working rules require a browser check of UI changes. Research and tests meet sites with bot checks. CloakBrowser prevents CAPTCHAs, and the offline OCR is a fallback that needs no paid service. A separate plugin keeps the skills and their session note out of sessions that use no browser. |
 
 You name the skills with a leading `/`. You can put `/dotclaude:<skill>`
 anywhere in a message. A user-only skill must start the message. General
@@ -80,9 +82,13 @@ All are optional. dotclaude works without them.
   kept 83% of the facts that Claude used next, against 40% for `/compact`.
   But it leaves 72–91% of the context, so every later turn costs more. It is
   for work where lost facts cost more than usage ([evals](dossier/evals.md)).
-- **gitleaks:** the scanner behind
+- **Betterleaks:** the scanner behind
   [secret redaction](hooks.md#secret-redaction-secret_redaction).
 - **Ghidra:** decompiles binaries for reverse engineering. The MCP server
   `pyghidra-mcp` goes into the one project that needs it, because it starts
   Ghidra's Java process in each session of that project. The `ghidra-bridge`
   CLI is the fallback when the MCP server is missing or fails.
+- **dotclaude-browser:** the browser skills, and a session note that tells
+  Claude to load `drive-web-browser` before a browser command. Its options
+  (`cloakbrowser`, `cloakbrowser_humanize`, `cloakbrowser_headless`,
+  `captcha_ocr_ddddocr`) are in `/config` under dotclaude-browser.

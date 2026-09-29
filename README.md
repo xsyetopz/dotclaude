@@ -38,10 +38,17 @@ cannot set permissions, environment variables, or models. This skill writes
 them into a settings file that you choose. It shows the changes and makes a
 backup first. See [Settings Profile](docs/settings-profile.md).
 
-For the optional integrations (CodeGraph, tgrep, fast-compact, gitleaks,
-Ghidra), run
+For the optional integrations (CodeGraph, tgrep, fast-compact, Betterleaks,
+Ghidra, and the browser plugin), run
 `/dotclaude:setup-integrations`, or ask Claude, for example "set up codegraph
 for this project".
+
+Browser automation and CAPTCHA OCR are in a separate plugin, so sessions
+without a browser do not load them:
+
+```text
+/plugin install dotclaude-browser@dotclaude
+```
 
 Requirements: Claude Code 2.1.284 or later, [Bun](https://bun.sh) 1.4.2 or
 later on `PATH`, and git.
@@ -69,10 +76,13 @@ To try an unreleased checkout, run `claude --plugin-dir /path/to/dotclaude`.
 
 - **Guards** ask before destructive or public commands and before edits that
   remove test assertions. They deny recursive searches through build output,
-  and they redact secrets from tool output with gitleaks.
+  background commands that can wait on stdin, such as `codex exec`, and a
+  subagent's change to the frozen test files of an agent loop. They redact
+  secrets from tool output with Betterleaks.
 - **Gates** send Claude back once when it stops without a check that ran,
-  with open tasks, or with a reply that only announces the next step. A task
-  stays open once after a code edit that no check followed.
+  with open tasks, with an agent-loop slice that no reviewer read, or with a
+  reply that only announces the next step. A task stays open once after a
+  code edit that no check followed.
 - **Context** hooks load the `CLAUDE.md` of directories that Bash reads, and
   restore your exact words after compaction.
 - **Usage** hooks bound subagent context and turns, cap agents at 5 at once,
@@ -102,16 +112,17 @@ reports that start with the outcome.
 | `code-reviewer`, `security-reviewer`, `plan-reviewer`, `debugger`, `performance-engineer`, `reverse-engineer` | Opus 5.5, high |
 | `test-writer`, `ci-investigator`, `dependency-auditor` | Opus 5.5, medium |
 | `history-investigator`, `web-researcher` | Opus 5.5, low |
-| `implementer`, `docs-writer`, `mechanical-worker` | Sonnet 5.5, medium |
+| `implementer`, `docs-writer`, `mechanical-worker`, `diff-reviewer` | Sonnet 5.5, medium |
 | `test-runner`, `integration-setup` | Haiku 4.5 |
 
 | Skill | Use |
 | --- | --- |
 | `/dotclaude:apply-settings-profile` | applies the settings profile |
-| `/dotclaude:setup-integrations` | installs CodeGraph, tgrep, fast-compact, gitleaks, and Ghidra |
+| `/dotclaude:setup-integrations` | installs CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, and `dotclaude-browser` |
+| `run-agent-loop` | runs a large change as slices with a diff-only reviewer and a frozen test oracle |
 | `write-session-handoff` | writes a note that a fresh session can continue from |
 | `explain-dotclaude` | answers "why did you do that?" from the documentation |
-| `drive-web-browser`, `recognize-captcha` | browser automation and offline CAPTCHA OCR |
+| `drive-web-browser`, `recognize-captcha` | browser automation and offline CAPTCHA OCR, in the optional `dotclaude-browser` plugin |
 
 ### [Status Line](docs/status-line.md)
 
@@ -125,7 +136,7 @@ next row, so nothing is cut off.
 ### [Settings Profile](docs/settings-profile.md)
 
 Compaction at 150k tokens, no background requests that re-read the context,
-3 subagents at once, read denies for `.env` files and credentials, auto
+5 subagents at once, read denies for `.env` files and credentials, auto
 memory off, and a shell launcher for the system prompt. Each setting has its
 reason on the page.
 

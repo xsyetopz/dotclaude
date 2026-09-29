@@ -34,6 +34,8 @@ The first row shows where the session works:
 - the folder below the project and the added directories, the worktree, the
   git branch with changed files and commits ahead or behind, and the pull
   request number as a link
+- `loop 2/7`, the merged slices out of all slices of a `run-agent-loop` run,
+  when `.dotclaude/loop/slices.jsonl` has slices
 - the `--agent` name, the vim mode, and the session name
 
 The second row shows what the session uses:
@@ -61,7 +63,7 @@ The second row shows what the session uses:
   the cache, for example a model or effort change
   ([prices](dossier/plans-and-models.md#prices)). A miss from idle time past
   the cache lifetime does not count, because nothing broke the cache. The
-  stale-cache notice tells you about it before the turn. A miss after a model
+  expiry countdown shows it before the turn. A miss after a model
   switch does not count either, because a new model starts a new cache.
 - **Limits from 75%:** the same levels as the
   [usage notes](hooks.md#usage-notes-usage_notes). Below 75% a limit does not
@@ -74,6 +76,10 @@ The second row shows what the session uses:
   spend more, for example on a review agent. In the first 3% of a window a
   few requests move the pace far, so it shows only after that. A spend limit
   has no fixed window, so it has no pace.
+- **Loop progress:** a loop runs for hours across many agents. The count
+  shows how many slices are `merged` without a read of `slices.jsonl`. The
+  status line reads the file in the main project root, also inside a
+  worktree.
 - **Place, agent, and session name:** with several sessions and worktrees
   open, the row tells you which one you are in before you approve an action.
 - **Lines and time:** the size of the change and how long the session ran,

@@ -40,7 +40,7 @@ you choose and can review.
   longer. dotclaude does not set a 1-hour TTL for subagents, because it
   measured about $170 a week worse ([rejected
   alternatives](dossier/design.md#rejected-alternatives)).
-- **Fan-out:** 3 subagents at once, and 3 agents at once in a workflow. Forks
+- **Fan-out:** 5 subagents at once, and 5 agents at once in a workflow. Forks
   are off, so subagents run in the foreground and do not wake the main
   conversation. The workflow keyword trigger is off, because a workflow is
   multi-agent fan-out, the most expensive way to spend a plan. Claude Code
@@ -65,6 +65,9 @@ you choose and can review.
   that the guards give. Project MCP servers need your approval
   (`enableAllProjectMcpServers: false`), because a cloned repository's
   `.mcp.json` runs programs on your machine.
+  `Agent(general-purpose)` removes that agent from the list that Claude
+  sees. The plugin's refusal hook kept Claude from using it, but Claude
+  asked for it 244 times in one week, because the list still named it.
 - **Git:** `includeGitInstructions: false` removes Claude Code's git
   instructions, because dotclaude's system prompt has its own. The
   `git_attribution` option keeps the commit trailer and pull request footer.

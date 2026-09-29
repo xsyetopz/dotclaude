@@ -30,7 +30,8 @@ delete. The decision is yours, so the guard asks.
 
 **What:** denies recursive searches that walk gitignored build output or
 dependencies (`grep -r`, `find`, `tree`, `rg --no-ignore`, `fd -I`). Plain
-`rg`, `fd`, and `git grep` skip those directories.
+`rg`, `fd`, and `git grep` skip those directories. A gitignored directory
+with fewer than 200 entries, such as `__pycache__`, does not cause a deny.
 
 **Why:** an agent's `grep -r` in a repository with an 8.9 GB `.build/`
 directory hung, and it would have filled the context with generated files.
@@ -45,11 +46,34 @@ already read in full, when the file did not change. A partial `Read` with
 copy is still in the context, so the second copy only adds usage. Claude
 Code already skips a `Read` after a `Read`, but not a `cat`.
 
-**What:** denies a dev server, a watcher, `tail -f`, or `analyzeHeadless` in
-the foreground. The same command with `run_in_background` passes.
+**What:** denies a dev server, a watcher, or `analyzeHeadless` in the
+foreground. The same command with `run_in_background` passes.
 
 **Why:** a command that does not end blocks the turn until the Bash timeout,
 and then Claude runs it again in the background.
+
+**What:** denies a background command that reads stdin to its end before it
+starts work, when the command has no stdin of its own. These commands are
+`codex exec` (or `codex e`), `cat` and `python`, `python3`, or `node` with no
+file, `tr`, and a shell with no script (`bash -s`). A `</dev/null` or `0<`
+redirect, a heredoc, a pipe into the command, or an earlier `exec </dev/null`
+lets it through. A foreground call, `--help`, and `--version` pass.
+
+**Why:** a background call usually gets `/dev/null` as stdin. In one session
+it got a pipe that did not close, for a reason that is not known. Two
+`codex exec … &` runs waited on that pipe for 81 minutes, and with
+`</dev/null` the same runs ended in 80 seconds. Each command in the list was
+measured to wait on an open pipe. `claude -p` is not in the list, because it
+goes on after 3 seconds without stdin.
+
+**What:** denies a file follow (`tail -f`, `tail -F`, `inotifywait -m`) in
+both modes, unless `timeout <seconds>` bounds it. The reason gives two
+alternatives: an `until grep -q` loop in the background waits for one line,
+and `Monitor` gives each new line as an event and stops after `timeout_ms`.
+
+**Why:** a background follow runs until the session ends. It does not stop
+when the line arrives or when the file is deleted. A leftover
+`tail -f status.txt | grep` watched a deleted file until the user saw it.
 
 **What:** asks before `git add` stages a file with an ELF, Mach-O, or PE
 header.
@@ -68,6 +92,21 @@ hides the signal. An edit to Claude settings can change what Claude is
 permitted to do, so you approve it. A tool writes generated files and
 lockfiles, and a hand edit is lost or drifts from its source.
 
+### Agent-Loop Oracle (`edit_guard`)
+
+**What:** while `.dotclaude/loop/loop.json` lists `protected` globs, denies a
+subagent's change to a file that matches one, and denies its removal. The
+Edit and Write tools, a Bash write such as a redirect or heredoc, and `rm`,
+`unlink`, `mv`, `git rm`, and `git mv` away from the file all count. The main
+conversation is not limited. The globs are relative to the project root, and
+a worktree agent's paths map back to that root.
+
+**Why:** in the [agent loop](agents-and-skills.md#skills) the frozen tests are
+the oracle that shows a slice is correct. An implementer that can edit the
+oracle can make a failing slice pass. The deny tells the agent to make the
+code pass, or to say in its report that the oracle is wrong. The user directs
+the main conversation, so it can still change the oracle.
+
 ### Commit Hygiene (`commit_hygiene`)
 
 **What:** on `git commit`, asks when the staged files include `.DS_Store`,
@@ -80,15 +119,16 @@ the guard also denies a commit message that still has it
 
 ### Secret Redaction (`secret_redaction`)
 
-**What:** runs [gitleaks](https://github.com/gitleaks/gitleaks) on every tool
-output and replaces each secret with `[REDACTED:<rule>]` before Claude sees
-it. Without gitleaks on `PATH`, output passes through and session start says
-so.
+**What:** runs [Betterleaks](https://github.com/betterleaks/betterleaks) on
+every tool output and replaces each secret with `[REDACTED:<rule>]` before
+Claude sees it. Without `betterleaks` on `PATH`, output passes through and
+session start says so. gitleaks is not used. Keep it for pre-commit hooks.
 
 **Why:** a `tail ~/.zshrc` put an API key into the context. Tool output goes
-to the API and stays in the transcript. gitleaks runs with
-`--ignore-gitleaks-allow`, so a repository cannot turn redaction off. A run
-takes about 30 ms.
+to the API and stays in the transcript. Betterleaks runs from the temp
+directory with `--ignore-gitleaks-allow`, so a repository cannot turn
+redaction off. Live validation stays off, so no secret leaves the machine. A
+run takes about 30 ms.
 
 ### Quiet In Auto Mode (`ask_in_auto_mode`, off)
 
@@ -104,11 +144,14 @@ mode's own classifier already decides recoverable actions.
 
 **What:** sends Claude back once when it edits code and stops without a test,
 build, or lint run. It does the same when Claude says that tests pass after a
-failure. When Claude marks a task completed after a code edit with no check
-after it, the gate keeps the task open once. When the last paragraph of a
-reply announces the next step or asks permission for work ("Should I ...?"),
-the gate sends Claude back once to do the work. Public or hard-to-reverse
-steps and `AskUserQuestion` calls pass.
+failure. A claim in quotes, a `>` line, or code does not count. A pass
+claim with no edit and no check passes, because a read-only agent reports
+results that others ran. When Claude marks a task completed after a code
+edit with no check after it, the gate keeps the task open once, and names
+the task. When the last paragraph of a reply announces the next step or asks
+permission for work ("Should I ...?"), the gate sends Claude back once to do
+the work. Public or hard-to-reverse steps pass, and so does a turn that ends
+with `AskUserQuestion` or `ExitPlanMode`.
 
 **Why:** "done" without a check that ran moves the finding of defects to you.
 The working rules say this in prose, and the gate enforces it.
@@ -116,10 +159,24 @@ The working rules say this in prose, and the gate enforces it.
 ### Open-Task Check (`task_check`)
 
 **What:** sends Claude back once when it ends a turn with tasks still pending
-or in progress.
+or in progress. It does not apply to subagents, or to a turn that ends with
+`AskUserQuestion` or `ExitPlanMode`, because the user answers first.
 
 **Why:** a stale task list tells you that work is open when it is done, or
 done when it is open. Claude marks each task done or says why it stays open.
+
+### Loop Reviews (`task_check`)
+
+**What:** sends Claude back once when `.dotclaude/loop/slices.jsonl` has a
+slice with `status: "implemented"`, and names the slices. Claude gives each
+diff to `diff-reviewer` and sets the status to `reviewed`, or sets `failed`
+with a reason. The same set of slices blocks at most once in a session. The
+gate does not apply to subagents, to a turn that waits for the user, or while
+a background shell or subagent runs.
+
+**Why:** the reviewer that sees only the diff is the step that finds what the
+implementer rationalized. A slice that merges without it loses that check.
+One block at most lets the user pause a loop and stop.
 
 ### Stalled Goals (`goal_loop_guard`)
 
@@ -192,24 +249,15 @@ and [usage evidence](dossier/usage.md).
 ### Usage Notes (`usage_notes`)
 
 **What:** tells Claude once when the session or weekly limit passes 75% and
-90%. When a turn stops on a usage limit, a terminal notification names the
-limit, its reset time, and the `claude --resume` command. When a prompt
-arrives after the prompt cache expired on a context of 100k tokens or more,
-a message tells you that a handoff and `/clear` cost less than going on or
-`/compact`. On your third correction in a row, a note suggests a rewind or a
-handoff and `/clear`. After a reply that stopped with a refusal, a note says
-to start a new session. On the third identical Bash command in a row with
-identical output, a note tells Claude to change the approach or wait with
-`Monitor`.
+90%. The 75% note also tells Claude to write a handoff with
+`write-session-handoff` and to ask you to run `/clear`. The plan note at
+session start gives the same advice for a context near 150k tokens. When a
+turn stops on a usage limit, a terminal notification names the limit, its
+reset time, and the `claude --resume` command.
 
 **Why:** near a limit, Claude can route the remaining work to use less. A
-prompt after the cache expired, and a `/compact` after it, write the whole
-context to the cache again ([prices](dossier/plans-and-models.md#prices)).
-A handoff note and `/clear` start from a small context.
-Failed attempts and a refusal stay in the context and steer later replies,
-so a correction on top of them often fails again.
-A status check that shows nothing new costs a turn that re-reads the whole
-context.
+handoff and `/clear` keep the facts that Claude chooses. A `/compact` costs a
+full turn over the large context.
 
 ### Model Lock And Plan Awareness (`model_lock`, `claude_plan`)
 
@@ -235,4 +283,3 @@ because it deletes files.
 | `claude_plan` | `auto` | `pro`, `max_5x`, `max_20x`, `team_standard`, `team_premium`, `enterprise`, or `api` |
 | `usage_notes`, `turn_limit_handoff` | on | usage notes, and the subagent context and turn bounds |
 | `scratchpad_prune_days` | `0` (off) | removes idle Claude Code scratchpads older than this many days |
-| `cloakbrowser`, `cloakbrowser_humanize`, `cloakbrowser_headless`, `captcha_ocr_ddddocr` | agent-browser, no OCR | browser backend and CAPTCHA fallback |
