@@ -1,6 +1,6 @@
 ---
 name: integration-setup
-description: Installs, checks, and configures dotclaude's optional integrations (CodeGraph, tgrep, fast-compact, gitleaks). Use through the `setup-integrations` skill, or when asked to set up, check, repair, or reconfigure one of them.
+description: Installs, checks, and configures dotclaude's optional integrations (CodeGraph, tgrep, fast-compact, gitleaks, Ghidra). Use through the `setup-integrations` skill, or when asked to set up, check, repair, or reconfigure one of them.
 tools: Bash, Read
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-haiku-4-5

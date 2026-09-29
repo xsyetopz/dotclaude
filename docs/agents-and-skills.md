@@ -59,7 +59,7 @@ from an agent that it stops at its turn limit. See
 | Skill | Use | Why it is in dotclaude |
 | --- | --- | --- |
 | `/dotclaude:apply-settings-profile` | applies the [settings profile](settings-profile.md) | A plugin cannot set permissions, environment variables, or models. |
-| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, fast-compact, and gitleaks | Each one cuts reads or protects the context. See below. |
+| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, fast-compact, gitleaks, and Ghidra | Each one cuts reads or protects the context. See below. |
 | `write-session-handoff` | writes a note that a fresh session can continue from | A handoff and `/clear` cost less than `/compact` on a large or cold context. |
 | `explain-dotclaude` | answers "why did you do that?" from these pages | The reason for each dotclaude behavior is in these pages. |
 | `drive-web-browser`, `recognize-captcha` | browser automation with agent-browser or CloakBrowser, offline CAPTCHA OCR | The working rules require a browser check of UI changes. Research and tests meet sites with bot checks. CloakBrowser prevents CAPTCHAs, and the offline OCR is a fallback that needs no paid service. |
@@ -81,3 +81,7 @@ All are optional. dotclaude works without them.
   for work where lost facts cost more than usage ([evals](dossier/evals.md)).
 - **gitleaks:** the scanner behind
   [secret redaction](hooks.md#secret-redaction-secret_redaction).
+- **Ghidra:** decompiles binaries for reverse engineering. The MCP server
+  `pyghidra-mcp` goes into the one project that needs it, because it starts
+  Ghidra's Java process in each session of that project. The `ghidra-bridge`
+  CLI is the fallback when the MCP server is missing or fails.

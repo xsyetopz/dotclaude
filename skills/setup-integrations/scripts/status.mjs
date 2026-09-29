@@ -7,7 +7,9 @@
 // names, never their env or headers), the project's .codegraph/ and .tgrep/
 // directories, whether the global git excludes file lists .tgrep/, and for
 // fast-compact whether the plugin is installed and which settings are
-// present (key names only, never values), and the gitleaks version.
+// present (key names only, never values), the gitleaks version, and for
+// Ghidra the versions of `uvx`, Python, and Java, `GHIDRA_INSTALL_DIR`, the
+// `ghidra` MCP entry, and the `ghidra-bridge` CLI.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -92,6 +94,42 @@ function fastCompact() {
   };
 }
 
+/** The version that `bin` prints, and whether its major and minor pass. */
+function runtime(bin, flag, pattern, [major, minor]) {
+  if (!Bun.which(bin)) return null;
+  const res = spawnSync(bin, [flag], { encoding: "utf8", timeout: 5000 });
+  const found = pattern.exec(`${res.stdout ?? ""}${res.stderr ?? ""}`);
+  if (!found) return { version: null, ok: false };
+  const [a, b = 0] = found[1].split(".").map(Number);
+  return { version: found[1], ok: a > major || (a === major && b >= minor) };
+}
+
+/**
+ * Ghidra: the MCP server `pyghidra-mcp` runs through `uvx` on Python 3.10 or
+ * newer, and Ghidra itself needs Java 21. The `ghidra-bridge` CLI is the
+ * fallback when the MCP server is missing or fails.
+ */
+function ghidra(servers) {
+  const dir = process.env.GHIDRA_INSTALL_DIR || null;
+  const bridge = Bun.which("ghidra-bridge");
+  return {
+    uvx: version("uvx"),
+    python: runtime(
+      "python3",
+      "--version",
+      /Python (\d+\.\d+(?:\.\d+)?)/,
+      [3, 10],
+    ),
+    java: runtime("java", "-version", /version "(\d+(?:\.\d+)*)/, [21, 0]),
+    install_dir: dir,
+    headless:
+      dir !== null &&
+      fs.existsSync(path.join(dir, "support", "analyzeHeadless")),
+    mcp: servers.get("ghidra") ?? null,
+    bridge: bridge ?? null,
+  };
+}
+
 const servers = mcpServers();
 console.log(
   JSON.stringify(
@@ -109,6 +147,7 @@ console.log(
       },
       fast_compact: fastCompact(),
       gitleaks: { cli: version("gitleaks", "version") },
+      ghidra: ghidra(servers),
     },
     null,
     2,

@@ -75,6 +75,12 @@ steps after each update.
 - The Bash guard asks before `git add` stages a file with an ELF, Mach-O,
   or PE header, because a committed binary stays in the history.
 
+- `/dotclaude:setup-integrations` sets up Ghidra. It registers the MCP
+  server `pyghidra-mcp` in the reverse-engineering project only, and it
+  installs the `ghidra-bridge` CLI as the fallback. The status reports
+  `uvx`, Python 3.10 or newer, `GHIDRA_INSTALL_DIR` with `analyzeHeadless`,
+  Java 21, the `ghidra` MCP entry, and the CLI.
+
 ### Changed
 
 - The settings profile and the usage bounds allow 5 agents at once, not 3.

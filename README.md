@@ -38,7 +38,8 @@ cannot set permissions, environment variables, or models. This skill writes
 them into a settings file that you choose. It shows the changes and makes a
 backup first. See [Settings Profile](docs/settings-profile.md).
 
-For the optional integrations (CodeGraph, tgrep, fast-compact, gitleaks), run
+For the optional integrations (CodeGraph, tgrep, fast-compact, gitleaks,
+Ghidra), run
 `/dotclaude:setup-integrations`, or ask Claude, for example "set up codegraph
 for this project".
 
@@ -105,7 +106,7 @@ reports that start with the outcome.
 | Skill | Use |
 | --- | --- |
 | `/dotclaude:apply-settings-profile` | applies the settings profile |
-| `/dotclaude:setup-integrations` | installs CodeGraph, tgrep, fast-compact, and gitleaks |
+| `/dotclaude:setup-integrations` | installs CodeGraph, tgrep, fast-compact, gitleaks, and Ghidra |
 | `write-session-handoff` | writes a note that a fresh session can continue from |
 | `explain-dotclaude` | answers "why did you do that?" from the documentation |
 | `drive-web-browser`, `recognize-captcha` | browser automation and offline CAPTCHA OCR |

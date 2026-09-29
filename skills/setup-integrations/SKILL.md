@@ -1,7 +1,7 @@
 ---
 name: setup-integrations
-description: Install, check, and configure dotclaude's optional integrations (CodeGraph code-graph MCP, tgrep indexed search, fast-compact tool-output trimming, and the gitleaks scanner behind secret redaction). Use when the user asks to set up, install, check, repair, or reconfigure CodeGraph, tgrep, fast-compact, or gitleaks, or a dotclaude agent reports one missing.
-argument-hint: "[status|codegraph|tgrep|fast-compact|gitleaks] [what to change]"
+description: Install, check, and configure dotclaude's optional integrations (CodeGraph code-graph MCP, tgrep indexed search, fast-compact tool-output trimming, the gitleaks scanner behind secret redaction, and Ghidra for reverse engineering). Use when the user asks to set up, install, check, repair, or reconfigure CodeGraph, tgrep, fast-compact, gitleaks, or Ghidra, or a dotclaude agent reports one missing.
+argument-hint: "[status|codegraph|tgrep|fast-compact|gitleaks|ghidra] [what to change]"
 context: fork
 agent: integration-setup
 allowed-tools: Bash(bun *status.mjs*)
@@ -56,3 +56,12 @@ dotclaude's secret redaction (the `secret_redaction` option, on by default) runs
 - Install: `brew install gitleaks`, or a release binary from <https://github.com/gitleaks/gitleaks/releases>.
 - It needs no configuration. `GITLEAKS_CONFIG` in the environment changes the rules. A repository's own `.gitleaks.toml` and `gitleaks:allow` comments do not disable redaction.
 </gitleaks>
+
+<ghidra>
+Ghidra decompiles and analyzes binaries for reverse engineering. dotclaude uses it in two parts. The MCP server `pyghidra-mcp` comes first. The `ghidra-bridge` CLI is the fallback when the MCP server is missing or a call fails. The `dotclaude:reverse-engineer` agent follows that order.
+
+- Requirements, from the status: Ghidra with `support/analyzeHeadless` under `GHIDRA_INSTALL_DIR`, Java 21 or newer, `uvx` from uv, and Python 3.10 or newer. Installing Ghidra and a Java 21 JDK is the user's step. Give them <https://github.com/NationalSecurityAgency/ghidra/releases>, and tell them to set `GHIDRA_INSTALL_DIR` in their shell profile.
+- MCP server: register it only in the reverse-engineering project that the user names, with `claude mcp add --scope project ghidra -- uvx pyghidra-mcp --project-path <absolute path of that project>`. Run the command in that project. Do not register it at user scope or in a plugin `.mcp.json`, because every session would then start Ghidra's Java process.
+- CLI fallback: `uv tool install ghidra-ai-bridge`, which installs `ghidra-bridge`. Read `ghidra-bridge --help` for its commands.
+- After a restart, `/mcp` in that project lists `ghidra`, and the status shows `mcp: "project"`.
+</ghidra>
