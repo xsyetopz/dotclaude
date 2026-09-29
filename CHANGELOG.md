@@ -56,6 +56,14 @@ steps after each update.
   `tail -f`, and Ghidra's `analyzeHeadless`. The reason says to run the
   same command with `run_in_background`. A shell `&` or a `timeout`
   wrapper passes.
+- The global `CLAUDE.md` section of the settings profile has a
+  `# Compact instructions` section. It tells the compaction summary to keep
+  your requests in your own words, decisions with their reasons, and exact
+  paths, commands, and errors.
+- A subagent that `SendMessage` resumes gets no second copy of the working
+  conventions. Claude Code fires `SubagentStart` again on a resume
+  ([#80489](https://github.com/anthropics/claude-code/issues/80489)), and
+  the agent already has the text.
 
 ### Fixed
 

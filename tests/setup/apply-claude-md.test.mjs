@@ -50,3 +50,14 @@ test("apply-claude-md keeps a top-level heading the file already has", () => {
     /^# My rules\n\nMine\.\n\n<!-- dotclaude:begin/,
   );
 });
+
+test("the profile writes one `# Compact instructions` section, and a second apply changes nothing", () => {
+  const home = tempHome();
+  const file = path.join(home, ".claude", "CLAUDE.md");
+  run("apply-claude-md.mjs", home, "--apply");
+  const first = fs.readFileSync(file, "utf8");
+  expect(first.match(/^# Compact instructions$/gm)?.length).toBe(1);
+  expect(first).toMatch(/in their own words/);
+  run("apply-claude-md.mjs", home, "--apply");
+  expect(fs.readFileSync(file, "utf8")).toBe(first);
+});
