@@ -97,7 +97,7 @@ reports that start with the outcome.
 
 | Agent | Model, effort |
 | --- | --- |
-| `code-reviewer`, `security-reviewer`, `plan-reviewer`, `debugger`, `performance-engineer` | Opus 5.5, high |
+| `code-reviewer`, `security-reviewer`, `plan-reviewer`, `debugger`, `performance-engineer`, `reverse-engineer` | Opus 5.5, high |
 | `test-writer`, `ci-investigator`, `dependency-auditor` | Opus 5.5, medium |
 | `history-investigator`, `web-researcher` | Opus 5.5, low |
 | `implementer`, `docs-writer`, `mechanical-worker` | Sonnet 5.5, medium |

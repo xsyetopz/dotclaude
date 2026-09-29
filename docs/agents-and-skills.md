@@ -28,6 +28,7 @@ Anthropic's guidance is to start low and raise effort on failure.
 | --- | --- | --- | --- |
 | `code-reviewer`, `security-reviewer`, `plan-reviewer` | Opus 5.5, high | fresh-context review of a change, its security, or a plan | Review is judgment. A fresh context does not share the author's assumptions. |
 | `debugger`, `performance-engineer` | Opus 5.5, high | root cause by measurement, speed or memory work | A wrong root cause costs more than the extra effort. |
+| `reverse-engineer` | Opus 5.5, high | Ghidra analysis of a binary, protocol, or file format, and byte matching | A wrong reading of machine code is hard to find later. It uses the `ghidra` MCP tools of the session, so it has no tool allowlist. |
 | `implementer` | Sonnet 5.5, medium | one well-scoped piece of work | It follows a plan. `model: "opus"` gives it design judgment when a slice needs it. |
 | `test-writer` | Opus 5.5, medium | tests in the repository's style | Expected values need judgment that is independent of the code. |
 | `ci-investigator`, `dependency-auditor` | Opus 5.5, medium | CI failures, dependency health | They keep long logs out of the main context. |

@@ -166,3 +166,22 @@ test("general-purpose is refused, and other subagents run in the foreground", ()
     ),
   ).toBeUndefined();
 });
+
+test("each dotclaude agent runs on a model that the default lock allows", async () => {
+  const { definition } = await import("../../hooks/lib/_agents.mjs");
+  const { allowed, DEFAULT_ALLOWED } = await import(
+    "../../hooks/lib/_models.mjs"
+  );
+  const dir = path.join(import.meta.dir, "..", "..", "agents");
+  const names = fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => f.slice(0, -3));
+  expect(names).toContain("reverse-engineer");
+  for (const name of names) {
+    const def = definition(`dotclaude:${name}`);
+    expect(def?.maxTurns, name).toBeGreaterThan(0);
+    expect(def.model, name).toMatch(/^claude-/);
+    expect(allowed(def.model, DEFAULT_ALLOWED.split(",")), name).toBe(true);
+  }
+});

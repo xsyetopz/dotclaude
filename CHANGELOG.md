@@ -80,6 +80,12 @@ steps after each update.
   installs the `ghidra-bridge` CLI as the fallback. The status reports
   `uvx`, Python 3.10 or newer, `GHIDRA_INSTALL_DIR` with `analyzeHeadless`,
   Java 21, the `ghidra` MCP entry, and the CLI.
+- A `reverse-engineer` agent on Opus 5.5 with effort `high` analyzes a
+  binary, protocol, or file format with Ghidra. It uses the `ghidra` MCP
+  tools first and the `ghidra-bridge` CLI only when they are missing or
+  fail, and its report names the path. For matching work, it pins the
+  SHA-256 of the input, compares bytes and relocations, and keeps an
+  iteration log. It does not analyze the Claude Code binary.
 
 ### Changed
 
