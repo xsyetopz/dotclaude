@@ -60,12 +60,12 @@ test("the cache part shows the expiry while warm and the re-read cost when cold"
     expires_at: sec(NOW + 40 * 60_000),
     hit_ratio: 0.93,
   };
-  expect(plain(cachePart(warm, NOW))).toBe("◷40m 93%");
+  expect(plain(cachePart(warm, NOW))).toBe("◷ 40m 93%");
   // The minutes left round up, so a warm cache never shows 0m.
   const soon = { ...warm, expires_at: sec(NOW + 20_000) };
-  expect(plain(cachePart(soon, NOW))).toBe("◷1m 93%");
+  expect(plain(cachePart(soon, NOW))).toBe("◷ 1m 93%");
   const long = { ...warm, expires_at: sec(NOW + 65 * 60_000) };
-  expect(plain(cachePart(long, NOW))).toBe("◷1h5m 93%");
+  expect(plain(cachePart(long, NOW))).toBe("◷ 1h5m 93%");
   expect(cachePart({ ...warm, hit_ratio: 0.6 }, NOW)).toContain(`${YELLOW}60%`);
   const cold = {
     caching_observed: true,
@@ -74,15 +74,15 @@ test("the cache part shows the expiry while warm and the re-read cost when cold"
     hit_ratio: 0.9,
     recache_tokens_if_cold: STALE_CACHE_CONTEXT_TOKENS + 20_000,
   };
-  expect(plain(cachePart(cold, NOW))).toBe("◌cold 120k 90%");
+  expect(plain(cachePart(cold, NOW))).toBe("◌ cold 120k 90%");
   expect(cachePart(cold, NOW)).toContain(RED);
   expect(
     plain(cachePart({ ...cold, recache_tokens_if_cold: 30_000 }, NOW)),
-  ).toBe("◌cold 90%");
+  ).toBe("◌ cold 90%");
   // An expiry in the past counts as cold even if `warm` is stale.
   expect(
     plain(cachePart({ ...warm, expires_at: sec(NOW - 1000) }, NOW)),
-  ).toStartWith("◌cold");
+  ).toStartWith("◌ cold");
   expect(cachePart({ caching_observed: false }, NOW)).toBe(null);
 });
 
@@ -99,7 +99,7 @@ test("the cache part counts only misses that idle time did not cause", () => {
     last_miss_cause: { causes: ["ttl_expired_1h"] },
     miss_causes: { ttl_expired_1h: 1 },
   };
-  expect(plain(cachePart(idle, NOW))).toBe("◷40m 97%");
+  expect(plain(cachePart(idle, NOW))).toBe("◷ 40m 97%");
   // The last miss came from idle time, so its cause does not name the others.
   const mixed = {
     ...warm,
@@ -107,7 +107,7 @@ test("the cache part counts only misses that idle time did not cause", () => {
     last_miss_cause: { causes: ["ttl_expired_5m"] },
     miss_causes: { tools_changed: 1, ttl_expired_5m: 2, ttl_expired_1h: 1 },
   };
-  expect(plain(cachePart(mixed, NOW))).toBe("◷40m 97% ✗1");
+  expect(plain(cachePart(mixed, NOW))).toBe("◷ 40m 97% ✗1");
   // A model switch starts a new cache, so its rebuild is expected. Claude
   // Code already keeps the first call and compactions out of `misses`.
   const model = {
@@ -116,13 +116,13 @@ test("the cache part counts only misses that idle time did not cause", () => {
     last_miss_cause: { causes: ["model_changed", "effort_changed"] },
     miss_causes: { model_changed: 1, effort_changed: 1 },
   };
-  expect(plain(cachePart(model, NOW))).toBe("◷40m 97%");
+  expect(plain(cachePart(model, NOW))).toBe("◷ 40m 97%");
   const both = {
     ...model,
     misses: 3,
     miss_causes: { model_changed: 2, effort_changed: 1, tools_changed: 1 },
   };
-  expect(plain(cachePart(both, NOW))).toBe("◷40m 97% ✗1");
+  expect(plain(cachePart(both, NOW))).toBe("◷ 40m 97% ✗1");
 });
 
 test("a usage limit shows its reset only from the first usage level", () => {
@@ -207,8 +207,8 @@ const GIT = { branch: "main", dirty: 3, ahead: 1, behind: 0 };
 test("the main line shows the place on one row and the usage on the next, with cost only without plan limits", () => {
   const line = renderMain(DATA, { columns: 200, now: NOW, git: GIT });
   expect(plain(line).split("\n")).toEqual([
-    "dotclaude · ⎇main ±3 ↑1 · #42",
-    "Opus 5.5 medium · 87k/150k ███░░ · ◷40m 93% · 5h 23% · 7d 41%",
+    "dotclaude · ⎇ main ±3 ↑1 · #42",
+    "Opus 5.5 medium · 87k/150k ███░░ · ◷ 40m 93% · 5h 23% · 7d 41%",
   ]);
   expect(line).toContain("\x1b]8;;https://github.com/o/r/pull/42\x07");
   const api = renderMain(
@@ -249,8 +249,8 @@ const FULL = {
 test("the main line shows the session facts that advanced users check", () => {
   const text = plain(renderMain(FULL, { columns: 400, now: NOW, git: GIT }));
   expect(text.split("\n")).toEqual([
-    "dotclaude/hooks +2 · ⊞feature-x · ⎇main ±3 ↑1 · #42 · @security-reviewer · NORMAL · status line rows",
-    "Opus 5.5 medium · 87k/150k ███░░ · ◷40m 93% ✗2 tools · 5h 23% · 7d 41% · spend 63% · +156 -23 · 1h12m",
+    "dotclaude/hooks +2 · ⊞ feature-x · ⎇ main ±3 ↑1 · #42 · @security-reviewer · NORMAL · status line rows",
+    "Opus 5.5 medium · 87k/150k ███░░ · ◷ 40m 93% ✗2 tools · 5h 23% · 7d 41% · spend 63% · +156 -23 · 1h12m",
   ]);
 });
 
@@ -261,7 +261,7 @@ test("a narrow terminal wraps parts to new rows instead of cutting them off", ()
   expect(rows.length).toBeLessThanOrEqual(3);
   for (const row of rows) expect(width(row)).toBeLessThanOrEqual(80);
   const text = plain(rows.join("\n"));
-  for (const part of ["87k/150k", "Opus 5.5", "5h 23%", "◷40m 93%"])
+  for (const part of ["87k/150k", "Opus 5.5", "5h 23%", "◷ 40m 93%"])
     expect(text).toContain(part);
 });
 

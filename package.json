@@ -1,6 +1,6 @@
 {
   "name": "dotclaude",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "private": true,
   "description": "Claude Code plugin: mechanical guardrails and settings profile.",
   "type": "module",

@@ -10,6 +10,14 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-09-29
+
+### Fixed
+
+- The status line puts a space after the branch (`⎇`), worktree (`⊞`), and
+  cache (`◷`, `◌`) glyphs, so the glyph and the branch name or time after
+  it do not run together.
+
 ## [0.12.0] - 2026-09-29
 
 After updating, restart Claude Code and run
@@ -240,4 +248,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.12.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.12.1...HEAD

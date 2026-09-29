@@ -9,8 +9,8 @@ It shows what you need to decide when to hand off, compact, or stop.
 An example, with colors removed:
 
 ```text
-dotclaude/hooks +2 · ⊞feature-x · ⎇main ±3 ↑1 · #42
-Opus 5.5 high · 87k/150k ███░░ · ◷40m 93% ✗2 tools · 5h 82% ▲12%→12:46 ↻13:30
+dotclaude/hooks +2 · ⊞ feature-x · ⎇ main ±3 ↑1 · #42
+Opus 5.5 high · 87k/150k ███░░ · ◷ 40m 93% ✗2 tools · 5h 82% ▲12%→12:46 ↻13:30
 ```
 
 Each part is short. A one-column glyph replaces a word where it saves space:

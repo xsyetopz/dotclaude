@@ -7,8 +7,10 @@
 // Each part is short and starts with a one-column glyph where a word would
 // cost more columns: `⎇` branch, `⊞` worktree, `◷` warm cache, `◌` cold
 // cache, `✗` cache misses, `▲` limit deficit, `▼` limit reserve, `↻` limit
-// reset. No emoji, because an emoji takes two columns in some terminals and
-// one in others, and the row packing counts columns.
+// reset. A space follows a glyph that labels a name or a time (`⎇`, `⊞`,
+// `◷`, `◌`), so the glyph and the text do not run together. No emoji,
+// because an emoji takes two columns in some terminals and one in others,
+// and the row packing counts columns.
 //
 // A plugin can ship only `subagentStatusLine`. The main `statusLine` lives in
 // the user's settings, so apply-statusline.mjs points it at a small stub at a
@@ -129,11 +131,11 @@ export function cachePart(cache, now = Date.now()) {
     ratio += ` ${C.yellow(`✗${misses}${shown}`)}`;
   }
   if (cache.warm && cache.expires_at && cache.expires_at * 1000 > now)
-    return `${C.green(`◷${countdown(cache.expires_at * 1000 - now)}`)}${ratio}`;
+    return `${C.green(`◷ ${countdown(cache.expires_at * 1000 - now)}`)}${ratio}`;
   const recache = cache.recache_tokens_if_cold ?? 0;
   if (recache >= STALE_CACHE_CONTEXT_TOKENS)
-    return `${C.red(`◌cold ${k(recache)}`)}${ratio}`;
-  return `${C.dim("◌cold")}${ratio}`;
+    return `${C.red(`◌ cold ${k(recache)}`)}${ratio}`;
+  return `${C.dim("◌ cold")}${ratio}`;
 }
 
 /**
@@ -206,7 +208,7 @@ export function gitState(dir) {
 
 function gitPart(git) {
   if (!git?.branch) return null;
-  let text = C.magenta(`⎇${git.branch}`);
+  let text = C.magenta(`⎇ ${git.branch}`);
   if (git.dirty) text += C.yellow(` ±${git.dirty}`);
   if (git.ahead) text += C.cyan(` ↑${git.ahead}`);
   if (git.behind) text += C.cyan(` ↓${git.behind}`);
@@ -286,7 +288,7 @@ export function renderMain(
 
   add(place, 9, folderPart(data.workspace, dir));
   const worktree = data.worktree?.name || data.workspace?.git_worktree;
-  if (worktree) add(place, 5, C.cyan(`⊞${worktree}`));
+  if (worktree) add(place, 5, C.cyan(`⊞ ${worktree}`));
   add(place, 6, gitPart(git));
   if (data.pr?.number) {
     const color = REVIEW[data.pr.review_state] ?? C.yellow;
