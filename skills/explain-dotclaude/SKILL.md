@@ -15,7 +15,7 @@ Answer the user's question about a dotclaude behavior with its reason and its ev
 4. If no page covers the behavior, say so. Then check if the behavior comes from Claude Code itself, from a project `CLAUDE.md`, or from your own judgment, and say which one. Do not make up a dotclaude reason.
 </procedure>
 
-<output>
+<output_format>
 Give a short answer in this order:
 
 1. What the behavior is, in one sentence.
@@ -24,4 +24,4 @@ Give a short answer in this order:
 4. The page path, so the user can read more.
 
 Keep a dotclaude rule and your own judgment apart. If you did the thing because of your own judgment and not because of a dotclaude rule, say that.
-</output>
+</output_format>

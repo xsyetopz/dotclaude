@@ -24,6 +24,6 @@ Use these sections in this order. Skip a section only when it is truly empty:
 5. **Details that are hard to rebuild**: exact error messages, commands, IDs, versions, and `file:line` locations the next session would otherwise have to rediscover.
 </sections>
 
-<output>
+<output_format>
 Keep the note under about 80 lines. Give file paths, not pasted file contents. Tell the user the path you wrote. Tell them a new session can start with `Read <path> and continue`. Check if the file is inside the repository and git does not ignore it. If so, say they may want to add it to `.gitignore`. A handoff note describes one session and does not belong in the project history.
-</output>
+</output_format>
