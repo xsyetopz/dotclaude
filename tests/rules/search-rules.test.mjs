@@ -14,17 +14,26 @@ function tempDir() {
   );
 }
 
-// A repo with ignored build output at the root and ignored dependencies in
-// a subdirectory; `src` has no ignored content.
+// A repo with large ignored build output at the root and large ignored
+// dependencies in a subdirectory. `src` has only a small ignored cache.
 function makeRepo() {
   const root = tempDir();
   execFileSync("git", ["init", "-q", root]);
-  fs.writeFileSync(path.join(root, ".gitignore"), ".build/\nnode_modules/\n");
-  for (const dir of ["src", ".build/out", "web/node_modules/pkg"])
+  fs.writeFileSync(
+    path.join(root, ".gitignore"),
+    ".build/\nnode_modules/\n__pycache__/\n",
+  );
+  for (const dir of ["src/__pycache__", ".build/out", "web/node_modules/pkg"])
     fs.mkdirSync(path.join(root, dir), { recursive: true });
   fs.writeFileSync(path.join(root, "src", "app.swift"), "let x = 1\n");
-  fs.writeFileSync(path.join(root, ".build", "out", "big.o"), "\0");
-  fs.writeFileSync(path.join(root, "web", "node_modules", "pkg", "i.js"), "");
+  fs.writeFileSync(path.join(root, "src", "__pycache__", "a.pyc"), "\0");
+  for (let i = 0; i < 200; i += 1) {
+    fs.writeFileSync(path.join(root, ".build", "out", `${i}.o`), "\0");
+    fs.writeFileSync(
+      path.join(root, "web", "node_modules", "pkg", `${i}.js`),
+      "",
+    );
+  }
   fs.writeFileSync(path.join(root, "web", "main.js"), "");
   execFileSync("git", [
     "-C",
@@ -91,6 +100,8 @@ const PASS = [
   "git grep --untracked needle",
   "git grep --no-index --exclude-standard needle",
   "grep -rn needle src",
+  // `src/__pycache__/` is ignored but small.
+  "find src -type f",
   "grep -n needle src/app.swift",
   "grep -r needle .build/out",
   "grep -r needle src .build",

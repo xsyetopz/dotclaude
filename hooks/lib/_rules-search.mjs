@@ -3,11 +3,12 @@
 // does not read .gitignore can take minutes on a large build directory and
 // floods the context with generated files.
 //
-// A walk is denied only when a directory it searches contains a gitignored
-// directory that the command does not exclude. Walks of a directory without
-// ignored content (`grep -r x src`), walks that start inside an ignored
-// directory (a deliberate target such as `.build/debug`), and shallow walks
-// pass.
+// A walk is denied only when a directory it searches contains a large
+// gitignored directory that the command does not exclude. Walks of a
+// directory without ignored content (`grep -r x src`), walks that start
+// inside an ignored directory (a deliberate target such as `.build/debug`),
+// shallow walks, and walks whose ignored directories are all small caches
+// (`__pycache__`, `xcuserdata`) pass.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -16,6 +17,10 @@ import { resolveTarget } from "./_rules-filesystem.mjs";
 
 // Walks this shallow list a few entries of an ignored directory at most.
 const SHALLOW = 2;
+// An ignored directory with fewer entries than this is a small cache. A walk
+// through it is fast and adds little output, and a deny there only made
+// Claude retry the same command.
+const SMALL_DIR_ENTRIES = 200;
 
 /**
  * Split argv into flags and positionals. `short` lists single-letter flags
@@ -430,6 +435,25 @@ function ignoredDirs(dir, ctx) {
     .map((p) => p.slice(0, -1));
 }
 
+/** True when `dir` holds at least SMALL_DIR_ENTRIES entries at any depth. */
+function large(dir) {
+  let seen = 0;
+  const stack = [dir];
+  while (stack.length) {
+    let entries;
+    try {
+      entries = fs.readdirSync(stack.pop(), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const e of entries) {
+      if (++seen >= SMALL_DIR_ENTRIES) return true;
+      if (e.isDirectory()) stack.push(path.join(e.parentPath, e.name));
+    }
+  }
+  return false;
+}
+
 function excluded(dir, excludes) {
   return excludes.some(
     (e) => e === dir || e === path.basename(dir) || dir.endsWith(`/${e}`),
@@ -462,8 +486,8 @@ export function ignoredWalk(cmd, ctx) {
       for (const d of ignoredDirs(dir, ctx))
         if (!excluded(d, walk.excludes)) hits.add(d);
   }
-  if (!hits.size) return [];
-  const list = [...hits];
+  const list = [...hits].filter((d) => large(path.join(ctx.root, d)));
+  if (!list.length) return [];
   const shown = list
     .slice(0, 3)
     .map((d) => `\`${d}/\``)
