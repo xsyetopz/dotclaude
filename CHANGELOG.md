@@ -94,12 +94,17 @@ steps after each update.
   their turn-limit reserve. For each agent type, it gives the median files
   and list items in the brief of those runs and of the other runs.
 - The 5-hour and weekly limits on the status line show their pace, as
-  CodexBar does. `+12% out 12:46` is a deficit: usage runs 12 points ahead
-  of an even rate, and at this rate the limit is used up at 12:46. `-30%` is
-  a reserve. The pace shows after 3% of the window is gone.
+  CodexBar does. `▲12%→12:46` is a deficit: usage runs 12 points ahead of
+  an even rate, and at this rate the limit is used up at 12:46. `▼30%` is a
+  reserve. The pace shows after 3% of the window is gone.
 
 ### Changed
 
+- The main status line is more compact. One-column glyphs replace words:
+  `⎇` for the branch, `⊞` for the worktree, `◷` and `◌` for a warm and cold
+  cache, `✗` for cache misses, and `▲` and `▼` for a limit deficit and
+  reserve. The warm cache shows the minutes until it expires, not the clock
+  time. The context bar has 5 cells, not 8.
 - The status line does not count a cache miss after a model switch, because
   a new model starts a new cache. Claude Code already keeps the first call
   and the call after a compaction out of its miss count.

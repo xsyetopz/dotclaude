@@ -4,6 +4,12 @@
 // limits at the levels the usage notes use. The subagent rows measure each
 // agent's context against the subagent budget.
 //
+// Each part is short and starts with a one-column glyph where a word would
+// cost more columns: `⎇` branch, `⊞` worktree, `◷` warm cache, `◌` cold
+// cache, `✗` cache misses, `▲` limit deficit, `▼` limit reserve, `↻` limit
+// reset. No emoji, because an emoji takes two columns in some terminals and
+// one in others, and the row packing counts columns.
+//
 // A plugin can ship only `subagentStatusLine`. The main `statusLine` lives in
 // the user's settings, so apply-statusline.mjs points it at a small stub at a
 // fixed path, and session start keeps the stub pointing at this plugin
@@ -65,7 +71,7 @@ function levelColor(pct) {
 const byLevel = (pct, text) => levelColor(pct)(text);
 
 /** Context tokens against `limit`, with a bar and a handoff mark past it. */
-export function contextPart(tokens, limit, cells = 8) {
+export function contextPart(tokens, limit, cells = 5) {
   const fraction = tokens / limit;
   const color = levelColor(fraction * 100);
   const full = Math.round(Math.min(fraction, 1) * cells);
@@ -81,9 +87,16 @@ const clock = (sec, now) => {
   return d.toLocaleDateString("en-US", { weekday: "short" });
 };
 
+/** Time left, rounded up to whole minutes: "4m", "1h5m". */
+const countdown = (ms) => {
+  const min = Math.ceil(ms / 60_000);
+  return min >= 60 ? `${Math.floor(min / 60)}h${min % 60}m` : `${min}m`;
+};
+
 /**
- * The prompt cache: when it goes cold, and the hit ratio. A cold cache over
- * the stale-cache bound is red, because the next turn re-reads it all.
+ * The prompt cache: the minutes until it goes cold, and the hit ratio. A
+ * cold cache over the stale-cache bound is red, because the next turn
+ * re-reads it all.
  */
 export function cachePart(cache, now = Date.now()) {
   if (!cache?.caching_observed) return null;
@@ -109,15 +122,18 @@ export function cachePart(cache, now = Date.now()) {
   if (misses > 0) {
     const causes = cache.last_miss_cause?.causes ?? [];
     const cause = causes.includes("model_changed") ? null : causes[0];
-    const shown = cause && !cause.startsWith("ttl_expired") ? ` ${cause}` : "";
-    ratio += ` ${C.yellow(`${misses} miss${shown}`)}`;
+    const shown =
+      cause && !cause.startsWith("ttl_expired")
+        ? ` ${cause.replace(/_changed$/, "")}`
+        : "";
+    ratio += ` ${C.yellow(`✗${misses}${shown}`)}`;
   }
   if (cache.warm && cache.expires_at && cache.expires_at * 1000 > now)
-    return `${C.green("cache")} ${C.dim("till")} ${clock(cache.expires_at, now)}${ratio}`;
+    return `${C.green(`◷${countdown(cache.expires_at * 1000 - now)}`)}${ratio}`;
   const recache = cache.recache_tokens_if_cold ?? 0;
   if (recache >= STALE_CACHE_CONTEXT_TOKENS)
-    return `${C.red(`cache cold, ${k(recache)} to re-read`)}${ratio}`;
-  return `${C.dim("cache cold")}${ratio}`;
+    return `${C.red(`◌cold ${k(recache)}`)}${ratio}`;
+  return `${C.dim("◌cold")}${ratio}`;
 }
 
 /**
@@ -133,8 +149,8 @@ function windowGone(window, now, span) {
 /**
  * One usage window: "5h 23%", with its reset time once it passes a level.
  * With the window length in seconds, it also shows the pace, as CodexBar
- * does: "+12%" is a deficit (usage runs 12 points ahead of an even rate,
- * with the time at which that rate uses all of the limit), and "-30%" is a
+ * does: "▲12%→12:46" is a deficit (usage runs 12 points ahead of an even
+ * rate, and at that rate the limit runs out at 12:46), and "▼30%" is a
  * reserve. Early in a window the pace is noise, so it shows only after 3%
  * of the window is gone.
  */
@@ -148,9 +164,9 @@ export function limitPart(label, window, now = Date.now(), span = 0) {
     const delta = Math.round(used - 100 * gone);
     if (delta > 0 && used < 100) {
       const out = now / 1000 + ((100 - used) * gone * span) / used;
-      pace = ` ${C.yellow(`+${delta}% out ${clock(out, now)}`)}`;
-    } else if (delta > 0) pace = ` ${C.yellow(`+${delta}%`)}`;
-    else if (delta < 0) pace = ` ${C.green(`${delta}%`)}`;
+      pace = ` ${C.yellow(`▲${delta}%→${clock(out, now)}`)}`;
+    } else if (delta > 0) pace = ` ${C.yellow(`▲${delta}%`)}`;
+    else if (delta < 0) pace = ` ${C.green(`▼${-delta}%`)}`;
   }
   const reset =
     pct >= USAGE_LEVELS[0] && window.resets_at
@@ -190,7 +206,7 @@ export function gitState(dir) {
 
 function gitPart(git) {
   if (!git?.branch) return null;
-  let text = C.magenta(git.branch);
+  let text = C.magenta(`⎇${git.branch}`);
   if (git.dirty) text += C.yellow(` ±${git.dirty}`);
   if (git.ahead) text += C.cyan(` ↑${git.ahead}`);
   if (git.behind) text += C.cyan(` ↓${git.behind}`);
@@ -211,7 +227,7 @@ function folderPart(workspace, dir) {
     name = `${path.basename(project)}/${path.relative(project, dir)}`;
   let text = C.bold(C.blue(name));
   const added = workspace?.added_dirs?.length;
-  if (added) text += C.dim(` +${added} dir${added > 1 ? "s" : ""}`);
+  if (added) text += C.dim(` +${added}`);
   return text;
 }
 
@@ -270,7 +286,7 @@ export function renderMain(
 
   add(place, 9, folderPart(data.workspace, dir));
   const worktree = data.worktree?.name || data.workspace?.git_worktree;
-  if (worktree) add(place, 5, C.cyan(`worktree ${worktree}`));
+  if (worktree) add(place, 5, C.cyan(`⊞${worktree}`));
   add(place, 6, gitPart(git));
   if (data.pr?.number) {
     const color = REVIEW[data.pr.review_state] ?? C.yellow;
