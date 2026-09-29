@@ -80,7 +80,8 @@ mode's own classifier already decides recoverable actions.
 
 **What:** sends Claude back once when it edits code and stops without a test,
 build, or lint run. It does the same when Claude says that tests pass after a
-failure.
+failure. When Claude marks a task completed after a code edit with no check
+after it, the gate keeps the task open once.
 
 **Why:** "done" without a check that ran moves the finding of defects to you.
 The working rules say this in prose, and the gate enforces it.

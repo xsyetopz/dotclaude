@@ -10,6 +10,13 @@ steps after each update.
 
 ## [Unreleased]
 
+### Added
+
+- The stop gate also runs when Claude marks a task completed. After a code
+  edit with no check run after it, the gate keeps the task open once and
+  tells Claude to run the tests, build, or lint. The `stop_gate` option
+  turns this off too.
+
 ### Fixed
 
 - Files that a Bash command writes now get the same checks as the `Edit`

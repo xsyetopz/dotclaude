@@ -343,6 +343,20 @@
           }
         ]
       }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/task-completed/require-check.mjs"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

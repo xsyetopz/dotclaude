@@ -1,12 +1,14 @@
 // Stop verification gate and the edit/check ledger it reads.
 
 import { expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import {
   checkRun,
   data,
   edit,
+  HOOKS,
   hook,
   repo,
   session,
@@ -227,4 +229,52 @@ test("stop gate is not bypassed by a reply that mentions an error or failure it 
     edit(sid);
     expect(stop(sid, message)?.decision, message).toBe("block");
   }
+});
+
+// TaskCompleted blocks with exit code 2 and a reason on stderr.
+function completeTask(input) {
+  const res = spawnSync(
+    "bun",
+    [path.join(HOOKS, "task-completed/require-check.mjs")],
+    {
+      input: JSON.stringify({
+        cwd: repo,
+        hook_event_name: "TaskCompleted",
+        task_id: "1",
+        task_name: "Fix the parser",
+        task_status: "completed",
+        ...input,
+      }),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        CLAUDE_PLUGIN_DATA: data,
+        CLAUDE_PROJECT_DIR: repo,
+      },
+    },
+  );
+  return { code: res.status, stderr: res.stderr };
+}
+
+test("a task completion after an unchecked edit is blocked once", () => {
+  const sid = session();
+  edit(sid);
+  const first = completeTask({ session_id: sid });
+  expect(first.code).toBe(2);
+  expect(first.stderr).toMatch(/src\/app\.js/);
+  expect(completeTask({ session_id: sid }).code, "blocks once").toBe(0);
+});
+
+test("a task completion passes after a check, with no edit, or without fields", () => {
+  const sid = session();
+  edit(sid);
+  checkRun(sid, "bun test");
+  expect(completeTask({ session_id: sid }).code).toBe(0);
+  expect(completeTask({ session_id: session() }).code).toBe(0);
+  expect(completeTask({}).code).toBe(0);
+  const sid2 = session();
+  edit(sid2);
+  expect(
+    completeTask({ session_id: sid2, task_status: "in_progress" }).code,
+  ).toBe(0);
 });
