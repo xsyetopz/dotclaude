@@ -19,6 +19,10 @@ steps after each update.
   `mv`, and file writes in inline interpreter code. A new file under a
   build directory does not get the generated-file warning. The `edit_guard`
   option turns these checks off.
+- The Bash guard asks before snapshot updates through a package script, such
+  as `npm test -- -u` or `pnpm test -u`. Before, only direct runner calls
+  asked. The reason now tells Claude to find the cause of a failing test
+  before it updates the snapshots.
 
 - The Bash guard resolves paths after `cd ~/dir` against your home
   directory. Before, `cd ~/.claude/projects && find .` was checked as if it

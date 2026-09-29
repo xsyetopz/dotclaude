@@ -46,7 +46,9 @@ export function dbReset(cmd) {
 // --- snapshot blessing ------------------------------------------------------
 
 const RUNNERS =
-  /\b(jest|vitest|playwright|pytest|go\s+test|flutter\s+test|ava|mocha|bun\s+test|swift\s+test)\b/;
+  /\b(jest|vitest|playwright|pytest|go\s+test|flutter\s+test|ava|mocha|bun\s+test|swift\s+test|(npm|pnpm|yarn|bun)\s+(run\s+)?test)\b/;
+const HIDES =
+  "If a test fails, the update hides that failure. Find the cause of the failure first. Update the snapshots only when the new output is correct";
 
 const BLESS_FLAGS = new Set([
   "-u",
@@ -72,14 +74,19 @@ const BLESS_ENV = new Set([
 export function snapshotBless(cmd) {
   const joined = [cmd.name, ...cmd.args].join(" ");
   if (/\b(cargo\s+insta|insta)\s+(accept|review)\b/.test(joined))
-    return [["ask", "`insta accept` overwrites expected snapshots"]];
+    return [
+      ["ask", `\`insta accept\` overwrites the expected snapshots. ${HIDES}`],
+    ];
   if (
     Object.entries(cmd.assigns).some(
       ([k, v]) => BLESS_ENV.has(k) && !["", "0", "no", "false"].includes(v),
     )
   ) {
     return [
-      ["ask", "an environment variable rewrites the expected test output"],
+      [
+        "ask",
+        `an environment variable rewrites the expected test output. ${HIDES}`,
+      ],
     ];
   }
   if (
@@ -90,7 +97,7 @@ export function snapshotBless(cmd) {
     return [
       [
         "ask",
-        "a test run with snapshot updates overwrites the expected output",
+        `a test run with snapshot updates overwrites the expected output. ${HIDES}`,
       ],
     ];
   }
