@@ -88,6 +88,14 @@ const STALE = {
   "env.ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-opus-5-5",
 };
 
+// Keys where a user's own value wins over the profile. The profile sets the
+// key only when it is unset or holds the value that an older profile wrote.
+// 0.11.1 capped agents at 3, and 0.12 raised the cap to 5.
+const USER_WINS = {
+  "env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "3",
+  "env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS": "3",
+};
+
 const isObject = (v) =>
   v !== null && typeof v === "object" && !Array.isArray(v);
 const changes = [];
@@ -118,6 +126,12 @@ function merge(current, profile, keyPath, owned = OWNED) {
           `${where}: add ${added.map((v) => JSON.stringify(v)).join(", ")}`,
         );
       out[key] = [...base, ...added];
+    } else if (
+      Object.hasOwn(USER_WINS, where) &&
+      existing !== undefined &&
+      existing !== USER_WINS[where]
+    ) {
+      // The user's own value stays.
     } else if (JSON.stringify(existing) !== JSON.stringify(value)) {
       changes.push(
         `${where}: ${existing === undefined ? "(unset)" : JSON.stringify(existing)} -> ${JSON.stringify(value)}`,

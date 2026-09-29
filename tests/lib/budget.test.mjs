@@ -67,6 +67,8 @@ test("the recommended profile uses the budget's values", () => {
     read("skills/apply-settings-profile/profiles/recommended.json"),
   );
   expect(profile.autoCompactWindow).toBe(MAIN_CONTEXT_TOKENS);
+  // The community figure; a cap of 3 caused 50 of 77 `Agent` errors.
+  expect(MAX_CONCURRENT_AGENTS).toBe(5);
   expect(profile.env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS).toBe(
     String(MAX_CONCURRENT_AGENTS),
   );

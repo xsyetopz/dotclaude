@@ -65,6 +65,13 @@ steps after each update.
   ([#80489](https://github.com/anthropics/claude-code/issues/80489)), and
   the agent already has the text.
 
+### Changed
+
+- The settings profile and the usage bounds allow 5 agents at once, not 3.
+  Five is the community figure, and a cap of 3 caused 50 of 77 measured
+  `Agent` errors. When you apply the profile, a value of `3` that 0.11.1
+  wrote becomes `5`, and any other value that you set stays.
+
 ### Fixed
 
 - Files that a Bash command writes now get the same checks as the `Edit`

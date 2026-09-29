@@ -171,6 +171,28 @@ test("apply-settings adds the optional switches unless skipped", () => {
   expect(some.env.DOTCLAUDE_SETTINGS_PROFILE).toBe(profileStamp());
 });
 
+test("apply-settings raises the 0.11.1 agent cap and keeps a user's own cap", () => {
+  const keys = [
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS",
+    "CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS",
+  ];
+  for (const [before, after] of [
+    ["3", "5"],
+    ["8", "8"],
+    [undefined, "5"],
+  ]) {
+    const home = tempHome();
+    const file = path.join(home, ".claude", "settings.json");
+    const env = Object.fromEntries(keys.map((k) => [k, before]));
+    fs.writeFileSync(file, JSON.stringify(before ? { env } : {}));
+    run("apply-settings.mjs", home, "--apply");
+    const merged = JSON.parse(fs.readFileSync(file, "utf8"));
+    for (const key of keys)
+      expect(merged.env[key], `${key} ${before}`).toBe(after);
+    expectNoChange(home, file);
+  }
+});
+
 test("apply-settings removes exact entries older profiles wrote and keeps look-alikes", () => {
   const home = tempHome();
   const file = path.join(home, ".claude", "settings.json");

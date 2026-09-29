@@ -66,8 +66,11 @@ export const USAGE_LEVELS = [75, 90];
  */
 export const NESTED_INSTRUCTIONS_CHARS = 10_000;
 
-/** Subagents, and agents in one workflow, running at once. */
-export const MAX_CONCURRENT_AGENTS = 3;
+/**
+ * Subagents, and agents in one workflow, running at once. The community
+ * figure is 5, and a cap of 3 caused 50 of 77 measured `Agent` errors.
+ */
+export const MAX_CONCURRENT_AGENTS = 5;
 
 /**
  * Size limits for instruction text. A warn is reported. A fail is reported
