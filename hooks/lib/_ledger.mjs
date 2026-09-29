@@ -3,6 +3,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { expandHome, writeTargets } from "./_bash-writes.mjs";
 import { stateDir } from "./_common.mjs";
 import { parse } from "./_shell.mjs";
 
@@ -124,38 +125,6 @@ export function outputShowsFailure(text) {
   return FAILURE_OUTPUT.test(text);
 }
 
-// Shell commands that write files without the edit tools: redirects, tee,
-// in-place editors, and interpreter code that opens a file for writing.
-const IN_PLACE = /^(sed|gsed|perl)$/;
-const INTERPRETER = /^(python[0-9.]*|node|bun|deno|ruby|perl)$/;
-// Write calls in inline interpreter code whose first argument is a string
-// literal: `open('f', 'w')`, `Path('f').write_text(`, `writeFileSync('f'`.
-// The path argument: a plain, raw, or bytes string literal, or a variable that
-// a simple assignment in the same code sets to one. f-strings and other
-// computed paths are skipped, since their value is unknown.
-const LITERAL = String.raw`\s*(?:[rRbBuU]?'([^'\\\n]*)'|[rRbBuU]?"([^"\\\n]*)"|([A-Za-z_]\w*)(?=\s*[,)]))`;
-const ASSIGN =
-  /(?:^|[\s;(])(?:const\s+|let\s+|var\s+)?([A-Za-z_]\w*)\s*=\s*[rRbBuU]?(?:'([^'\\\n]*)'|"([^"\\\n]*)")/gm;
-const WRITE_CALLS = [
-  [String.raw`\bopen\(`, String.raw`\s*,\s*(?:mode\s*=\s*)?["'][wax]`],
-  [String.raw`\bPath\(`, String.raw`\s*\)\.write_(?:text|bytes)\(`],
-  [String.raw`\bwriteFileSync\(`, ""],
-  [String.raw`\bfs\.(?:promises\.)?writeFile\(`, ""],
-  [String.raw`\bBun\.write\(`, ""],
-  [String.raw`\bFile\.write\(`, ""],
-  [String.raw`\b(?:os|ioutil)\.WriteFile\(`, ""],
-].map(([call, rest]) => new RegExp(call + LITERAL + rest, "g"));
-
-function inlineWrites(code) {
-  const vars = new Map();
-  for (const m of code.matchAll(ASSIGN)) vars.set(m[1], m[2] ?? m[3]);
-  return WRITE_CALLS.flatMap((re) =>
-    [...code.matchAll(re)].map((m) => m[1] ?? m[2] ?? vars.get(m[3])),
-  ).filter((target) => target !== undefined);
-}
-
-const home = (p) => p.replace(/^~(?=\/|$)/, process.env.HOME ?? "~");
-
 /**
  * Paths (relative to the project) of code files a Bash command writes, in
  * order, without duplicates. For inline interpreter code, the string-literal
@@ -166,7 +135,7 @@ export function shellWrites(command, root, cwd = root) {
   const inProject = (target, base) => {
     if (!target || target.includes("$") || target.startsWith("/dev/"))
       return undefined;
-    const abs = path.resolve(base, home(target));
+    const abs = path.resolve(base, expandHome(target));
     const rel = path.relative(root, abs);
     if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
     if (NON_CODE.test(rel) || rel.startsWith(".claude/")) return undefined;
@@ -183,36 +152,13 @@ export function shellWrites(command, root, cwd = root) {
     // An unresolvable `cd $DIR` leaves the base at cwd, as the bash guard does.
     const base =
       cmd.cwdHint && !cmd.cwdHint.includes("$")
-        ? path.resolve(cwd, home(cmd.cwdHint))
+        ? path.resolve(cwd, expandHome(cmd.cwdHint))
         : cwd;
-    const add = (targets) => {
-      for (const t of targets) {
-        const rel = inProject(t, base);
-        if (rel) out.add(rel);
-      }
-    };
-    add(cmd.writes);
-    const operands = cmd.args.filter((a) => a && !a.startsWith("-"));
-    if (
-      IN_PLACE.test(cmd.name) &&
-      cmd.args.some((a) => /^-[a-zA-Z]*i/.test(a))
-    ) {
-      // `sed -i '' 's/a/b/' f` and `perl -pi -e '...' f`: the first operand is
-      // the script unless -e gave it, and only existing files count.
-      const scriptGiven = cmd.args.some((a) => /^-[a-zA-Z]*e$/.test(a));
-      add(
-        operands
-          .slice(scriptGiven ? 0 : 1)
-          .filter((a) => fs.existsSync(path.resolve(base, a))),
-      );
-    }
-    if (cmd.name === "sd") add(operands.slice(2));
-    if (cmd.name === "tee") add(operands);
-    if (["mv", "cp", "install"].includes(cmd.name) && operands.length > 1)
-      add(operands.slice(-1));
     // Scratch files outside the project, such as in /tmp, are not edits.
-    if (INTERPRETER.test(cmd.name))
-      add(inlineWrites([cmd.heredoc ?? "", ...cmd.args].join("\n")));
+    for (const { target } of writeTargets(cmd, base)) {
+      const rel = inProject(target, base);
+      if (rel) out.add(rel);
+    }
   }
   return [...out];
 }

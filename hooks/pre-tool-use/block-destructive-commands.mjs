@@ -9,9 +9,12 @@ import path from "node:path";
 import { claudeTrailerOff } from "../lib/_attribution.mjs";
 import { check } from "../lib/_bash-rules.mjs";
 import { decide, option, projectRoot, run } from "../lib/_common.mjs";
+import { ASKS_TEST_REMOVAL } from "../lib/_edit-rules.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
+import { recentPrompts } from "../lib/_transcript.mjs";
 
 const LOCK_ONLY = /fast mode|allowed models/;
+const REMOVES_ASSERTIONS = /assertion\(s\) from a test file/;
 
 run((data) => {
   const command = data.tool_input?.command;
@@ -25,10 +28,21 @@ run((data) => {
     cwd: path.resolve(data.cwd || root),
     allowedModels: planAllowlist().list,
     modelLock,
+    editGuard: option("edit_guard"),
     commitHygiene: option("commit_hygiene"),
     claudeTrailerOff: claudeTrailerOff(root),
   });
   if (!guard)
     findings = findings.filter(([, reason]) => LOCK_ONLY.test(reason));
+  // Read the transcript only when a Bash write removes assertions.
+  if (
+    findings.some(([, reason]) => REMOVES_ASSERTIONS.test(reason)) &&
+    ASKS_TEST_REMOVAL.test(
+      recentPrompts(data.transcript_path ?? "", 1, 4000).at(-1) ?? "",
+    )
+  )
+    findings = findings.filter(
+      ([, reason]) => !REMOVES_ASSERTIONS.test(reason),
+    );
   decide(findings, data, "command");
 });

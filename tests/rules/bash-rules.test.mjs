@@ -1,6 +1,6 @@
 // Bash guard rules. Commands are plain strings here; nothing is executed.
 
-import { expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -320,4 +320,43 @@ test("`cd ~/x && rm -r src` resolves under HOME, not the project", () => {
   } finally {
     process.env.HOME = saved;
   }
+});
+
+describe("Bash writes get the Edit rules of their target path", () => {
+  const repo = makeRepo();
+  fs.mkdirSync(path.join(repo, "tests"));
+  fs.writeFileSync(
+    path.join(repo, "tests", "a.test.mjs"),
+    'test("a", () => expect(1).toBe(1));\n',
+  );
+  fs.mkdirSync(path.join(repo, "agents"));
+  fs.writeFileSync(
+    path.join(repo, "agents", "x.md"),
+    "---\nname: x\n---\nBody\n",
+  );
+  fs.writeFileSync(path.join(repo, "package-lock.json"), "{}\n");
+  fs.mkdirSync(path.join(repo, "dist"));
+  fs.writeFileSync(path.join(repo, "dist", "app.min.js"), "x\n");
+  const c = { ...ctx, root: repo, cwd: repo };
+  const cases = [
+    ["cat > tests/a.test.mjs <<'EOF'\ntest(\"a\", () => {});\nEOF", "ask"],
+    ["cat > agents/x.md <<'EOF'\n---\ndescription: a: b\n---\nEOF", "deny"],
+    ["sed -i '' 's/a/b/' package-lock.json", "warn"],
+    ["echo x | tee dist/app.min.js", "warn"],
+    ["echo x >> package-lock.json", "warn"],
+    // A new file under a build directory is build output, not an edit.
+    ["printf '{}' > build/out.json", "pass"],
+    // An append keeps the old text, so it removes no assertion.
+    ["cat >> tests/a.test.mjs <<'EOF'\ntest(\"b\", () => {});\nEOF", "pass"],
+    ["cd $DIR && cat > tests/a.test.mjs <<'EOF'\nx\nEOF", "pass"],
+    ["cat > .claude/settings.json <<'EOF'\n{\"fastMode\": true}\nEOF", "deny"],
+    [
+      "cat > tests/a.test.mjs <<'EOF'\ntest(\"a\", () => expect(2).toBe(2));\nEOF",
+      "pass",
+    ],
+    ["echo hi > notes.txt", "pass"],
+  ];
+  for (const [command, want] of cases)
+    test(`${want}: ${command.split("\n")[0]}`, () =>
+      expect(level(command, c), JSON.stringify(check(command, c))).toBe(want));
 });

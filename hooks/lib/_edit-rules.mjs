@@ -6,7 +6,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { allowed } from "./_models.mjs";
 
-/** @typedef {{allowedModels: string[], editGuard?: boolean, modelLock?: boolean}} Context */
+/**
+ * `bashWrite` marks a file that a Bash command writes. The Bash guard owns
+ * settings files for those, and a new file there is build output, not an edit.
+ * @typedef {{allowedModels: string[], editGuard?: boolean, modelLock?: boolean, bashWrite?: boolean}} Context
+ */
 
 export function check(toolName, toolInput, ctx) {
   const c = { editGuard: true, modelLock: true, ...ctx };
@@ -15,12 +19,13 @@ export function check(toolName, toolInput, ctx) {
   const posix = filePath.split(path.sep).join("/");
   const { before, after } = beforeAfter(toolName, toolInput, filePath);
   const out = [];
-  if (isClaudeSettings(posix) || MANAGED_DROP_IN.test(posix))
+  if (!c.bashWrite && (isClaudeSettings(posix) || MANAGED_DROP_IN.test(posix)))
     out.push(...settings(before, after, c));
   if (!c.editGuard) return out;
   if (TEST_PATH.test(posix))
     out.push(...testWeakening(before, after, c.testRemovalRequested));
-  out.push(...generated(filePath, posix));
+  if (!c.bashWrite || fs.existsSync(filePath))
+    out.push(...generated(filePath, posix));
   out.push(...frontmatter(toolName, toolInput, filePath, posix));
   if (toolName === "Write" && before !== null)
     out.push(...shrink(before, after));

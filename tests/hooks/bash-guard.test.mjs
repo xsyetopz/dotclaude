@@ -2,6 +2,8 @@
 
 import { expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { HOOKS, hook, repo } from "../support/hooks.mjs";
 
@@ -139,4 +141,33 @@ test("settings writes ask in auto mode, where the classifier would deny them", (
     ),
   ).toBe("ask");
   expect(edit(path.join(repo, "config", "settings.json"))).toBe(null);
+});
+
+test("a Bash write that removes assertions asks unless the user asked for it", () => {
+  fs.mkdirSync(path.join(repo, "tests"), { recursive: true });
+  fs.writeFileSync(
+    path.join(repo, "tests", "w.test.mjs"),
+    'test("w", () => expect(1).toBe(1));\n',
+  );
+  const transcript = (prompt) => {
+    const file = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-t-")),
+      "t.jsonl",
+    );
+    fs.writeFileSync(
+      file,
+      JSON.stringify({ type: "user", message: { content: prompt } }),
+    );
+    return file;
+  };
+  const decision = (prompt) =>
+    hook("pre-tool-use/block-destructive-commands.mjs", {
+      tool_name: "Bash",
+      tool_input: {
+        command: "cat > tests/w.test.mjs <<'EOF'\ntest(\"w\", () => {});\nEOF",
+      },
+      transcript_path: transcript(prompt),
+    })?.hookSpecificOutput.permissionDecision ?? null;
+  expect(decision("Tidy the helper.")).toBe("ask");
+  expect(decision("Remove the flaky tests for the old flag.")).toBe(null);
 });

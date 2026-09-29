@@ -79,6 +79,7 @@ function merge(into, other) {
 function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
   let current = [];
   let redirects = [];
+  let overwrites = [];
   let pendingHeredoc = null;
   let prevArgv = null;
   let pipeNext = false;
@@ -94,6 +95,7 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
       if (cmd.argv.length) {
         cmd.heredoc = pendingHeredoc;
         cmd.writes = redirects;
+        cmd.overwrites = overwrites;
         cmd.pipedFrom = pipeNext ? prevArgv : null;
         cmd.cwdHint = cwdHint;
         if (cmd.name === "cd" && cmd.args.length) cwdHint = cmd.args[0];
@@ -104,6 +106,7 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
     }
     current = [];
     redirects = [];
+    overwrites = [];
     pendingHeredoc = null;
     pipeNext = sep === "|" || sep === "|&";
   };
@@ -124,6 +127,7 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
           typeof tokens[i + 1] === "string"
         ) {
           redirects.push(tokens[i + 1]);
+          if (/^[0-9]*(>|>\||&>)$/.test(tok.op)) overwrites.push(tokens[i + 1]);
         }
         i += 1; // skip the redirect target
       }

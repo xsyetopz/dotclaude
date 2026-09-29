@@ -60,6 +60,8 @@ class Command {
     this.heredoc = null;
     this.cwdHint = null;
     this.writes = [];
+    // The subset of `writes` that `>`, `>|`, or `&>` truncates first.
+    this.overwrites = [];
   }
 
   get name() {

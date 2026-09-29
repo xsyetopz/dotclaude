@@ -5,8 +5,11 @@
 // mode; see decide() in _common.mjs). The guard never returns "allow": commands that match
 // nothing fall through to Claude Code's normal permission flow.
 
+import path from "node:path";
 import { CLAUDE_TRAILER } from "./_attribution.mjs";
 import { positional } from "./_bash-args.mjs";
+import { commandBase, expandHome, writeTargets } from "./_bash-writes.mjs";
+import { check as editCheck } from "./_edit-rules.mjs";
 import { DB_CLIENTS, db, dbReset, snapshotBless } from "./_rules-data.mjs";
 import {
   chmod,
@@ -25,13 +28,13 @@ import { settingsWrite } from "./_rules-settings.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /**
- * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean}} Context
+ * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean}} Context
  * @typedef {["deny" | "ask" | "warn", string]} Finding
  */
 
 /** @returns {Finding[]} */
 export function check(command, ctx) {
-  const c = { modelLock: true, commitHygiene: true, ...ctx };
+  const c = { modelLock: true, editGuard: true, commitHygiene: true, ...ctx };
   const parsed = parse(command);
   const findings = parsed.commands.flatMap((cmd) => checkCommand(cmd, c));
   if (parsed.unparsed.length) findings.push(...rawScan(command));
@@ -77,6 +80,7 @@ function checkCommand(cmd, ctx) {
     out.push(...interpreterInline(cmd, ctx));
   }
   out.push(...snapshotBless(cmd));
+  if (ctx.editGuard) out.push(...fileWrites(cmd, ctx));
   out.push(...ignoredWalk(cmd, ctx));
   if (ctx.modelLock) out.push(...modelEnv(cmd, ctx));
   return out;
@@ -141,6 +145,31 @@ function interpreterInline(cmd, ctx) {
       const literal = match[1] ?? match[2] ?? "";
       if (literal.includes(" ")) out.push(...check(literal, ctx));
     }
+  }
+  return out;
+}
+
+// --- file writes ------------------------------------------------------------
+
+// A Bash write gets the same Edit rules as the edit tools, so a heredoc cannot
+// weaken a test or break frontmatter that `Write` would have caught.
+function fileWrites(cmd, ctx) {
+  const base = commandBase(cmd, ctx.cwd);
+  if (!base) return [];
+  const out = [];
+  for (const { target, content } of writeTargets(cmd, base)) {
+    if (/\$|__SUBST__|^\/dev\//.test(target)) continue;
+    const file_path = path.resolve(base, expandHome(target));
+    const input =
+      content === undefined
+        ? ["Edit", { file_path, old_string: "", new_string: "" }]
+        : ["Write", { file_path, content }];
+    for (const [level, reason] of editCheck(...input, {
+      allowedModels: ctx.allowedModels,
+      modelLock: ctx.modelLock,
+      bashWrite: true,
+    }))
+      out.push([level, `\`${cmd.name}\` writes \`${target}\`: ${reason}`]);
   }
   return out;
 }

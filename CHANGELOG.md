@@ -12,6 +12,14 @@ steps after each update.
 
 ### Fixed
 
+- Files that a Bash command writes now get the same checks as the `Edit`
+  and `Write` tools. Before, `cat > tests/a.test.mjs <<'EOF'` could remove
+  every assertion, and a heredoc could write broken YAML frontmatter, with
+  no question. The checks cover redirects, `tee`, `sed -i`, `sd`, `cp`,
+  `mv`, and file writes in inline interpreter code. A new file under a
+  build directory does not get the generated-file warning. The `edit_guard`
+  option turns these checks off.
+
 - The Bash guard resolves paths after `cd ~/dir` against your home
   directory. Before, `cd ~/.claude/projects && find .` was checked as if it
   ran in the project, and the guard denied it for the project's ignored
