@@ -51,6 +51,12 @@ the foreground. The same command with `run_in_background` passes.
 **Why:** a command that does not end blocks the turn until the Bash timeout,
 and then Claude runs it again in the background.
 
+**What:** asks before `git add` stages a file with an ELF, Mach-O, or PE
+header.
+
+**Why:** reverse engineering and builds leave binaries in the working tree.
+A committed binary stays in the history after a delete.
+
 ### Edit Guard (`edit_guard`)
 
 **What:** asks before an edit removes test assertions or skips an existing

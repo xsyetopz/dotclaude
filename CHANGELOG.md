@@ -72,6 +72,9 @@ steps after each update.
   interrupted agent can end without `SubagentStop`. The
   `subagent_guidance` option turns this off.
 
+- The Bash guard asks before `git add` stages a file with an ELF, Mach-O,
+  or PE header, because a committed binary stays in the history.
+
 ### Changed
 
 - The settings profile and the usage bounds allow 5 agents at once, not 3.

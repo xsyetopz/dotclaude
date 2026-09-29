@@ -394,3 +394,34 @@ describe("a foreground command that does not end is denied", () => {
   ])
     test(`pass: ${command}`, () => expect(level(command)).toBe("pass"));
 });
+
+test("`git add` of an ELF, Mach-O, or PE file warns, and text files pass", () => {
+  const repo = makeRepo();
+  const c = { ...ctx, root: repo, cwd: repo };
+  const write = (name, bytes) =>
+    fs.writeFileSync(path.join(repo, name), Buffer.from(bytes));
+  write("tool.elf", [0x7f, 0x45, 0x4c, 0x46, 2, 1]);
+  write("tool.macho", [0xcf, 0xfa, 0xed, 0xfe, 7, 0]);
+  // A fat Mach-O counts its architectures after the magic. A Java class
+  // file has the same magic, followed by its version.
+  write("fat.macho", [0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 2]);
+  write("Main.class", [0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 65]);
+  // A PE file starts with `MZ`, and the offset at 0x3c points to `PE\0\0`.
+  const pe = Array(0x44).fill(0);
+  pe.splice(0, 2, 0x4d, 0x5a);
+  pe[0x3c] = 0x40;
+  pe.splice(0x40, 4, 0x50, 0x45, 0, 0);
+  write("tool.exe", pe);
+  fs.writeFileSync(path.join(repo, "notes.txt"), "MZ is a text line\n");
+  for (const file of ["tool.elf", "tool.macho", "fat.macho", "tool.exe"])
+    expect(level(`git add ${file}`, c), file).toBe("warn");
+  const [, reason] = check("git add src/app.py tool.elf", c).find(
+    ([l]) => l === "warn",
+  );
+  expect(reason).toContain("`tool.elf`");
+  expect(level("git -C src add ../tool.exe", c), "git -C").toBe("warn");
+  expect(level("git add Main.class", c)).toBe("pass");
+  expect(level("git add notes.txt", c)).toBe("pass");
+  expect(level("git add -p", c)).toBe("pass");
+  expect(level("git add missing.bin", c)).toBe("pass");
+});

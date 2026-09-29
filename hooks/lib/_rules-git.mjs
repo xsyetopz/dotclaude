@@ -1,6 +1,7 @@
 // Bash guard rules for git: history rewrites, discarded work, hook bypasses,
 // and the staged-file check on commit.
 
+import fs from "node:fs";
 import path from "node:path";
 import { git, hasFlag, positional } from "./_bash-args.mjs";
 
@@ -197,6 +198,16 @@ export function gitRule(cmd, ctx) {
       if (hasFlag(args, [], "d"))
         out.push(["ask", "`git update-ref -d` deletes a ref"]);
       break;
+    case "add": {
+      const cwd = gitCwd(globals, ctx);
+      const binaries = pos.filter((f) => isExecutable(path.resolve(cwd, f)));
+      if (binaries.length)
+        out.push([
+          "warn",
+          `\`git add\` stages an executable binary: ${binaries.map((f) => `\`${f}\``).join(", ")}. An analysed or built binary is usually not committed`,
+        ]);
+      break;
+    }
     case "reflog":
       if (["expire", "delete"].includes(args[0]))
         out.push(["ask", `\`git reflog ${args[0]}\` deletes recovery points`]);
@@ -255,6 +266,36 @@ export function gitRule(cmd, ctx) {
   if (sub === "commit" && ctx.commitHygiene)
     out.push(...commitHygiene(args, gitCwd(globals, ctx)));
   return out;
+}
+
+/**
+ * True when `file` starts with an ELF, Mach-O, or PE header. A fat Mach-O
+ * shares its magic with a Java class file, so its architecture count must be
+ * small. A PE file starts with `MZ`, and the offset at 0x3c points to
+ * `PE\0\0`.
+ */
+function isExecutable(file) {
+  let fd;
+  try {
+    if (!fs.statSync(file).isFile()) return false;
+    fd = fs.openSync(file, "r");
+    const head = Buffer.alloc(64);
+    const n = fs.readSync(fd, head, 0, 64, 0);
+    if (n < 4) return false;
+    const magic = head.readUInt32BE(0);
+    if (magic === 0x7f454c46) return true;
+    if ([0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe].includes(magic))
+      return true;
+    if (magic === 0xcafebabe) return n >= 8 && head.readUInt32BE(4) < 45;
+    if (head[0] !== 0x4d || head[1] !== 0x5a || n < 64) return false;
+    const sig = Buffer.alloc(4);
+    fs.readSync(fd, sig, 0, 4, head.readUInt32LE(0x3c));
+    return sig.equals(Buffer.from("PE\0\0", "latin1"));
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
 }
 
 const NOISE =
