@@ -62,6 +62,10 @@ class Command {
     this.writes = [];
     // The subset of `writes` that `>`, `>|`, or `&>` truncates first.
     this.overwrites = [];
+    // True when a redirect or a heredoc gives the command its own stdin.
+    this.stdinRedirect = false;
+    // True when a `timeout` wrapper ends the command.
+    this.bounded = false;
   }
 
   get name() {
@@ -89,6 +93,7 @@ const RESERVED = new Set([
 export function unwrap(input) {
   const assigns = {};
   let argv = [...input];
+  let bounded = false;
   while (argv.length) {
     while (argv.length && RESERVED.has(argv[0])) argv.shift();
     while (argv.length && ASSIGN.test(argv[0])) {
@@ -100,6 +105,7 @@ export function unwrap(input) {
     if (!Object.hasOwn(WRAPPERS, name)) break;
     const valueFlags = WRAPPERS[name];
     argv.shift();
+    if (name in WRAPPER_POSITIONAL) bounded = true;
     if (name === "env") {
       const split = envSplitString(argv);
       if (split) {
@@ -115,7 +121,9 @@ export function unwrap(input) {
     for (let n = WRAPPER_POSITIONAL[name] ?? 0; n > 0 && argv.length; n -= 1)
       argv.shift();
   }
-  return new Command(argv, assigns);
+  const cmd = new Command(argv, assigns);
+  cmd.bounded = bounded;
+  return cmd;
 }
 
 function envSplitString(argv) {

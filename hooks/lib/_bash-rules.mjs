@@ -38,8 +38,10 @@ export function check(command, ctx) {
   const parsed = parse(command);
   const findings = parsed.commands.flatMap((cmd) => checkCommand(cmd, c));
   if (parsed.unparsed.length) findings.push(...rawScan(command));
-  if (!c.background && !BOUNDED.test(command))
-    findings.push(...parsed.commands.flatMap(endless));
+  findings.push(
+    ...parsed.commands.flatMap((cmd) => endless(cmd, c, BOUNDED.test(command))),
+  );
+  if (c.background) findings.push(...openStdin(command, parsed.commands));
   if (
     c.claudeTrailerOff &&
     CLAUDE_TRAILER.test(command) &&
@@ -183,15 +185,37 @@ const BOUNDED = /(?:^|[^&>|])&(?![&>])|(?:^|[\s;&|(])g?timeout\s/;
 const SCRIPT_RUNNERS = new Set(["npm", "pnpm", "yarn", "bun"]);
 const SERVER_SCRIPTS = new Set(["dev", "serve", "watch"]);
 
-/** A dev server, a watcher, `tail -f`, or Ghidra's headless analyzer. */
-function endless(cmd) {
+const FOLLOW =
+  "never ends by itself. In the background it runs until the session ends, also after the line you wait for arrives or the file is deleted. To wait for one line, run `until grep -q '<pattern>' <file>; do sleep 1; done` with `run_in_background: true`. To get each new line as an event, use `Monitor`, which stops after `timeout_ms`. Otherwise put `timeout <seconds>` before the command";
+
+/** A file follow: `tail -f`, `tail -F`, `tail --follow`, `inotifywait -m`. */
+function follows(cmd) {
+  const args = cmd.args;
+  return (
+    (cmd.name === "tail" &&
+      args.some(
+        (a) => /^--follow(?:=|$)/.test(a) || /^-[a-zA-Z]*[fF]/.test(a),
+      )) ||
+    (cmd.name === "inotifywait" &&
+      args.some((a) => a === "--monitor" || /^-[a-zA-Z]*m/.test(a)))
+  );
+}
+
+/**
+ * A command that does not end. A follow is denied in both modes, because in
+ * the background it outlives its purpose. A dev server, a watcher, or
+ * Ghidra's headless analyzer is denied only in the foreground.
+ */
+function endless(cmd, ctx, bounded) {
+  // A shell `&` does not end a follow: the follow runs on in the background.
+  if (follows(cmd))
+    return cmd.bounded ? [] : [["deny", `\`${cmd.argv.join(" ")}\` ${FOLLOW}`]];
+  if (ctx.background || bounded) return [];
   const args = cmd.args;
   const script = args[0] === "run" ? args[1] : args[0];
   const found =
     (SCRIPT_RUNNERS.has(cmd.name) && SERVER_SCRIPTS.has(script)) ||
     args.some((a) => /^--watch(?:All)?(?:=true)?$/.test(a)) ||
-    (cmd.name === "tail" &&
-      args.some((a) => a === "--follow" || /^-[a-zA-Z]*[fF]/.test(a))) ||
     cmd.name === "analyzeHeadless";
   if (!found) return [];
   return [
@@ -200,6 +224,51 @@ function endless(cmd) {
       `\`${cmd.argv.join(" ")}\` does not end by itself or runs for a long time, so in the foreground it blocks the turn until the Bash timeout. Run the same command with \`run_in_background: true\`. Then read its output file, or wait for a line with \`Monitor\``,
     ],
   ];
+}
+
+// --- background commands that wait on stdin --------------------------------
+
+/**
+ * Commands that read stdin to its end before they do their work. A
+ * background call's stdin is usually `/dev/null`, but in one session it was a
+ * pipe that never closed, and two `codex exec … &` runs waited 81 minutes on
+ * it. Each entry was measured to wait on an open pipe. `claude -p` is not an
+ * entry: it goes on after 3 s without stdin.
+ */
+const NO_OPERAND = new Set(["cat"]);
+const SCRIPT_FLAGS = {
+  python: /^-[a-zA-Z]*[cm]/,
+  python3: /^-[a-zA-Z]*[cm]/,
+  node: /^(?:-[ep]|--eval|--print|--test)/,
+};
+function readsOpenStdin(cmd) {
+  const { name, args } = cmd;
+  if (args.some((a) => /^(?:-h|--help|-V|--version)$/.test(a))) return false;
+  if (name === "codex") return args[0] === "exec" || args[0] === "e";
+  if (name === "tr") return true;
+  if (NO_OPERAND.has(name))
+    return args.every((a) => a === "-" || a.startsWith("-"));
+  if (name in SCRIPT_FLAGS)
+    return (
+      !args.some((a) => SCRIPT_FLAGS[name].test(a)) &&
+      args.every((a) => a === "-" || a.startsWith("-"))
+    );
+  return readsStdinScript(cmd);
+}
+
+// `exec </dev/null` gives every later command of the script a closed stdin.
+const EXEC_STDIN = /(?:^|[;&|\n(]\s*)exec\s+0?<\s*\S/;
+
+function openStdin(command, commands) {
+  if (EXEC_STDIN.test(command)) return [];
+  return commands
+    .filter(
+      (cmd) => readsOpenStdin(cmd) && !cmd.stdinRedirect && !cmd.pipedFrom,
+    )
+    .map((cmd) => [
+      "deny",
+      `\`${cmd.argv.slice(0, 2).join(" ")}\` reads stdin to its end before it starts work. In the background, stdin can be a pipe that does not close, and then the command waits and does not end. Add \`</dev/null\` to the command, or give it its input with a pipe, a file, or a heredoc`,
+    ]);
 }
 
 // --- fallback ---------------------------------------------------------------

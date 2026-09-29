@@ -371,8 +371,6 @@ describe("a foreground command that does not end is denied", () => {
     "cd web && bun run serve",
     "tsc --watch",
     "jest --watchAll",
-    "tail -f app.log",
-    "tail -n 20 -F app.log | grep ERROR",
     "/opt/ghidra/support/analyzeHeadless /tmp/p proj -import a.out",
   ];
   for (const command of endless) {
@@ -393,6 +391,86 @@ describe("a foreground command that does not end is denied", () => {
     "timeout 30 npm run dev",
   ])
     test(`pass: ${command}`, () => expect(level(command)).toBe("pass"));
+});
+
+// A follow in the background outlives the line it waits for, and even the
+// file it watches: a session kept `tail -f status.txt | grep ALLDONE` running
+// after status.txt was deleted.
+describe("a file follow is denied in both modes unless it is bounded", () => {
+  for (const command of [
+    "tail -f app.log",
+    "tail -n 20 -F app.log | grep ERROR",
+    "touch out/status.txt; tail -n +1 -f out/status.txt | grep --line-buffered -E 'exit=|ALLDONE'",
+    "tail --follow=name app.log",
+    "inotifywait -m src",
+    "tail -f app.log &",
+    "sleep 1 & tail -f app.log",
+  ])
+    for (const background of [false, true])
+      test(`deny (background ${background}): ${command}`, () => {
+        const findings = check(command, { ...ctx, background });
+        expect(level(command, { ...ctx, background })).toBe("deny");
+        expect(findings[0][1]).toContain("until grep -q");
+        expect(findings[0][1]).toContain("`Monitor`");
+      });
+  for (const command of [
+    "timeout 600 tail -f app.log | grep -m1 READY",
+    "until grep -q ALLDONE out/status.txt; do sleep 1; done",
+    "tail -n 50 app.log",
+    "inotifywait src",
+  ])
+    test(`pass in the background: ${command}`, () =>
+      expect(level(command, { ...ctx, background: true })).toBe("pass"));
+});
+
+// A session ran two `codex exec … &` jobs with `run_in_background: true`.
+// Both waited on an open stdin pipe until the session stopped them.
+describe("a background command that reads stdin needs its own stdin", () => {
+  const hung =
+    'd=/tmp/t; for i in 1 2; do codex exec --skip-git-repo-check -s read-only -C $d/repo -o $d/out/run$i.md "$p" > $d/out/run$i.log 2>&1 & done; wait';
+  for (const command of [
+    hung,
+    "codex exec 'fix it'",
+    "codex e -m o3 'fix it'",
+    "cat -n",
+    "tr a-z A-Z",
+    "python3 -u",
+    "node",
+    "bash -s",
+    "sleep 5; cat > out.txt",
+  ])
+    test(`deny in the background: ${command}`, () => {
+      const findings = check(command, { ...ctx, background: true });
+      expect(level(command, { ...ctx, background: true })).toBe("deny");
+      expect(findings[0][1]).toContain("`</dev/null`");
+    });
+  for (const command of [
+    hung.replace('"$p" >', '"$p" </dev/null >'),
+    "codex exec 'fix it' 0</dev/null",
+    "codex exec - <<'EOF'\nfix it\nEOF",
+    "cat prompt.md | codex exec -",
+    "exec </dev/null; codex exec 'fix it'",
+    "codex exec --help",
+    "cat notes.txt",
+    "tr a-z A-Z < notes.txt",
+    "python3 -c 'print(1)'",
+    "python3 -m http.server",
+    "python3 app.py",
+    "node -e 'console.log(1)'",
+    "node server.js",
+    "bash build.sh",
+    "bash -c 'make all'",
+    "claude -p 'fix it'",
+    "git log | cat",
+  ])
+    test(`pass in the background: ${command}`, () =>
+      expect(level(command, { ...ctx, background: true })).toBe("pass"));
+  test("pass in the foreground", () =>
+    expect(level("codex exec 'fix it'", ctx)).toBe("pass"));
+  test("a redirect of another descriptor does not count", () =>
+    expect(
+      level("codex exec 'fix it' 3</dev/null", { ...ctx, background: true }),
+    ).toBe("deny"));
 });
 
 test("`git add` of an ELF, Mach-O, or PE file warns, and text files pass", () => {
