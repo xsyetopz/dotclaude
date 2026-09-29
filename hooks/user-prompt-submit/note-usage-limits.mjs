@@ -44,7 +44,7 @@ run((data) => {
   const advice =
     worst >= 90
       ? "Little usage is left. Finish the current step. Start no new fan-out. Tell the user before you start any large piece of work."
-      : "Make the remaining usage last. Prefer the Sonnet 5.5 agents for well-specified work. Keep briefs and fan-out small. Do not switch to Fable. Write a handoff before the context grows large.";
+      : "Make the remaining usage last. Prefer the Sonnet 5.5 agents for well-specified work. Keep briefs and fan-out small. Do not switch to Fable. Before the context grows large, write a handoff note with the `write-session-handoff` skill, and ask the user to run `/clear`.";
   emit({
     hookSpecificOutput: {
       hookEventName: "UserPromptSubmit",

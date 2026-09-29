@@ -168,7 +168,7 @@ export function planNote(env = process.env) {
   }
   // One bound for every plan, sized for Pro: larger plans only run out later.
   lines.push(
-    `Every turn re-reads the whole context. Once it passes about ${k(MAIN_CONTEXT_TOKENS)} tokens, write a handoff or run \`/compact\`. Keep subagent briefs small. Use few subagents. dotclaude sizes this for Pro's 5-hour window and applies it on every plan. Larger plans only reach their limits later.`,
+    `Every turn re-reads the whole context. Once it passes about ${k(MAIN_CONTEXT_TOKENS)} tokens, write a handoff note with the \`write-session-handoff\` skill, and ask the user to run \`/clear\`. A handoff and \`/clear\` keep the facts that you choose, and \`/compact\` costs a full turn over the large context. Keep subagent briefs small. Use few subagents. dotclaude sizes this for Pro's 5-hour window and applies it on every plan. Larger plans only reach their limits later.`,
   );
   return `<claude_plan source="dotclaude">\n${lines.join("\n")}\n</claude_plan>`;
 }
