@@ -278,3 +278,17 @@ test("a task completion passes after a check, with no edit, or without fields", 
     completeTask({ session_id: sid2, task_status: "in_progress" }).code,
   ).toBe(0);
 });
+
+test("each task completion logs its input field names", () => {
+  const sid = session();
+  completeTask({ session_id: sid, transcript_path: "/t.jsonl" });
+  const entry = fs
+    .readFileSync(path.join(data, "verdicts.jsonl"), "utf8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+    .findLast((e) => e.session === sid);
+  expect(entry.level).toBe("task");
+  expect(entry.fields).toContain("transcript_path");
+  expect(entry.fields).toContain("task_name");
+});

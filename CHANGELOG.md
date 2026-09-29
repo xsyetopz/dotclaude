@@ -29,6 +29,9 @@ steps after each update.
   I ...?". Claude then does the work, or ends the turn again when only you
   can decide. A step that is public or hard to reverse, such as a push or a
   release, and a turn that `AskUserQuestion` ended, pass.
+- Each `TaskCompleted` call adds a `task` line to `verdicts.jsonl` with the
+  names of its input fields, because the hooks docs do not pin that input
+  yet.
 
 ### Fixed
 

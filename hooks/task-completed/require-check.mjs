@@ -6,9 +6,15 @@
 import fs from "node:fs";
 import { option, run, TAG } from "../lib/_common.mjs";
 import { load, save } from "../lib/_ledger.mjs";
+import { logVerdict } from "../lib/_verdicts.mjs";
 
 run((data) => {
-  if (!option("stop_gate") || !data.session_id) return;
+  if (!option("stop_gate")) return;
+  // The input fields are not a stable contract yet, so each call logs them.
+  logVerdict(data, "task", data.task_status ?? "", {
+    fields: Object.keys(data).sort(),
+  });
+  if (!data.session_id) return;
   if (data.task_status && data.task_status !== "completed") return;
   const agentId = data.agent_id ?? null;
   const state = load(data.session_id, agentId);
