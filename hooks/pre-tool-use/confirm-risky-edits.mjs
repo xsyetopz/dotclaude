@@ -3,10 +3,11 @@
 // PreToolUse hook for Edit/Write/NotebookEdit: ask before edits that weaken
 // tests or touch generated files; deny settings edits that re-enable fast mode.
 
-import { decide, option, run } from "../lib/_common.mjs";
+import { option, run } from "../lib/_common.mjs";
 import { ASKS_TEST_REMOVAL, check } from "../lib/_edit-rules.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 import { recentPrompts } from "../lib/_transcript.mjs";
+import { guardDecision } from "../lib/_verdicts.mjs";
 
 run((data) => {
   const editGuard = option("edit_guard");
@@ -22,5 +23,5 @@ run((data) => {
         recentPrompts(data.transcript_path ?? "", 1, 4000).at(-1) ?? "",
       ),
   });
-  decide(findings, data, "edit");
+  guardDecision(findings, data, "edit");
 });

@@ -147,24 +147,28 @@ function sentences(findings) {
  * session is in an attended permission mode or `ask_in_auto_mode` is on.
  */
 export function decide(findings, data, label) {
+  const v = verdict(findings, data, label);
+  if (v) preToolDecision(...v);
+}
+
+/** The decision `decide` emits, as [decision, reason], or null for none. */
+export function verdict(findings, data, label) {
   const denied = findings.filter(([level]) => level === "deny");
-  if (denied.length) {
-    preToolDecision(
+  if (denied.length)
+    return [
       "deny",
       `blocked this ${label}. ${sentences(denied)}${
         label === "command"
           ? " If the user wants this command to run, tell them to run it themselves with `! <command>`."
           : ""
       }`,
-    );
-    return;
-  }
+    ];
   const quiet =
     UNATTENDED.has(data.permission_mode) && !option("ask_in_auto_mode", false);
   const asks = findings.filter(
     ([level]) => level === "ask" || (level === "warn" && !quiet),
   );
-  if (asks.length) preToolDecision("ask", sentences(asks));
+  return asks.length ? ["ask", sentences(asks)] : null;
 }
 
 export async function run(body) {

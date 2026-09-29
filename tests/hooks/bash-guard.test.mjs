@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { HOOKS, hook, repo } from "../support/hooks.mjs";
+import { data, HOOKS, hook, repo } from "../support/hooks.mjs";
 
 test("bash guard emits ask and deny decisions, and nothing for safe commands", () => {
   const ask = hook("pre-tool-use/block-destructive-commands.mjs", {
@@ -170,4 +170,89 @@ test("a Bash write that removes assertions asks unless the user asked for it", (
     })?.hookSpecificOutput.permissionDecision ?? null;
   expect(decision("Tidy the helper.")).toBe("ask");
   expect(decision("Remove the flaky tests for the old flag.")).toBe(null);
+});
+
+test("each guard decision adds one verdict log line with a bounded target", () => {
+  const log = path.join(data, "verdicts.jsonl");
+  const lines = () =>
+    fs.existsSync(log)
+      ? fs.readFileSync(log, "utf8").trim().split("\n").filter(Boolean)
+      : [];
+  const before = lines().length;
+  const long = `git push --force origin ${"x".repeat(400)}`;
+  hook("pre-tool-use/block-destructive-commands.mjs", {
+    session_id: "log-1",
+    tool_name: "Bash",
+    tool_input: { command: long },
+  });
+  const after = lines();
+  expect(after.length).toBe(before + 1);
+  const entry = JSON.parse(after.at(-1));
+  expect(entry).toMatchObject({ session: "log-1", level: "ask", tool: "Bash" });
+  expect(entry.target.length).toBeLessThanOrEqual(200);
+  expect(after.at(-1)).not.toContain("x".repeat(201));
+  hook("pre-tool-use/block-destructive-commands.mjs", {
+    session_id: "log-1",
+    tool_name: "Bash",
+    tool_input: { command: "bun test" },
+  });
+  expect(lines().length, "a command with no finding adds no line").toBe(
+    before + 1,
+  );
+});
+
+test("an ask the user approved is not asked again in that session", () => {
+  const pre = (sid, command, id) =>
+    hook("pre-tool-use/block-destructive-commands.mjs", {
+      session_id: sid,
+      tool_name: "Bash",
+      tool_use_id: id,
+      tool_input: { command },
+    })?.hookSpecificOutput.permissionDecision ?? null;
+  const post = (sid, command, id) =>
+    hook("post-tool-use/record-edits-and-checks.mjs", {
+      session_id: sid,
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      tool_use_id: id,
+      tool_input: { command },
+      tool_response: { stdout: "", stderr: "" },
+    });
+  const push = "git push --force origin feature";
+  expect(pre("mem-1", push, "t1")).toBe("ask");
+  expect(pre("mem-1", push, "t2"), "not approved yet").toBe("ask");
+  post("mem-1", push, "t2");
+  expect(pre("mem-1", push, "t3"), "approved once").toBe(null);
+  expect(pre("mem-1", `${push}-2`, "t4"), "another target").toBe("ask");
+  expect(pre("mem-2", push, "t5"), "a new session").toBe("ask");
+  // A deny is never remembered.
+  expect(pre("mem-1", "rm -rf ~", "t6")).toBe("deny");
+  post("mem-1", "rm -rf ~", "t6");
+  expect(pre("mem-1", "rm -rf ~", "t7")).toBe("deny");
+});
+
+test("an approved edit ask covers only the same edit", () => {
+  const file_path = path.join(repo, ".claude", "settings.local.json");
+  const input = (n) => ({
+    file_path,
+    old_string: '"a": 1',
+    new_string: `"a": ${n}`,
+  });
+  const pre = (n, id) =>
+    hook("pre-tool-use/confirm-risky-edits.mjs", {
+      session_id: "mem-edit",
+      tool_name: "Edit",
+      tool_use_id: id,
+      tool_input: input(n),
+    })?.hookSpecificOutput.permissionDecision ?? null;
+  expect(pre(2, "e1")).toBe("ask");
+  hook("post-tool-use/record-edits-and-checks.mjs", {
+    session_id: "mem-edit",
+    hook_event_name: "PostToolUse",
+    tool_name: "Edit",
+    tool_use_id: "e1",
+    tool_input: input(2),
+  });
+  expect(pre(2, "e2"), "the same edit").toBe(null);
+  expect(pre(3, "e3"), "another edit to the file").toBe("ask");
 });

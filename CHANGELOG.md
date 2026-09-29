@@ -16,6 +16,14 @@ steps after each update.
   edit with no check run after it, the gate keeps the task open once and
   tells Claude to run the tests, build, or lint. The `stop_gate` option
   turns this off too.
+- The Bash guard and the edit guard write each deny and ask to
+  `verdicts.jsonl` in the plugin data directory, one JSON line each, with
+  the target cut to 200 characters. The log shows which rules fire too
+  often. It moves to `verdicts.1.jsonl` above about 1 MB.
+- When you approve an ask and the tool runs, the guards do not ask again
+  in that session for the same command, or the same edit, with the same
+  reason. The guard then makes no decision, so your permission rules
+  still apply. A deny is never remembered.
 
 ### Fixed
 

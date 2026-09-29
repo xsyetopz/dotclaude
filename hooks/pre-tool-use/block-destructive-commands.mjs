@@ -8,10 +8,11 @@
 import path from "node:path";
 import { claudeTrailerOff } from "../lib/_attribution.mjs";
 import { check } from "../lib/_bash-rules.mjs";
-import { decide, option, projectRoot, run } from "../lib/_common.mjs";
+import { option, projectRoot, run } from "../lib/_common.mjs";
 import { ASKS_TEST_REMOVAL } from "../lib/_edit-rules.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 import { recentPrompts } from "../lib/_transcript.mjs";
+import { guardDecision } from "../lib/_verdicts.mjs";
 
 const LOCK_ONLY = /fast mode|allowed models/;
 const REMOVES_ASSERTIONS = /assertion\(s\) from a test file/;
@@ -44,5 +45,5 @@ run((data) => {
     findings = findings.filter(
       ([, reason]) => !REMOVES_ASSERTIONS.test(reason),
     );
-  decide(findings, data, "command");
+  guardDecision(findings, data, "command");
 });

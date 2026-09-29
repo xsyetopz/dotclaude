@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 // PostToolUse / PostToolUseFailure hook: record edits and check runs in the
-// session ledger. Prints nothing.
+// session ledger, and mark an asked guard decision as approved. Prints
+// nothing.
 
 import path from "node:path";
 import { option, projectRoot, run } from "../lib/_common.mjs";
@@ -12,6 +13,7 @@ import {
   save,
   shellWrites,
 } from "../lib/_ledger.mjs";
+import { approveAsk } from "../lib/_verdicts.mjs";
 
 /** Path of a code edit relative to the project, or null when it doesn't count. */
 /** Project-relative path an edit tool wrote, or null. */
@@ -55,6 +57,7 @@ function recordEdited(state, rel) {
 }
 
 run((data) => {
+  approveAsk(data);
   if (!option("stop_gate") && !option("compact_carryover")) return;
   const state = load(data.session_id, data.agent_id);
   state.seq += 1;

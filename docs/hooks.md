@@ -7,8 +7,11 @@ hook in `/config` under dotclaude. The option name is after each heading.
 
 Every dotclaude message starts with `[dotclaude]`. The guards never approve
 anything, and they fail open, so a bug in a guard does not stop your work.
-They are a best-effort parser, not a sandbox. For hard isolation, use Claude
-Code's [sandbox](https://code.claude.com/docs/en/sandboxing). To run a
+After you approve an ask and the tool runs, the guards do not ask again in
+that session for the same command or edit. Each deny and ask goes to
+`verdicts.jsonl` in the plugin data directory, so you can see which rules
+fire often. The guards are a best-effort parser, not a sandbox. For hard
+isolation, use Claude Code's [sandbox](https://code.claude.com/docs/en/sandboxing). To run a
 command that a guard denied, type `! <command>`.
 
 ## Guards
