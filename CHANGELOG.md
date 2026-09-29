@@ -86,6 +86,9 @@ steps after each update.
   fail, and its report names the path. For matching work, it pins the
   SHA-256 of the input, compares bytes and relocations, and keeps an
   iteration log. It does not analyze the Claude Code binary.
+- `scripts/usage-report.mjs` counts the dotclaude agent runs that reached
+  their turn-limit reserve. For each agent type, it gives the median files
+  and list items in the brief of those runs and of the other runs.
 
 ### Changed
 

@@ -13,10 +13,13 @@
 // share, and the prompt cache hit rate (cache reads over all input tokens).
 // An advisor call is an `advisor_message` entry in the call's
 // `usage.iterations`, and the call's own token counts leave it out.
+// For dotclaude agents with a turn limit, it compares the briefs of the runs
+// that reached the report reserve with the briefs of the other runs.
 
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { definition, reserve, turnsUsed } from "../hooks/lib/_agents.mjs";
 
 // $ per million tokens: input, output, cache read, 5m write, 1h write.
 const PRICES = {
@@ -61,6 +64,53 @@ function agentType(file) {
   }
 }
 
+// A source or config file that a brief names, with or without a directory.
+const FILE =
+  /(?:[\w.@-]+\/)*[\w.@-]+\.(?:mjs|cjs|js|jsx|ts|tsx|py|go|rs|rb|java|kt|swift|c|h|cc|cpp|hpp|cs|php|md|json|jsonc|yaml|yml|toml|sh|sql|css|scss|html|vue|svelte)\b/g;
+// A bulleted or numbered line: one item of work, a constraint, or a check.
+const ITEM = /^\s*(?:[-*+]|\d+[.)])\s/gm;
+
+function briefSize(file) {
+  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+    let entry;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (entry.type !== "user") continue;
+    const c = entry.message?.content;
+    const text = (
+      typeof c === "string"
+        ? c
+        : (Array.isArray(c) ? c : []).map((b) => b.text ?? "").join("\n")
+    ).replace(/\w+:\/\/\S+/g, "");
+    return {
+      files: new Set(text.match(FILE) ?? []).size,
+      items: (text.match(ITEM) ?? []).length,
+    };
+  }
+  return { files: 0, items: 0 };
+}
+
+const median = (xs) => {
+  const s = [...xs].sort((a, b) => a - b);
+  return s.length ? s[Math.floor((s.length - 1) / 2)] : 0;
+};
+
+/** Per agent type: runs, and the median files and list items in the brief. */
+function briefStats(runs) {
+  const byType = Map.groupBy(runs, (r) => r.type);
+  return [...byType]
+    .map(([type, rs]) => ({
+      type,
+      runs: rs.length,
+      files: median(rs.map((r) => r.files)),
+      items: median(rs.map((r) => r.items)),
+    }))
+    .sort((a, b) => b.runs - a.runs);
+}
+
 export function report(root, since) {
   const byAgent = {};
   let total = 0;
@@ -77,6 +127,9 @@ export function report(root, since) {
   // still warm, split by whether tool or prompt hook `additionalContext` is
   // in the history. [calls, cache writes, context] per bucket.
   const first = { with: [0, 0, 0], without: [0, 0, 0] };
+  // dotclaude agent runs with a turn limit, and whether each one reached
+  // the reserve where tool calls stop.
+  const limited = [];
   const files = fs
     .readdirSync(root, { recursive: true })
     .map(String)
@@ -85,6 +138,13 @@ export function report(root, since) {
     .filter((f) => fs.statSync(f).mtimeMs >= since.getTime());
   for (const file of files) {
     const type = agentType(file);
+    const limit = type === "main" ? null : definition(type)?.maxTurns;
+    if (limit)
+      limited.push({
+        type,
+        capped: turnsUsed(file) >= limit - reserve(limit),
+        ...briefSize(file),
+      });
     const seen = new Set();
     let wake = false;
     let hookContext = false;
@@ -153,8 +213,14 @@ export function report(root, since) {
   const share = (x) => (total ? Math.round((1000 * x) / total) / 10 : 0);
   const hit = ([context, read]) =>
     context ? Math.round((1000 * read) / context) / 10 : null;
+  const capped = limited.filter((r) => r.capped);
   return {
     total: Math.round(total * 100) / 100,
+    turnCap: {
+      runs: limited.length,
+      capped: briefStats(capped),
+      other: briefStats(limited.filter((r) => !r.capped)),
+    },
     byAgent: Object.entries(byAgent)
       .sort((a, b) => b[1] - a[1])
       .map(([type, cost]) => ({
@@ -220,5 +286,15 @@ if (import.meta.main) {
     console.log(
       `First warm call after a prompt: ${f.with.writeShare}% of context written with hook context in history (${f.with.calls} calls), ${f.without.writeShare}% without (${f.without.calls} calls)`,
     );
+    const other = new Map(r.turnCap.other.map((o) => [o.type, o]));
+    console.log(
+      `Runs that reached the turn-limit reserve: ${r.turnCap.capped.reduce((n, c) => n + c.runs, 0)} of ${r.turnCap.runs} (median files and list items in the brief, capped vs other)`,
+    );
+    for (const c of r.turnCap.capped) {
+      const o = other.get(c.type) ?? { runs: 0, files: 0, items: 0 };
+      console.log(
+        `  ${c.type.padEnd(32)} ${c.runs} of ${c.runs + o.runs}  files ${c.files} vs ${o.files}  items ${c.items} vs ${o.items}`,
+      );
+    }
   }
 }

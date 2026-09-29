@@ -141,3 +141,43 @@ test("first warm call after a prompt, split by hook context in history", () => {
   expect(r.without).toEqual({ calls: 1, avgWrite: 2_000, writeShare: 4 });
   expect(r.with).toEqual({ calls: 1, avgWrite: 40_000, writeShare: 80 });
 });
+
+test("turn cap: runs that reach the report reserve, and their brief size", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "usage-report-"));
+  const sub = path.join(root, "p", "s1", "subagents");
+  fs.mkdirSync(sub, { recursive: true });
+  const run = (id, type, brief, calls) => {
+    const lines = [
+      JSON.stringify({ type: "user", message: { content: brief } }),
+      ...Array.from({ length: calls }, (_, i) => call(`${id}-${i}`, {})),
+    ];
+    fs.writeFileSync(path.join(sub, `agent-${id}.jsonl`), lines.join("\n"));
+    fs.writeFileSync(
+      path.join(sub, `agent-${id}.meta.json`),
+      JSON.stringify({ agentType: type }),
+    );
+  };
+  // The implementer limit is 80, and tool calls stop with 4 left.
+  run(
+    "a1",
+    "dotclaude:implementer",
+    "Add the flag.\n1. Parse it in `src/cli.ts`.\n2. Use it in src/run.ts.\n3. Test it in tests/cli.test.ts.",
+    76,
+  );
+  run(
+    "a2",
+    "dotclaude:implementer",
+    "Fix the typo in README.md, e.g. `teh`.",
+    75,
+  );
+  // A type without `maxTurns` in a dotclaude file does not count.
+  run("a3", "Explore", "Find the parser.", 90);
+  const r = report(root, new Date("2026-09-20")).turnCap;
+  expect(r.runs).toBe(2);
+  expect(r.capped).toEqual([
+    { type: "dotclaude:implementer", runs: 1, files: 3, items: 3 },
+  ]);
+  expect(r.other).toEqual([
+    { type: "dotclaude:implementer", runs: 1, files: 1, items: 0 },
+  ]);
+});

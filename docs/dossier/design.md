@@ -68,6 +68,11 @@ Claude Code delivers nothing from an agent that it stops at its turn limit.
   about 25–30%.
 - `code-reviewer` has a 60-turn limit. A capped review loses its findings. A
   capped `implementer` only splits its work.
+- The `implementer` limit stays 80. **measured:** in the week to
+  2026-09-29, 31 of 252 runs reached it, and 27 of those were past 90k
+  context. Most capped briefs named one behavior. Long runs passed 100k
+  context near turn 20, so the context bound now ends them first. A higher
+  limit gives no more finished work.
 
 ### Rejected Alternatives
 
