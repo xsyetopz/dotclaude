@@ -45,7 +45,7 @@ test("a finished report, a second stop, and public steps pass", () => {
   expect(stop("Next I'll publish 0.12.0 after your sandbox run.")).toBe(null);
 });
 
-test("a turn that an `AskUserQuestion` call ended passes", () => {
+test("a turn that an `AskUserQuestion` or `ExitPlanMode` call ended passes", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-ask-"));
   const transcript = path.join(dir, "t.jsonl");
   const entry = (content) =>
@@ -65,6 +65,13 @@ test("a turn that an `AskUserQuestion` call ended passes", () => {
   expect(stop("Should I use the cache?", { transcript_path: transcript })).toBe(
     null,
   );
+  fs.writeFileSync(
+    transcript,
+    entry([{ type: "tool_use", id: "p1", name: "ExitPlanMode", input: {} }]),
+  );
+  expect(
+    stop("Next I'll add the cache.", { transcript_path: transcript }),
+  ).toBe(null);
   fs.writeFileSync(transcript, entry([{ type: "text", text: "x" }]));
   expect(
     stop("Should I use the cache?", { transcript_path: transcript })?.decision,

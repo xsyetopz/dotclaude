@@ -48,34 +48,32 @@ export function tail(file, maxBytes = MAX_BYTES) {
   }
 }
 
+// Tools that end a turn to wait for the user's answer.
+const WAITS_FOR_USER = new Set(["AskUserQuestion", "ExitPlanMode"]);
+
 /**
- * The time (ms) and context tokens (input plus cache reads and writes) of the
- * latest main-conversation API call, or null without one.
+ * True when the last main-conversation assistant entry calls a tool that
+ * waits for the user (`AskUserQuestion`, `ExitPlanMode`).
  */
-export function lastMainCall(transcriptPath) {
-  const text = tail(transcriptPath, 2_000_000);
-  if (!text) return null;
+export function waitsForUser(transcriptPath) {
+  const text = transcriptPath ? tail(transcriptPath, 500_000) : null;
+  if (!text) return false;
   const lines = text.split("\n");
   for (let i = lines.length - 1; i >= 0; i -= 1) {
-    if (!lines[i].includes('"usage"')) continue;
     let entry;
     try {
       entry = JSON.parse(lines[i]);
     } catch {
       continue;
     }
-    const u = entry.type === "assistant" ? entry.message?.usage : null;
-    const at = Date.parse(entry.timestamp);
-    if (!u || entry.isSidechain || Number.isNaN(at)) continue;
-    return {
-      at,
-      context:
-        (u.input_tokens ?? 0) +
-        (u.cache_read_input_tokens ?? 0) +
-        (u.cache_creation_input_tokens ?? 0),
-    };
+    if (entry.type !== "assistant" || entry.isSidechain) continue;
+    const content = entry.message?.content;
+    return (
+      Array.isArray(content) &&
+      content.some((c) => c.type === "tool_use" && WAITS_FOR_USER.has(c.name))
+    );
   }
-  return null;
+  return false;
 }
 
 export function recentPrompts(transcriptPath, limit = 5, maxChars = 600) {

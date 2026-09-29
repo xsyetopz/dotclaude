@@ -201,9 +201,29 @@ test("doc edits do not trip the stop gate", () => {
   expect(stop(sid)).toBe(null);
 });
 
-test("stop gate flags a pass claim when nothing ran", () => {
+test("a pass claim with no edit and no check is not blocked", () => {
+  // A read-only agent that reports what it read is not claiming its own work.
   const sid = session();
-  expect(stop(sid, "All tests pass.").decision).toBe("block");
+  expect(stop(sid, "All tests pass.")).toBe(null);
+});
+
+test("a quoted pass claim after a failed check is not blocked", () => {
+  for (const message of [
+    "Upstream says `all tests pass` on main. The local pytest run is still red.",
+    "Upstream CI printed:\n\n```\nAll tests passed\n```\n\nThe local pytest run is still red.",
+    "The issue says:\n> Tests pass on main.\nThe local pytest run is still red.",
+  ]) {
+    const sid = session();
+    edit(sid);
+    checkRun(sid, "pytest", false);
+    expect(stop(sid, message), message).toBe(null);
+  }
+  const sid = session();
+  edit(sid);
+  checkRun(sid, "pytest", false);
+  expect(stop(sid, "The log was quoted. All tests pass.").decision).toBe(
+    "block",
+  );
 });
 
 test("plugin validation and markdownlint count as check runs", () => {

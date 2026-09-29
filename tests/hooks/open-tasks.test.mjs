@@ -81,6 +81,29 @@ test("no block for a continuation, background work, or the option off", () => {
   expect(stop(session()), "a session without tasks").toBeNull();
 });
 
+test("no block for a subagent or a turn that waits for the user", () => {
+  const sid = session();
+  tasks(sid, [["1", "pending"]]);
+  expect(stop(sid, { agent_id: "a1" })).toBeNull();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-wait-"));
+  const transcript = path.join(dir, "t.jsonl");
+  for (const name of ["AskUserQuestion", "ExitPlanMode"]) {
+    fs.writeFileSync(
+      transcript,
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          role: "assistant",
+          content: [{ type: "tool_use", id: "t1", name, input: {} }],
+        },
+      }),
+    );
+    expect(stop(sid, { transcript_path: transcript }), name).toBeNull();
+  }
+  expect(stop(sid)?.decision, "the gate still applies").toBe("block");
+  fs.rmSync(dir, { recursive: true });
+});
+
 test("CLAUDE_CODE_TASK_LIST_ID selects a shared list", () => {
   tasks("shared", [["1", "in_progress"]]);
   expect(

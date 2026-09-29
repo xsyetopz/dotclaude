@@ -4,12 +4,12 @@
 // ("Should I ...?", "Want me to ...?") instead of doing it. In the audited
 // sessions, 54 of 439 user messages only answered such an ending.
 //
-// It passes on the second stop of a turn, after an `AskUserQuestion` call,
-// and when the paragraph names a public or hard-to-reverse step, because
+// It passes on the second stop of a turn, after an `AskUserQuestion` or
+// `ExitPlanMode` call, and when the paragraph names a public or hard-to-reverse step, because
 // those wait for the user.
 
 import { emit, option, run } from "../lib/_common.mjs";
-import { tail } from "../lib/_transcript.mjs";
+import { waitsForUser } from "../lib/_transcript.mjs";
 import { logVerdict } from "../lib/_verdicts.mjs";
 
 const ANNOUNCES = [
@@ -36,34 +36,12 @@ function lastParagraph(message) {
   return parts.at(-1) ?? "";
 }
 
-/** True when the last assistant entry of the transcript calls AskUserQuestion. */
-function askedUser(transcriptPath) {
-  const text = transcriptPath ? tail(transcriptPath, 500_000) : null;
-  if (!text) return false;
-  const lines = text.split("\n");
-  for (let i = lines.length - 1; i >= 0; i -= 1) {
-    let entry;
-    try {
-      entry = JSON.parse(lines[i]);
-    } catch {
-      continue;
-    }
-    if (entry.type !== "assistant" || entry.isSidechain) continue;
-    const content = entry.message?.content;
-    return (
-      Array.isArray(content) &&
-      content.some((c) => c.type === "tool_use" && c.name === "AskUserQuestion")
-    );
-  }
-  return false;
-}
-
 run((data) => {
   if (!option("stop_gate") || data.stop_hook_active) return;
   const paragraph = lastParagraph(data.last_assistant_message ?? "");
   if (!ANNOUNCES.some((re) => re.test(paragraph)) || WAITS.test(paragraph))
     return;
-  if (askedUser(data.transcript_path)) return;
+  if (waitsForUser(data.transcript_path)) return;
   const reason =
     "Your reply ends with a next step or an offer, not with finished work: " +
     `"${paragraph.slice(0, 200)}". The user must answer before that work happens, which costs a turn. ` +

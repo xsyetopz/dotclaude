@@ -3,15 +3,18 @@
 // pending or in progress, so the task list does not go stale when work
 // finishes without a `TaskUpdate`. The same set of open tasks blocks at most
 // once, so tasks left open on purpose (waiting for the user) let the stop
-// through on the next turn.
+// through on the next turn. It passes for a subagent, and after an
+// `AskUserQuestion` or `ExitPlanMode` call, because then the open tasks wait
+// for the user's answer.
 
 import fs from "node:fs";
 import path from "node:path";
 import { emit, option, run, stateDir } from "../lib/_common.mjs";
 import { openTasks, taskListDir } from "../lib/_tasks.mjs";
+import { waitsForUser } from "../lib/_transcript.mjs";
 
 run((data) => {
-  if (!option("task_check") || data.stop_hook_active) return;
+  if (!option("task_check") || data.stop_hook_active || data.agent_id) return;
   // Claude is waiting for background work, which can finish a task later.
   if (
     (data.background_tasks ?? []).some(
@@ -20,7 +23,7 @@ run((data) => {
   )
     return;
   const open = openTasks(taskListDir(data.session_id));
-  if (!open.length) return;
+  if (!open.length || waitsForUser(data.transcript_path)) return;
   const file = path.join(
     stateDir(),
     `${String(data.session_id).replace(/[^A-Za-z0-9_-]/g, "_")}.open-tasks`,

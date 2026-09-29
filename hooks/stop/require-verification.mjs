@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 // Stop and SubagentStop hook: send Claude (or a subagent) back once when it
 // ends after code edits with no later check run, or with a failed check it
-// reports as passing. Each ledger
-// state blocks at most once, and a continuation is never blocked again.
+// reports as passing. Each ledger state blocks at most once, and a
+// continuation is never blocked again. A pass claim with nothing edited and
+// nothing run is not blocked: read-only agents quote results that others ran.
 
 import { emit, option, run } from "../lib/_common.mjs";
 import { load, save } from "../lib/_ledger.mjs";
@@ -16,6 +17,16 @@ const SAYS_UNVERIFIED =
 // A reply that reports a failure or a gap, which is honest after a failed check.
 const ADMITS_GAP =
   /\b(fail(s|ed|ing|ure)?|error|broken|not\s+(yet\s+)?(run|ran|verified|tested)|unverified|untested|didn'?t\s+(run|test|verify)|haven'?t\s+(run|tested|verified)|could\s?n[o']t\s+(run|test))\b/i;
+
+/** `message` without quoted lines (`>`) and code (fenced or in backticks). */
+function ownWords(message) {
+  return message
+    .replace(/```[\s\S]*?(```|$)/g, " ")
+    .replace(/`[^`\n]*`/g, " ")
+    .split("\n")
+    .filter((line) => !/^\s*>/.test(line))
+    .join("\n");
+}
 
 run((data) => {
   if (!option("stop_gate") || data.stop_hook_active) return;
@@ -48,20 +59,11 @@ run((data) => {
     lastCheck.ok === false &&
     (!lastEdit || lastCheck.seq > lastEdit.seq) &&
     state.blockedCheck !== lastCheck.seq &&
-    CLAIMS_PASS.test(message) &&
+    CLAIMS_PASS.test(ownWords(message)) &&
     !ADMITS_GAP.test(message)
   ) {
     state.blockedCheck = lastCheck.seq;
     reason = `The last check (\`${lastCheck.command}\`) failed${lastCheck.code ? ` with exit code ${lastCheck.code}` : ""}, and no check passed after it, but the reply describes it as passing. Fix the failure, or report it as failing.`;
-  } else if (
-    !lastCheck &&
-    !lastEdit &&
-    CLAIMS_PASS.test(message) &&
-    state.blockedCheck !== "claim"
-  ) {
-    state.blockedCheck = "claim";
-    reason =
-      "The reply says tests or a build passed, but no test or build command ran this session. Run the tests or build. Otherwise, change the reply to say what you actually checked.";
   }
 
   if (!reason) return;
