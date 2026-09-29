@@ -305,3 +305,17 @@ test("git commit with a Claude co-author trailer is denied when settings turn it
     level(heredoc, { ...ctx, claudeTrailerOff: false, commitHygiene: false }),
   ).toBe("pass");
 });
+
+test("`cd ~/x && rm -r src` resolves under HOME, not the project", () => {
+  const home = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-home-")),
+  );
+  const saved = process.env.HOME;
+  process.env.HOME = home;
+  try {
+    expect(level("rm -r src")).toBe("warn");
+    expect(level("cd ~/x && rm -r src")).toBe("pass");
+  } finally {
+    process.env.HOME = saved;
+  }
+});

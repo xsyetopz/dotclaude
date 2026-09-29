@@ -134,3 +134,19 @@ test("a directory outside any git repository passes", () => {
     "pass",
   );
 });
+
+test("a `cd ~/...` hint resolves against HOME, not the project", () => {
+  const saved = process.env.HOME;
+  process.env.HOME = outside;
+  fs.mkdirSync(path.join(outside, "logs"), { recursive: true });
+  try {
+    expect(level("cd ~/logs && find . -name '*.jsonl'")).toBe("pass");
+    expect(level("cd ~ && find . -name '*.jsonl'")).toBe("pass");
+  } finally {
+    process.env.HOME = saved;
+  }
+});
+
+test("a `cd $DIR` hint leaves the base unknown", () => {
+  expect(level("cd $DIR && find . -name '*.swift'")).toBe("pass");
+});

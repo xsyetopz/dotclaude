@@ -77,8 +77,16 @@ export function resolveTarget(target, cmd, ctx) {
   )
     return undefined;
   let base = ctx.cwd;
-  if (cmd.cwdHint && !cmd.cwdHint.includes("$") && !cmd.cwdHint.startsWith("~"))
-    base = path.resolve(ctx.cwd, cmd.cwdHint);
+  if (cmd.cwdHint) {
+    // `cd $DIR` makes the base unknown; guessing the project root misfires.
+    if (cmd.cwdHint.includes("$")) return undefined;
+    const home = process.env.HOME;
+    if (/^~(\/|$)/.test(cmd.cwdHint)) {
+      if (!home) return undefined;
+      base = path.join(home, cmd.cwdHint.slice(1));
+    } else if (cmd.cwdHint.startsWith("~")) return undefined;
+    else base = path.resolve(ctx.cwd, cmd.cwdHint);
+  }
   return path.resolve(base, target);
 }
 

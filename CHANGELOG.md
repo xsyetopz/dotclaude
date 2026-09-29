@@ -10,6 +10,14 @@ steps after each update.
 
 ## [Unreleased]
 
+### Fixed
+
+- The Bash guard resolves paths after `cd ~/dir` against your home
+  directory. Before, `cd ~/.claude/projects && find .` was checked as if it
+  ran in the project, and the guard denied it for the project's ignored
+  directories. After `cd $DIR`, the guard now treats the directory as
+  unknown and does not guess the project root.
+
 ## [0.11.1] - 2026-09-29
 
 After updating, restart Claude Code. You do not need to run
