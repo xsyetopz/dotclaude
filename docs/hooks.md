@@ -11,8 +11,9 @@ After you approve an ask and the tool runs, the guards do not ask again in
 that session for the same command or edit. Each deny and ask goes to
 `verdicts.jsonl` in the plugin data directory, so you can see which rules
 fire often. The guards are a best-effort parser, not a sandbox. For hard
-isolation, use Claude Code's [sandbox](https://code.claude.com/docs/en/sandboxing). To run a
-command that a guard denied, type `! <command>`.
+isolation, use Claude Code's
+[sandbox](https://code.claude.com/docs/en/sandboxing). To run a command that
+a guard denied, type `! <command>`.
 
 ## Guards
 
@@ -84,7 +85,10 @@ mode's own classifier already decides recoverable actions.
 **What:** sends Claude back once when it edits code and stops without a test,
 build, or lint run. It does the same when Claude says that tests pass after a
 failure. When Claude marks a task completed after a code edit with no check
-after it, the gate keeps the task open once.
+after it, the gate keeps the task open once. When the last paragraph of a
+reply announces the next step or asks permission for work ("Should I ...?"),
+the gate sends Claude back once to do the work. Public or hard-to-reverse
+steps and `AskUserQuestion` calls pass.
 
 **Why:** "done" without a check that ran moves the finding of defects to you.
 The working rules say this in prose, and the gate enforces it.

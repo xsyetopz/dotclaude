@@ -24,6 +24,11 @@ steps after each update.
   in that session for the same command, or the same edit, with the same
   reason. The guard then makes no decision, so your permission rules
   still apply. A deny is never remembered.
+- The stop gate sends Claude back once when the last paragraph of its reply
+  announces the next step or offers work, such as "Next I'll ..." or "Should
+  I ...?". Claude then does the work, or ends the turn again when only you
+  can decide. A step that is public or hard to reverse, such as a push or a
+  release, and a turn that `AskUserQuestion` ended, pass.
 
 ### Fixed
 

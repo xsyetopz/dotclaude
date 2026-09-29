@@ -23,7 +23,7 @@ function target(data) {
     .trim();
 }
 
-function logVerdict(data, level, reason) {
+export function logVerdict(data, level, reason) {
   const file = path.join(path.dirname(stateDir()), "verdicts.jsonl");
   try {
     if (fs.statSync(file).size > LOG_MAX_BYTES)
