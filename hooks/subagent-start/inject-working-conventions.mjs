@@ -43,8 +43,10 @@ const context = (agentType) =>
 // Anthropic's Sonnet 5 prompting guide: it "does not silently generalize an
 // instruction from one item to another", most of all at lower effort. The
 // Sonnet 5.5 guide keeps Sonnet 5 prompts, and says that at `low` effort it
-// sometimes reports a change as done without a check that exercises it.
-const SONNET = `<scope_note source="dotclaude">Apply each instruction in your brief to everything it covers, not only the first match or file. Name in your report anything you left out and why. Before you report a code change as done, run a check that exercises it: the project's tests, type-checker, or build, or the changed command. A syntax-only check, or a check command that did not start, is not a check. If no real check can run, name the check you did not run and why.</scope_note>`;
+// sometimes reports a change as done without a check that exercises it. In one
+// user's 35-task test, Sonnet 5.5 wrote outside its assigned folder 4 times and
+// Opus 5.5 0 times, mostly scratch files.
+const SONNET = `<scope_note source="dotclaude">Apply each instruction in your brief to everything it covers, not only the first match or file. Name in your report anything you left out and why. Write only in the files and directories that your brief names. Put scratch files in the system temp folder and delete them before you report, because files outside the brief make the review larger. Report defects outside your brief, and do not fix them. Before you report a code change as done, run a check that exercises it: the project's tests, type-checker, or build, or the changed command. A syntax-only check, or a check command that did not start, is not a check. If no real check can run, name the check you did not run and why.</scope_note>`;
 
 run((data) => {
   if (!option("subagent_guidance")) return;

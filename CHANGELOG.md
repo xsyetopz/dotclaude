@@ -10,6 +10,25 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-09-29
+
+After updating, restart Claude Code. You do not need to run
+`/dotclaude:apply-settings-profile` again, because the settings profile did
+not change.
+
+### Changed
+
+- The reminder for agents on Sonnet 5.5 (`implementer`, `docs-writer`, and
+  `mechanical-worker`) also tells them to write only in the files that the
+  brief names, to put scratch files in the system temp folder, and to report
+  defects outside the brief, not fix them. In one user's test of 35 bug-fix
+  tasks, both models fixed 34, but Sonnet 5.5 wrote outside its assigned
+  folder 4 times and Opus 5.5 0 times.
+- The model documentation (`docs/models.md` and the Plans And Models dossier
+  page) gives this reason. It also gives the reported cost data: Sonnet 5.5
+  costs less per task than Opus 5.5 only at `low` and `medium` effort. This
+  is why the Sonnet 5.5 agents stay at `medium`.
+
 ## [0.11.0] - 2026-09-29
 
 Requires Claude Code 2.1.284 or later, the first release with Sonnet 5.5.

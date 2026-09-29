@@ -71,5 +71,7 @@ On Fable 5.1, a session note adds that model's adjustments. Agents on
 Sonnet 5.5 get a reminder to apply each instruction to everything it covers,
 because Sonnet 5 follows instructions literally. The reminder also tells
 them to run a real check before "done", because Anthropic says Sonnet 5.5 at
-`low` effort sometimes skips it. Every dotclaude agent learns
-its turn limit at start, so it can report before the limit stops it.
+`low` effort sometimes skips it. It also tells them to write only in the
+files that the brief names, because users report that Sonnet 5.5 writes
+outside its assigned folder more often than Opus 5.5. Every dotclaude agent
+learns its turn limit at start, so it can report before the limit stops it.

@@ -114,7 +114,12 @@ This section weighs **reported** experience and Anthropic's guidance.
   took 50 calls and $1.03. The tasks were not the same, and Opus got the
   slices that needed design judgment, so this does not test the report that
   Opus 5.5 takes half the calls. `implementer` stays on Sonnet 5.5, which is
-  not measured yet.
+  not measured yet. **reported:** On the Artificial Analysis suite, Sonnet 5.5
+  costs less per task than Opus 5.5 only at `low` and `medium` effort. At
+  `high` and above, Opus 5.5 gives more quality for the same cost. In one
+  user's test of 35 bug-fix tasks, both models fixed 34, but Sonnet 5.5 wrote
+  outside its assigned folder 4 times and Opus 5.5 0 times. From 0.11.1, the
+  reminder keeps Sonnet 5.5 agents inside the files of their brief.
 - **Haiku 4.5:** single-turn, tightly scoped reading or relay work.
   dotclaude uses it for `integration-setup`, `test-runner` (from 0.11.0), and
   background tasks. It supports no effort setting.
