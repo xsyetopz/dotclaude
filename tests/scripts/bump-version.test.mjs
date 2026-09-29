@@ -59,6 +59,20 @@ test("a bump rewrites both version lines and dates the Unreleased entries", () =
   );
 });
 
+test("a bump points the [unreleased] compare link at the new tag", () => {
+  const root = project();
+  const log = path.join(root, "CHANGELOG.md");
+  fs.appendFileSync(
+    log,
+    "\n[unreleased]:\n  https://github.com/o/r/compare/dotclaude--v0.5.1...HEAD\n",
+  );
+  const res = bump(root, "patch");
+  expect(res.status, res.stderr).toBe(0);
+  expect(read(root, "CHANGELOG.md")).toEndWith(
+    "\n[unreleased]:\n  https://github.com/o/r/compare/dotclaude--v0.6.1...HEAD\n",
+  );
+});
+
 test("a dry run writes nothing", () => {
   const root = project();
   const before = snapshot(root);

@@ -29,6 +29,11 @@ not change.
   costs less per task than Opus 5.5 only at `low` and `medium` effort. This
   is why the Sonnet 5.5 agents stay at `medium`.
 
+### Fixed
+
+- The `[unreleased]` compare link at the end of the CHANGELOG starts from the
+  latest release, not 0.8.1. `just bump` now moves it to the new version.
+
 ## [0.11.0] - 2026-09-29
 
 Requires Claude Code 2.1.284 or later, the first release with Sonnet 5.5.
@@ -248,4 +253,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.8.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.11.1...HEAD

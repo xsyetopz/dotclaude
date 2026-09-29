@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 // Bump the plugin version by semver in .claude-plugin/plugin.json and
 // package.json together, and move the CHANGELOG's [Unreleased] entries under
-// a new dated heading.
+// a new dated heading, and point the [unreleased] compare link at the new tag.
 //
 //   bun scripts/bump-version.mjs <major|minor|patch|X.Y.Z> [--dry-run] [--root DIR]
 //
-// Only the "version" line of each manifest and one CHANGELOG line change, so
+// Only the "version" line of each manifest and two CHANGELOG lines change, so
 // formatting and key order stay as they are.
 
 import fs from "node:fs";
@@ -14,6 +14,9 @@ import path from "node:path";
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
 const VERSION_LINE = /^(\s*"version":\s*)"([^"]*)"/m;
 const UNRELEASED = "## [Unreleased]\n";
+// The version in the `[unreleased]: .../compare/<prefix>vX.Y.Z...HEAD` link.
+const UNRELEASED_LINK =
+  /(^\[unreleased\]:\s*\S+\/compare\/\S*?v)\d+\.\d+\.\d+(\.\.\.HEAD)/im;
 
 export function nextVersion(current, level) {
   if (SEMVER.test(level)) return level;
@@ -68,10 +71,9 @@ export function plan(root, level, today) {
       })),
       {
         file: changelog,
-        text: log.replace(
-          UNRELEASED,
-          `${UNRELEASED}\n## [${next}] - ${today}\n`,
-        ),
+        text: log
+          .replace(UNRELEASED, `${UNRELEASED}\n## [${next}] - ${today}\n`)
+          .replace(UNRELEASED_LINK, `$1${next}$2`),
       },
     ],
   };
