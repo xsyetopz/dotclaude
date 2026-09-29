@@ -25,6 +25,7 @@ const GUIDANCE = `<working_conventions source="dotclaude">
 // Read-only dotclaude agents whose own prompt sets a different report format.
 const OWN_PROMPT = new Set([
   "code-reviewer",
+  "diff-reviewer",
   "security-reviewer",
   "plan-reviewer",
 ]);

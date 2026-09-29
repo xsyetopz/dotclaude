@@ -3,13 +3,21 @@
 // stdin and prints rows that wrap at $COLUMNS. See hooks/lib/_status-line.mjs.
 
 import { readInput } from "../lib/_common.mjs";
+import { loopProgress } from "../lib/_loop.mjs";
 import { gitState, renderMain } from "../lib/_status-line.mjs";
 
 try {
   const data = readInput();
   const dir = data.workspace?.current_dir || data.cwd || process.cwd();
   const columns = Number(process.env.COLUMNS) || 120;
-  console.log(renderMain(data, { columns: columns - 4, git: gitState(dir) }));
+  const root = data.workspace?.project_dir || dir;
+  console.log(
+    renderMain(data, {
+      columns: columns - 4,
+      git: gitState(dir),
+      loop: loopProgress(root),
+    }),
+  );
 } catch {
   console.log("");
 }

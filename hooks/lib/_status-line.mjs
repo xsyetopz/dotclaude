@@ -277,7 +277,7 @@ function pack(groups, columns) {
  */
 export function renderMain(
   data,
-  { columns = 120, now = Date.now(), git } = {},
+  { columns = 120, now = Date.now(), git, loop } = {},
 ) {
   const dir = data.workspace?.current_dir || data.cwd || "";
   const place = [];
@@ -295,6 +295,7 @@ export function renderMain(
     const label = `${data.pr.kind === "mr" ? "!" : "#"}${data.pr.number}`;
     add(place, 3, color(data.pr.url ? link(data.pr.url, label) : label));
   }
+  if (loop) add(place, 4, C.cyan(`loop ${loop.done}/${loop.total}`));
   if (data.agent?.name) add(place, 4, C.magenta(`@${data.agent.name}`));
   if (data.vim?.mode) add(place, 3, C.bold(data.vim.mode));
   if (data.session_name) {

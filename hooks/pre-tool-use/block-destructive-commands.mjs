@@ -10,6 +10,7 @@ import { claudeTrailerOff } from "../lib/_attribution.mjs";
 import { check } from "../lib/_bash-rules.mjs";
 import { option, projectRoot, run } from "../lib/_common.mjs";
 import { ASKS_TEST_REMOVAL } from "../lib/_edit-rules.mjs";
+import { oracleFor } from "../lib/_loop.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 import { recentPrompts } from "../lib/_transcript.mjs";
 import { guardDecision } from "../lib/_verdicts.mjs";
@@ -33,6 +34,7 @@ run((data) => {
     commitHygiene: option("commit_hygiene"),
     claudeTrailerOff: claudeTrailerOff(root),
     background: Boolean(data.tool_input?.run_in_background),
+    oracle: oracleFor(data, root),
   });
   if (!guard)
     findings = findings.filter(([, reason]) => LOCK_ONLY.test(reason));

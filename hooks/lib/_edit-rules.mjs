@@ -4,12 +4,15 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { PROTECTED_REASON, protectedMatch } from "./_loop.mjs";
 import { allowed } from "./_models.mjs";
 
 /**
  * `bashWrite` marks a file that a Bash command writes. The Bash guard owns
  * settings files for those, and a new file there is build output, not an edit.
- * @typedef {{allowedModels: string[], editGuard?: boolean, modelLock?: boolean, bashWrite?: boolean}} Context
+ * `oracle` holds the agent loop's protected globs and the project root, set
+ * only for a subagent.
+ * @typedef {{allowedModels: string[], editGuard?: boolean, modelLock?: boolean, bashWrite?: boolean, oracle?: {root: string, globs: string[]}}} Context
  */
 
 export function check(toolName, toolInput, ctx) {
@@ -22,6 +25,9 @@ export function check(toolName, toolInput, ctx) {
   if (!c.bashWrite && (isClaudeSettings(posix) || MANAGED_DROP_IN.test(posix)))
     out.push(...settings(before, after, c));
   if (!c.editGuard) return out;
+  const glob =
+    c.oracle && protectedMatch(filePath, c.oracle.root, c.oracle.globs);
+  if (glob) out.push(["deny", PROTECTED_REASON(glob)]);
   if (TEST_PATH.test(posix))
     out.push(...testWeakening(before, after, c.testRemovalRequested));
   if (!c.bashWrite || fs.existsSync(filePath))

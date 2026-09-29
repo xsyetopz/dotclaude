@@ -10,6 +10,7 @@ import { CLAUDE_TRAILER } from "./_attribution.mjs";
 import { positional } from "./_bash-args.mjs";
 import { commandBase, expandHome, writeTargets } from "./_bash-writes.mjs";
 import { check as editCheck } from "./_edit-rules.mjs";
+import { PROTECTED_REASON, protectedMatch, protectedUnder } from "./_loop.mjs";
 import { DB_CLIENTS, db, dbReset, snapshotBless } from "./_rules-data.mjs";
 import {
   chmod,
@@ -20,7 +21,7 @@ import {
   rm,
   secretRead,
 } from "./_rules-filesystem.mjs";
-import { gitRule, isGitCommit } from "./_rules-git.mjs";
+import { gitRule, gitSplit, isGitCommit } from "./_rules-git.mjs";
 import { claude, modelEnv, rawSettingsWrite } from "./_rules-model.mjs";
 import { curl, gh, PUBLISH, publish, wget } from "./_rules-remote.mjs";
 import { ignoredWalk } from "./_rules-search.mjs";
@@ -28,7 +29,7 @@ import { settingsWrite } from "./_rules-settings.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /**
- * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean, background?: boolean}} Context
+ * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean, background?: boolean, oracle?: {root: string, globs: string[]}}} Context
  * @typedef {["deny" | "ask" | "warn", string]} Finding
  */
 
@@ -85,6 +86,7 @@ function checkCommand(cmd, ctx) {
   }
   out.push(...snapshotBless(cmd));
   if (ctx.editGuard) out.push(...fileWrites(cmd, ctx));
+  if (ctx.editGuard && ctx.oracle) out.push(...oracleRemovals(cmd, ctx));
   out.push(...ignoredWalk(cmd, ctx));
   if (ctx.modelLock) out.push(...modelEnv(cmd, ctx));
   return out;
@@ -172,8 +174,42 @@ function fileWrites(cmd, ctx) {
       allowedModels: ctx.allowedModels,
       modelLock: ctx.modelLock,
       bashWrite: true,
+      oracle: ctx.oracle,
     }))
       out.push([level, `\`${cmd.name}\` writes \`${target}\`: ${reason}`]);
+  }
+  return out;
+}
+
+// `rm` and `git rm` of an oracle file, and `mv` or `git mv` away from one.
+// `fileWrites` covers the files that a command writes.
+function oracleRemovals(cmd, ctx) {
+  let base = commandBase(cmd, ctx.cwd);
+  if (!base) return [];
+  let args = cmd.args;
+  let sub = cmd.name;
+  if (cmd.name === "git") {
+    const split = gitSplit(cmd.args);
+    ({ sub, rest: args } = split);
+    for (let i = 0; i < split.globals.length - 1; i += 1)
+      if (split.globals[i] === "-C")
+        base = path.resolve(base, split.globals[i + 1]);
+    if (!["rm", "mv"].includes(sub)) return [];
+  } else if (!["rm", "unlink", "mv"].includes(sub)) return [];
+  let operands = args.filter((a) => a && !a.startsWith("-"));
+  if (sub === "mv") operands = operands.slice(0, -1);
+  const { root, globs } = ctx.oracle;
+  const out = [];
+  for (const target of operands) {
+    if (/\$|__SUBST__/.test(target)) continue;
+    const file = path.resolve(base, expandHome(target));
+    const glob =
+      protectedMatch(file, root, globs) ?? protectedUnder(file, root, globs);
+    if (glob)
+      out.push([
+        "deny",
+        `\`${cmd.name}\` removes \`${target}\`: ${PROTECTED_REASON(glob)}`,
+      ]);
   }
   return out;
 }

@@ -92,7 +92,7 @@ function execSettings(globals, sub, args, assigns) {
   return found;
 }
 
-function gitSplit(args) {
+export function gitSplit(args) {
   const globals = [];
   for (let i = 0; i < args.length; i += 1) {
     const a = args[i];

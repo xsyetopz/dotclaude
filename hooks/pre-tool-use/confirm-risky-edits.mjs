@@ -3,8 +3,9 @@
 // PreToolUse hook for Edit/Write/NotebookEdit: ask before edits that weaken
 // tests or touch generated files; deny settings edits that re-enable fast mode.
 
-import { option, run } from "../lib/_common.mjs";
+import { option, projectRoot, run } from "../lib/_common.mjs";
 import { ASKS_TEST_REMOVAL, check } from "../lib/_edit-rules.mjs";
+import { oracleFor } from "../lib/_loop.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 import { recentPrompts } from "../lib/_transcript.mjs";
 import { guardDecision } from "../lib/_verdicts.mjs";
@@ -17,6 +18,7 @@ run((data) => {
     allowedModels: planAllowlist().list,
     editGuard,
     modelLock,
+    oracle: oracleFor(data, projectRoot(data)),
     testRemovalRequested:
       editGuard &&
       ASKS_TEST_REMOVAL.test(
