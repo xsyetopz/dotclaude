@@ -23,7 +23,9 @@ steps after each update.
   as `npm test -- -u` or `pnpm test -u`. Before, only direct runner calls
   asked. The reason now tells Claude to find the cause of a failing test
   before it updates the snapshots.
-
+- The stop gate counts a Python write through a `Path` variable as an edit,
+  such as `p = pathlib.Path("src/a.cs")` and then `p.write_text(s)`. Before,
+  Claude could edit code this way and stop with no check run.
 - The Bash guard resolves paths after `cd ~/dir` against your home
   directory. Before, `cd ~/.claude/projects && find .` was checked as if it
   ran in the project, and the guard denied it for the project's ignored

@@ -96,6 +96,17 @@ test("inline scripts record only the path arguments of their write calls", () =>
   expect(edited(`python3 -c "open(r'src/raw.py', 'w')"`)).toStrictEqual([
     "src/raw.py",
   ]);
+  // A variable that holds a `Path` of a literal, then writes through it.
+  expect(
+    edited(
+      `python3 - <<'EOF'\nimport pathlib\np=pathlib.Path("src/Conc.cs"); s=p.read_text()\np.write_text(s)\nEOF`,
+    ),
+  ).toStrictEqual(["src/Conc.cs"]);
+  expect(
+    edited(`python3 -c "f = Path('src/b.py'); f.write_bytes(b'')"`),
+  ).toStrictEqual(["src/b.py"]);
+  none(edited(`python3 -c "d = Path('src') / 'x.py'; d.write_text('')"`));
+  none(edited(`python3 -c "p = Path('src/r.py'); print(p.read_text())"`));
   none(edited(`python3 -c "p = 'src/read.py'; print(open(p).read())"`));
   none(edited(`python3 -c "open(f'src/{n}.py', 'w')"`));
 });

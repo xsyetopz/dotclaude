@@ -26,13 +26,23 @@ const WRITE_CALLS = [
   [String.raw`\bFile\.write\(`, ""],
   [String.raw`\b(?:os|ioutil)\.WriteFile\(`, ""],
 ].map(([call, rest]) => new RegExp(call + LITERAL + rest, "g"));
+// `p = pathlib.Path("f")` as a whole statement, then `p.write_text(`. A path
+// joined after the call (`Path('src') / 'x'`) is not the file, so it is skipped.
+const PATH_ASSIGN =
+  /(?:^|[\s;(])([A-Za-z_]\w*)\s*=\s*(?:pathlib\.)?Path\(\s*[rRbBuU]?(?:'([^'\\\n]*)'|"([^"\\\n]*)")\s*\)[ \t]*(?=[;\n#]|$)/gm;
+const PATH_WRITE = /\b([A-Za-z_]\w*)\.write_(?:text|bytes)\(/g;
 
 function inlineWrites(code) {
   const vars = new Map();
   for (const m of code.matchAll(ASSIGN)) vars.set(m[1], m[2] ?? m[3]);
-  return WRITE_CALLS.flatMap((re) =>
-    [...code.matchAll(re)].map((m) => m[1] ?? m[2] ?? vars.get(m[3])),
-  ).filter((target) => target !== undefined);
+  const paths = new Map();
+  for (const m of code.matchAll(PATH_ASSIGN)) paths.set(m[1], m[2] ?? m[3]);
+  return [
+    ...WRITE_CALLS.flatMap((re) =>
+      [...code.matchAll(re)].map((m) => m[1] ?? m[2] ?? vars.get(m[3])),
+    ),
+    ...[...code.matchAll(PATH_WRITE)].map((m) => paths.get(m[1])),
+  ].filter((target) => target !== undefined);
 }
 
 export const expandHome = (p) =>
