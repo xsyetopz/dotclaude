@@ -57,7 +57,10 @@ test("costs split by agent, context past 150k, full rewrites, and cache hits", (
     "main",
   ]);
   expect(r.over150kShare).toBeCloseTo(28.5, 0);
-  expect(r.rewriteShare).toBeCloseTo(71.2, 0);
+  // The implementer's write is its first call, so it is an expected rebuild.
+  expect(r.rewriteShare).toBe(0);
+  expect(r.expectedRewrites).toEqual({ first: 1, compaction: 0, model: 0 });
+  expect(r.expectedRewriteShare).toBeCloseTo(71.2, 0);
   expect(r.mainTurns).toEqual({ wake: 1, other: 1 });
   expect(r.wakeShare).toBeCloseTo(28.5, 0);
   // 1.01M of 1.11M input tokens were cache reads; the main call read all.
@@ -180,4 +183,36 @@ test("turn cap: runs that reach the report reserve, and their brief size", () =>
   expect(r.other).toEqual([
     { type: "dotclaude:implementer", runs: 1, files: 1, items: 0 },
   ]);
+});
+
+test("full rewrites after the first call, a compaction, or a model switch are expected", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "usage-report-"));
+  fs.mkdirSync(path.join(root, "p"));
+  const write = (id, tokens, read, model) =>
+    call(
+      id,
+      { cache_creation_input_tokens: tokens, cache_read_input_tokens: read },
+      model,
+    );
+  const sonnet = "claude-sonnet-5-5";
+  const boundary = JSON.stringify({
+    type: "system",
+    subtype: "compact_boundary",
+  });
+  fs.writeFileSync(
+    path.join(root, "p", "s.jsonl"),
+    [
+      write("a", 50_000, 0), // first call of the session
+      write("b", 1_000, 49_000), // a normal call, no rewrite
+      write("c", 60_000, 0, sonnet), // the model changed
+      boundary,
+      write("d", 40_000, 0, sonnet), // first call after compaction
+      write("e", 70_000, 0, sonnet), // nothing explains it
+    ].join("\n"),
+  );
+  const r = report(root, new Date("2026-09-20"));
+  expect(r.expectedRewrites).toEqual({ first: 1, compaction: 1, model: 1 });
+  // $0.25 + $0.15 + $0.10 expected, $0.175 not, of $0.6898 in all.
+  expect(r.expectedRewriteShare).toBeCloseTo(72.5, 0);
+  expect(r.rewriteShare).toBeCloseTo(25.4, 0);
 });

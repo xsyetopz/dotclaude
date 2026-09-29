@@ -96,6 +96,12 @@ steps after each update.
 
 ### Changed
 
+- The status line does not count a cache miss after a model switch, because
+  a new model starts a new cache. Claude Code already keeps the first call
+  and the call after a compaction out of its miss count.
+  `scripts/usage-report.mjs` counts full cache rewrites on the first call,
+  after a compaction, and after a model switch as expected, apart from the
+  rewrites that nothing explains.
 - The settings profile and the usage bounds allow 5 agents at once, not 3.
   Five is the community figure, and a cap of 3 caused 50 of 77 measured
   `Agent` errors. When you apply the profile, a value of `3` that 0.11.1

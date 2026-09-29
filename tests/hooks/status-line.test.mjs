@@ -103,6 +103,21 @@ test("the cache part counts only misses that idle time did not cause", () => {
     miss_causes: { tools_changed: 1, ttl_expired_5m: 2, ttl_expired_1h: 1 },
   };
   expect(plain(cachePart(mixed, NOW))).toBe("cache till 12:40 97% 1 miss");
+  // A model switch starts a new cache, so its rebuild is expected. Claude
+  // Code already keeps the first call and compactions out of `misses`.
+  const model = {
+    ...warm,
+    misses: 1,
+    last_miss_cause: { causes: ["model_changed", "effort_changed"] },
+    miss_causes: { model_changed: 1, effort_changed: 1 },
+  };
+  expect(plain(cachePart(model, NOW))).toBe("cache till 12:40 97%");
+  const both = {
+    ...model,
+    misses: 3,
+    miss_causes: { model_changed: 2, effort_changed: 1, tools_changed: 1 },
+  };
+  expect(plain(cachePart(both, NOW))).toBe("cache till 12:40 97% 1 miss");
 });
 
 test("a usage limit shows its reset only from the first usage level", () => {

@@ -38,7 +38,8 @@ The second row shows what the session uses:
   the cache, for example a model or effort change
   ([prices](dossier/plans-and-models.md#prices)). A miss from idle time past
   the cache lifetime does not count, because nothing broke the cache. The
-  stale-cache notice tells you about it before the turn.
+  stale-cache notice tells you about it before the turn. A miss after a model
+  switch does not count either, because a new model starts a new cache.
 - **Limits from 75%:** the same levels as the
   [usage notes](hooks.md#usage-notes-usage_notes). Below 75% a limit does not
   change what you do, so it takes little space.

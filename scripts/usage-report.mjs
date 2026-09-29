@@ -15,6 +15,10 @@
 // `usage.iterations`, and the call's own token counts leave it out.
 // For dotclaude agents with a turn limit, it compares the briefs of the runs
 // that reached the report reserve with the briefs of the other runs.
+// A full rewrite is expected on the first call of a transcript, on the first
+// call after a compaction, and after a model switch, because each one starts
+// a new cache prefix. The report counts those apart from the rewrites that
+// nothing explains.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -116,6 +120,8 @@ export function report(root, since) {
   let total = 0;
   let over150k = 0;
   let rewrites = 0;
+  let expectedCost = 0;
+  const expected = { first: 0, compaction: 0, model: 0 };
   // Main-conversation turns by what started them: a background agent's
   // report or task notification, or anything else (mostly the user).
   const turns = { wake: 0, other: 0 };
@@ -150,6 +156,8 @@ export function report(root, since) {
     let hookContext = false;
     let firstPending = false;
     let lastCallAt = null;
+    let lastModel = null;
+    let compacted = false;
     for (const line of fs.readFileSync(file, "utf8").split("\n")) {
       let entry;
       try {
@@ -163,6 +171,8 @@ export function report(root, since) {
         entry.attachment.hookEvent !== "SessionStart"
       )
         hookContext = true;
+      if (entry.type === "system" && entry.subtype === "compact_boundary")
+        compacted = true;
       if (type === "main" && entry.type === "user") {
         const content = entry.message?.content;
         const toolResult =
@@ -202,7 +212,22 @@ export function report(root, since) {
       total += c.total;
       byAgent[type] = (byAgent[type] ?? 0) + c.total;
       if (c.context > 150_000) over150k += c.total;
-      if (c.rewrite) rewrites += c.write;
+      if (c.rewrite) {
+        const reason =
+          lastModel === null
+            ? "first"
+            : compacted
+              ? "compaction"
+              : m.model !== lastModel
+                ? "model"
+                : null;
+        if (reason) {
+          expected[reason] += 1;
+          expectedCost += c.write;
+        } else rewrites += c.write;
+      }
+      lastModel = m.model;
+      compacted = false;
       if (type === "main" && wake) wakeCost += c.total;
       for (const key of type === "main" ? ["all", "main"] : ["all"]) {
         cache[key][0] += c.context;
@@ -230,6 +255,8 @@ export function report(root, since) {
       })),
     over150kShare: share(over150k),
     rewriteShare: share(rewrites),
+    expectedRewrites: expected,
+    expectedRewriteShare: share(expectedCost),
     mainTurns: turns,
     wakeShare: share(wakeCost),
     advisor: { calls: advisor.calls, share: share(advisor.cost) },
@@ -271,7 +298,10 @@ if (import.meta.main) {
         `  ${a.type.padEnd(32)} $${a.cost.toFixed(2).padStart(9)}  ${a.share}%`,
       );
     console.log(`Calls with context past 150k: ${r.over150kShare}% of cost`);
-    console.log(`Full cache rewrites: ${r.rewriteShare}% of cost`);
+    const e = r.expectedRewrites;
+    console.log(
+      `Full cache rewrites that nothing explains: ${r.rewriteShare}% of cost. Expected rewrites: ${r.expectedRewriteShare}% (${e.first} first calls, ${e.compaction} after compaction, ${e.model} after a model switch)`,
+    );
     console.log(
       `Main turns started by background agents: ${r.mainTurns.wake} of ${r.mainTurns.wake + r.mainTurns.other}, ${r.wakeShare}% of cost`,
     );
