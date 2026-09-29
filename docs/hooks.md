@@ -37,6 +37,14 @@ directory hung, and it would have filled the context with generated files.
 Each turn re-reads the whole context, so text that enters the context costs
 usage on every later turn ([usage evidence](dossier/usage.md)).
 
+**What:** denies a full `cat` or `Read` of a file that the same agent
+already read in full, when the file did not change. A partial `Read` with
+`offset` and `limit` passes. Compaction clears the record.
+
+**Why:** 29% of the measured Bash file reads read a file again. The first
+copy is still in the context, so the second copy only adds usage. Claude
+Code already skips a `Read` after a `Read`, but not a `cat`.
+
 ### Edit Guard (`edit_guard`)
 
 **What:** asks before an edit removes test assertions or skips an existing

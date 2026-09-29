@@ -43,6 +43,11 @@ steps after each update.
   `/clear`. After a reply that stopped with a refusal, a note says to start
   a new session, because the refusal stays in the context. The
   `usage_notes` option turns them off.
+- The Bash guard denies a full re-read of a file that the same agent
+  already read in full, when the file did not change. This covers a plain
+  `cat`, a `Read` after a `cat`, and a `cat` after a `Read`. Claude Code
+  already skips a `Read` after a `Read`. A partial `Read`, a piped `cat`,
+  and a read after compaction pass.
 
 ### Fixed
 

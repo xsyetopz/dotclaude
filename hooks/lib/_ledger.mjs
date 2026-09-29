@@ -162,3 +162,42 @@ export function shellWrites(command, root, cwd = root) {
   }
   return [...out];
 }
+
+// A plain `cat` of named files, with no pipe, redirect, glob, or expansion:
+// the whole of each file goes into the context.
+const CAT =
+  /^\s*cat((?:\s+(?:'[^'\n]*'|"[^"$`\\\n]*"|[^\s'"|;&<>$`()\\*?[\]{}]+))+)\s*$/;
+const MAX_READS = 500;
+
+/** Absolute paths that a plain `cat` command reads in full, or []. */
+export function fullReads(command, cwd) {
+  const m = CAT.exec(command ?? "");
+  if (!m) return [];
+  const words = m[1].match(/'[^']*'|"[^"]*"|\S+/g) ?? [];
+  return words
+    .map((w) => w.replace(/^(['"])(.*)\1$/, "$2"))
+    .filter((w) => !w.startsWith("-"))
+    .map((w) => path.resolve(cwd, expandHome(w)));
+}
+
+/** Size and mtime of a file, or null when it cannot be read. */
+export function readStamp(abs) {
+  try {
+    const st = fs.statSync(abs);
+    return st.isFile() ? { size: st.size, mtimeMs: st.mtimeMs } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Record a full read of `abs` by `how` (the command or tool) in `state`. */
+export function recordRead(state, abs, how) {
+  const stamp = readStamp(abs);
+  if (!stamp) return;
+  const reads = state.reads ?? {};
+  delete reads[abs];
+  reads[abs] = { ...stamp, how };
+  const keys = Object.keys(reads);
+  for (const k of keys.slice(0, -MAX_READS)) delete reads[k];
+  state.reads = reads;
+}

@@ -6,10 +6,12 @@
 import path from "node:path";
 import { option, projectRoot, run } from "../lib/_common.mjs";
 import {
+  fullReads,
   isCheckCommand,
   load,
   NON_CODE,
   outputShowsFailure,
+  recordRead,
   save,
   shellWrites,
 } from "../lib/_ledger.mjs";
@@ -58,10 +60,31 @@ function recordEdited(state, rel) {
 
 run((data) => {
   approveAsk(data);
-  if (!option("stop_gate") && !option("compact_carryover")) return;
+  if (
+    !option("stop_gate") &&
+    !option("compact_carryover") &&
+    !option("bash_guard")
+  )
+    return;
   const state = load(data.session_id, data.agent_id);
   state.seq += 1;
   switch (data.tool_name) {
+    case "Read": {
+      const input = data.tool_input ?? {};
+      if (
+        data.hook_event_name !== "PostToolUse" ||
+        !input.file_path ||
+        input.offset ||
+        input.limit
+      )
+        return;
+      recordRead(
+        state,
+        path.resolve(projectRoot(data), input.file_path),
+        "Read",
+      );
+      break;
+    }
     case "Edit":
     case "Write":
     case "MultiEdit":
@@ -86,13 +109,18 @@ run((data) => {
         state.lastEdit = { seq: state.seq, path: written[0] };
         for (const rel of written) recordEdited(state, rel);
       }
+      const reads =
+        data.hook_event_name === "PostToolUse"
+          ? fullReads(command, data.cwd || projectRoot(data))
+          : [];
+      for (const abs of reads) recordRead(state, abs, `\`${command.trim()}\``);
       const result = checkRun(data);
       // A check in the same command runs after its writes (`... > f && make`).
       if (result) {
         if (written.length) state.seq += 1;
         state.lastCheck = { seq: state.seq, ...result };
       }
-      if (!written.length && !result) return;
+      if (!written.length && !result && !reads.length) return;
       break;
     }
     default:
