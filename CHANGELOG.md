@@ -10,6 +10,14 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-29
+
+After updating, restart Claude Code and run
+`/dotclaude:apply-settings-profile` again. The profile now allows 5 agents at
+once and adds compact instructions to the global `CLAUDE.md` section. It
+keeps the values that you set, but an agent cap of `3` becomes `5`, because
+0.11.1 wrote that value.
+
 ### Added
 
 - The stop gate also runs when Claude marks a task completed. After a code
@@ -232,4 +240,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.11.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.12.0...HEAD
