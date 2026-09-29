@@ -58,6 +58,8 @@ const DENY = [
   "timeout 30 grep -r needle .",
   "cd web && grep -r needle .",
   "grep -r needle web",
+  "grep -r needle web/*",
+  "grep -rn needle *",
   "find . -name '*.swift'",
   "find . -type f -not -path './.build/*'",
   "find . -maxdepth 5 -name '*.o'",
@@ -109,6 +111,9 @@ const PASS = [
   "ls -la",
   "ag needle",
   `grep -r needle ${outside}`,
+  // The shell expands a glob before grep runs, here to files only.
+  "grep -rn needle web/*.js",
+  "grep -rn needle web/*.none",
 ];
 
 for (const command of DENY) {

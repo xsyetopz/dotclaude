@@ -26,6 +26,11 @@ steps after each update.
 - The stop gate counts a Python write through a `Path` variable as an edit,
   such as `p = pathlib.Path("src/a.cs")` and then `p.write_text(s)`. Before,
   Claude could edit code this way and stop with no check run.
+- The Bash guard expands a glob in a search path, as the shell does, before
+  it looks for ignored directories. Before, `grep -rn x docs/*.md` was
+  denied because `docs/` has ignored directories, although the glob names
+  only files. `grep -r x *` is still denied when `*` matches an ignored
+  directory.
 - The Bash guard resolves paths after `cd ~/dir` against your home
   directory. Before, `cd ~/.claude/projects && find .` was checked as if it
   ran in the project, and the guard denied it for the project's ignored

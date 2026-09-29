@@ -9,6 +9,7 @@
 // directory (a deliberate target such as `.build/debug`), and shallow walks
 // pass.
 
+import fs from "node:fs";
 import path from "node:path";
 import { git, isUnder } from "./_bash-args.mjs";
 import { resolveTarget } from "./_rules-filesystem.mjs";
@@ -443,10 +444,23 @@ export function ignoredWalk(cmd, ctx) {
   const roots = walk.roots.length ? walk.roots : ["."];
   const hits = new Set();
   for (const root of roots) {
-    const dir = resolveTarget(root, cmd, ctx);
-    if (!dir) continue;
-    for (const d of ignoredDirs(dir, ctx))
-      if (!excluded(d, walk.excludes)) hits.add(d);
+    const target = resolveTarget(root, cmd, ctx);
+    if (!target) continue;
+    if (!/[*?[]/.test(root)) {
+      for (const d of ignoredDirs(target, ctx))
+        if (!excluded(d, walk.excludes)) hits.add(d);
+      continue;
+    }
+    // The shell expands a glob before the walk starts, so walk its matches.
+    // A match is not a deliberate target, so an ignored match is a hit too.
+    // A glob that matches nothing stays literal and names no directory.
+    const matches = fs.globSync(target);
+    const top = matches.map((m) => path.relative(ctx.root, m));
+    for (const d of ignoredDirs(ctx.root, ctx))
+      if (top.includes(d) && !excluded(d, walk.excludes)) hits.add(d);
+    for (const dir of matches)
+      for (const d of ignoredDirs(dir, ctx))
+        if (!excluded(d, walk.excludes)) hits.add(d);
   }
   if (!hits.size) return [];
   const list = [...hits];
