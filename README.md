@@ -124,7 +124,7 @@ reports that start with the outcome.
 | Skill | Use |
 | --- | --- |
 | `/dotclaude:apply-settings-profile` | applies the settings profile |
-| `/dotclaude:setup-integrations` | installs CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, and `dotclaude-browser` |
+| `/dotclaude:setup-integrations` | installs CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, OpenSpec, and `dotclaude-browser` |
 | `run-agent-loop` | runs a large change as slices with a diff-only reviewer and a frozen test oracle |
 | `write-session-handoff` | writes a note that a fresh session can continue from |
 | `explain-dotclaude` | answers "why did you do that?" from the documentation |

@@ -18,6 +18,9 @@ steps after each update.
   `.claude/settings.local.json`, and `.claude/worktrees/`. Before, the
   handoff skill only told the user to add the note to `.gitignore`. Files
   that their tools say to commit, such as `openspec/`, stay tracked.
+- `/dotclaude:setup-integrations openspec` installs the OpenSpec CLI and runs
+  `openspec init --tools claude` in the project that you name. The status
+  script reports the CLI, `openspec/config.yaml`, and the `openspec-*` skills.
 - The `handoff_pointer` hook (on by default) tells a new session, at startup
   and after `/clear`, where the newest open handoff note is. Claude reads the
   note only when you ask to continue, and checks it against `git status` and

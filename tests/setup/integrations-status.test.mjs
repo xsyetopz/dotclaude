@@ -115,3 +115,33 @@ test("status reports a missing Ghidra setup and an old Python or Java", () => {
   expect(old.java).toStrictEqual({ version: "17.0.2", ok: false });
   expect(old.headless).toBe(false);
 });
+
+test("status reports OpenSpec setup in the project", () => {
+  const home = tempHome();
+  const project = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-proj-")),
+  );
+  const script = path.resolve(
+    import.meta.dirname,
+    "../../skills/setup-integrations/scripts/status.mjs",
+  );
+  const status = () => {
+    const res = spawnSync(process.execPath, [script, "--project", project], {
+      encoding: "utf8",
+      env: { HOME: home, PATH: "/bin:/usr/bin" },
+    });
+    expect(res.status, res.stderr).toBe(0);
+    return JSON.parse(res.stdout).openspec;
+  };
+  expect(status()).toStrictEqual({
+    cli: null,
+    initialized: false,
+    claude_skills: false,
+  });
+  fs.mkdirSync(path.join(project, "openspec"));
+  fs.writeFileSync(path.join(project, "openspec", "config.yaml"), "");
+  fs.mkdirSync(path.join(project, ".claude", "skills", "openspec-propose"), {
+    recursive: true,
+  });
+  expect(status()).toMatchObject({ initialized: true, claude_skills: true });
+});

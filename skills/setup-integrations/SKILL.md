@@ -1,7 +1,7 @@
 ---
 name: setup-integrations
-description: Install, check, or configure the optional integrations of dotclaude (CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, and the dotclaude-browser plugin). Use when the user asks, or when an agent reports one missing.
-argument-hint: "[status|codegraph|tgrep|fast-compact|betterleaks|ghidra|browser] [what to change]"
+description: Install, check, or configure the optional integrations of dotclaude (CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, OpenSpec, and the dotclaude-browser plugin). Use when the user asks, or when an agent reports one missing.
+argument-hint: "[status|codegraph|tgrep|fast-compact|betterleaks|ghidra|openspec|browser] [what to change]"
 context: fork
 agent: integration-setup
 allowed-tools: Bash(bun *status.mjs*)
@@ -66,6 +66,19 @@ Ghidra decompiles and analyzes binaries for reverse engineering. dotclaude uses 
 - CLI fallback: `uv tool install ghidra-ai-bridge`, which installs `ghidra-bridge`. Read `ghidra-bridge --help` for its commands.
 - After a restart, `/mcp` in that project lists `ghidra`, and the status shows `mcp: "project"`.
 </ghidra>
+
+<openspec>
+OpenSpec (<https://openspec.dev/>) keeps specs and change proposals in `openspec/`. Its `/opsx:*` commands take a change from proposal to archive. It adds structure that the user chooses per project, so set it up only in the project that the user names.
+
+- Requirements: Node.js 20.19.0 or newer.
+- Install the CLI: `npm install -g @fission-ai/openspec@latest`, or `brew install openspec` where Homebrew exists.
+- Set up the project: `openspec init --tools claude` in the project root. It writes `openspec/` with `config.yaml`, the `openspec-*` skills in `.claude/skills/`, and the commands in `.claude/commands/opsx/`. Without `--tools`, `openspec init` asks questions in the terminal, and you cannot answer them.
+- OpenSpec's docs say to commit `openspec/`, because it is the source of truth for the team and its agents. Tell the user to commit it and the generated Claude Code files. dotclaude does not add them to `.git/info/exclude`.
+- The CLI sends anonymous usage data by default. Tell the user that `openspec config set telemetry.enabled false` or `OPENSPEC_TELEMETRY=0` turns it off. That choice is theirs.
+- After an upgrade of the CLI, `openspec update` in the project regenerates the Claude Code files.
+- Commands for agents: `openspec list --json`, `openspec show <item> --json`, `openspec status --json`, and `openspec validate --all --json`.
+- After a restart, `/opsx:propose`, `/opsx:apply`, and `/opsx:archive` are available, and the status shows `initialized: true` and `claude_skills: true`.
+</openspec>
 
 <browser>
 The `dotclaude-browser` plugin adds the `drive-web-browser` skill (agent-browser, or CloakBrowser for sites with bot checks) and the `recognize-captcha` skill (offline OCR for text CAPTCHAs). It is a separate plugin, so sessions that do not use a browser do not load it.

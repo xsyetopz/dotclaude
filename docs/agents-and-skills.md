@@ -61,7 +61,7 @@ from an agent that it stops at its turn limit. See
 | Skill | Use | Why it is in dotclaude |
 | --- | --- | --- |
 | `/dotclaude:apply-settings-profile` | applies the [settings profile](settings-profile.md) | A plugin cannot set permissions, environment variables, or models. |
-| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, and `dotclaude-browser` | Each one cuts reads or protects the context. See below. |
+| `/dotclaude:setup-integrations` | installs and configures CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, OpenSpec, and `dotclaude-browser` | Each one cuts reads or protects the context. See below. |
 | `run-agent-loop` | runs a large change as slices: implementer, diff-only reviewer, fixer, frozen test oracle | Bun, GitHub Copilot, and pnpm v12 ported large code bases this way. [Hooks](hooks.md#agent-loop-oracle-edit_guard) enforce the oracle and the review. See the [agent loop](dossier/design.md#the-agent-loop). |
 | `contribute-upstream` | checks a project's AI policy, verifies the claim, and drafts an issue, pull request, discussion, or comment for you to send | A contribution speaks for you. See [Contributions](contributions.md). |
 | `write-session-handoff` | writes a note that a fresh session can continue from | A handoff and `/clear` cost less than `/compact` on a large or cold context. |
@@ -89,6 +89,9 @@ All are optional. dotclaude works without them.
   `pyghidra-mcp` goes into the one project that needs it, because it starts
   Ghidra's Java process in each session of that project. The `ghidra-bridge`
   CLI is the fallback when the MCP server is missing or fails.
+- **OpenSpec:** specs and change proposals in `openspec/`, with `/opsx:*`
+  commands for Claude Code. The setup runs only in the project that you name.
+  OpenSpec's docs say to commit `openspec/`, so dotclaude does not exclude it.
 - **dotclaude-browser:** the browser skills, and a session note that tells
   Claude to load `drive-web-browser` before a browser command. Its options
   (`cloakbrowser`, `cloakbrowser_humanize`, `cloakbrowser_headless`,

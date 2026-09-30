@@ -11,7 +11,8 @@
 // Ghidra the versions of `uvx`, Python, and Java, `GHIDRA_INSTALL_DIR`, the
 // `ghidra` MCP entry, and the `ghidra-bridge` CLI. For dotclaude-browser it
 // reads whether the plugin, agent-browser, CloakBrowser, ddddocr, and the
-// ddddocr model are installed.
+// ddddocr model are installed. For OpenSpec it reads the CLI version and
+// whether the project has `openspec/config.yaml` and `openspec-*` skills.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -166,6 +167,26 @@ function ghidra(servers) {
   };
 }
 
+/**
+ * OpenSpec: the CLI, and whether the project has the files that
+ * `openspec init --tools claude` writes.
+ */
+function openspec() {
+  let skills = false;
+  try {
+    skills = fs
+      .readdirSync(path.join(project, ".claude", "skills"))
+      .some((name) => name.startsWith("openspec-"));
+  } catch {
+    skills = false;
+  }
+  return {
+    cli: version("openspec"),
+    initialized: fs.existsSync(path.join(project, "openspec", "config.yaml")),
+    claude_skills: skills,
+  };
+}
+
 const servers = mcpServers();
 console.log(
   JSON.stringify(
@@ -185,6 +206,7 @@ console.log(
       betterleaks: { cli: version("betterleaks", "version") },
       ghidra: ghidra(servers),
       browser: browser(),
+      openspec: openspec(),
     },
     null,
     2,
