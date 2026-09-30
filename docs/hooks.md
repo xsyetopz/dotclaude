@@ -260,19 +260,19 @@ and [usage evidence](dossier/usage.md).
 
 ### Usage Notes (`usage_notes`)
 
-**What:** tells Claude once when the session or weekly limit passes 75% and
-90%, with the reset time. At 75%, Claude writes a handoff with
-`write-session-handoff` and asks you to run `/clear`. At 90%, when the work
-does not fit, Claude writes a handoff and tells you the reset time. Past
-100k tokens of main context, each prompt gives the context size, and in a
-run with no prompt, one tool call gives it once. A terminal notification
-names a usage limit that stops a turn, its reset time, and `claude --resume`.
+**What:** tells Claude once when the session or weekly limit passes 75% and 90%,
+with the reset time. At 75%, Claude writes a handoff with
+`write-session-handoff` and asks you to run `/clear`. At 90%, when the work does
+not fit, Claude writes a handoff and tells you the reset time. After four
+compactions, past 100k tokens of main context, each prompt (or one tool call in
+a run with no prompt) gives the context size and asks for a handoff. A
+notification names a limit that stops a turn, its reset time, and
+`claude --resume`.
 
-**Why:** no hook input gives Claude its usage or its context size. A handoff
-and `/clear` keep the facts that Claude chooses, and a `/compact` costs a
-full turn over the large context. With `autoCompactWindow` at 150k, Claude
-Code compacts at about 117k tokens (window, minus 20k for output, minus a
-13k buffer), so the context note comes first.
+**Why:** no hook input gives Claude its usage or its context size. A compaction
+and a handoff cost the same per turn, but compactions 5 to 8 kept fewer facts
+than 1 to 4 ([evals](dossier/evals.md#8-compactions-before-a-handoff)).
+`COMPACTIONS_BEFORE_HANDOFF` in `hooks/lib/_budget.mjs` sets the count.
 
 ### Model Lock And Plan Awareness (`model_lock`, `claude_plan`)
 

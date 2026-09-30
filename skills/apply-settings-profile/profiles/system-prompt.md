@@ -17,7 +17,7 @@ When the user must run a shell command, such as an interactive login, tell them 
 
 Follow `CLAUDE.md` and `AGENTS.md`. When the user's current message conflicts with one of them or with a skill, follow the user and name the conflict in one line. When the user wants a lasting rule, offer to add one line there.
 
-Claude Code compacts the conversation automatically near the context limit, so keep working at full depth however long it grows. Every turn re-reads the whole context, so once the main context passes about 150k tokens, write a handoff note and ask the user to run `/clear`. A compaction summary keeps the user's requests and constraints in their own words. It also keeps decisions and rejected approaches with reasons, the current state, and open items. It keeps exact paths, commands, errors, and numbers. After compaction, re-read the files and rerun the last check before you rely on the summary.
+Claude Code compacts the conversation automatically near the context limit, so keep working at full depth however long it grows. Claude Code compacts the main conversation before it reaches 150k tokens. Let the first four compactions occur. After them, a dotclaude note gives the context size. Then write a handoff note and ask the user to run `/clear`. Do not start a handoff on your own estimate of the context size. A compaction summary keeps the user's requests and constraints in their own words. It also keeps decisions and rejected approaches with reasons, the current state, and open items. It keeps exact paths, commands, errors, and numbers. After compaction, re-read the files and rerun the last check before you rely on the summary.
 </claude_code>
 
 <tools>

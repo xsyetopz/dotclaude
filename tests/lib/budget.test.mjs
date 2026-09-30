@@ -6,6 +6,7 @@ import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  COMPACTIONS_BEFORE_HANDOFF,
   k,
   LIMITS,
   lineCount,
@@ -53,6 +54,13 @@ test("the system prompt, skill, and option text quote the budget's token bounds"
     for (const [, figure] of text.matchAll(/\b(\d+k) tokens\b/g))
       expect(BOUNDS.has(figure), `${file}: ${figure} tokens`).toBe(true);
   }
+});
+
+test("the system prompt quotes the compactions before a handoff", () => {
+  const number = ["zero", "one", "two", "three", "four"][
+    COMPACTIONS_BEFORE_HANDOFF
+  ];
+  expect(read(PROMPT)).toContain(`first ${number} compactions`);
 });
 
 test("the skill quotes the usage levels", () => {

@@ -3,8 +3,16 @@
 import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
-import { CONTEXT_NOTE_TOKENS, k } from "../../hooks/lib/_budget.mjs";
-import { mainContextTokens, readUsage } from "../../hooks/lib/_usage.mjs";
+import {
+  COMPACTIONS_BEFORE_HANDOFF,
+  CONTEXT_NOTE_TOKENS,
+  k,
+} from "../../hooks/lib/_budget.mjs";
+import {
+  compactions,
+  mainContextTokens,
+  readUsage,
+} from "../../hooks/lib/_usage.mjs";
 import { isolatedHook as hook, tmp } from "../support/hooks.mjs";
 
 /** A config dir whose cached usage was fetched `ageMs` ago. */
@@ -119,6 +127,83 @@ const response = (input, cached, extra = {}) => ({
   ...extra,
 });
 
+const compaction = {
+  type: "system",
+  subtype: "compact_boundary",
+  isSidechain: false,
+  compactMetadata: { trigger: "auto", preTokens: 119_010, postTokens: 19_815 },
+};
+
+/** A main transcript after `count` compactions that ends with `last`. */
+const afterCompactions = (count, last) =>
+  transcript(...Array(count).fill(compaction), last);
+
+test("compactions counts compaction entries, not quotes of them", () => {
+  const quoted = response(0, 1_000, {
+    message: { content: 'the "subtype":"compact_boundary" entry' },
+  });
+  expect(compactions(afterCompactions(3, quoted))).toBe(3);
+  expect(compactions(transcript(quoted))).toBe(0);
+  expect(compactions(path.join(tmp("dotclaude-none-"), "x.jsonl"))).toBe(0);
+});
+
+test("compactions reads only the lines appended since the last call", () => {
+  const file = afterCompactions(2, response(0, 1_000));
+  expect(compactions(file)).toBe(2);
+  // Hide an early boundary in place. A full scan would now count 1, so a
+  // count that goes up proves that only the new bytes were read.
+  const text = fs.readFileSync(file, "utf8");
+  const at = Buffer.byteLength(text.slice(0, text.indexOf("compact_boundary")));
+  const fd = fs.openSync(file, "r+");
+  fs.writeSync(fd, "xxxxxxxxxxxxxxxx", at);
+  fs.closeSync(fd);
+  fs.appendFileSync(file, `${JSON.stringify(compaction)}\n`);
+  expect(compactions(file)).toBe(3);
+
+  // A line that is still being written counts when it is complete.
+  const line = JSON.stringify(compaction);
+  const cut = line.indexOf("compact_boundary") + 20;
+  fs.appendFileSync(file, line.slice(0, cut));
+  expect(compactions(file)).toBe(3);
+  fs.appendFileSync(file, `${line.slice(cut)}\n`);
+  expect(compactions(file)).toBe(4);
+});
+
+test("compactions counts again from 0 when the transcript is replaced", () => {
+  const file = afterCompactions(3, response(0, 1_000));
+  expect(compactions(file)).toBe(3);
+  const next = `${file}.new`;
+  // Longer than the old file, so only the inode and the line check see it.
+  const pad = response(0, 1_000, { message: { content: "x".repeat(5_000) } });
+  fs.writeFileSync(
+    next,
+    `${[compaction, pad].map((e) => JSON.stringify(e)).join("\n")}\n`,
+  );
+  fs.renameSync(next, file);
+  expect(compactions(file)).toBe(1);
+  // Same file, cut shorter than the cached offset.
+  fs.truncateSync(file, 0);
+  expect(compactions(file)).toBe(0);
+});
+
+test("the context note waits for the allowed compactions", () => {
+  const prompt = (file) =>
+    hook(
+      "user-prompt-submit/note-usage-limits.mjs",
+      { session_id: "s6", prompt: "next step", transcript_path: file },
+      { CLAUDE_CONFIG_DIR: tmp("dotclaude-none-") },
+    );
+  const above = response(0, CONTEXT_NOTE_TOKENS + 11_000);
+  expect(prompt(transcript(above))).toBe(null);
+  expect(prompt(afterCompactions(COMPACTIONS_BEFORE_HANDOFF - 1, above))).toBe(
+    null,
+  );
+  expect(
+    prompt(afterCompactions(COMPACTIONS_BEFORE_HANDOFF, above))
+      .hookSpecificOutput.additionalContext,
+  ).toContain(`after ${COMPACTIONS_BEFORE_HANDOFF} compactions`);
+});
+
 test("mainContextTokens reads the last main response, or a later compaction", () => {
   expect(
     mainContextTokens(transcript(response(5, 20_000), response(10, 90_000))),
@@ -158,21 +243,29 @@ test("a context note tells Claude its context size past the note bound", () => {
   const below = CONTEXT_NOTE_TOKENS - 20_000;
   expect(prompt(transcript(response(10, below)))).toBe(null);
   const above = CONTEXT_NOTE_TOKENS + 12_000;
-  const note = prompt(transcript(response(0, above - 1_000))).hookSpecificOutput
-    .additionalContext;
+  const note = prompt(
+    afterCompactions(COMPACTIONS_BEFORE_HANDOFF, response(0, above - 1_000)),
+  ).hookSpecificOutput.additionalContext;
   expect(note).toMatch(/^\[dotclaude\] <context_use/);
   expect(note).toContain(`${k(above)} tokens`);
   expect(note).toContain("`write-session-handoff`");
   expect(note).toContain("`/clear`");
   // The note repeats on each prompt past the bound.
-  expect(prompt(transcript(response(0, above - 1_000)))).not.toBe(null);
+  expect(
+    prompt(
+      afterCompactions(COMPACTIONS_BEFORE_HANDOFF, response(0, above - 1_000)),
+    ),
+  ).not.toBe(null);
   expect(
     hook(
       "user-prompt-submit/note-usage-limits.mjs",
       {
         session_id: "s5",
         prompt: "next step",
-        transcript_path: transcript(response(0, above)),
+        transcript_path: afterCompactions(
+          COMPACTIONS_BEFORE_HANDOFF,
+          response(0, above),
+        ),
       },
       { CLAUDE_PLUGIN_OPTION_USAGE_NOTES: "false" },
     ),
@@ -203,7 +296,10 @@ test("a tool call past the note bound tells the main agent once per crossing", (
       env,
     );
   const below = transcript(response(10, CONTEXT_NOTE_TOKENS - 20_000));
-  const above = transcript(response(0, CONTEXT_NOTE_TOKENS + 11_000));
+  const above = afterCompactions(
+    COMPACTIONS_BEFORE_HANDOFF,
+    response(0, CONTEXT_NOTE_TOKENS + 11_000),
+  );
   expect(tool(below)).toBe(null);
   expect(tool(above, { agent_id: "a1" }), "a subagent's tool call").toBe(null);
   expect(tool(above)).toContain(`${k(CONTEXT_NOTE_TOKENS + 12_000)} tokens`);

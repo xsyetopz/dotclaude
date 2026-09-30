@@ -4,9 +4,14 @@
 // dotclaude uses the same limit. No token is read and nothing is fetched.
 // Also the main conversation's context size, from the end of its transcript.
 
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { CONTEXT_NOTE_TOKENS, k } from "./_budget.mjs";
+import {
+  COMPACTIONS_BEFORE_HANDOFF,
+  CONTEXT_NOTE_TOKENS,
+  k,
+} from "./_budget.mjs";
 import { stateDir } from "./_common.mjs";
 import { readConfig } from "./_plans.mjs";
 import { tail } from "./_transcript.mjs";
@@ -88,10 +93,83 @@ export function mainContextTokens(transcriptPath) {
   return null;
 }
 
+const BOUNDARY = Buffer.from('"subtype":"compact_boundary"');
+
+/**
+ * Compactions recorded in a transcript. A quote inside a message is escaped
+ * in JSON, so only a real `compact_boundary` entry matches.
+ *
+ * The status line calls this on each refresh, and a long transcript is tens
+ * of MB. A cache file keeps the count and the byte offset after the last
+ * complete line, so each call reads only the lines appended since. A
+ * different inode, a shorter file, or no newline before the offset means
+ * that the transcript was replaced, and the count starts again from 0.
+ */
+export function compactions(transcriptPath) {
+  let fd;
+  try {
+    fd = fs.openSync(transcriptPath, "r");
+  } catch {
+    return 0;
+  }
+  try {
+    const stat = fs.fstatSync(fd);
+    const cacheFile = path.join(
+      stateDir(),
+      `compactions-${createHash("sha256").update(String(transcriptPath)).digest("hex").slice(0, 16)}.json`,
+    );
+    let { ino, offset, count } = { ino: stat.ino, offset: 0, count: 0 };
+    try {
+      const cached = JSON.parse(fs.readFileSync(cacheFile, "utf8"));
+      const before = Buffer.alloc(1);
+      if (
+        cached.ino === stat.ino &&
+        cached.offset > 0 &&
+        cached.offset <= stat.size &&
+        fs.readSync(fd, before, 0, 1, cached.offset - 1) === 1 &&
+        before[0] === 0x0a
+      )
+        ({ offset, count } = cached);
+    } catch {
+      // No cache yet, or another call is replacing it: count from 0.
+    }
+    if (stat.size === offset) return count;
+    const bytes = Buffer.alloc(stat.size - offset);
+    const read = fs.readSync(fd, bytes, 0, bytes.length, offset);
+    // Stop after the last complete line, so that a line that Claude Code is
+    // still writing is read whole next time.
+    const end = bytes.subarray(0, read).lastIndexOf(0x0a) + 1;
+    for (let i = bytes.indexOf(BOUNDARY); i !== -1 && i < end; ) {
+      count += 1;
+      i = bytes.indexOf(BOUNDARY, i + BOUNDARY.length);
+    }
+    if (end > 0) {
+      const tmp = `${cacheFile}.${process.pid}.tmp`;
+      try {
+        fs.writeFileSync(
+          tmp,
+          JSON.stringify({ ino, offset: offset + end, count }),
+        );
+        fs.renameSync(tmp, cacheFile);
+      } catch {
+        // The count is right. Only the next call reads more.
+        fs.rmSync(tmp, { force: true });
+      }
+    }
+    return count;
+  } catch {
+    return 0;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 /**
  * The `<context_use>` note when the main context is at CONTEXT_NOTE_TOKENS or
- * more, else null. With `once`, the note comes only the first time after the
- * context was last under the bound, so a long run of tool calls gets it once.
+ * more after COMPACTIONS_BEFORE_HANDOFF compactions, else null. Before that,
+ * automatic compaction runs. With `once`, the note comes only the first time
+ * after the context was last under the bound, so a long run of tool calls
+ * gets it once.
  * Each note marks the session, so a note after a prompt also counts.
  */
 export function contextNote(data, once = false) {
@@ -107,6 +185,8 @@ export function contextNote(data, once = false) {
     return null;
   }
   if (once && fs.existsSync(file)) return null;
+  const count = compactions(data.transcript_path);
+  if (count < COMPACTIONS_BEFORE_HANDOFF) return null;
   fs.writeFileSync(file, "");
-  return `<context_use source="dotclaude">The main context is ${k(used)} tokens. Every turn re-reads all of it, and automatic compaction keeps only a summary that you do not choose. Finish the current step. Then write a handoff note with the \`write-session-handoff\` skill, and ask the user to run \`/clear\`.</context_use>`;
+  return `<context_use source="dotclaude">The main context is ${k(used)} tokens after ${count} compactions. Each compaction summarizes the previous summary again, so the earliest facts degrade. Finish the current step. Then write a handoff note with the \`write-session-handoff\` skill, and ask the user to run \`/clear\`.</context_use>`;
 }

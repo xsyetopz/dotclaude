@@ -11,7 +11,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { k, MAIN_CONTEXT_TOKENS } from "./_budget.mjs";
+import {
+  COMPACTIONS_BEFORE_HANDOFF,
+  k,
+  MAIN_CONTEXT_TOKENS,
+} from "./_budget.mjs";
 import { optionList } from "./_common.mjs";
 import { canonical, DEFAULT_ALLOWED } from "./_models.mjs";
 
@@ -168,7 +172,7 @@ export function planNote(env = process.env) {
   }
   // One bound for every plan, sized for Pro: larger plans only run out later.
   lines.push(
-    `Every turn re-reads the whole context. Once it passes about ${k(MAIN_CONTEXT_TOKENS)} tokens, write a handoff note with the \`write-session-handoff\` skill, and ask the user to run \`/clear\`. A handoff and \`/clear\` keep the facts that you choose, and \`/compact\` costs a full turn over the large context. Keep subagent briefs small. Use few subagents. dotclaude sizes this for Pro's 5-hour window and applies it on every plan. Larger plans only reach their limits later.`,
+    `Every turn re-reads the whole context. Claude Code compacts the main conversation automatically before it reaches ${k(MAIN_CONTEXT_TOKENS)} tokens. Let the first ${COMPACTIONS_BEFORE_HANDOFF} compactions occur. After them, dotclaude tells you the context size. Then write a handoff note with the \`write-session-handoff\` skill, and ask the user to run \`/clear\`. Do not start a handoff on your own estimate of the context size. Keep subagent briefs small. Use few subagents. dotclaude sizes this for Pro's 5-hour window and applies it on every plan. Larger plans only reach their limits later.`,
   );
   return `<claude_plan source="dotclaude">\n${lines.join("\n")}\n</claude_plan>`;
 }

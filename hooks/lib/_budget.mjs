@@ -16,9 +16,31 @@ export const MAIN_CONTEXT_TOKENS = 150_000;
  * With `autoCompactWindow` at MAIN_CONTEXT_TOKENS, Claude Code 2.1.284
  * compacts at the window minus 20k for output and 13k of buffer, so a
  * handoff at 150k comes too late: 145 automatic compactions in main sessions
- * to 2026-09-30 had a median of 121k tokens and a minimum of 116k.
+ * to 2026-09-30 had a median of 121k tokens and a minimum of 116k. The note
+ * comes only after COMPACTIONS_BEFORE_HANDOFF compactions.
  */
 export const CONTEXT_NOTE_TOKENS = 100_000;
+
+/**
+ * Main-conversation context (tokens) at which Claude Code compacts with
+ * `autoCompactWindow` at MAIN_CONTEXT_TOKENS: the window, minus 20k for
+ * output, minus a 13k buffer. The status line measures the context against
+ * it, because the context never reaches MAIN_CONTEXT_TOKENS.
+ */
+export const AUTO_COMPACT_TOKENS = MAIN_CONTEXT_TOKENS - 33_000;
+
+/**
+ * Compactions of the main conversation before the context note asks for a
+ * handoff. A handoff and a compaction both start the next part from about
+ * 20k tokens (170 automatic compactions from 2026-09-23 to 2026-09-30: median
+ * 120k before, 20k after), so they cost about the same per turn. A handoff at
+ * the first crossing of CONTEXT_NOTE_TOKENS stopped every long session near
+ * 100k, and the user continued anyway. `scripts/compaction-report.mjs` on the
+ * 7 sessions with the 150k window that passed 4 compactions, 2026-09-30:
+ * the cost per call stayed at $0.05 to $0.06 in every part, but compactions
+ * 1 to 4 kept 49% to 57% of the needed tokens and compactions 5 to 8 kept 42%.
+ */
+export const COMPACTIONS_BEFORE_HANDOFF = 4;
 
 /**
  * Main-conversation context (tokens) at which the status line shows a cold
