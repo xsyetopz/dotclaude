@@ -19,6 +19,9 @@ test("a /dotclaude: skill typed mid-message runs through the Skill tool", () => 
   expect(out.additionalContext).toContain("`dotclaude:write-session-handoff`");
   expect(out.additionalContext).toContain('"wrap up, then notes/h.md"');
   expect(out.additionalContext).not.toMatch(/<skill /);
+  // The message can place the skill after other work ("wrap up, then").
+  expect(out.additionalContext).not.toContain("now");
+  expect(out.additionalContext).toContain("where the message puts it");
   expect(expand("/dotclaude:write-session-handoff h.md")).toBe(null);
   expect(expand("try /dotclaude:no-such-skill here")).toBe(null);
   // Pasted or quoted text names a skill without invoking it.

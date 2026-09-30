@@ -107,8 +107,11 @@ const CHECK = [
   /^cargo (test|build|check|clippy|nextest|fmt --check|fmt -- --check)\b/,
   /^go (test|build|vet)\b/,
   /^(golangci-lint|staticcheck) run\b/,
-  /^(make|gmake|just|task|mage)( (test|tests|check|build|lint|all|ci|verify)\S*)?$/,
-  /^(swift (build|test)|xcodebuild\b.*\b(build|test))\b/,
+  // A task runner with no recipe, or with a recipe name that holds a check
+  // word (`just skills skill-lint`, `make -C app test`, `make ci-local`).
+  /^(make|gmake|just|task|mage)$/,
+  /^(make|gmake|just|task|mage) (.* )?(\S*[^a-z ])?(test|tests|check|build|lint|all|ci|verify|validate)([^a-z ]\S*)?( |$)/,
+  /^(xcrun (\S+ )*?)?(swift (build|test)|xcodebuild\b.*\b(build|test))\b/,
   /^(\.\/gradlew|gradle|\.\/mvnw|mvn) .*\b(test|build|check|verify|assemble|compile)\b/,
   /^dotnet (build|test)\b/,
   /^(ctest|ninja|meson test|cmake --build)\b/,
@@ -120,15 +123,21 @@ const CHECK = [
   /^(flutter|dart) (test|analyze)\b/,
 ];
 
-export function isCheckCommand(command) {
+/**
+ * The first simple command in `command` that is a check, without wrappers,
+ * or undefined. Hook messages quote it, so a heredoc or a long pipeline
+ * around the check does not show.
+ */
+export function checkCommand(command) {
   try {
-    return parse(command).commands.some((cmd) => {
+    for (const cmd of parse(command).commands) {
       const joined = [cmd.name, ...cmd.args].join(" ");
-      return CHECK.some((re) => re.test(joined));
-    });
+      if (CHECK.some((re) => re.test(joined))) return joined;
+    }
   } catch {
-    return false;
+    // An unparsable command is not a check.
   }
+  return undefined;
 }
 
 // Failure markers in the output of a command that exited 0, for example

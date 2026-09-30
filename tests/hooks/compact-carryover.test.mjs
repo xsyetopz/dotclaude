@@ -25,6 +25,16 @@ test("compaction carry-over restores prompts and last check", () => {
       type: "user",
       message: { content: [{ type: "tool_result", content: "ok" }] },
     },
+    // Claude Code stores the compaction summary as a user entry.
+    {
+      type: "user",
+      isCompactSummary: true,
+      isVisibleInTranscriptOnly: true,
+      message: {
+        content:
+          "This session is being continued from a previous conversation that ran out of context.",
+      },
+    },
     {
       type: "user",
       isMeta: true,
@@ -66,7 +76,7 @@ test("compaction carry-over restores prompts and last check", () => {
   expect(text).toMatch(
     /1\. Add retry to the fetch client\n2\. Keep the public API unchanged/,
   );
-  expect(text).not.toMatch(/task-notification|system-reminder/);
+  expect(text).not.toMatch(/task-notification|system-reminder|being continued/);
   expect(text).toMatch(/`bun test` passed/);
   // Each file list is its own paragraph: first the files this session
   // edited, then the files it did not record as edited.

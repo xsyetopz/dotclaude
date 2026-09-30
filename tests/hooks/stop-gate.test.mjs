@@ -131,6 +131,17 @@ test("inline scripts record only the path arguments of their write calls", () =>
   none(edited(`python3 -c "open(f'src/{n}.py', 'w')"`));
 });
 
+test("the stop reason quotes only the check, not the script around it", () => {
+  const sid = session();
+  checkRun(
+    sid,
+    "cd /tmp && ruff format src/app.py && python3 - <<'EOF'\nprint(`x`)\nEOF",
+  );
+  edit(sid);
+  const shown = /last check: `([^`]*)`/.exec(stop(sid)?.reason ?? "")?.[1];
+  expect(shown).toBe("ruff format src/app.py");
+});
+
 test("subagent stop checks the subagent's own ledger", () => {
   const sid = session();
   hook("post-tool-use/record-edits-and-checks.mjs", {

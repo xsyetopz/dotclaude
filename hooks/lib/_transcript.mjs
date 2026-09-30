@@ -17,6 +17,8 @@ function promptOf(entry) {
     entry.type === "user" &&
     typeof entry.message?.content === "string" &&
     !entry.isMeta &&
+    // Claude Code stores the compaction summary as a user entry.
+    !entry.isCompactSummary &&
     !entry.isSidechain &&
     isHuman(entry)
   ) {

@@ -51,9 +51,22 @@ steps after each update.
 
 - A permission prompt no longer starts with `[dotclaude]`. Claude Code already
   labels the prompt as a hook's. Messages to Claude keep the tag.
+- The stop and compaction messages quote only the check command, not the whole
+  Bash command around it. Before, a check inside a heredoc script showed the
+  script, cut at 200 characters in the middle of a code span.
+- The compaction summary no longer counts as a user prompt. Before, the
+  destructive-command and risky-edit guards could read the summary as the
+  user's last message, and the prompts kept after compaction included it.
+- A check now counts when it runs through `xcrun` (`xcrun swift test`,
+  `xcrun xcodebuild ... test`), with several recipes
+  (`just skills skill-lint markdown`), with flags before the recipe
+  (`make -C app test`), or as `just validate`.
 - An allow reason no longer starts with `[dotclaude]`, because only the user
   sees it. The foreground rewrite of an `Agent` call shows no reason, because
   it showed on every spawn.
+- A `/dotclaude:` skill named in the middle of a message runs at the step
+  where the message puts it. Before, the hook said to run it now, also for
+  "commit this, then `/dotclaude:write-session-handoff`".
 
 ## [0.15.1] - 2026-09-30
 

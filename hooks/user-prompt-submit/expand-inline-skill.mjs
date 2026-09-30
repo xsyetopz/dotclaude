@@ -55,7 +55,7 @@ run((data) => {
       hookEventName: "UserPromptSubmit",
       additionalContext: USER_ONLY.test(frontmatter)
         ? `The user's message names \`/dotclaude:${name}\`, which runs only when a message starts with it. Ask the user to send the message again and start it with \`/dotclaude:${name}\`.`
-        : `The user's message invokes \`/dotclaude:${name}\`. Run it now: call the \`Skill\` tool with \`skill\` set to \`dotclaude:${name}\` and \`args\` set to ${JSON.stringify(args)}.`,
+        : `The user's message invokes \`/dotclaude:${name}\`. Run it at the step where the message puts it, because the message can ask for other work first. To run it, call the \`Skill\` tool with \`skill\` set to \`dotclaude:${name}\` and \`args\` set to ${JSON.stringify(args)}.`,
     },
   });
 });

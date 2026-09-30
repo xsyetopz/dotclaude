@@ -6,9 +6,9 @@
 import path from "node:path";
 import { option, projectRoot, run } from "../lib/_common.mjs";
 import {
+  checkCommand,
   codeFile,
   fullReads,
-  isCheckCommand,
   load,
   outputShowsFailure,
   recordRead,
@@ -30,10 +30,12 @@ function editedPath(data) {
 /** Result of a finished test/build/lint command, or null when it doesn't count. */
 function checkRun(data) {
   const input = data.tool_input ?? {};
-  const command = input.command;
-  if (typeof command !== "string" || !isCheckCommand(command)) return undefined;
+  const check =
+    typeof input.command === "string" ? checkCommand(input.command) : undefined;
+  if (!check) return undefined;
   if (input.run_in_background) return undefined; // result arrives later
-  const recorded = command.length > 200 ? `${command.slice(0, 199)}…` : command;
+  const flat = check.replace(/\s+/g, " ").replaceAll("`", "'");
+  const recorded = flat.length > 200 ? `${flat.slice(0, 199)}…` : flat;
   if (data.hook_event_name === "PostToolUseFailure") {
     if (data.is_interrupt) return undefined;
     const code = /^Exit code (\d+)/.exec(data.error ?? "")?.[1];
