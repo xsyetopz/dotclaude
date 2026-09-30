@@ -35,6 +35,7 @@ optimize for speed or for the volume of output.
 | [Models](models.md) | the model lock, fast mode, Fable, effort, and plan detection |
 | [Agents And Skills](agents-and-skills.md) | each agent's model and effort, and each skill |
 | [Working Rules](working-rules.md) | the system prompt and output style rules, and the reason for each |
+| [Contributions](contributions.md) | the AI policy catalog, the contribution guard, and drafts for other projects |
 | [Settings Profile](settings-profile.md) | each setting that the profile writes, the launcher, and the managed lock |
 | [Status Line](status-line.md) | what each part of the status line shows, and why |
 | [Development](development.md) | commands, tests, evals, and release steps |

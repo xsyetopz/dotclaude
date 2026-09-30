@@ -1,0 +1,1658 @@
+{
+  "source": "https://github.com/melissawm/open-source-ai-contribution-policies/blob/main/README.md",
+  "license": "CC0-1.0",
+  "sha": "534d96ea063484e9e29bb2569b1f5d519a59c692",
+  "updated": "2026-09-30",
+  "entries": [
+    {
+      "project": "Adwaita",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/GNOME/libadwaita/-/blob/main/CONTRIBUTING.md?ref_type=heads#use-of-generative-ai",
+      "notes": "",
+      "keys": ["gitlab.gnome.org/gnome/libadwaita"]
+    },
+    {
+      "project": "Alacritty",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/alacritty/alacritty/blob/master/CONTRIBUTING.md#llmai-contributions",
+      "notes": "",
+      "keys": ["github.com/alacritty/alacritty"]
+    },
+    {
+      "project": "Allium",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/moongardenmods/allium/blob/main/CONTRIBUTING.md#ai-contributions",
+      "notes": "",
+      "keys": ["github.com/moongardenmods/allium"]
+    },
+    {
+      "project": "Amberol",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/World/amberol/-/blob/main/CONTRIBUTING.md#use-of-generative-ai",
+      "notes": "Use of AI to \"answer questions and find information\" permitted but strongly discouraged in favour of \"existing documentation\" and \"chats and forums\"",
+      "keys": ["gitlab.gnome.org/world/amberol"]
+    },
+    {
+      "project": "Apache Airflow",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/apache/airflow/blob/main/contributing-docs/05_pull_requests.rst#gen-ai-assisted-contributions",
+      "notes": "[Add Copilot code review instructions to catch AI-slop PRs#62442](https://github.com/apache/airflow/pull/62442)",
+      "keys": ["github.com/apache/airflow"]
+    },
+    {
+      "project": "Apache CouchDB",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/apache/couchdb/blob/main/CONTRIBUTING.md#artificial-intelligence-and-large-language-models-contributions-policy",
+      "notes": "",
+      "keys": ["github.com/apache/couchdb"]
+    },
+    {
+      "project": "Apache DataFusion",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://datafusion.apache.org/contributor-guide/index.html#ai-assisted-contributions",
+      "notes": "[Better ways to contribute than an AI dump](https://datafusion.apache.org/contributor-guide/index.html#better-ways-to-contribute-than-an-ai-dump)",
+      "keys": []
+    },
+    {
+      "project": "Apache Kvrocks",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://kvrocks.apache.org/community/contributing/#guidelines-for-ai-assisted-contributions",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Apache PouchDB",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/apache/pouchdb/blob/master/CONTRIBUTING.md#artificial-intelligence-and-large-language-models-contributions-policy",
+      "notes": "",
+      "keys": ["github.com/apache/pouchdb"]
+    },
+    {
+      "project": "Apache® Software Foundation (ASF)",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "-",
+      "policy": "https://www.apache.org/legal/generative-tooling.html",
+      "notes": "Applies to all ASF projects, but enforcement is decentralized. Requires use of \"Generated-by:\" in commit message.",
+      "keys": []
+    },
+    {
+      "project": "Arcalibre",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://blog.rereading.space/rereading-because-books-are-art-and-art-is-labor",
+      "notes": "",
+      "keys": ["codeberg.org/rereading/arcalibre"]
+    },
+    {
+      "project": "Arrow",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://arrow.apache.org/docs/dev/developers/overview.html#ai-generated-code",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Asahi Linux",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://asahilinux.org/docs/project/policies/slop/",
+      "notes": "",
+      "keys": ["github.com/asahilinux"]
+    },
+    {
+      "project": "Astropy",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/astropy/astropy-project/blob/main/policies/ai-policy.md",
+      "notes": "",
+      "keys": ["github.com/astropy/astropy-project"]
+    },
+    {
+      "project": "attrs",
+      "allowed": "Yes",
+      "disclosure": "?",
+      "human": "Yes",
+      "policy": "https://github.com/python-attrs/attrs/blob/main/.github/AI_POLICY.md",
+      "notes": "\"No LLM bots in Co-authored-by:s.\"",
+      "keys": ["github.com/python-attrs/attrs"]
+    },
+    {
+      "project": "Avoyd",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://www.enkisoftware.com/faq#nogenAI",
+      "notes": "It is AI image denoising that uses training data with appropriate rights. It doesn't allow LLM use for writing the code.",
+      "keys": []
+    },
+    {
+      "project": "Bevy",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://bevy.org/learn/contribute/policies/ai/",
+      "notes": "",
+      "keys": ["github.com/bevyengine/bevy"]
+    },
+    {
+      "project": "Bobby",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/hbons/Bobby?tab=contributing-ov-file#use-of-generative-ai",
+      "notes": "",
+      "keys": ["github.com/hbons/bobby"]
+    },
+    {
+      "project": "Borgmatic",
+      "allowed": "No*",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://projects.torsion.org/borgmatic-collective/borgmatic/src/branch/main/AGENTS.md",
+      "notes": "An AGENTS.md file is provided, which instructs the agent to not modify the code. AI is allowed to interact with the code in a read-only manner.",
+      "keys": [
+        "projects.torsion.org/borgmatic-collective/borgmatic",
+        "github.com/borgmatic-collective/borgmatic"
+      ]
+    },
+    {
+      "project": "CapyPDF",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/jpakkane/capypdf/?tab=readme-ov-file#ai-policy",
+      "notes": "",
+      "keys": ["github.com/jpakkane/capypdf"]
+    },
+    {
+      "project": "Cataclysm: Dark Days Ahead",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/CleverRaven/Cataclysm-DDA/blob/master/CONTRIBUTING.md#licensing-and-authorship",
+      "notes": "",
+      "keys": ["github.com/cleverraven/cataclysm-dda"]
+    },
+    {
+      "project": "CCExtractor",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://ccextractor.org/public/gsoc/ai_policy/",
+      "notes": "Mark PRs as \"AI-generated/AI-assisted/No AI used\"",
+      "keys": []
+    },
+    {
+      "project": "CC Open Source",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://opensource.creativecommons.org/contributing-code/",
+      "notes": "",
+      "keys": ["github.com/creativecommons"]
+    },
+    {
+      "project": "Cheese Paper",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/ByteOfBrie/cheese-paper#ai",
+      "notes": "",
+      "keys": ["codeberg.org/byteofbrie/cheese-paper"]
+    },
+    {
+      "project": "chezmoi",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://www.chezmoi.io/developer-guide/",
+      "notes": "Shows a Claude banner due to [a single Claude commit](https://slopscan.ava.pet/repo/https%3A%2F%2Fgithub%2Ecom%2Ftwpayne%2Fchezmoi) that was created before the [introduction of the ban](https://github.com/twpayne/chezmoi/commit/7938c65ca55aaeaf6fc56d37b0b32073d2e5c461).",
+      "keys": ["github.com/twpayne/chezmoi"]
+    },
+    {
+      "project": "Chimera Linux",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gts.chimera-linux.org/@chimera/statuses/01KK78VSB4G5S75STYEY3YTR2H",
+      "notes": "",
+      "keys": ["github.com/chimera-linux"]
+    },
+    {
+      "project": "ChiPass",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/ChiPass/ChiPass/src/branch/main/CONTRIBUTING.md",
+      "notes": "",
+      "keys": ["codeberg.org/chipass/chipass"]
+    },
+    {
+      "project": "cilium",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/cilium/community/blob/main/AI-POLICY.md",
+      "notes": "DCO signoff required for all contributions, including AI-generated ones.",
+      "keys": ["github.com/cilium"]
+    },
+    {
+      "project": "Clojure",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://clojure.org/dev/contributor_agreement#_no_generated_code",
+      "notes": "",
+      "keys": ["github.com/clojure/clojure"]
+    },
+    {
+      "project": "CloudNativePG",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/cloudnative-pg/governance/blob/main/AI_POLICY.md",
+      "notes": "",
+      "keys": ["github.com/cloudnative-pg"]
+    },
+    {
+      "project": "conda",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://docs.conda.io/projects/conda/en/latest/dev-guide/contributing.html#generative-ai",
+      "notes": "",
+      "keys": ["github.com/conda/conda"]
+    },
+    {
+      "project": "CPython",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://devguide.python.org/getting-started/generative-ai/",
+      "notes": "\"Disclosure of the use of AI tools in the PR description is appreciated, while not required.\"",
+      "keys": ["github.com/python/cpython"]
+    },
+    {
+      "project": "CuPy",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://docs.cupy.dev/en/stable/contribution.html#ai-policies",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "curl",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://curl.se/dev/contribute.html#on-ai-use-in-curl",
+      "notes": "\"The golden rule is that a contribution should be worth more to the project than the time it takes to review it, which is usually not the case if large parts of your PR were written by LLMs.\"",
+      "keys": []
+    },
+    {
+      "project": "DataJourneyHQ",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "-",
+      "policy": "https://github.com/DataJourneyHQ/DataJourney/wiki/Contribution-Guidelines-(AI%E2%80%90Aware",
+      "notes": "",
+      "keys": ["github.com/datajourneyhq/datajourney"]
+    },
+    {
+      "project": "Decker",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/JohnEarnest/Decker/blob/main/Readme.md#contributing",
+      "notes": "",
+      "keys": ["github.com/johnearnest/decker"]
+    },
+    {
+      "project": "Django",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/submitting-patches/#ai-assisted-contributions",
+      "notes": "[PR template](https://github.com/django/django/blob/main/.github/pull_request_template.md); No automated AI reviews",
+      "keys": []
+    },
+    {
+      "project": "dlt",
+      "allowed": "Yes*",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/dlt-hub/dlt/blob/devel/CONTRIBUTING.md#ai-assisted-contributions",
+      "notes": "AI tools as dev aids only; the submitter is fully responsible for correctness, security, licensing and provenance; no AI co-authors or generated footers in commit messages; autonomous agent submissions not accepted; human understanding of the change required.",
+      "keys": ["github.com/dlt-hub/dlt"]
+    },
+    {
+      "project": "do",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/cgranade/do#license-and-ai-policy",
+      "notes": "",
+      "keys": ["codeberg.org/cgranade/do"]
+    },
+    {
+      "project": "Drupal",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://www.drupal.org/docs/develop/issues/issue-procedures-and-etiquette/policy-on-the-use-of-ai-when-contributing-to-drupal",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Dune 3D",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/dune3d/dune3d/blob/main/CONTRIBUTING.md#use-of-large-language-models--generative-ai",
+      "notes": "",
+      "keys": ["github.com/dune3d/dune3d"]
+    },
+    {
+      "project": "EasyBuild",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://docs.easybuild.io/policies/ai/",
+      "notes": "Requires declaration of specific AI models/tools used.",
+      "keys": []
+    },
+    {
+      "project": "Elastic",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/World/elastic#use-of-generative-ai",
+      "notes": "",
+      "keys": ["gitlab.gnome.org/world/elastic"]
+    },
+    {
+      "project": "Elementary OS",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://docs.elementary.io/contributor-guide/development/generative-ai-policy",
+      "notes": "",
+      "keys": ["github.com/elementary"]
+    },
+    {
+      "project": "EmulatorKit",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/EtchedPixels/EmulatorKit/src/branch/master/ContributionRules",
+      "notes": "Explicit ban on Copilot; [maintainer has confirmed](https://codeberg.org/EtchedPixels/EmulatorKit/src/branch/master/ContributionRules) this applies to other LLM contributions",
+      "keys": ["codeberg.org/etchedpixels/emulatorkit"]
+    },
+    {
+      "project": "Endless Sky",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/endless-sky/endless-sky/blob/master/docs/CONTRIBUTING.md#on-ai-generatedassisted-content",
+      "notes": "",
+      "keys": ["github.com/endless-sky/endless-sky"]
+    },
+    {
+      "project": "Evi",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/evi-editor/evi/src/branch/master/CONTRIBUTING.md#using-ai",
+      "notes": "",
+      "keys": ["codeberg.org/evi-editor/evi"]
+    },
+    {
+      "project": "FastAPI",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://tiangolo.com/open-source/contributing/#automated-code-and-ai",
+      "notes": "\"If the human effort put in a PR, e.g. writing LLM prompts, is less than the effort we would need to put to review it, please don't submit the PR.\"",
+      "keys": []
+    },
+    {
+      "project": "Fedora",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://docs.fedoraproject.org/en-US/council/policy/ai-contribution-policy/",
+      "notes": "[Fedora Council Policy Proposal: Policy on AI-Assisted Contributions](https://communityblog.fedoraproject.org/council-policy-proposal-policy-on-ai-assisted-contributions/)",
+      "keys": []
+    },
+    {
+      "project": "Fennel",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://git.sr.ht/~technomancy/fennel/tree/main/item/CONTRIBUTING.md#contribution-transparency",
+      "notes": "",
+      "keys": ["git.sr.ht/~technomancy/fennel"]
+    },
+    {
+      "project": "Firefox",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://firefox-source-docs.mozilla.org/contributing/ai-coding.html",
+      "notes": "",
+      "keys": ["github.com/mozilla-firefox/firefox"]
+    },
+    {
+      "project": "Flutter",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/flutter/flutter/blob/master/docs/contributing/Tree-hygiene.md#ai-contribution-guidelines",
+      "notes": "",
+      "keys": ["github.com/flutter/flutter"]
+    },
+    {
+      "project": "Forgejo",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/forgejo/governance/src/branch/main/AIAgreement.md",
+      "notes": "",
+      "keys": ["codeberg.org/forgejo"]
+    },
+    {
+      "project": "Fractal",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/World/fractal/-/blob/main/CONTRIBUTING.md#llm-contributions",
+      "notes": "",
+      "keys": ["gitlab.gnome.org/world/fractal"]
+    },
+    {
+      "project": "gaypanel",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/pastthepixels/gaypanel/src/branch/main/CONTRIBUTING.md#things-that-aren-t-allowed",
+      "notes": "",
+      "keys": ["codeberg.org/pastthepixels/gaypanel"]
+    },
+    {
+      "project": "GDAL",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://gdal.org/en/stable/community/ai_tool_policy.html",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Gedit",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/World/gedit/gedit/-/blob/master/docs/guidelines/no-llm-tools.md",
+      "notes": "",
+      "keys": ["gitlab.gnome.org/world/gedit/gedit"]
+    },
+    {
+      "project": "Gentoo Linux",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://wiki.gentoo.org/wiki/Project:Council/AI_policy",
+      "notes": "",
+      "keys": ["github.com/gentoo/gentoo"]
+    },
+    {
+      "project": "Ghostty",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/ghostty-org/ghostty/blob/main/AI_POLICY.md",
+      "notes": "\"Our reason for the strict AI policy is not due to an anti-AI stance, but instead due to the number of highly unqualified people using AI.\"",
+      "keys": ["github.com/ghostty-org/ghostty"]
+    },
+    {
+      "project": "GIMP",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/GNOME/gimp/-/blob/master/.gitlab/merge_request_templates/default.md?plain=1#L11-12",
+      "notes": "",
+      "keys": ["gitlab.gnome.org/gnome/gimp"]
+    },
+    {
+      "project": "Gitea",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/go-gitea/gitea/blob/main/CONTRIBUTING.md#ai-contribution-policy",
+      "notes": "",
+      "keys": ["github.com/go-gitea/gitea"]
+    },
+    {
+      "project": "Gitte",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/ckruse/Gitte/src/branch/main/README.md#contributing",
+      "notes": "",
+      "keys": ["codeberg.org/ckruse/gitte"]
+    },
+    {
+      "project": "Glasgow Interface Explorer",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://glasgow-embedded.org/latest/contribute.html#contributing-code-or-documentation",
+      "notes": "",
+      "keys": ["github.com/glasgowembedded/glasgow"]
+    },
+    {
+      "project": "GNOME Extensions",
+      "allowed": "Yes",
+      "disclosure": "-",
+      "human": "Yes",
+      "policy": "https://gjs.guide/extensions/review-guidelines/review-guidelines.html#extensions-must-not-be-ai-generated",
+      "notes": "\"While it is not prohibited to use AI as a learning aid or a development tool (i.e. code completions), extension developers should be able to justify and explain the code they submit, within reason.\"",
+      "keys": []
+    },
+    {
+      "project": "GNOME Loupe",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/GNOME/loupe/-/blob/main/CONTRIBUTING.md?ref_type=heads#use-of-generative-ai",
+      "notes": "",
+      "keys": ["gitlab.gnome.org/gnome/loupe"]
+    },
+    {
+      "project": "GNU Binutils",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://sourceware.org/binutils/wiki/LLM_Generated_Content",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "goose",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/block/goose/blob/main/HOWTOAI.md",
+      "notes": "[AGENTS.md file](https://github.com/aaif-goose/goose/blob/main/AGENTS.md)",
+      "keys": ["github.com/aaif-goose/goose", "github.com/block/goose"]
+    },
+    {
+      "project": "GoToSocial",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/superseriousbusiness/gotosocial/src/branch/main/CODE_OF_CONDUCT.md",
+      "notes": "",
+      "keys": ["codeberg.org/superseriousbusiness/gotosocial"]
+    },
+    {
+      "project": "Gram",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/GramEditor/gram/src/branch/main/CODE_OF_CONDUCT.md#strict-no-llm-no-ai-policy",
+      "notes": "Fork of the Zed editor, which has AI-generated code. However, this is explicitly a fork seeking to remove AI. The amount of AI-generated legacy code may decrease over time.",
+      "keys": ["codeberg.org/grameditor/gram"]
+    },
+    {
+      "project": "Halloy",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://halloy.chat/contributing#ai",
+      "notes": "Has the Claude banner due to [a single Claude commit](https://github.com/squidowl/halloy/commit/826dc9d5b8a513900f193bdb3ad57abc96f2adcc). There's currently at least [some effort going into removing it](https://github.com/squidowl/halloy/issues/1814)",
+      "keys": ["github.com/squidowl/halloy"]
+    },
+    {
+      "project": "Highscore",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/World/highscore/-/blob/main/CONTRIBUTING.md?ref_type=heads#use-of-generative-ai",
+      "notes": "This includes its porting interface [libhighscore](https://gitlab.gnome.org/alicem/libhighscore#use-of-generative-ai)",
+      "keys": ["gitlab.gnome.org/world/highscore"]
+    },
+    {
+      "project": "hit-counter.net",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://www.hit-counter.net/aipolicy.php",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Homebrew",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/Homebrew/brew/blob/main/CONTRIBUTING.md#artificial-intelligencelarge-language-model-aillm-usage",
+      "notes": "Disclose model/tool and only one AI-assisted PR open at a time.",
+      "keys": ["github.com/homebrew/brew"]
+    },
+    {
+      "project": "Icechunk",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://icechunk.io/en/latest/ai-policy/",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Iceshrimp",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://kb.iceshrimp.dev/s/63ae7f15-e1f1-45d6-ae26-d3a3b35d2e02/doc/ai-policy-paZIKo68tk",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Idris",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/idris-lang/Idris2/blob/main/CONTRIBUTING.md#things-we-will-not-accept",
+      "notes": "Has the Claude banner due to [a single Claude commit](https://github.com/idris-lang/Idris2/commit/d83bc7d7964bd99ea16f8888b7cb9143a1343846) that occurred before this policy took effect. After that commit was made, [the project changed their contributing guidelines](https://github.com/idris-lang/Idris2/pull/3755) to block LLM code.",
+      "keys": ["github.com/idris-lang/idris2"]
+    },
+    {
+      "project": "Inkscape",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://social.treehouse.systems/@dysfun/116182391411729473",
+      "notes": "The full LLM policy is being actively developed but [appears to lean towards banning generative AI](https://gitlab.com/inkscape/inkscape-board/-/work_items/5#note_3140424828)",
+      "keys": ["gitlab.com/inkscape/inkscape"]
+    },
+    {
+      "project": "Inochi2D",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/Inochi2D/inochi2d/blob/main/CONTRIBUTING.md#on-generative-ai",
+      "notes": "",
+      "keys": ["github.com/inochi2d/inochi2d"]
+    },
+    {
+      "project": "Iocaine",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://git.madhouse-project.org/iocaine/iocaine/src/branch/main/CONTRIBUTING.md",
+      "notes": "",
+      "keys": ["git.madhouse-project.org/iocaine/iocaine"]
+    },
+    {
+      "project": "IREE (Intermediate Representation Execution Environment)",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://iree.dev/developers/general/contributing/#ai-tool-use",
+      "notes": "Use \"Assisted-by:\" or \"Co-authored-by:\"",
+      "keys": []
+    },
+    {
+      "project": "Jellyfin",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://jellyfin.org/docs/general/contributing/llm-policies/",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Joomla",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://developer.joomla.org/generative-ai-policy.html",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Jqwik",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/jqwik-team/jqwik/blob/main/CONTRIBUTING.md",
+      "notes": "",
+      "keys": ["github.com/jqwik-team/jqwik"]
+    },
+    {
+      "project": "jsoup",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/jhy/jsoup/blob/master/.github/CONTRIBUTING.md#use-of-ai",
+      "notes": "",
+      "keys": ["github.com/jhy/jsoup"]
+    },
+    {
+      "project": "Kornia",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/kornia/kornia/blob/main/AI_POLICY.md",
+      "notes": "Use \"AI-generated/AI-assisted/No AI\" labels",
+      "keys": ["github.com/kornia/kornia"]
+    },
+    {
+      "project": "Krita",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://invent.kde.org/graphics/krita#user-content-ai-moratorium",
+      "notes": "[maintainer statement](https://krita-artists.org/t/policy-on-llm-code/178248/12), to be reviewed in October 2026",
+      "keys": ["invent.kde.org/graphics/krita"]
+    },
+    {
+      "project": "Kubernetes",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://www.kubernetes.dev/docs/guide/pull-requests/#ai-guidance",
+      "notes": "\"Assisted-by:\", \"Co-developed-by:\" not allowed",
+      "keys": []
+    },
+    {
+      "project": "Leiningen",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/leiningen/leiningen/src/branch/stable/CONTRIBUTING.md#contributing",
+      "notes": "\"Please note that it is ethically unacceptable to submit patches (to this project or any other) which you did not author yourself without giving clear attribution to the original author. Note that this includes submitting changes generated by most so-called \"artificial intelligence\" language models as these systems often make it impossible to even identify (much less credit) the original author.\"",
+      "keys": ["codeberg.org/leiningen/leiningen"]
+    },
+    {
+      "project": "libadwaita",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/GNOME/libadwaita/-/blob/main/CONTRIBUTING.md?ref_type=heads#use-of-generative-ai",
+      "notes": "",
+      "keys": ["gitlab.gnome.org/gnome/libadwaita"]
+    },
+    {
+      "project": "libmanette",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/GNOME/libmanette/-/blob/main/CONTRIBUTING.md?ref_type=heads#use-of-generative-ai",
+      "notes": "",
+      "keys": ["gitlab.gnome.org/gnome/libmanette"]
+    },
+    {
+      "project": "libxml2",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.gnome.org/GNOME/libxml2#strict-no-llm--no-ai-policy",
+      "notes": "",
+      "keys": ["gitlab.gnome.org/gnome/libxml2"]
+    },
+    {
+      "project": "Lighthouse",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/team-crystalline/Lighthouse/tree/master?tab=readme-ov-file#a-quick-constitution-for-lighthouse",
+      "notes": "",
+      "keys": ["github.com/team-crystalline/lighthouse"]
+    },
+    {
+      "project": "LinkML",
+      "allowed": "Yes",
+      "disclosure": "Yes*",
+      "human": "Yes",
+      "policy": "https://github.com/linkml/linkml/blob/main/AI_COVENANT.md",
+      "notes": "No co-authorship with AI tools allowed; disclose usage when you don't understand the proposed changes fully",
+      "keys": ["github.com/linkml/linkml"]
+    },
+    {
+      "project": "Linux Kernel",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://kernel.org/doc/html/next/process/coding-assistants.html",
+      "notes": "\"Assisted-by:\" required; DCO required.",
+      "keys": []
+    },
+    {
+      "project": "Linux man-pages",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://git.kernel.org/pub/scm/docs/man-pages/man-pages.git/tree/CONTRIBUTING.d/ai",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "LLVM",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://llvm.org/docs//AIToolPolicy.html",
+      "notes": "\"Using AI tools to fix issues labelled as “good first issues” is forbidden.\"",
+      "keys": []
+    },
+    {
+      "project": "Lobsters",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/lobsters/lobsters/blob/main/CONTRIBUTING.md#getting-oriented",
+      "notes": "",
+      "keys": ["github.com/lobsters/lobsters"]
+    },
+    {
+      "project": "LÖVE",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/love2d/love#contributing",
+      "notes": "",
+      "keys": ["github.com/love2d/love"]
+    },
+    {
+      "project": "Makko",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://forge.starlightnet.work/Team/Meta/src/branch/master/Contribution-Policy-Agreement.md",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Matplotlib",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://matplotlib.org/devdocs/devel/contribute.html#generative-ai",
+      "notes": "\"AI Disclosure\" secion in [PR template](https://github.com/matplotlib/matplotlib/blob/main/.github/PULL_REQUEST_TEMPLATE.md) must be filled",
+      "keys": []
+    },
+    {
+      "project": "MDAnalysis",
+      "allowed": "Yes*",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/MDAnalysis/mdanalysis/blob/develop/AI_POLICY.md",
+      "notes": "No \"substantial\" contributions generated by AI tools.",
+      "keys": ["github.com/mdanalysis/mdanalysis"]
+    },
+    {
+      "project": "Mesa",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/docs/submittingpatches.rst?ref_type=heads#id2",
+      "notes": "Use \"Assisted-by:\" or \"Generated-by:\"; do not use \"Co-authored-by:\" with AI tools.",
+      "keys": ["gitlab.freedesktop.org/mesa/mesa"]
+    },
+    {
+      "project": "mGBA",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/mgba-emu/mgba/blob/master/CONTRIBUTING.md#filing-pull-requests",
+      "notes": "",
+      "keys": ["github.com/mgba-emu/mgba"]
+    },
+    {
+      "project": "MicroPython",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/micropython/micropython/wiki/ContributorGuidelines#generative-ai-policy",
+      "notes": "",
+      "keys": ["github.com/micropython/micropython"]
+    },
+    {
+      "project": "Migraine Log",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.com/mglog/org.zerodogg.migraineLog/-/blob/main/CONTRIBUTING.md?ref_type=heads#use-of-generative-ai",
+      "notes": "",
+      "keys": ["gitlab.com/mglog/org.zerodogg.migrainelog"]
+    },
+    {
+      "project": "Mikan",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/1lab/mikan/src/branch/main/CONTRIBUTING.md",
+      "notes": "",
+      "keys": ["codeberg.org/1lab/mikan"]
+    },
+    {
+      "project": "MirBSD",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://mbsd.evolvis.org/permalinks/wlog2021_e20240726.htm#e20240726_wlog2021",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Molecular Nodes",
+      "allowed": "Yes*",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/BradyAJohnston/MolecularNodes/blob/main/AI_POLICY.md",
+      "notes": "No \"substantial\" contributions generated by AI tools.",
+      "keys": ["github.com/bradyajohnston/molecularnodes"]
+    },
+    {
+      "project": "Musl",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://www.openwall.com/lists/musl/2026/03/01/4",
+      "notes": "Threats reading an AI generated solution as being potentially tainted by proprietary code.",
+      "keys": []
+    },
+    {
+      "project": "napari",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://napari.org/dev/developers/contributing/ai.html",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "NetBSD",
+      "allowed": "Yes*",
+      "disclosure": "Yes",
+      "human": "No",
+      "policy": "https://www.netbsd.org/developers/commit-guidelines.html",
+      "notes": "AI-assisted contributions require explicit core approval",
+      "keys": []
+    },
+    {
+      "project": "NumPy",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://numpy.org/devdocs/dev/ai_policy.html",
+      "notes": "[Mailing list discussion](https://mail.python.org/archives/list/numpy-discussion@python.org/thread/LAR7P3KQWHWAIKYSHTS2MY7X4HUBVA3L/)",
+      "keys": []
+    },
+    {
+      "project": "nvim-tree",
+      "allowed": "Yes*",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/nvim-tree/nvim-tree.lua?tab=contributing-ov-file#ai-usage-policy-highly-discouraged",
+      "notes": "\"AI generated code is discouraged as this doesn't match (these) nvim-tree values.\"\"",
+      "keys": ["github.com/nvim-tree/nvim-tree.lua"]
+    },
+    {
+      "project": "OCaml",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/ocaml/ocaml/blob/trunk/AI.md",
+      "notes": "",
+      "keys": ["github.com/ocaml/ocaml"]
+    },
+    {
+      "project": "Open edX",
+      "allowed": "Yes*",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/openedx/.github/blob/master/AI_POLICY.md",
+      "notes": "Only specific tools with a \"sufficient reputation for proper training\" are allowed.",
+      "keys": ["github.com/openedx"]
+    },
+    {
+      "project": "OpenInfra",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://openinfra.org/legal/ai-policy",
+      "notes": "Required use of \"Assisted-by:\" or \"Generated-by:\". Open Source AI models recommended.",
+      "keys": []
+    },
+    {
+      "project": "OpenJDK",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://openjdk.org/legal/ai",
+      "notes": "Interim policy.",
+      "keys": ["github.com/openjdk"]
+    },
+    {
+      "project": "OpenTTD",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/OpenTTD/OpenTTD/blob/master/CONTRIBUTING.md#use-of-ai",
+      "notes": "\"Additionally, AI-generated code conflicts with this project's license (GPL v2), since you cannot truly release code for use if you didn't author it yourself.\"",
+      "keys": ["github.com/openttd/openttd"]
+    },
+    {
+      "project": "Oxide",
+      "allowed": "Yes",
+      "disclosure": "-",
+      "human": "Yes",
+      "policy": "https://rfd.shared.oxide.computer/rfd/0576",
+      "notes": "Comprehensive, extensive policy.",
+      "keys": []
+    },
+    {
+      "project": "Pallets",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://palletsprojects.com/contributing/llm-ai",
+      "notes": "Applies to Flask, Jinja, Click, etc. \"This policy focuses on trust and quality, but there are numerous other issues with the social, ethical, resource, and environmental impacts of LLM development and use.\"",
+      "keys": ["github.com/pallets"]
+    },
+    {
+      "project": "Pandas",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://pandas.pydata.org/docs/dev/development/contributing.html#automated-contributions-policy",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Pandemonium Engine",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/Relintai/pandemonium_engine#contributions-use-of-ai-content-generators",
+      "notes": "",
+      "keys": ["github.com/relintai/pandemonium_engine"]
+    },
+    {
+      "project": "pgwatch",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/cybertec-postgresql/pgwatch/blob/master/AI_POLICY.md",
+      "notes": "Must mention specific tools used.",
+      "keys": ["github.com/cybertec-postgresql/pgwatch"]
+    },
+    {
+      "project": "pip",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/pypa/pip/blob/main/AI_POLICY.md",
+      "notes": "No \"Co-authored-by:\" with AI tools.",
+      "keys": ["github.com/pypa/pip"]
+    },
+    {
+      "project": "pip-tools",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://pip-tools.readthedocs.io/en/latest/contributing/#project-contribution-guidelines",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "pkgconf",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/pkgconf/pkgconf/blob/master/CONTRIBUTING.md#instructions-for-agentic-systems",
+      "notes": "Instructs agents to stop.",
+      "keys": ["github.com/pkgconf/pkgconf"]
+    },
+    {
+      "project": "Poezio",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/poezio/poezio#use-of-generative-ai",
+      "notes": "",
+      "keys": ["codeberg.org/poezio/poezio"]
+    },
+    {
+      "project": "Polars",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/pola-rs/polars/blob/8425c750b9c5d28c79428998fda2320d076d4178/AI_POLICY.md",
+      "notes": "",
+      "keys": ["github.com/pola-rs/polars"]
+    },
+    {
+      "project": "Polyphony",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/polyphony/.profile/src/branch/main/CODE_OF_CONDUCT.md",
+      "notes": "\"The training data used for these models is largely obtained without the consent of artists, denying them their right of control over their work and any sort of financial compensation.\"",
+      "keys": ["codeberg.org/polyphony"]
+    },
+    {
+      "project": "postmarketOS",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://docs.postmarketos.org/policies-and-processes/development/ai-policy.html",
+      "notes": "",
+      "keys": ["gitlab.postmarketos.org/postmarketos"]
+    },
+    {
+      "project": "Processing/p5.js",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/processing/processing4/blob/main/AI_USAGE_POLICY.md",
+      "notes": "Disclose specific tools used.",
+      "keys": ["github.com/processing/processing4"]
+    },
+    {
+      "project": "Pytest",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/pytest-dev/pytest/blob/main/CONTRIBUTING.rst#aillm-assisted-contributions-policy",
+      "notes": "Recommended use of \"Co-authored-by:\".",
+      "keys": ["github.com/pytest-dev/pytest"]
+    },
+    {
+      "project": "PyTorch",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/pytorch/pytorch/blob/main/CONTRIBUTING.md#ai-assisted-development",
+      "notes": "",
+      "keys": ["github.com/pytorch/pytorch"]
+    },
+    {
+      "project": "PyVista",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/pyvista/pyvista/blob/main/CONTRIBUTING.rst#generative-ai",
+      "notes": "Follows CPython's policy.",
+      "keys": ["github.com/pyvista/pyvista"]
+    },
+    {
+      "project": "QEMU",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://www.qemu.org/docs/master/devel/code-provenance.html#use-of-ai-generated-content",
+      "notes": "",
+      "keys": ["gitlab.com/qemu-project/qemu", "github.com/qemu/qemu"]
+    },
+    {
+      "project": "QGIS",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/qgis/QGIS-Enhancement-Proposals/blob/master/qep-408-ai-tool-policy.md",
+      "notes": "Use \"Assisted-by:\" or \"Generated-by:\" labels.",
+      "keys": ["github.com/qgis/qgis-enhancement-proposals"]
+    },
+    {
+      "project": "qutip",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/qutip/qutip/blob/master/CONTRIBUTING.md#ai-tools-usage-policy",
+      "notes": "No AI contributions to \"good first issues\".",
+      "keys": ["github.com/qutip/qutip"]
+    },
+    {
+      "project": "Redox OS",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.redox-os.org/redox-os/redox/-/blob/master/CONTRIBUTING.md#ai-policy",
+      "notes": "",
+      "keys": ["gitlab.redox-os.org/redox-os/redox"]
+    },
+    {
+      "project": "Requests",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/psf/requests/blob/main/.github/AI_POLICY.md",
+      "notes": "No \"Co-authored-by:\" with AI tools.",
+      "keys": ["github.com/psf/requests"]
+    },
+    {
+      "project": "ruff",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/astral-sh/.github/blob/main/AI_POLICY.md",
+      "notes": "",
+      "keys": ["github.com/astral-sh/ruff", "github.com/astral-sh"]
+    },
+    {
+      "project": "Rust",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://forge.rust-lang.org/policies/llm-usage.html",
+      "notes": "[Announcement (blog post)](https://blog.rust-lang.org/inside-rust/2026/08/05/rust-langrust-is-adopting-an-llm-policy/)",
+      "keys": []
+    },
+    {
+      "project": "Schism Tracker",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/schismtracker/schismtracker/blob/master/AGENTS.md",
+      "notes": "\"Code generated by such LLMs may be based upon code under a license that is incompatible with the GPLv2.\"",
+      "keys": ["github.com/schismtracker/schismtracker"]
+    },
+    {
+      "project": "SciActive",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://sciactive.com/human-contribution-policy/",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "scikit-image",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://scikit-image.org/docs/dev/development/contribute.html#ai-policy",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "scikit-learn",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://scikit-learn.org/dev/developers/contributing.html#automated-contributions-policy",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "SciPy",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://scipy.github.io/devdocs/dev/conduct/ai_policy.html",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "SDL",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/libsdl-org/SDL/blob/main/.github/PULL_REQUEST_TEMPLATE.md",
+      "notes": "[AGENTS.md file](https://github.com/libsdl-org/SDL/blob/main/AGENTS.md)",
+      "keys": ["github.com/libsdl-org/sdl"]
+    },
+    {
+      "project": "SDL_net",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/libsdl-org/SDL_net/blob/main/AGENTS.md",
+      "notes": "Same policy as SDL.",
+      "keys": ["github.com/libsdl-org/sdl_net"]
+    },
+    {
+      "project": "SearXNG",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/searxng/searxng/blob/master/AI_POLICY.rst",
+      "notes": "",
+      "keys": ["github.com/searxng/searxng"]
+    },
+    {
+      "project": "Sentinel",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/cr1901/sentinel/src/branch/main/CONTRIBUTING.md#ai-guidelines",
+      "notes": "",
+      "keys": ["codeberg.org/cr1901/sentinel"]
+    },
+    {
+      "project": "Servo",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://book.servo.org/contributing/getting-started.html#ai-contributions",
+      "notes": "",
+      "keys": ["github.com/servo/servo"]
+    },
+    {
+      "project": "Skarnet",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://skarnet.org/software",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Smederee",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://smeder.ee/~jan0sch/smederee/files/CONTRIBUTING.md",
+      "notes": "Point in section \"Patch Requirements\": \"A patch SHALL NOT include any contributions which are believed to include or derive from AI generated content.\"",
+      "keys": []
+    },
+    {
+      "project": "snac",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/grunfink/snac2/src/branch/master/CONTRIBUTING.md",
+      "notes": "",
+      "keys": ["codeberg.org/grunfink/snac2"]
+    },
+    {
+      "project": "Sphinx",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/sphinx-doc/sphinx/blob/master/doc/internals/ai-policy.rst",
+      "notes": "",
+      "keys": ["github.com/sphinx-doc/sphinx"]
+    },
+    {
+      "project": "STAC",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/stac-utils/stac-utils.github.io/blob/main/docs/ai-contribution-policy.md",
+      "notes": "Use \"Assisted-by:\" and similar labels.",
+      "keys": ["github.com/stac-utils/stac-utils.github.io"]
+    },
+    {
+      "project": "stb",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/nothings/stb/blob/master/CONTRIBUTING.md#ai-and-llm-are-forbidden",
+      "notes": "",
+      "keys": ["github.com/nothings/stb"]
+    },
+    {
+      "project": "SymPy",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://docs.sympy.org/dev/contributing/ai-generated-code-policy.html",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Teamtype",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/teamtype/teamtype/blob/main/CONTRIBUTING.md#generative-aillm-policy",
+      "notes": "",
+      "keys": ["github.com/teamtype/teamtype"]
+    },
+    {
+      "project": "Telegraf",
+      "allowed": "Yes",
+      "disclosure": "No*",
+      "human": "Yes",
+      "policy": "https://www.influxdata.com/ai-generated-code-contributions-policy/",
+      "notes": "Disclosure only required upon being asked.",
+      "keys": []
+    },
+    {
+      "project": "Tenacity",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/tenacityteam/tenacity/src/branch/main/CONTRIBUTING.md#the-use-of-llms-and-ai-in-contributions",
+      "notes": "",
+      "keys": ["codeberg.org/tenacityteam/tenacity"]
+    },
+    {
+      "project": "TorchGeo",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://github.com/torchgeo/governance/blob/main/AI-POLICY.md",
+      "notes": "",
+      "keys": ["github.com/torchgeo"]
+    },
+    {
+      "project": "Tusky",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/tusky/Tusky/src/branch/develop/CONTRIBUTING.md#ai-policy",
+      "notes": "",
+      "keys": ["codeberg.org/tusky/tusky"]
+    },
+    {
+      "project": "Twisted",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://docs.twisted.org/en/latest/development/ai-policy.html",
+      "notes": "",
+      "keys": ["github.com/twisted/twisted"]
+    },
+    {
+      "project": "ty",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/astral-sh/.github/blob/main/AI_POLICY.md",
+      "notes": "",
+      "keys": ["github.com/astral-sh/ty", "github.com/astral-sh"]
+    },
+    {
+      "project": "typescript-eslint",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://typescript-eslint.io/contributing/ai-policy/",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Unbound",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://nlnetlabs.nl/llm-policy/",
+      "notes": "This policy covers all NLnet Labs projects such as ldns, NSD and Rotonda. LLM use permitted to generate vulnerability reports, to translate when communicating and for local assistance only.",
+      "keys": ["github.com/nlnetlabs/unbound"]
+    },
+    {
+      "project": "Unison",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/bcpierce00/unison/blob/master/CONTRIBUTING.md#llm-usage",
+      "notes": "",
+      "keys": ["github.com/bcpierce00/unison"]
+    },
+    {
+      "project": "University of Alaska Anchorage",
+      "allowed": "Yes*",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/uaanchorage/GSoC/blob/main/Acceptable-and-Ethical-AI-Use-Policy.md",
+      "notes": "\"No vibe code\"",
+      "keys": ["github.com/uaanchorage", "github.com/uaanchorage/gsoc"]
+    },
+    {
+      "project": "uv",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/astral-sh/.github/blob/main/AI_POLICY.md",
+      "notes": "",
+      "keys": ["github.com/astral-sh/uv", "github.com/astral-sh"]
+    },
+    {
+      "project": "Veloren",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://gitlab.com/veloren/veloren/-/blob/master/CONTRIBUTING.md?ref_type=heads#do-not-commit-tainted-content-to-the-repository",
+      "notes": "\"Content generated by large language models \\[...\\], is presumed to be tainted content, and must not be committed.\"",
+      "keys": ["gitlab.com/veloren/veloren"]
+    },
+    {
+      "project": "Vim Classic",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://sr.ht/~sircmpwn/vim-classic/",
+      "notes": "",
+      "keys": ["git.sr.ht/~sircmpwn/vim-classic"]
+    },
+    {
+      "project": "Wafrn",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/wafrn/wafrn/src/branch/main/CONTRIBUTING.md",
+      "notes": "",
+      "keys": ["codeberg.org/wafrn/wafrn"]
+    },
+    {
+      "project": "Wagtail",
+      "allowed": "Yes",
+      "disclosure": "Yes",
+      "human": "Yes",
+      "policy": "https://docs.wagtail.org/en/latest/contributing/general_guidelines.html#general-coding-guidelines",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "Wikipedia",
+      "allowed": "No*",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://en.wikipedia.org/wiki/Wikipedia:Artificial_intelligence",
+      "notes": "Allows a few, very specific uses such as translation assistance.",
+      "keys": []
+    },
+    {
+      "project": "WP1",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/openzim/wp1/blob/main/CONTRIBUTING.md#usage-of-llmsai-coding-assistants",
+      "notes": "",
+      "keys": ["github.com/openzim/wp1"]
+    },
+    {
+      "project": "x86css",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://lyra.horse/x86css/#ai",
+      "notes": "\"I do not use ai. I don't think you can build a project like this with an llm.\"",
+      "keys": []
+    },
+    {
+      "project": "Xarray",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/pydata/xarray/blob/main/doc/contribute/ai-policy.md",
+      "notes": "[Xarray's CLAUDE.md file](https://github.com/pydata/xarray/blob/main/CLAUDE.md)",
+      "keys": ["github.com/pydata/xarray"]
+    },
+    {
+      "project": "XScreenSaver",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://www.jwz.org/xscreensaver/faq.html#writing-savers",
+      "notes": "",
+      "keys": []
+    },
+    {
+      "project": "yt-dlp",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://github.com/yt-dlp/yt-dlp/blob/master/CONTRIBUTING.md#automated-contributions-ai--llm-policy",
+      "notes": "\"AI-generated code conflicts with this project's license (Unlicense), since you cannot truly release code into the public domain if you didn't author it yourself.\"",
+      "keys": ["github.com/yt-dlp/yt-dlp"]
+    },
+    {
+      "project": "Zig",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://ziglang.org/code-of-conduct/#strict-no-llm-no-ai-policy",
+      "notes": "[Contributor Poker and Zig's AI Ban - rationale for ban](https://kristoff.it/blog/contributor-poker-and-ai/)",
+      "keys": ["codeberg.org/ziglang/zig", "github.com/ziglang/zig"]
+    },
+    {
+      "project": "Ziglings",
+      "allowed": "No",
+      "disclosure": "-",
+      "human": "-",
+      "policy": "https://codeberg.org/ziglings/exercises/src/branch/main/CONTRIBUTING.md#ai-generated-content",
+      "notes": "AI tools are allowed to polish English only",
+      "keys": ["codeberg.org/ziglings/exercises"]
+    },
+    {
+      "project": "Zulip",
+      "allowed": "Yes",
+      "disclosure": "No",
+      "human": "Yes",
+      "policy": "https://github.com/zulip/zulip/blob/main/CONTRIBUTING.md#ai-use-policy-and-guidelines",
+      "notes": "",
+      "keys": ["github.com/zulip/zulip"]
+    }
+  ]
+}

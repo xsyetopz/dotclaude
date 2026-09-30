@@ -32,11 +32,22 @@ delete. The decision is yours, so the guard asks.
 dependencies (`grep -r`, `find`, `tree`, `rg --no-ignore`, `fd -I`). Plain
 `rg`, `fd`, and `git grep` skip those directories. A gitignored directory
 with fewer than 200 entries, such as `__pycache__`, does not cause a deny.
+An explicit bypass (`rg -uu`, `fd -I`, `git grep --no-index`) is denied only
+when it walks a build or dependency directory, such as `node_modules`,
+`dist`, or `.build`. A bypass into ignored notes or docs passes.
 
 **Why:** an agent's `grep -r` in a repository with an 8.9 GB `.build/`
 directory hung, and it would have filled the context with generated files.
 Each turn re-reads the whole context, so text that enters the context costs
 usage on every later turn ([usage evidence](dossier/usage.md)).
+
+**What:** checks commits, pushes, pull requests, issues, discussions, and
+comments against a catalog of project AI policies. It denies a contribution
+to a project that forbids AI work, and asks before a write to a repository
+that you do not own. See [Contributions](contributions.md).
+
+**Why:** a contribution speaks for you in public, and some projects do not
+accept AI work.
 
 **What:** denies a full `cat` or `Read` of a file that the same agent
 already read in full, when the file did not change. A partial `Read` with

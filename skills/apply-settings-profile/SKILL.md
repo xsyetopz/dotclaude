@@ -20,7 +20,7 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
    bun "${CLAUDE_SKILL_DIR}/scripts/apply-settings.mjs" --scope <scope>
    ```
 
-3. Show the user the listed changes, grouped as below, and ask whether to apply them.
+3. Show the user the listed changes, grouped as below. Do not ask yet. Step 4 asks once for all choices.
 
    | Group | Keys | Why |
    | --- | --- | --- |
@@ -35,6 +35,7 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
    | Feedback off | `env.DISABLE_FEEDBACK_COMMAND=1`, `env.CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1`, `env.DISABLE_ERROR_REPORTING=1` | Removes `/feedback`, `/bug`, `/share`, and the `SendFeedback` tool (about 5.5 KB sent on every request). Also removes the session-quality survey and error reports. Telemetry itself stays on, because `DISABLE_TELEMETRY` and `DO_NOT_TRACK` also stop feature-flag fetching. That removes the advisor tool and the marking of large pastes. |
    | Secrets | `permissions.deny` `Read(...)` rules for `.env`, `.env.local`, `.env.production`, `.env.*.local`, `~/.ssh`, `~/.aws/credentials`, `~/.gnupg`, `~/.netrc`, `~/.docker/config.json` | Keeps credentials out of the context window. |
    | Safety | `permissions.disableBypassPermissionsMode`, `enableAllProjectMcpServers: false`, `workflowKeywordTriggerEnabled: false` | No bypass mode, no silent project MCP servers, and the word "ultracode" in a prompt does not start a workflow. |
+   | Contribution approval | `permissions.ask` rules for `gh pr create`, `gh pr comment`, `gh pr review`, `gh issue create`, `gh issue comment`, `gh discussion create`, and `gh discussion comment` | Each one speaks for the user in public. An ask rule shows a permission prompt for each call, and it wins over an allow rule. dotclaude's Bash guard also asks before a push or write to a repository that the user does not own, and denies contributions to projects that forbid AI. |
    | Git instructions | `includeGitInstructions: false` | Removes Claude Code's built-in commit and PR instructions. The dotclaude system prompt carries its own git section. The `git_attribution` option keeps the commit trailer and PR footer. |
    | Schema | `$schema` | Lets editors check and complete the file against the published settings schema. |
 
@@ -59,7 +60,13 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
 
    Pass the ones the user keeps as `--skip name,name` in both the preview and the apply command. If an earlier run applied a switch that the user now skips, the switch stays in the settings file. It stays there until the user removes its key.
 
-4. Apply, after the user agrees:
+4. Run the previews of steps 5 to 7 (they write nothing), and show them. Then ask one `AskUserQuestion` call with these questions, each with the recommended option first:
+
+   - Apply the profile, or drop some groups.
+   - Which built-in switches to keep (multi-select).
+   - Which extras to install (multi-select): the global `CLAUDE.md` section, the system-prompt launcher, the status line, and the managed-settings lock.
+
+   Then run the apply command of each item that the user picked, without a second question in text. dotclaude's Bash guard shows a permission prompt for each `--apply`, and that prompt is the approval of the write. A second question for the same write teaches the user to approve without reading. Apply the profile:
 
    ```bash
    bun "${CLAUDE_SKILL_DIR}/scripts/apply-settings.mjs" --scope <scope> [--skip name,...] --apply
@@ -69,14 +76,14 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
 
    dotclaude's Bash guard asks the user to approve every `--apply` of this skill's scripts, also in auto mode. This way, the auto-mode classifier does not deny it as self-modification. If the user declines the prompt, stop. If something blocks the command anyway, give the user the exact command to run with the `!` prefix. Do not retry, because a block is the user's decision.
 
-5. Offer the global `CLAUDE.md` section. It adds a short, marked block to `~/.claude/CLAUDE.md` that names:
+5. The global `CLAUDE.md` section. It adds a short, marked block to `~/.claude/CLAUDE.md` that names:
 
    - the CLI tools found on this machine
    - reading the branch and `git status` before git work
    - that a repository's own files define its commands
    - a `# Compact instructions` section that tells the compaction summary what to keep word for word
 
-   If the file has no top-level heading, it also adds a `# CLAUDE.md` heading at the top. It leaves everything else as it is. Preview it, show it to the user, and apply it only if they agree:
+   If the file has no top-level heading, it also adds a `# CLAUDE.md` heading at the top. It leaves everything else as it is. Preview it in step 4, and apply it if the user picked it:
 
    ```bash
    bun "${CLAUDE_SKILL_DIR}/scripts/apply-claude-md.mjs"
@@ -85,7 +92,7 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
 
    A second run replaces the block in place. `--remove --apply` removes the block again.
 
-6. Install the system-prompt launcher. It is part of the default setup, so recommend it, but apply it only after the user agrees. `profiles/system-prompt.md` replaces Claude Code's built-in system prompt and holds dotclaude's engineering and git rules. Without it, the session has only the output style's rules on how to talk and report. The script writes the installed Claude Code version into the prompt. Only the `--system-prompt-file` CLI flag replaces that prompt, and a plugin cannot pass CLI flags. So the script adds a `claude` function to the user's shell startup file, and the function passes the flag. The script finds the shell from `$SHELL`, or PowerShell on Windows. It supports zsh (`.zshrc`), bash (`.bash_profile` on macOS, `.bashrc` elsewhere), fish (`conf.d/dotclaude.fish`), and PowerShell (`$PROFILE`). If the user names another shell or file, pass `--shell` or `--rc`. Preview first:
+6. The system-prompt launcher. It is part of the default setup, so recommend it in step 4. `profiles/system-prompt.md` replaces Claude Code's built-in system prompt and holds dotclaude's engineering and git rules. Without it, the session has only the output style's rules on how to talk and report. The script writes the installed Claude Code version into the prompt. Only the `--system-prompt-file` CLI flag replaces that prompt, and a plugin cannot pass CLI flags. So the script adds a `claude` function to the user's shell startup file, and the function passes the flag. The script finds the shell from `$SHELL`, or PowerShell on Windows. It supports zsh (`.zshrc`), bash (`.bash_profile` on macOS, `.bashrc` elsewhere), fish (`conf.d/dotclaude.fish`), and PowerShell (`$PROFILE`). If the user names another shell or file, pass `--shell` or `--rc`. Preview first:
 
    ```bash
    bun "${CLAUDE_SKILL_DIR}/scripts/apply-launcher.mjs"
@@ -100,7 +107,7 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
    - The replacement does not carry auto memory's instructions or brief and focus mode's text. The script warns when auto memory is on.
    - `--remove --apply` removes the function and the prompt copy again.
 
-7. Offer the dotclaude status line. It replaces the user's `statusLine` setting, so show the current command from the preview and apply only if the user agrees:
+7. The dotclaude status line. It replaces the user's `statusLine` setting, so show the current command from the preview in step 4:
 
    ```bash
    bun "${CLAUDE_SKILL_DIR}/scripts/apply-statusline.mjs"
@@ -118,7 +125,7 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
 
    Colors change at 75% and 90%. Without plan limits, it shows the session's estimated cost. The plugin also sets `subagentStatusLine` through a stub that session start writes. Each subagent row then shows its context against its context budget: 100k, or 150k for the reviewers. `--remove --apply` removes the status line again.
 
-8. Offer the optional managed-settings lock described in `<managed_settings>` below.
+8. If the user picked the managed-settings lock, follow `<managed_settings>` below.
 
 9. Tell the user to restart Claude Code, because Claude Code reads `env`, model settings, managed settings, and `CLAUDE.md` at startup. The launcher needs a new terminal.
 </procedure>
@@ -128,7 +135,7 @@ The plugin's own options (the guards, the stop gate, `allowed_models`) live in `
 </plugin_options>
 
 <managed_settings>
-User and project settings stay editable, so a stray `/fast` or a later edit can undo them. After you apply the profile, offer the managed drop-in as an optional self-lock. It is a managed settings file that the user cannot change or remove without admin rights. It sets only `maxEffortLevel: "xhigh"`, `fastMode: false`, `fastModePerSessionOptIn: true`, and the four `availableModels`. Say plainly that undoing it later also takes admin rights, and install it only if the user wants that.
+User and project settings stay editable, so a stray `/fast` or a later edit can undo them. Offer the managed drop-in in step 4 as an optional self-lock. It is a managed settings file that the user cannot change or remove without admin rights. It sets only `maxEffortLevel: "xhigh"`, `fastMode: false`, `fastModePerSessionOptIn: true`, and the four `availableModels`. Say plainly that undoing it later also takes admin rights, and install it only if the user wants that.
 
 The script writes `managed-settings.d/50-dotclaude.json` inside the managed settings directory (`/Library/Application Support/ClaudeCode/` on macOS, `/etc/claude-code/` on Linux and WSL). Claude Code merges `managed-settings.json` first and then every `*.json` in `managed-settings.d/` in alphabetical order. So the drop-in leaves any existing `managed-settings.json` untouched. The script names any keys the two share. On Windows (`C:\Program Files\ClaudeCode\`) it prints the path and content for the user to create from an administrator shell.
 

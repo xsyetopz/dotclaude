@@ -6,10 +6,10 @@
 import path from "node:path";
 import { option, projectRoot, run } from "../lib/_common.mjs";
 import {
+  codeFile,
   fullReads,
   isCheckCommand,
   load,
-  NON_CODE,
   outputShowsFailure,
   recordRead,
   save,
@@ -17,7 +17,6 @@ import {
 } from "../lib/_ledger.mjs";
 import { approveAsk } from "../lib/_verdicts.mjs";
 
-/** Path of a code edit relative to the project, or null when it doesn't count. */
 /** Project-relative path an edit tool wrote, or null. */
 function editedPath(data) {
   if (data.hook_event_name === "PostToolUseFailure") return undefined;
@@ -27,8 +26,6 @@ function editedPath(data) {
   if (!file || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
   return rel;
 }
-
-const codeFile = (rel) => !NON_CODE.test(rel) && !rel.startsWith(".claude/");
 
 /** Result of a finished test/build/lint command, or null when it doesn't count. */
 function checkRun(data) {
@@ -92,7 +89,8 @@ run((data) => {
       const rel = editedPath(data);
       if (!rel) return;
       recordEdited(state, rel);
-      if (codeFile(rel)) state.lastEdit = { seq: state.seq, path: rel };
+      if (codeFile(rel, projectRoot(data)))
+        state.lastEdit = { seq: state.seq, path: rel };
       break;
     }
     case "Bash": {
@@ -105,10 +103,9 @@ run((data) => {
               data.cwd || projectRoot(data),
             )
           : [];
-      if (written.length) {
-        state.lastEdit = { seq: state.seq, path: written[0] };
-        for (const rel of written) recordEdited(state, rel);
-      }
+      const code = written.find((rel) => codeFile(rel, projectRoot(data)));
+      if (code) state.lastEdit = { seq: state.seq, path: code };
+      for (const rel of written) recordEdited(state, rel);
       const reads =
         data.hook_event_name === "PostToolUse"
           ? fullReads(command, data.cwd || projectRoot(data))

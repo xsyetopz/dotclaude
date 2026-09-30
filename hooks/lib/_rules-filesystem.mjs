@@ -15,6 +15,10 @@ const TEMP_PREFIXES = [
   "/dev/shm/",
 ];
 
+// A named entry under the temp folder, such as `$TMPDIR/build-1`. The temp
+// folder itself and a bare glob in it (`$TMPDIR/*`) still ask.
+const TEMP_CHILD = /^\$(TMPDIR|\{TMPDIR\})\/+[^$*?[/\s][^$*?[]*$/;
+
 const ROOTISH = new Set([
   "/",
   "/*",
@@ -107,6 +111,7 @@ export function rm(cmd, ctx) {
       out.push(["deny", `\`rm -r ${t}\` targets a home or system directory`]);
       continue;
     }
+    if (TEMP_CHILD.test(t) && !t.split("/").includes("..")) continue;
     if (
       BROAD.has(t) ||
       t.includes("__SUBST__") ||

@@ -3,6 +3,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { git } from "./_bash-args.mjs";
 import { expandHome, writeTargets } from "./_bash-writes.mjs";
 import { stateDir } from "./_common.mjs";
 import { parse } from "./_shell.mjs";
@@ -11,6 +12,19 @@ import { subagentTranscript } from "./_transcript.mjs";
 /** Files that are not code: editing them alone needs no test run. */
 export const NON_CODE =
   /\.(md|mdx|markdown|txt|rst|adoc|org|csv|tsv|svg|png|jpe?g|gif|webp|ico|pdf|log)$/i;
+
+const GIT_META = /^\.(claude|git)\/|(^|\/)\.git(ignore|attributes)$/;
+
+/**
+ * True when a write to `rel` (relative to `root`) changes code that a check
+ * must cover. Docs, git config, and gitignored files (scratch files, build
+ * output) do not count.
+ */
+export function codeFile(rel, root) {
+  if (NON_CODE.test(rel) || GIT_META.test(rel)) return false;
+  // `check-ignore -q` exits 0 only for an ignored path.
+  return git(root, ["check-ignore", "-q", "--", rel]) === undefined;
+}
 
 function file(sessionId, agentId) {
   const safe = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");

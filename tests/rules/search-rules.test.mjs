@@ -166,3 +166,23 @@ test("a `cd ~/...` hint resolves against HOME, not the project", () => {
 test("a `cd $DIR` hint leaves the base unknown", () => {
   expect(level("cd $DIR && find . -name '*.swift'")).toBe("pass");
 });
+
+test("an explicit ignore bypass over ignored notes passes, over build output it is denied", () => {
+  const notes = tempDir();
+  execFileSync("git", ["init", "-q", notes]);
+  fs.writeFileSync(path.join(notes, ".gitignore"), "docs/external/\ndist/\n");
+  for (const dir of ["docs/external", "dist"]) {
+    fs.mkdirSync(path.join(notes, dir), { recursive: true });
+    for (let i = 0; i < 200; i += 1)
+      fs.writeFileSync(path.join(notes, dir, `${i}.md`), "");
+  }
+  const c = { ...ctx, root: notes, cwd: notes };
+  for (const command of [
+    'rg -n -uu "Task" docs',
+    "fd -I -e md . docs",
+    "git grep --no-index Task docs",
+  ])
+    expect(level(command, c)).toBe("pass");
+  expect(level('rg -n -uu "Task" .', c)).toBe("deny");
+  expect(level("grep -rn Task docs", c)).toBe("deny");
+});

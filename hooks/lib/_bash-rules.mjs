@@ -11,6 +11,7 @@ import { positional } from "./_bash-args.mjs";
 import { commandBase, expandHome, writeTargets } from "./_bash-writes.mjs";
 import { check as editCheck } from "./_edit-rules.mjs";
 import { PROTECTED_REASON, protectedMatch, protectedUnder } from "./_loop.mjs";
+import { contribution } from "./_rules-contrib.mjs";
 import { DB_CLIENTS, db, dbReset, snapshotBless } from "./_rules-data.mjs";
 import {
   chmod,
@@ -29,7 +30,7 @@ import { settingsWrite } from "./_rules-settings.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /**
- * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean, background?: boolean, oracle?: {root: string, globs: string[]}}} Context
+ * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean, background?: boolean, ghUser?: string, oracle?: {root: string, globs: string[]}}} Context
  * @typedef {["deny" | "ask" | "warn", string]} Finding
  */
 
@@ -67,6 +68,8 @@ function checkCommand(cmd, ctx) {
   const out = [];
   const handler = HANDLERS[cmd.name];
   if (handler) out.push(...handler(cmd, ctx));
+  if (cmd.name === "gh" || cmd.name === "git")
+    out.push(...contribution(cmd, ctx));
   if (readsStdinScript(cmd) && cmd.pipedFrom) {
     const producer = program(cmd.pipedFrom[0]);
     if (isDecoder(producer, cmd.pipedFrom.slice(1))) {
@@ -141,7 +144,9 @@ function interpreterInline(cmd, ctx) {
     code = cmd.heredoc;
   if (!code) return [];
   const out = [];
-  if (DESTRUCTIVE_CODE.test(code))
+  // A delete call named inside a string literal (`s.replace('unlink(', x)`)
+  // is data, not a call.
+  if (DESTRUCTIVE_CODE.test(code.replace(STRING_LIT, '""')))
     out.push(["warn", `inline \`${cmd.name}\` code deletes files`]);
   if (
     SHELL_OUT.test(code) ||

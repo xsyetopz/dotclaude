@@ -47,6 +47,15 @@
       "Read(~/.docker/config.json)",
       "Agent(model:fable*)",
       "Agent(general-purpose)"
+    ],
+    "ask": [
+      "Bash(gh pr create *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh pr review *)",
+      "Bash(gh issue create *)",
+      "Bash(gh issue comment *)",
+      "Bash(gh discussion create *)",
+      "Bash(gh discussion comment *)"
     ]
   }
 }

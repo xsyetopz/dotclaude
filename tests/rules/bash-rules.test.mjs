@@ -133,6 +133,9 @@ const ASK = [
   "dd if=/dev/zero of=/dev/disk2",
   "npx prisma migrate reset",
   "bunx prisma migrate reset",
+  'rm -rf "$TMPDIR"',
+  'rm -rf "$TMPDIR/"*',
+  "rm -rf $TMPDIR/../x",
 ];
 
 // Recoverable: asks outside auto mode, silent inside it (see hooks.test.mjs).
@@ -150,6 +153,7 @@ const WARN = [
   "fd __pycache__ -x rm -rf {//}",
   "fd __pycache__ -x rm -rf {} src",
   "python3 -c \"import shutil; shutil.rmtree('build')\"",
+  "python3 -c \"from pathlib import Path; Path('a').unlink()\"",
 ];
 
 const PASS = [
@@ -165,6 +169,10 @@ const PASS = [
   "rm -rf build",
   "rm -rf node_modules",
   "rm -rf /tmp/foo",
+  'rm -rf "$TMPDIR/appimg"',
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: a shell variable, not a template
+  "rm -rf ${TMPDIR}/build-1/out",
+  `python3 -c "s = open('a.py').read(); print(s.replace('os.unlink(', 'x'))"`,
   "rm file.txt",
   "git status",
   "git log --oneline | head",

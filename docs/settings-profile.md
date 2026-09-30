@@ -68,6 +68,11 @@ you choose and can review.
   `Agent(general-purpose)` removes that agent from the list that Claude
   sees. The plugin's refusal hook kept Claude from using it, but Claude
   asked for it 244 times in one week, because the list still named it.
+  Ask rules for `gh pr create`, `gh pr comment`, `gh pr review`,
+  `gh issue create`, `gh issue comment`, `gh discussion create`, and
+  `gh discussion comment` give a prompt for each one, because each speaks
+  for you in public. An ask rule wins over an allow rule. See
+  [Contributions](contributions.md).
 - **Git:** `includeGitInstructions: false` removes Claude Code's git
   instructions, because dotclaude's system prompt has its own. The
   `git_attribution` option keeps the commit trailer and pull request footer.

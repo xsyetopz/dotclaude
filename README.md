@@ -89,6 +89,10 @@ To try an unreleased checkout, run `claude --plugin-dir /path/to/dotclaude`.
   deny an unchanged re-read and a foreground server or watcher, lock the
   model list, and tell Claude when a usage limit is near.
 
+Before a contribution to a project that you do not own, the Bash guard
+checks a [catalog of project AI policies](docs/contributions.md). It denies
+the contribution when the project forbids AI work, and otherwise asks you.
+
 You can turn off each hook in `/config` under dotclaude. Every dotclaude
 message starts with `[dotclaude]`. To run a command that a guard denied, type
 `! <command>`.

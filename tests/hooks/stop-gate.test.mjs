@@ -36,6 +36,24 @@ test("stop gate counts files written through Bash as edits", () => {
   expect(stop(sid2), "a write outside the project is not an edit").toBe(null);
 });
 
+test("git config and gitignored files are not code edits", () => {
+  fs.appendFileSync(path.join(repo, ".git", "info", "exclude"), "scratch/\n");
+  for (const command of [
+    "echo 'dist/' >> .gitignore",
+    "echo 'x' >> .git/info/exclude",
+    "mkdir -p scratch && echo 'print(1)' > scratch/probe.py",
+  ]) {
+    const sid = session();
+    checkRun(sid, "bun test");
+    checkRun(sid, command);
+    expect(stop(sid), command).toBe(null);
+  }
+  const sid = session();
+  checkRun(sid, "bun test");
+  edit(sid, "scratch/probe.py");
+  expect(stop(sid), "an Edit of an ignored file").toBe(null);
+});
+
 test("inline scripts that write only scratch files are not edits", () => {
   const sid = session();
   const bash = (command) =>

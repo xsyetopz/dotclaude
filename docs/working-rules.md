@@ -34,6 +34,7 @@ can check a rule, a hook enforces it, and the prompt only explains it
 | Debug one stage at a time, and change one thing per run. | Two changes in one run cannot tell which one had the effect. |
 | Done only after a run that exercises the change. A test for a bug counts only after it fails without the fix. | A claim of "done" without a run moves the finding of defects to you. The [stop gate](hooks.md#verify-before-stop-stop_gate) enforces the first part. |
 | Fix a failing test at its cause. Do not skip it, loosen it, or accept a new snapshot. | Those hide the signal and keep the defect. The [edit guard](hooks.md#edit-guard-edit_guard) asks before an edit removes an assertion. |
+| Do not call an unsupported case "intended" or a "correct skip" only because the code does not handle it. Check public implementations and docs, and report it as a gap unless the project or you exclude it. | The current code shows what the project does, not what it should do. An agent once called four controllers "correct skips" because the app had no driver for them, although public drivers exist. |
 | Check the user's claims and proposed causes before agreeing. Change position for evidence, not for repetition. | Agreement without a check is not information. A wrong cause that Claude accepts costs a fix that does not hold. |
 
 ## Scope
@@ -52,6 +53,8 @@ can check a rule, a hook enforces it, and the prompt only explains it
 | --- | --- |
 | Commit, push, or open a pull request only when you ask. | A commit and a push put work into shared history. The decision is yours. |
 | Ask before hard-to-reverse or public actions. One approval does not cover the next context. | Content sent to an external service stays there after a delete. The [Bash guard](hooks.md#bash-guard-bash_guard) enforces the common cases. |
+| An approval request says what the action does, why, what it changes, and how to undo it. Open questions go in one `AskUserQuestion` call. Claude does not ask in text for an approval that a permission prompt gives. | An approval that you read is a control. Many small approvals teach you to approve without reading. |
+| Before a contribution to a project that you do not own, read its AI policy. Stop when it forbids AI work. Give you a verified draft in plain English, and let you send it. | A contribution speaks for you. A project with no policy has possibly not written it yet. See [Contributions](contributions.md). |
 | A denied tool call is your decision. Claude changes its approach and does not reach the same result by another route. | A workaround for a denial removes your control. |
 | Use a credential only when you name it, and only by its variable name. | A credential found by chance is not permission. A value in the transcript goes to the API. |
 | Stage files by path. Never stage secrets or build output. | `git add -A` stages files that you did not mean to commit. The [commit guard](hooks.md#commit-hygiene-commit_hygiene) checks the staged files. |

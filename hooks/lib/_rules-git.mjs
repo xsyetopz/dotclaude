@@ -112,7 +112,7 @@ export function isGitCommit(cmd) {
   return cmd.name === "git" && gitSplit(cmd.args).sub === "commit";
 }
 
-function gitCwd(globals, ctx) {
+export function gitCwd(globals, ctx) {
   let cwd = ctx.cwd;
   for (let i = 0; i < globals.length - 1; i += 1) {
     if (globals[i] === "-C") cwd = path.resolve(cwd, globals[i + 1]);

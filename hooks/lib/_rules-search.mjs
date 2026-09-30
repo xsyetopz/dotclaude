@@ -21,6 +21,12 @@ const SHALLOW = 2;
 // through it is fast and adds little output, and a deny there only made
 // Claude retry the same command.
 const SMALL_DIR_ENTRIES = 200;
+// A walk with an explicit ignore-bypass flag (`rg -u`, `fd -I`, `ag -u`,
+// `git grep --no-index`) asks for ignored files on purpose, such as private
+// notes. It is denied only when it walks one of these build, dependency, or
+// cache directory names.
+const BUILD_NAME =
+  /^(node_modules|bower_components|jspm_packages|\.build|build|dist|target|out|DerivedData|\.derivedData.*|Pods|Carthage|vendor|\.venv|venv|\.gradle|\.next|\.nuxt|\.svelte-kit|\.cache|coverage|__pycache__|\.tox|\.nox|\.mypy_cache|\.ruff_cache|\.pytest_cache|\.turbo|\.parcel-cache|\.dart_tool|_build|deps|\.zig-cache|zig-out|\.stack-work|dist-newstyle|elm-stuff|\.terraform|cmake-build-.*|obj|bin)$/;
 
 /**
  * Split argv into flags and positionals. `short` lists single-letter flags
@@ -181,6 +187,7 @@ function rg(cmd) {
   const patternGiven = has(flags, "-e", "--regexp", "-f", "--file");
   return {
     tool: "rg --no-ignore",
+    bypass: true,
     roots: listing || patternGiven ? positionals : positionals.slice(1),
     excludes: excludeNames(
       values(flags, "-g", "--glob", "--iglob").filter((g) => g.startsWith("!")),
@@ -231,6 +238,7 @@ function fdWalk(cmd) {
     roots = roots.length ? roots.map((r) => path.join(base, r)) : [base];
   return {
     tool: `${cmd.name} --no-ignore`,
+    bypass: true,
     roots,
     excludes: excludeNames(values(flags, "-E", "--exclude")),
     depth: depth(flags, "-d", "--max-depth", "--exact-depth"),
@@ -350,6 +358,7 @@ function ag(cmd) {
   const listing = has(flags, "-g");
   return {
     tool: `${cmd.name} -u`,
+    bypass: true,
     roots: listing ? positionals : positionals.slice(1),
     excludes: excludeNames(values(flags, "--ignore", "--ignore-dir")),
     depth: depth(flags, "--depth"),
@@ -380,6 +389,7 @@ function gitGrep(cmd) {
   const patternGiven = has(flags, "-e", "--regexp", "-f", "--file");
   return {
     tool: "git grep --no-index",
+    bypass: true,
     roots: patternGiven ? positionals : positionals.slice(1),
     excludes: [],
     depth: depth(flags, "--max-depth"),
@@ -486,7 +496,11 @@ export function ignoredWalk(cmd, ctx) {
       for (const d of ignoredDirs(dir, ctx))
         if (!excluded(d, walk.excludes)) hits.add(d);
   }
-  const list = [...hits].filter((d) => large(path.join(ctx.root, d)));
+  const list = [...hits].filter(
+    (d) =>
+      (!walk.bypass || d.split("/").some((part) => BUILD_NAME.test(part))) &&
+      large(path.join(ctx.root, d)),
+  );
   if (!list.length) return [];
   const shown = list
     .slice(0, 3)

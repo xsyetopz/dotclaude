@@ -10,6 +10,65 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-30
+
+### Added
+
+- A contribution guard in the Bash guard. It covers `git commit`,
+  `git push`, and `gh pr`, `gh issue`, and `gh discussion` writes. It also
+  covers `gh api` writes and GraphQL mutations that post content. The guard
+  denies a contribution to a project that forbids AI work, per a catalog
+  made from melissawm's `open-source-ai-contribution-policies` (183
+  projects, 101 forbid). It asks before a push or write to a GitHub
+  repository whose owner is not your `gh` login. The prompt shows the
+  project's catalog entry, or says that its policy is possibly unwritten. A
+  local `git commit` in another owner's clone passes. See
+  [Contributions](docs/contributions.md).
+- `scripts/update-ai-policies.mjs` updates the catalog into the plugin data
+  directory. The guard checks the upstream README hash only when a
+  contribution command runs, at most once a day, and tells you to update
+  when the hash changed. `DOTCLAUDE_OFFLINE=1` turns the check off.
+- The `contribute-upstream` skill. It reads the project's AI policy, stops
+  when the project forbids AI work, and treats a missing policy as unknown.
+  It verifies the claim before a draft and writes the draft in plain English
+  for you to send. Claude does not reply in the thread after that unless you
+  ask.
+- The settings profile adds `permissions.ask` rules for `gh pr create`,
+  `gh pr comment`, `gh pr review`, `gh issue create`, `gh issue comment`,
+  `gh discussion create`, and `gh discussion comment`.
+
+### Changed
+
+- System prompt, approvals: approval also covers actions that spend money or
+  speak for you. A request says what the action does, why, what it changes,
+  and how to undo it. Open questions go in one `AskUserQuestion` call.
+  Claude does not ask in text for an approval that a permission prompt
+  gives, because many small approvals teach you to approve without reading.
+- System prompt, gaps: Claude does not call an unsupported case "intended"
+  or a "correct skip" only because the code does not handle it. It checks
+  public implementations and docs, and reports a gap unless the project or
+  you exclude the case. In one session an agent had called four controllers
+  "correct skips" although public drivers for them exist.
+- `apply-settings-profile` runs all previews and asks one question for the
+  profile groups, the switches, and the extras. The permission prompt of
+  each `--apply` is the approval of the write, with no second question in
+  text.
+
+### Fixed
+
+- The search guard denied `rg -uu`, `fd -I`, and `git grep --no-index` into
+  large gitignored notes or docs. It now denies an explicit bypass only when
+  it walks a build or dependency directory, such as `node_modules` or
+  `dist`.
+- `rm -rf "$TMPDIR/name"` asked for approval. A named child of `$TMPDIR`
+  now passes. `$TMPDIR` itself, a glob, and `..` still ask.
+- Inline code such as `python3 -c "s.replace('os.unlink(', …)"` gave a
+  destructive-code warning for text inside a string literal. The check now
+  ignores string literals.
+- The stop gate counted an edit of `.gitignore`, `.git/`, `.claude/`, or a
+  gitignored file as a code edit and asked for a check run. It now counts
+  only files that git does not ignore, in both the `Edit` and `Bash` paths.
+
 ## [0.13.1] - 2026-09-29
 
 ### Fixed
@@ -375,4 +434,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.13.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.14.0...HEAD
