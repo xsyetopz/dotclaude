@@ -56,6 +56,9 @@ Fork mode forces every subagent into the background. A foreground agent
 returns its report in the turn that spawned it, so it causes no wake turn.
 Agents spawned in one message still run together. The expected saving is the
 redundant notification turns, up to about $135 a week, or 7% (inference).
+Claude Code 2.1.285 removed a second, redundant reply that came after each
+background report in auto mode. The first wake turn remains, so forks stay
+off.
 The main session waits while agents run. Esc interrupts it.
 
 ### Turn-Limit Handoff

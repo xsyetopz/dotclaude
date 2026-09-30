@@ -2,8 +2,9 @@
 
 Part of the [dotclaude documentation](README.md). Each hook enforces a rule
 that a program can check, because a rule stated only in prose did not hold in
-the measured week ([usage evidence](dossier/usage.md)). You can turn off each
-hook in `/config` under dotclaude. The option name is after each heading.
+the measured week ([usage evidence](dossier/usage.md)). Turn off a hook in
+`/config` or with `claude plugin configure dotclaude@dotclaude`. The option
+name is after each heading.
 
 Every dotclaude message starts with `[dotclaude]`. The guards never approve
 anything, and they fail open, so a bug in a guard does not stop your work.
