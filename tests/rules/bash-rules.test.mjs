@@ -136,6 +136,12 @@ const ASK = [
   'rm -rf "$TMPDIR"',
   'rm -rf "$TMPDIR/"*',
   "rm -rf $TMPDIR/../x",
+  "rm -rf /tmp/$x",
+  "rm -rf /tmp/a/../../srv/$x",
+  "for n in build /x; do rm -rf $n; done",
+  "T=$(mktemp -d /tmp/../srv/x.XXXX); rm -rf $T",
+  "python3 - <<'EOF'\nopen('.claude/settings.json', 'w').write('{}')\nEOF",
+  "cp x.json \\\n  .claude/settings.local.json",
 ];
 
 // Recoverable: asks outside auto mode, silent inside it (see hooks.test.mjs).
@@ -154,6 +160,7 @@ const WARN = [
   "fd __pycache__ -x rm -rf {} src",
   "python3 -c \"import shutil; shutil.rmtree('build')\"",
   "python3 -c \"from pathlib import Path; Path('a').unlink()\"",
+  "for n in src build; do rm -rf $n; done",
 ];
 
 const PASS = [
@@ -216,6 +223,15 @@ const PASS = [
   "gh pr merge --help | grep squash",
   "gh release delete --help",
   "git worktree remove --force /nonexistent/worktree",
+  "find . -name __pycache__ -prune -exec rm -r {} +",
+  "cd /tmp && for n in phone pad; do rm -rf oc-shots/$n; done",
+  "for d in phone pad; do rm -rf /tmp/oc-shots/$d; done",
+  "run() { rm -rf /tmp/oc-$1.xcresult; }; run phone",
+  'rm -rf "$TMPDIR/oc-$n"',
+  "T=$(mktemp -d /tmp/slice.XXXX); cd $T && rm -rf $T",
+  "d=$(mktemp -d) && while IFS= read -r c; do echo $c; done < f && cd / && rm -rf $d",
+  "python3 - <<'EOF'\np = 'a.mjs'\nlist = ['.claude/settings.local.json']\nopen(p, 'w').write(str(list))\nEOF",
+  "node - <<'EOF'\nconst s = `a\n  fs.rmSync(dir);\n`;\nconsole.log(s);\nEOF",
 ];
 
 for (const command of DENY) {

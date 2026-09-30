@@ -15,9 +15,12 @@ const TEMP_PREFIXES = [
   "/dev/shm/",
 ];
 
-// A named entry under the temp folder, such as `$TMPDIR/build-1`. The temp
-// folder itself and a bare glob in it (`$TMPDIR/*`) still ask.
-const TEMP_CHILD = /^\$(TMPDIR|\{TMPDIR\})\/+[^$*?[/\s][^$*?[]*$/;
+// A named entry under a temp folder, such as `$TMPDIR/build-1` or
+// `/tmp/oc-$1.xcresult`. A variable can follow the literal start of the name.
+// The temp folder itself, a bare glob in it (`$TMPDIR/*`), and a name that
+// starts with a variable (`/tmp/$x`) still ask.
+const TEMP_CHILD =
+  /^(\$TMPDIR|\$\{TMPDIR\}|\/tmp|\/private\/tmp|\/private\/var\/folders|\/var\/folders|\/dev\/shm)\/+[^$*?[/\s][^*?[\s]*$/;
 
 const ROOTISH = new Set([
   "/",
@@ -70,6 +73,14 @@ function isTemp(p) {
   return (
     TEMP_PREFIXES.some((prefix) => s.startsWith(prefix)) ||
     Boolean(tmpdir && s.startsWith(`${tmpdir.replace(/\/+$/, "")}/`))
+  );
+}
+
+/** A path strictly inside a temp folder, not the folder itself. */
+export function isTempChild(p) {
+  const tmpdir = process.env.TMPDIR?.replace(/\/+$/, "");
+  return [...TEMP_PREFIXES, ...(tmpdir ? [`${tmpdir}/`] : [])].some(
+    (prefix) => p.startsWith(prefix) && p.length > prefix.length,
   );
 }
 
@@ -156,7 +167,6 @@ const FIND_WIDENING = new Set([
   "-or",
   "-not",
   "!",
-  "-prune",
   ",",
   "-path",
   "-ipath",

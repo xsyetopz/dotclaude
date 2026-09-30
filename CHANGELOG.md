@@ -67,6 +67,16 @@ steps after each update.
 - A `/dotclaude:` skill named in the middle of a message runs at the step
   where the message puts it. Before, the hook said to run it now, also for
   "commit this, then `/dotclaude:write-session-handoff`".
+- The Bash guard no longer asks for these commands:
+  - A heredoc script that names `settings.json` only as data, or that has
+    `fs.rmSync` inside a JavaScript template string.
+  - `find -name __pycache__ -prune -exec rm -r {} +`.
+  - `rm -r` of a temp folder through a variable: a `for` loop word, an
+    `mktemp -d` template in the temp folder, or `$TMPDIR/<name>`.
+  - A command with `IFS= read`. Before, this stopped all variable expansion.
+
+  A write to a settings file in a heredoc, or `rm -rf` of a loop word
+  outside the temp folder, still asks.
 
 ## [0.15.1] - 2026-09-30
 

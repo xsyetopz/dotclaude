@@ -87,12 +87,16 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
   let cwdHint = null;
   let heredocIndex = 0;
   const vars = {};
+  const loops = {};
 
   const flush = (sep) => {
     if (current.length) {
-      const cmd = unwrap(current.map((tok) => expandVars(tok, vars)));
+      const cmd = unwrap(
+        current.flatMap((tok) => expandLoops(expandVars(tok, vars), loops)),
+      );
       if (!cmd.argv.length || DECLARE.has(cmd.name))
         recordVars(cmd, vars, resolvable, temps);
+      recordLoop(cmd, loops, resolvable);
       if (cmd.argv.length) {
         cmd.heredoc = pendingHeredoc;
         cmd.writes = redirects;
@@ -170,11 +174,30 @@ const MKTEMP_PATH = "/tmp/dotclaude-mktemp.XXXXXX";
 const MKTEMP_ASSIGN =
   /(?:^|[\s;&|(!{])([A-Za-z_]\w*)="?\$\(\s*mktemp((?:\s+[^\s)]+)*)\s*\)/g;
 
-/** Names assigned `$(mktemp ...)` whose arguments name no directory. */
+// A `mktemp` template or `-p` folder under a temp folder, with no `..`.
+const TEMP_DIR_ARG =
+  /^(\/tmp|\/private\/tmp|\/var\/folders|\/private\/var\/folders|\/dev\/shm|\$TMPDIR|\$\{TMPDIR\})(\/|$)/;
+
+/**
+ * Names assigned `$(mktemp ...)` whose path arguments name no directory, or
+ * only a temp folder (`mktemp -d /tmp/run.XXXX`).
+ */
 function mktempVars(command) {
   const out = new Set();
-  for (const m of command.matchAll(MKTEMP_ASSIGN))
-    if (!m[2].includes("/") && !/\s-p\b/.test(m[2])) out.add(m[1]);
+  for (const m of command.matchAll(MKTEMP_ASSIGN)) {
+    const paths = m[2]
+      .trim()
+      .split(/\s+/)
+      .map((a) => a.replace(/^["']|["']$/g, ""))
+      .filter((a) => a.includes("/") || a.includes("$"));
+    if (
+      paths.every(
+        (a) => TEMP_DIR_ARG.test(a) && !a.split("/").includes(".."),
+      ) &&
+      (!/\s-p\b/.test(m[2]) || paths.length > 0)
+    )
+      out.add(m[1]);
+  }
   return out;
 }
 
@@ -184,8 +207,10 @@ function mktempVars(command) {
  * `eval` turns resolution off.
  */
 function singlyAssigned(command) {
-  // eval re-parses at run time; IFS changes how every $VAR splits.
-  if (/\beval\b|\bIFS\+?=/.test(command)) return new Set();
+  // eval re-parses at run time; IFS changes how every $VAR splits. `IFS= read`
+  // sets IFS for that `read` only.
+  const global = command.replace(/\bIFS=\S*\s+read\b/g, "read");
+  if (/\beval\b|\bIFS\+?=/.test(global)) return new Set();
   const counts = new Map();
   const bump = (name, n = 1) => counts.set(name, (counts.get(name) ?? 0) + n);
   for (const re of WRITES) for (const m of command.matchAll(re)) bump(m[1]);
@@ -222,10 +247,45 @@ function recordVars(cmd, vars, resolvable, temps = new Set()) {
   }
 }
 
+/**
+ * Remember `for n in phone pad` when `n` is written once and each word is a
+ * literal, so a later `$n` expands to one argument per word.
+ */
+function recordLoop(cmd, loops, resolvable) {
+  const [name, keyword, ...words] = cmd.args;
+  if (
+    cmd.name === "for" &&
+    keyword === "in" &&
+    resolvable.has(name) &&
+    words.length > 0 &&
+    words.every(
+      (w) => w && LITERAL.test(w) && !/\s/.test(w) && !w.includes("__SUBST__"),
+    )
+  )
+    loops[name] = words;
+}
+
+const VAR_REF = /\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g;
+
 function expandVars(token, vars) {
   if (typeof token !== "string" || !token.includes("$")) return token;
-  return token.replace(/\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g, (m, a, b) =>
+  return token.replace(VAR_REF, (m, a, b) =>
     Object.hasOwn(vars, a ?? b) ? vars[a ?? b] : m,
+  );
+}
+
+/** A token with loop variables becomes one token per loop word. */
+function expandLoops(token, loops) {
+  if (typeof token !== "string" || !token.includes("$")) return [token];
+  const m = [...token.matchAll(VAR_REF)].find((x) =>
+    Object.hasOwn(loops, x[1] ?? x[2]),
+  );
+  if (!m) return [token];
+  return loops[m[1] ?? m[2]].flatMap((word) =>
+    expandLoops(
+      token.slice(0, m.index) + word + token.slice(m.index + m[0].length),
+      loops,
+    ),
   );
 }
 

@@ -132,6 +132,9 @@ const BACKTICK_SHELL = new Set(["perl", "ruby", "php"]);
 
 const STRING_LIT = /'([^'\\]*(?:\\.[^'\\]*)*)'|"([^"\\]*(?:\\.[^"\\]*)*)"/g;
 
+// A JavaScript template literal with no `${...}` holds no code.
+const TEMPLATE_LIT = /`[^`\\$]*(?:(?:\\.|\$(?!\{))[^`\\$]*)*`/g;
+
 function interpreterInline(cmd, ctx) {
   let code;
   for (let i = 0; i < cmd.args.length - 1; i += 1) {
@@ -146,7 +149,9 @@ function interpreterInline(cmd, ctx) {
   const out = [];
   // A delete call named inside a string literal (`s.replace('unlink(', x)`)
   // is data, not a call.
-  if (DESTRUCTIVE_CODE.test(code.replace(STRING_LIT, '""')))
+  let data = code.replace(STRING_LIT, '""');
+  if (!BACKTICK_SHELL.has(cmd.name)) data = data.replace(TEMPLATE_LIT, '""');
+  if (DESTRUCTIVE_CODE.test(data))
     out.push(["warn", `inline \`${cmd.name}\` code deletes files`]);
   if (
     SHELL_OUT.test(code) ||

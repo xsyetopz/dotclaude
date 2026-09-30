@@ -20,8 +20,22 @@ const SCRIPT =
 export const SETTINGS_PATH =
   /(^|[/"'\s])(\.claude\/settings(\.local)?\.json|managed-settings(\.json|\.d\b))/;
 
+// Shell writes, interpreter runs, and file-writing calls in inline code.
 const WRITES_FILE =
-  /(^|[^<&0-9])>|\btee\b|\b(sed|perl)\s+(-\w*\s+)*-i|\bsd\s|\b(mv|cp|install|dd|rm)\s|\b(python[0-9.]*|node|bun|deno|ruby)\s/;
+  /(^|[^<&0-9])>|\btee\b|\b(sed|perl)\s+(-\w*\s+)*-i|\bsd\s|\b(mv|cp|install|dd|rm)\s|\b(python[0-9.]*|node|bun|deno|ruby)\s|\bopen\(.*["'][wax+]|\.(write_text|write_bytes|writeFileSync|writeFile|appendFileSync|copyFileSync|renameSync|rmSync|unlinkSync)\b|\bjson\.dump\b|\bBun\.write\b|\bDeno\.writeTextFile\b|\bshutil\.(copy|move)/;
+
+/**
+ * True when one line of the command names a settings file and writes a file.
+ * A heredoc body that only mentions the path (a table, a list of names) is
+ * data. A write through a variable on another line is not found, and then
+ * Claude Code's normal permission flow applies.
+ */
+function writesSettings(command) {
+  return command
+    .replace(/\\\n/g, " ")
+    .split("\n")
+    .some((line) => SETTINGS_PATH.test(line) && WRITES_FILE.test(line));
+}
 
 export function settingsWrite(command) {
   const out = [];
@@ -31,7 +45,7 @@ export function settingsWrite(command) {
         "ask",
         `\`${name}.mjs --apply\` changes ${SCRIPTS[name]}. Approve it to let it write`,
       ]);
-  if (!out.length && SETTINGS_PATH.test(command) && WRITES_FILE.test(command))
+  if (!out.length && writesSettings(command))
     out.push([
       "ask",
       "the command may write a Claude Code settings file. Approve it to let it write",
