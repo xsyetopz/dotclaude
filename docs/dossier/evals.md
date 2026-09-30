@@ -81,3 +81,37 @@ With 5 trials, a case that always passes still has a lower bound of 57%.
 - Neither suite covers long sessions, compaction, corrections over several
   turns, or large repositories. A held-out run of 30 cases, 5 trials, and
   both arms cost about $54 and took 32 minutes.
+
+## 8. Compactions Before A Handoff
+
+Measured on 2026-09-30 from local transcripts, with no Claude usage.
+`bun scripts/compaction-report.mjs --max-pre 135000` gives these numbers. It
+splits each compacted main session into parts at its compactions.
+
+A needed token is a path, number, or identifier of 8 or more characters. A
+tool result of an earlier part introduced it, and Claude used it in the first
+40 tool calls of a later part. It was kept when the summary or the kept
+messages put it in view before the use.
+
+**14 sessions with the 150k `autoCompactWindow`** (up to 27 compactions):
+
+| Part | Parts | Cost per call | Context after compaction | Kept |
+| --- | ---: | ---: | ---: | ---: |
+| before compaction 1 | 14 | $0.067 | – | – |
+| after compaction 1 | 14 | $0.053 | 18k | 54% of 636 |
+| after compaction 2 | 11 | $0.052 | 20k | 53% of 337 |
+| after compaction 3 | 8 | $0.049 | 24k | 58% of 231 |
+| after compaction 4 | 7 | $0.054 | 21k | 55% of 242 |
+| after compaction 5 to 8 | 25 | $0.054 | – | 42% of 1084 |
+| after compaction 9 to 14 | 25 | $0.051 | – | 46% of 1137 |
+
+- The cost per call does not grow with the number of compactions. Each
+  compaction starts again from 18k to 24k tokens.
+- In the 7 sessions that passed four compactions, compactions 1 to 4 kept
+  49% to 57% of the needed tokens, and compactions 5 to 8 kept 42%. The drop
+  is in the same sessions, so the mix of sessions does not explain it.
+- Thus `COMPACTIONS_BEFORE_HANDOFF` is 4. A fifth compaction costs the same
+  as a handoff, but it keeps fewer of the facts that Claude uses next.
+- The sample is small: 7 sessions in 3 projects. The kept share is a proxy
+  for quality, not a measure of task success. The compactions ran without a
+  handoff rule, so the measure does not show how a handoff note compares.

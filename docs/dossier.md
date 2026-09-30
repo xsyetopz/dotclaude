@@ -17,7 +17,7 @@ Read only the part that answers your question.
 | 3 | [Usage Evidence](dossier/usage.md) | where one Max 20x week of usage went, what that means on Pro, turns against tool calls |
 | 4 | [Plans And Models](dossier/plans-and-models.md) | the Fable limit, plan detection, per-plan policy, prices, model fit, effort |
 | 5 | [Claude Code Prompt Surface](dossier/prompt-surface.md) | what a request contains, the lean prompt, the system prompt launcher, output styles, tool removal |
-| 6–7 | [Evals](dossier/evals.md) | fast-compact against `/compact`, the behavior eval suites and their results |
+| 6–8 | [Evals](dossier/evals.md) | fast-compact against `/compact`, the behavior eval suites and their results, compactions before a handoff |
 | 8–9 | [Open Items](dossier/open-items.md) | work still to measure or decide, reported claims that dotclaude does not act on |
 
 ## Sources
