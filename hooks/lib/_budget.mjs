@@ -85,6 +85,14 @@ export const subagentContextTokens = (agentType) =>
 export const SUBAGENT_CONTEXT_GROWTH = 50_000;
 
 /**
+ * Room under a subagent's context bound in which it gets one note to finish
+ * its current item, delete its scratch files, and report. In session
+ * ba7be763 on 2026-09-30, two of three audit agents stopped at the bound in
+ * the middle of an item.
+ */
+export const SUBAGENT_WRAP_UP_TOKENS = 15_000;
+
+/**
  * Usage-limit percentages at which the usage notes tell Claude and the status
  * line turns yellow, then red. Claude Code starts warning at 75%.
  */

@@ -27,14 +27,21 @@ const calls = (from, count) =>
   Array.from({ length: count }, (_, i) => [call(from + i), result()]).flat();
 
 function decide(entries, input = {}) {
+  return (
+    budget(entries, input)?.hookSpecificOutput?.permissionDecision ?? "pass"
+  );
+}
+
+// `id` names the transcript file, so a test can give each agent its own.
+function budget(entries, input = {}, id = "a1") {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "turn-budget-"));
   const sub = path.join(dir, "s1", "subagents");
   fs.mkdirSync(sub, { recursive: true });
   fs.writeFileSync(
-    path.join(sub, "agent-a1.jsonl"),
+    path.join(sub, `agent-${id}.jsonl`),
     entries.map((e) => JSON.stringify(e)).join("\n"),
   );
-  const out = hook("pre-tool-use/enforce-agent-budget.mjs", {
+  return hook("pre-tool-use/enforce-agent-budget.mjs", {
     hook_event_name: "PreToolUse",
     session_id: "s1",
     transcript_path: path.join(dir, "s1.jsonl"),
@@ -44,7 +51,6 @@ function decide(entries, input = {}) {
     tool_input: { command: "ls" },
     ...input,
   });
-  return out?.hookSpecificOutput?.permissionDecision ?? "pass";
 }
 
 const brief = [
@@ -115,4 +121,38 @@ test("any subagent is refused tools past the context budget, a fork past its gro
   expect(decide([...fork, call(1, 350_000)], { agent_type: "fork" })).toBe(
     "deny",
   );
+});
+
+test("past the budget, the agent can still delete its temp files", () => {
+  const grown = [...brief, call(0), result(), call(1, 101_000), result()];
+  const bash = (command) => decide(grown, { tool_input: { command } });
+  expect(bash("rm -f /tmp/ctx.sh /tmp/t.mjs")).toBe("pass");
+  expect(bash("rm -rf /private/tmp/claude-501/scratch/run-1")).toBe("pass");
+  expect(bash("rm -rf /tmp")).toBe("deny");
+  expect(bash("rm -rf /tmp/*")).toBe("deny");
+  expect(bash("rm -f src/app.py")).toBe("deny");
+  expect(bash("rm -rf /tmp/$X")).toBe("deny");
+  expect(bash("rm -f /tmp/a && ls")).toBe("deny");
+  expect(bash("rm -rf /tmp/a/../../etc")).toBe("deny");
+});
+
+test("near the budget, a subagent gets one note to finish", () => {
+  const near = (id) => [
+    ...brief,
+    call(`${id}0`),
+    result(),
+    call(`${id}1`, 90_000),
+    result(),
+  ];
+  const agent = { agent_id: `wrap-${process.pid}-${Date.now()}` };
+  const first = budget(near("a"), agent, agent.agent_id)?.hookSpecificOutput;
+  expect(first?.permissionDecision).toBeUndefined();
+  expect(first?.additionalContext).toContain("100k");
+  expect(
+    budget(near("a"), agent, agent.agent_id),
+    "the note comes once",
+  ).toBeNull();
+  const far = [...brief, call(0), result(), call(1, 60_000), result()];
+  const other = `far-${process.pid}-${Date.now()}`;
+  expect(budget(far, { agent_id: other }, other)).toBeNull();
 });

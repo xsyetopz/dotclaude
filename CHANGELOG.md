@@ -46,6 +46,10 @@ steps after each update.
   it does not state a training cutoff that a model override makes wrong.
 - The output style lists apology with the other replies that tell the user
   nothing.
+- A subagent gets one note when its context comes within 15k tokens of its
+  budget: finish the current item, delete the scratch files, and report. Past
+  the budget, it can still delete its own files in the temp folder. Before,
+  audit agents stopped in the middle of an item and left their scratch files.
 
 ### Fixed
 
