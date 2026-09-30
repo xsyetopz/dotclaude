@@ -295,6 +295,64 @@ test("session notes restore the attribution that includeGitInstructions: false d
   expect(notes()).toBe(null);
 });
 
+test("session notes restore the pre-commit skill line that includeGitInstructions: false drops", () => {
+  const config = tmp("dotclaude-config-");
+  const project = tmp("dotclaude-project-");
+  const write = (file, text) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, text);
+  };
+  const notes = (env = {}) =>
+    hook(
+      "session-start/add-session-notes.mjs",
+      {
+        hook_event_name: "SessionStart",
+        source: "startup",
+        model: "claude-opus-5-5",
+        cwd: project,
+      },
+      {
+        CLAUDE_CONFIG_DIR: config,
+        CLAUDE_PROJECT_DIR: project,
+        CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS: "",
+        CLAUDE_PLUGIN_OPTION_GIT_ATTRIBUTION: "false",
+        ...env,
+      },
+    )?.hookSpecificOutput.additionalContext ?? null;
+
+  write(path.join(project, ".claude/skills/verify/SKILL.md"), "---\n---\n");
+  // Claude Code gives the line itself while its git instructions are on.
+  expect(notes()).toBe(null);
+
+  write(
+    path.join(config, "settings.json"),
+    JSON.stringify({ includeGitInstructions: false }),
+  );
+  const verify = notes();
+  expect(verify).toContain("`/verify` right before each `git commit`");
+  expect(verify).not.toContain("/simplify");
+
+  // A user command file counts, as `commands_DEPRECATED` does in Claude Code.
+  write(path.join(config, "commands/simplify.md"), "Simplify.\n");
+  expect(notes()).toContain("`/verify` and `/simplify`");
+  expect(notes({ CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS: "0" })).toBe(null);
+
+  // The built-in `code-review` comes last, only when the setting asks for it.
+  write(
+    path.join(project, ".claude/settings.json"),
+    JSON.stringify({ includeCodeReviewSuggestion: true }),
+  );
+  expect(notes()).toContain(
+    "`/verify`, `/simplify`, and `/code-review medium` right before",
+  );
+
+  fs.rmSync(path.join(project, ".claude/skills"), { recursive: true });
+  fs.rmSync(path.join(config, "commands"), { recursive: true });
+  expect(notes()).toContain("Run `/code-review medium` right before");
+  fs.rmSync(path.join(project, ".claude/settings.json"));
+  expect(notes()).toBe(null);
+});
+
 test("claudeTrailerOff follows attribution.commit and includeCoAuthoredBy", async () => {
   const { claudeTrailerOff } = await import("../../hooks/lib/_attribution.mjs");
   const config = tmp("dotclaude-config-");

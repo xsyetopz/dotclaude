@@ -3,7 +3,9 @@
 // settings profile turns those off for the output style's git section, so
 // this note puts the lines back. It reads the same settings Claude Code does:
 // `attribution.commit` and `attribution.pr` replace the defaults, an empty
-// string removes one, and `includeCoAuthoredBy: false` removes both.
+// string removes one, and `includeCoAuthoredBy: false` removes both. The same
+// instructions carry the pre-commit skill line (2.1.286 bundle), which
+// `preCommitNote` puts back.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -14,10 +16,12 @@ const PR_FOOTER =
   "🤖 Generated with [Claude Code](https://claude.com/claude-code)";
 const FALSE = new Set(["0", "false", "no", "off"]);
 
+const configDir = () =>
+  process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+
 /** User, project, then local settings, merged key by key; later files win. */
 function settings(projectDir) {
-  const config =
-    process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+  const config = configDir();
   const merged = {};
   for (const file of [
     path.join(config, "settings.json"),
@@ -26,7 +30,11 @@ function settings(projectDir) {
   ]) {
     try {
       const s = JSON.parse(fs.readFileSync(file, "utf8"));
-      for (const key of ["includeGitInstructions", "includeCoAuthoredBy"])
+      for (const key of [
+        "includeGitInstructions",
+        "includeCoAuthoredBy",
+        "includeCodeReviewSuggestion",
+      ])
         if (key in s) merged[key] = s[key];
       if (s.attribution && typeof s.attribution === "object")
         merged.attribution = { ...merged.attribution, ...s.attribution };
@@ -65,15 +73,18 @@ export function claudeTrailerOff(projectDir) {
 export const CLAUDE_TRAILER =
   /(^|[\s"'])co-authored-by:[^\n]*(claude|anthropic)/im;
 
+/** True when Claude Code sends its own git instructions. */
+function builtInGit(s) {
+  const env = process.env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS;
+  return env !== undefined && env !== ""
+    ? FALSE.has(env.trim().toLowerCase())
+    : s.includeGitInstructions !== false;
+}
+
 /** The attribution note, or null when Claude Code sends its own or none. */
 export function attributionNote(model, projectDir) {
   const s = settings(projectDir);
-  const env = process.env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS;
-  const builtIn =
-    env !== undefined && env !== ""
-      ? FALSE.has(env.trim().toLowerCase())
-      : s.includeGitInstructions !== false;
-  if (builtIn) return null;
+  if (builtInGit(s)) return null;
   let commit = `Co-Authored-By: ${modelName(model)} <noreply@anthropic.com>`;
   let pr = PR_FOOTER;
   if (s.attribution) {
@@ -94,4 +105,39 @@ export function attributionNote(model, projectDir) {
     );
   if (!lines.length) return null;
   return `<git_attribution source="dotclaude">\n${lines.join("\n")}\n</git_attribution>`;
+}
+
+// Claude Code 2.1.286 names `verify` and `simplify` only when they load from a
+// user or project `skills/<name>/` folder, or from the older `commands/`
+// folder. A plugin or bundled skill of the same name does not count. It adds
+// the built-in `code-review` when `includeCodeReviewSuggestion` is true.
+// A sandbox capture of the request confirmed each case.
+const PRE_COMMIT_SKILLS = ["verify", "simplify"];
+
+function hasSkill(projectDir, name) {
+  return [configDir(), path.join(projectDir, ".claude")].some(
+    (dir) =>
+      fs.existsSync(path.join(dir, "skills", name, "SKILL.md")) ||
+      fs.existsSync(path.join(dir, "commands", `${name}.md`)),
+  );
+}
+
+/**
+ * The line that tells Claude which skills to run before a commit, or null
+ * when Claude Code sends it or no skill applies.
+ */
+export function preCommitNote(projectDir) {
+  const s = settings(projectDir);
+  if (builtInGit(s)) return null;
+  const names = PRE_COMMIT_SKILLS.filter((n) => hasSkill(projectDir, n)).map(
+    (n) => `\`/${n}\``,
+  );
+  if (s.includeCodeReviewSuggestion === true)
+    names.push("`/code-review medium`");
+  if (!names.length) return null;
+  const list =
+    names.length <= 2
+      ? names.join(" and ")
+      : `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+  return `<git_pre_commit source="dotclaude">\nRun ${list} right before each \`git commit\`, so that the checks run on the change that you commit. Do not run ${names.length === 1 ? "it" : "them"} before a commit that changes only docs or tests.\n</git_pre_commit>`;
 }

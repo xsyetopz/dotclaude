@@ -76,6 +76,10 @@ you choose and can review.
 - **Git:** `includeGitInstructions: false` removes Claude Code's git
   instructions, because dotclaude's system prompt has its own. The
   `git_attribution` option keeps the commit trailer and pull request footer.
+  When a user or project skill is named `verify` or `simplify`, or
+  `includeCodeReviewSuggestion` is true, a session note tells Claude to run
+  that skill or `/code-review medium` before each commit. Claude Code 2.1.286
+  gives the same instruction in its own git instructions.
 - **Auto memory:** off. The memory index loads into every request and grows,
   and it stores facts that nobody reviews and that go stale. Claude then
   treats them as true. Repository files and `CLAUDE.md` are the reviewed

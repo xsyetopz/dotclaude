@@ -10,6 +10,18 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-09-30
+
+### Fixed
+
+- With the settings profile's `includeGitInstructions: false`, Claude now
+  still runs a `verify` or `simplify` skill before each commit. Claude Code
+  2.1.286 gives this instruction in its git instructions when a user or
+  project skill has one of these names, except for docs-only and tests-only
+  commits. With `includeCodeReviewSuggestion: true`, it also names
+  `/code-review medium`. The profile turns those instructions off, so the session notes
+  give the same instruction.
+
 ## [0.16.0] - 2026-09-30
 
 ### Added
@@ -622,4 +634,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.16.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.16.1...HEAD
