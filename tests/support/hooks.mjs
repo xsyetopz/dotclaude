@@ -65,6 +65,15 @@ export const checkRun = (sid, command, ok = true, stdout = "") =>
         tool_input: { command },
         error: "Exit code 1\nFAIL",
       });
+// A Stop gate sends Claude back with `additionalContext`: Claude Code shows
+// it to the user as "Stop hook feedback", not as an error.
+/** The event name of a Stop gate's feedback, or undefined for no feedback. */
+export const blocked = (out) =>
+  out?.hookSpecificOutput?.additionalContext
+    ? out.hookSpecificOutput.hookEventName
+    : undefined;
+/** The text of a Stop gate's feedback. */
+export const feedback = (out) => out?.hookSpecificOutput?.additionalContext;
 export const stop = (sid, message = "Done.", extra = {}) =>
   hook("stop/require-verification.mjs", {
     session_id: sid,

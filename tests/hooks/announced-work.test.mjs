@@ -5,7 +5,7 @@ import { expect, test } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { hook, session } from "../support/hooks.mjs";
+import { blocked, feedback, hook, session } from "../support/hooks.mjs";
 
 const stop = (message, extra = {}) =>
   hook("stop/finish-announced-work.mjs", {
@@ -27,8 +27,8 @@ const ANNOUNCED = [
 test("a last paragraph that announces or offers requested work blocks", () => {
   for (const message of ANNOUNCED) {
     const out = stop(`Report line.\n\n${message}`);
-    expect(out?.decision, message).toBe("block");
-    expect(out.reason).toContain("do that work now");
+    expect(blocked(out), message).toBe("Stop");
+    expect(feedback(out)).toContain("do that work now");
   }
 });
 
@@ -74,8 +74,8 @@ test("a turn that an `AskUserQuestion` or `ExitPlanMode` call ended passes", () 
   ).toBe(null);
   fs.writeFileSync(transcript, entry([{ type: "text", text: "x" }]));
   expect(
-    stop("Should I use the cache?", { transcript_path: transcript })?.decision,
-  ).toBe("block");
+    blocked(stop("Should I use the cache?", { transcript_path: transcript })),
+  ).toBe("Stop");
   fs.rmSync(dir, { recursive: true });
 });
 

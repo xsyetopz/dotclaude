@@ -8,7 +8,7 @@
 // `ExitPlanMode` call, and when the paragraph names a public or hard-to-reverse step, because
 // those wait for the user.
 
-import { emit, option, run } from "../lib/_common.mjs";
+import { option, run, stopFeedback } from "../lib/_common.mjs";
 import { waitsForUser } from "../lib/_transcript.mjs";
 import { logVerdict } from "../lib/_verdicts.mjs";
 
@@ -48,5 +48,5 @@ run((data) => {
     "If the step is part of the request or the approved plan, do that work now and then report. " +
     "If only the user can decide it, or the user asked only a question, end the turn again with no change.";
   logVerdict(data, "block", reason);
-  emit({ decision: "block", reason });
+  stopFeedback(data, reason);
 });

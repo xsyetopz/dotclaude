@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { openTasks, taskListDir } from "../../hooks/lib/_tasks.mjs";
-import { hook, session } from "../support/hooks.mjs";
+import { blocked, feedback, hook, session } from "../support/hooks.mjs";
 
 const config = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-tasks-"));
 const tasks = (list, entries) => {
@@ -55,12 +55,12 @@ test("a stop with open tasks blocks once per set of open tasks", () => {
     ["2", "in_progress"],
   ]);
   const first = stop(sid);
-  expect(first.decision).toBe("block");
-  expect(first.reason).toContain("#2 Task 2");
-  expect(first.reason).not.toContain("#1");
+  expect(blocked(first)).toBe("Stop");
+  expect(feedback(first)).toContain("#2 Task 2");
+  expect(feedback(first)).not.toContain("#1");
   expect(stop(sid), "the same open set lets the stop through").toBeNull();
   tasks(sid, [["3", "pending"]]);
-  expect(stop(sid)?.decision, "a new open task blocks again").toBe("block");
+  expect(blocked(stop(sid)), "a new open task blocks again").toBe("Stop");
   tasks(sid, [
     ["2", "completed"],
     ["3", "completed"],
@@ -100,13 +100,13 @@ test("no block for a subagent or a turn that waits for the user", () => {
     );
     expect(stop(sid, { transcript_path: transcript }), name).toBeNull();
   }
-  expect(stop(sid)?.decision, "the gate still applies").toBe("block");
+  expect(blocked(stop(sid)), "the gate still applies").toBe("Stop");
   fs.rmSync(dir, { recursive: true });
 });
 
 test("CLAUDE_CODE_TASK_LIST_ID selects a shared list", () => {
   tasks("shared", [["1", "in_progress"]]);
   expect(
-    stop(session(), {}, { CLAUDE_CODE_TASK_LIST_ID: "shared" })?.decision,
-  ).toBe("block");
+    blocked(stop(session(), {}, { CLAUDE_CODE_TASK_LIST_ID: "shared" })),
+  ).toBe("Stop");
 });

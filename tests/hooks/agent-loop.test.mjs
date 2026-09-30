@@ -9,7 +9,7 @@ import path from "node:path";
 import { stripVTControlCharacters as plain } from "node:util";
 import { loopProgress, mainRoot } from "../../hooks/lib/_loop.mjs";
 import { renderMain } from "../../hooks/lib/_status-line.mjs";
-import { hook, session, tmp } from "../support/hooks.mjs";
+import { blocked, feedback, hook, session, tmp } from "../support/hooks.mjs";
 
 const root = fs.realpathSync(tmp("dotclaude-loop-"));
 execFileSync("git", ["init", "-q", root]);
@@ -120,9 +120,9 @@ test("an implemented slice without a review blocks the stop once", () => {
   );
   const sid = session();
   const first = stop(sid);
-  expect(first.decision).toBe("block");
-  expect(first.reason).toContain("`emit`");
-  expect(first.reason).not.toContain("`parse`");
+  expect(blocked(first)).toBe("Stop");
+  expect(feedback(first)).toContain("`emit`");
+  expect(feedback(first)).not.toContain("`parse`");
   expect(stop(sid)).toBeNull();
   expect(stop(session(), agent)).toBeNull();
 });

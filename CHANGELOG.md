@@ -50,6 +50,8 @@ steps after each update.
   budget: finish the current item, delete the scratch files, and report. Past
   the budget, it can still delete its own files in the temp folder. Before,
   audit agents stopped in the middle of an item and left their scratch files.
+- The stop checks send Claude back with `additionalContext`, so Claude Code
+  shows them as "Stop hook feedback", not as "Stop hook error".
 
 ### Fixed
 

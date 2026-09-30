@@ -5,9 +5,11 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  blocked,
   checkRun,
   data,
   edit,
+  feedback,
   HOOKS,
   hook,
   repo,
@@ -19,8 +21,8 @@ test("stop gate blocks once after an unverified edit", () => {
   const sid = session();
   edit(sid);
   const first = stop(sid);
-  expect(first.decision).toBe("block");
-  expect(first.reason).toMatch(/src\/app\.js/);
+  expect(blocked(first)).toBe("Stop");
+  expect(feedback(first)).toMatch(/src\/app\.js/);
   expect(stop(sid), "same edit state does not block twice").toBe(null);
 });
 
@@ -29,8 +31,8 @@ test("stop gate counts files written through Bash as edits", () => {
   checkRun(sid, "bun test");
   checkRun(sid, "cat > src/gen.js <<'EOF'\nexport const x = 1;\nEOF");
   const out = stop(sid);
-  expect(out?.decision).toBe("block");
-  expect(out.reason).toMatch(/src\/gen\.js/);
+  expect(blocked(out)).toBe("Stop");
+  expect(feedback(out)).toMatch(/src\/gen\.js/);
   const sid2 = session();
   checkRun(sid2, "sed -n 1,5p src/gen.js > /tmp/view.txt && bun test");
   expect(stop(sid2), "a write outside the project is not an edit").toBe(null);
@@ -73,9 +75,10 @@ test("inline scripts that write only scratch files are not edits", () => {
   ).toBe(null);
   bash("python3 - <<'EOF'\nopen('src/app.py', 'w').write('x = 2')\nEOF");
   expect(
-    stop(sid, "Done.", { hook_event_name: "SubagentStop", agent_id: "a2" })
-      ?.decision,
-  ).toBe("block");
+    blocked(
+      stop(sid, "Done.", { hook_event_name: "SubagentStop", agent_id: "a2" }),
+    ),
+  ).toBe("SubagentStop");
 });
 
 test("inline scripts record only the path arguments of their write calls", () => {
@@ -138,7 +141,7 @@ test("the stop reason quotes only the check, not the script around it", () => {
     "cd /tmp && ruff format src/app.py && python3 - <<'EOF'\nprint(`x`)\nEOF",
   );
   edit(sid);
-  const shown = /last check: `([^`]*)`/.exec(stop(sid)?.reason ?? "")?.[1];
+  const shown = /last check: `([^`]*)`/.exec(feedback(stop(sid)) ?? "")?.[1];
   expect(shown).toBe("ruff format src/app.py");
 });
 
@@ -156,8 +159,8 @@ test("subagent stop checks the subagent's own ledger", () => {
     hook_event_name: "SubagentStop",
     agent_id: "a1",
   });
-  expect(out?.decision).toBe("block");
-  expect(out.reason).toMatch(/src\/worker\.js/);
+  expect(blocked(out)).toBe("SubagentStop");
+  expect(feedback(out)).toMatch(/src\/worker\.js/);
 });
 
 test("a long check command in the stop reason shows that it was cut", () => {
@@ -166,9 +169,9 @@ test("a long check command in the stop reason shows that it was cut", () => {
   checkRun(sid, command);
   edit(sid);
   const out = stop(sid);
-  expect(out?.decision).toBe("block");
-  const shown = /last check: `([^`]*)`/.exec(out.reason)?.[1];
-  expect(shown?.endsWith("…"), out.reason).toBe(true);
+  expect(blocked(out)).toBe("Stop");
+  const shown = /last check: `([^`]*)`/.exec(feedback(out))?.[1];
+  expect(shown?.endsWith("…"), feedback(out)).toBe(true);
   expect(command.startsWith(shown.slice(0, -1))).toBe(true);
 });
 
@@ -218,15 +221,15 @@ test("stop gate catches a failed check reported as passing", () => {
   edit(sid);
   checkRun(sid, "pytest", false);
   const out = stop(sid, "All tests pass now.");
-  expect(out.decision).toBe("block");
-  expect(out.reason).toMatch(/pytest/);
+  expect(blocked(out)).toBe("Stop");
+  expect(feedback(out)).toMatch(/pytest/);
 });
 
 test("a piped check whose output shows failures counts as failed", () => {
   const sid = session();
   edit(sid);
   checkRun(sid, "pytest -q | tail -5", true, "3 passed, 2 failed in 0.4s");
-  expect(stop(sid, "Tests pass.").decision).toBe("block");
+  expect(blocked(stop(sid, "Tests pass."))).toBe("Stop");
 });
 
 test("zero failures in output counts as passing", () => {
@@ -262,8 +265,8 @@ test("a quoted pass claim after a failed check is not blocked", () => {
   const sid = session();
   edit(sid);
   checkRun(sid, "pytest", false);
-  expect(stop(sid, "The log was quoted. All tests pass.").decision).toBe(
-    "block",
+  expect(blocked(stop(sid, "The log was quoted. All tests pass."))).toBe(
+    "Stop",
   );
 });
 
@@ -288,7 +291,7 @@ test("stop gate is not bypassed by a reply that mentions an error or failure it 
   ]) {
     const sid = session();
     edit(sid);
-    expect(stop(sid, message)?.decision, message).toBe("block");
+    expect(blocked(stop(sid, message)), message).toBe("Stop");
   }
 });
 

@@ -7,7 +7,13 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { emit, option, projectRoot, run, stateDir } from "../lib/_common.mjs";
+import {
+  option,
+  projectRoot,
+  run,
+  stateDir,
+  stopFeedback,
+} from "../lib/_common.mjs";
 import { loopSlices } from "../lib/_loop.mjs";
 import { waitsForUser } from "../lib/_transcript.mjs";
 
@@ -35,9 +41,9 @@ run((data) => {
   }
   fs.writeFileSync(file, key);
   const list = open.map((s) => `- \`${s.id}\``).join("\n");
-  emit({
-    decision: "block",
-    reason: [
+  stopFeedback(
+    data,
+    [
       "These agent-loop slices in `.dotclaude/loop/slices.jsonl` have the status `implemented`, but no review:",
       list,
       "For each slice, do one of these:",
@@ -45,5 +51,5 @@ run((data) => {
       "- The slice failed or you dropped it: set its status to `failed`, and give the reason in one line.",
       "This check does not stop you again for the same slices.",
     ].join("\n"),
-  });
+  );
 });

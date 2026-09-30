@@ -9,7 +9,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { emit, option, run, stateDir } from "../lib/_common.mjs";
+import { option, run, stateDir, stopFeedback } from "../lib/_common.mjs";
 import { openTasks, taskListDir } from "../lib/_tasks.mjs";
 import { waitsForUser } from "../lib/_transcript.mjs";
 
@@ -36,9 +36,9 @@ run((data) => {
   }
   fs.writeFileSync(file, key);
   const list = open.map((t) => `- #${t.id} ${t.subject}`).join("\n");
-  emit({
-    decision: "block",
-    reason: [
+  stopFeedback(
+    data,
+    [
       "The task list has open tasks:",
       list,
       "The user reads the task list as the state of the work, so each status must match the work. For each open task, do one of these:",
@@ -47,5 +47,5 @@ run((data) => {
       "- The work is not done: keep the task open, and give the reason in one line.",
       "This check does not stop you again for the same open tasks. Add only the task changes to your reply.",
     ].join("\n"),
-  });
+  );
 });

@@ -132,6 +132,21 @@ export function emit(obj) {
 }
 
 /**
+ * Send Claude back to work before the turn ends. Claude Code shows
+ * `additionalContext` to the user as "Stop hook feedback". A
+ * `decision: "block"` reason shows as "Stop hook error".
+ */
+export function stopFeedback(data, text) {
+  emit({
+    hookSpecificOutput: {
+      hookEventName:
+        data.hook_event_name === "SubagentStop" ? "SubagentStop" : "Stop",
+      additionalContext: text,
+    },
+  });
+}
+
+/**
  * Block with exit code 2: Claude Code gives `message` to Claude and ignores
  * stdout. Under the dispatcher the exit waits until every action has run.
  */

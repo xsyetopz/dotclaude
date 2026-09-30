@@ -149,7 +149,7 @@ test("an action that throws does not stop the other actions", () => {
   );
   expect(res.code).toBe(0);
   expect(res.stderr).toContain("hook error in");
-  expect(res.out.decision).toBe("block");
+  expect(res.out.hookSpecificOutput.hookEventName).toBe("Stop");
 });
 
 test("actions run at the same time and merge in table order", () => {

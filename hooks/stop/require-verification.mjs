@@ -5,7 +5,7 @@
 // continuation is never blocked again. A pass claim with nothing edited and
 // nothing run is not blocked: read-only agents quote results that others ran.
 
-import { emit, option, run } from "../lib/_common.mjs";
+import { option, run, stopFeedback } from "../lib/_common.mjs";
 import { load, save } from "../lib/_ledger.mjs";
 
 const CLAIMS_PASS =
@@ -72,5 +72,5 @@ run((data) => {
   // carry the whole outcome, not only the new check result.
   reason +=
     " Then write the complete report again at the end (what changed, what ran and its result). Your next reply replaces this one as the report.";
-  emit({ decision: "block", reason });
+  stopFeedback(data, reason);
 });
