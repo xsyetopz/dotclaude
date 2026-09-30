@@ -12,6 +12,7 @@ evals-heldout/results/
 !/docs/sandbox.md
 !/docs/README.md
 !/docs/hooks.md
+!/docs/hooks-usage.md
 !/docs/models.md
 !/docs/agents-and-skills.md
 !/docs/working-rules.md

@@ -65,7 +65,7 @@ can check a rule, a hook enforces it, and the prompt only explains it
 | --- | --- |
 | Send independent tool calls in one response, and combine reads in one Bash call. | Each turn re-reads the whole context. Calls in one response take one turn ([turns, not tool calls](dossier/usage.md#turns-not-tool-calls)). |
 | Work in the main conversation. Use a subagent only when its output would fill the context, for parallel work that you ask for, or for a fresh-context review. | Subagents were over half of the measured week's cost ([Agents And Skills](agents-and-skills.md)). |
-| Let the first four automatic compactions occur. After them, when the context note comes, write a handoff note before the current step ends, continue the work, and ask the user to run `/clear` at the next natural stop. | A compaction and a handoff both start again from about 20k tokens. Each compaction summarizes the last summary again, and after the fourth one fewer needed facts remain ([Usage Notes](hooks.md#usage-notes-usage_notes)). |
+| Let the first four automatic compactions occur. After them, when the context note comes, write a handoff note before the current step ends, continue the work, and ask the user to run `/clear` at the next natural stop. | A compaction and a handoff both start again from about 20k tokens. Each compaction summarizes the last summary again, and after the fourth one fewer needed facts remain ([Usage Notes](hooks-usage.md#usage-notes-usage_notes)). |
 | Use CodeGraph or a search tool before reading whole files. | Text that enters the context costs usage on every later turn. |
 
 ## Communication

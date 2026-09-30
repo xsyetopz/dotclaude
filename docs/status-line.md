@@ -65,7 +65,7 @@ The second row shows what the session uses:
 - **Compactions, not a token count, set the handoff:** a compaction and a
   handoff cost about the same, and the facts that a compaction keeps drop
   after the fourth one
-  ([Usage Notes](hooks.md#usage-notes-usage_notes)).
+  ([Usage Notes](hooks-usage.md#usage-notes-usage_notes)).
 - **Cache expiry and misses:** a prompt after the cache expired writes the
   whole context to the cache again. When you see the time left, you can
   answer before it or decide on a handoff. The miss cause tells you what broke
@@ -75,7 +75,7 @@ The second row shows what the session uses:
   expiry countdown shows it before the turn. A miss after a model
   switch does not count either, because a new model starts a new cache.
 - **Limits from 75%:** the same levels as the
-  [usage notes](hooks.md#usage-notes-usage_notes). Below 75% a limit does not
+  [usage notes](hooks-usage.md#usage-notes-usage_notes). Below 75% a limit does not
   change what you do, so it takes little space.
 - **Pace:** the percentage alone does not tell you if the limit comes before
   the reset. The pace compares usage with an even rate over the window, as

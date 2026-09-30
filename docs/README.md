@@ -32,6 +32,7 @@ optimize for speed or for the volume of output.
 | Page | What and why |
 | --- | --- |
 | [Hooks](hooks.md) | each guard, gate, and note, the reason for it, and its option |
+| [Usage Hooks](hooks-usage.md) | usage bounds, usage notes, model lock, and scratchpad pruning |
 | [Models](models.md) | the model lock, fast mode, Fable, effort, and plan detection |
 | [Agents And Skills](agents-and-skills.md) | each agent's model and effort, and each skill |
 | [Working Rules](working-rules.md) | the system prompt and output style rules, and the reason for each |
