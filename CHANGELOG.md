@@ -25,9 +25,10 @@ steps after each update.
   local `git commit` in another owner's clone passes. See
   [Contributions](docs/contributions.md).
 - `scripts/update-ai-policies.mjs` updates the catalog into the plugin data
-  directory. The guard checks the upstream README hash only when a
-  contribution command runs, at most once a day, and tells you to update
-  when the hash changed. `DOTCLAUDE_OFFLINE=1` turns the check off.
+  directory. At session start, a detached process checks the upstream
+  README hash at most once a day. The guard reads only the stored hash, and
+  tells you to update when it differs from the catalog.
+  `DOTCLAUDE_OFFLINE=1` turns the check off.
 - The `contribute-upstream` skill. It reads the project's AI policy, stops
   when the project forbids AI work, and treats a missing policy as unknown.
   It verifies the claim before a draft and writes the draft in plain English
@@ -36,6 +37,16 @@ steps after each update.
 - The settings profile adds `permissions.ask` rules for `gh pr create`,
   `gh pr comment`, `gh pr review`, `gh issue create`, `gh issue comment`,
   `gh discussion create`, and `gh discussion comment`.
+
+- A context note. When the main context is 100k tokens or more, each prompt
+  that you type tells Claude the context size and to start a handoff with
+  `write-session-handoff`. No hook input gives Claude its context size. With
+  the settings profile, Claude Code compacts at about 117k tokens (median
+  121k in 145 measured compactions), before the 150k handoff point. The note
+  at 100k gives Claude time to write a handoff first. In a long run with no
+  typed prompt, the first tool call past 100k gives the note once, and again
+  after the context goes under 100k and back over it. The size comes from the
+  end of the transcript, and the note uses the `usage_notes` option.
 
 ### Changed
 
@@ -53,6 +64,24 @@ steps after each update.
   profile groups, the switches, and the extras. The permission prompt of
   each `--apply` is the approval of the write, with no second question in
   text.
+- The usage notes give the reset time of the session and weekly limits. At
+  90%, Claude writes a handoff when the remaining work does not fit before
+  the limit, and tells you the reset time.
+- Faster hooks on Bun. The Edit guard reads the transcript only when an edit
+  removes assertions (a long session: 35 to 17 ms per edit). The Bash and
+  Edit guards find your latest prompt from the end of the transcript and stop
+  there (a long session: 40 to 26 ms when an edit removes assertions). The
+  contribution catalog and the settings stamp hash with `Bun.CryptoHasher`,
+  not `node:crypto` (a Bash check: about 3 ms less). The status line
+  measures width with `Bun.stripANSI`, not `node:util` (about 2 ms less). The
+  secret scan starts Betterleaks with `Bun.spawn`, not `node:child_process`,
+  which uses about 15% less CPU after a `Bash` call.
+  The contribution guard reads your `gh` login from `hosts.yml`, and starts
+  `gh` only when it cannot read the file (a push to another owner's
+  repository: 91 to 37 ms).
+- The dossier corrects the Sonnet 5.5 and Opus 5.5 cost comparison from the
+  Artificial Analysis suite. `diff-reviewer` stays on Sonnet 5.5, so a
+  `risk: high` slice still gets two different models as reviewers.
 
 ### Fixed
 

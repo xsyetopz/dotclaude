@@ -28,8 +28,7 @@ export function check(toolName, toolInput, ctx) {
   const glob =
     c.oracle && protectedMatch(filePath, c.oracle.root, c.oracle.globs);
   if (glob) out.push(["deny", PROTECTED_REASON(glob)]);
-  if (TEST_PATH.test(posix))
-    out.push(...testWeakening(before, after, c.testRemovalRequested));
+  if (TEST_PATH.test(posix)) out.push(...testWeakening(before, after));
   if (!c.bashWrite || fs.existsSync(filePath))
     out.push(...generated(filePath, posix));
   out.push(...frontmatter(toolName, toolInput, filePath, posix));
@@ -88,14 +87,15 @@ const SKIP =
 export const ASKS_TEST_REMOVAL =
   /\b(remove|delete|drop|rip(\s+\w+)?\s+out|get\s+rid\s+of|strip)\b(?:(?!\.\s)[^\n]){0,80}\btests?\b|\btests?\b(?:(?!\.\s)[^\n]){0,40}\b(remove|delete|drop)\b/i;
 
-function testWeakening(before, after, removalRequested = false) {
+function testWeakening(before, after) {
   // A new test file weakens nothing: conditional skips there are platform
   // guards such as `@unittest.skipUnless(shutil.which("openssl"))`.
   if (before === null) return [];
   const out = [];
   const removed = count(ASSERT, before ?? "") - count(ASSERT, after);
-  // A skip marker still asks: removing tests is not hiding a failing one.
-  if (removed > 0 && !removalRequested)
+  // The Edit and Bash guards drop this finding when the user asked to remove
+  // tests. A skip marker still asks: removing tests is not hiding a failing one.
+  if (removed > 0)
     out.push([
       "ask",
       `the edit removes ${removed} assertion(s) from a test file`,

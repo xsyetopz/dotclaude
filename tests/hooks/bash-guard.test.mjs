@@ -172,6 +172,43 @@ test("a Bash write that removes assertions asks unless the user asked for it", (
   expect(decision("Remove the flaky tests for the old flag.")).toBe(null);
 });
 
+test("an Edit that removes assertions asks unless the user asked for it", () => {
+  const file = path.join(repo, "tests", "e.test.mjs");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const transcript = (prompts) => {
+    const out = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-t-")),
+      "t.jsonl",
+    );
+    fs.writeFileSync(
+      out,
+      prompts
+        .map((p) => JSON.stringify({ type: "user", message: { content: p } }))
+        .join("\n"),
+    );
+    return out;
+  };
+  const decision = (prompts, newString = "test();") =>
+    hook("pre-tool-use/confirm-risky-edits.mjs", {
+      tool_name: "Edit",
+      tool_input: {
+        file_path: file,
+        old_string: "test(() => expect(1).toBe(1));",
+        new_string: newString,
+      },
+      transcript_path: transcript(prompts),
+    })?.hookSpecificOutput;
+  expect(decision(["Tidy the helper."]).permissionDecision).toBe("ask");
+  // Only the latest prompt counts.
+  expect(decision(["Remove the tests.", "Tidy the helper."])).toBeDefined();
+  expect(decision(["Tidy it.", "Remove the flaky tests."])).toBeUndefined();
+  // The request removes only the assertion finding, not a new skip marker.
+  expect(
+    decision(["Remove the flaky tests."], "test.skip(() => {});")
+      .permissionDecisionReason,
+  ).toMatch(/skip, xfail, todo, or focus marker/);
+});
+
 test("each guard decision adds one verdict log line with a bounded target", () => {
   const log = path.join(data, "verdicts.jsonl");
   const lines = () =>

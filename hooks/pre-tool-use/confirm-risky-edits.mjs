@@ -10,20 +10,28 @@ import { planAllowlist } from "../lib/_plans.mjs";
 import { recentPrompts } from "../lib/_transcript.mjs";
 import { guardDecision } from "../lib/_verdicts.mjs";
 
+const REMOVES_ASSERTIONS = /assertion\(s\) from a test file/;
+
 run((data) => {
   const editGuard = option("edit_guard");
   const modelLock = option("model_lock");
   if (!editGuard && !modelLock) return;
-  const findings = check(data.tool_name ?? "", data.tool_input ?? {}, {
+  let findings = check(data.tool_name ?? "", data.tool_input ?? {}, {
     allowedModels: planAllowlist().list,
     editGuard,
     modelLock,
     oracle: oracleFor(data, projectRoot(data)),
-    testRemovalRequested:
-      editGuard &&
-      ASKS_TEST_REMOVAL.test(
-        recentPrompts(data.transcript_path ?? "", 1, 4000).at(-1) ?? "",
-      ),
   });
+  // Read the transcript only when the edit removes assertions: parsing it
+  // costs about 25 ms on a long session.
+  if (
+    findings.some(([, reason]) => REMOVES_ASSERTIONS.test(reason)) &&
+    ASKS_TEST_REMOVAL.test(
+      recentPrompts(data.transcript_path ?? "", 1, 4000).at(-1) ?? "",
+    )
+  )
+    findings = findings.filter(
+      ([, reason]) => !REMOVES_ASSERTIONS.test(reason),
+    );
   guardDecision(findings, data, "edit");
 });

@@ -115,8 +115,18 @@ This section weighs **reported** experience and Anthropic's guidance.
   slices that needed design judgment, so this does not test the report that
   Opus 5.5 takes half the calls. `implementer` stays on Sonnet 5.5, which is
   not measured yet. **reported:** On the Artificial Analysis suite, Sonnet 5.5
-  costs less per task than Opus 5.5 only at `low` and `medium` effort. At
-  `high` and above, Opus 5.5 gives more quality for the same cost. In one
+  costs less per task than Opus 5.5 at the same effort, except at `max`. But
+  Opus 5.5 one level lower gives a score that is not lower, for less cost,
+  than three Sonnet 5.5 levels. Each pair is score and cost per task:
+  Sonnet `max` (56, $7.60) against Opus `xhigh` (56, $3.46), Sonnet `xhigh`
+  (52, $2.74) against Opus `high` (54, $1.82), and Sonnet `medium` (41,
+  $0.59) against Opus `low` (42, $0.55). No Opus level gives a better score
+  for less cost than Sonnet `low` (36, $0.41) or Sonnet `high` (47, $1.08).
+  The suite measures output-heavy tasks with small contexts. dotclaude
+  subagents spend mostly on cache reads, which cost $0.20 per million tokens
+  on both models, so the suite overstates the gap for subagents. Claude Code
+  has separate weekly limits for Opus and Sonnet on Pro and Max, so Sonnet
+  agents can continue work after the Opus limit. In one
   user's test of 35 bug-fix tasks, both models fixed 34, but Sonnet 5.5 wrote
   outside its assigned folder 4 times and Opus 5.5 0 times. From 0.11.1, the
   reminder keeps Sonnet 5.5 agents inside the files of their brief.

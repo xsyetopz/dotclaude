@@ -11,6 +11,16 @@
 export const MAIN_CONTEXT_TOKENS = 150_000;
 
 /**
+ * Main-conversation context (tokens) from which each user prompt tells Claude
+ * its context size, so that it can hand off before automatic compaction.
+ * With `autoCompactWindow` at MAIN_CONTEXT_TOKENS, Claude Code 2.1.284
+ * compacts at the window minus 20k for output and 13k of buffer, so a
+ * handoff at 150k comes too late: 145 automatic compactions in main sessions
+ * to 2026-09-30 had a median of 121k tokens and a minimum of 116k.
+ */
+export const CONTEXT_NOTE_TOKENS = 100_000;
+
+/**
  * Main-conversation context (tokens) at which the status line shows a cold
  * cache in red: the next turn writes the whole context to the cache again, at 1.25x the input price instead of reads at 0.05x on
  * Opus 5.5.

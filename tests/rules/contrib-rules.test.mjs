@@ -11,11 +11,14 @@ import {
   loadCatalog,
   lookup,
   parseReadme,
+  refreshUpstream,
   remoteKey,
   resetCatalogCache,
   upstreamChange,
+  upstreamStale,
 } from "../../hooks/lib/_ai-policies.mjs";
 import { check } from "../../hooks/lib/_bash-rules.mjs";
+import { hostsUser } from "../../hooks/lib/_rules-contrib.mjs";
 
 function repo(remotes) {
   const root = fs.realpathSync(
@@ -123,23 +126,27 @@ describe("lazy upstream check", () => {
       return "f".repeat(40);
     };
     const now = Date.now();
-    expect(upstreamChange(now, fetchSha)).toBe("f".repeat(40));
-    expect(upstreamChange(now + 60_000, fetchSha)).toBe("f".repeat(40));
+    expect(upstreamChange(), "the guard never fetches").toBeUndefined();
+    expect(upstreamStale(now)).toBe(true);
+    refreshUpstream(now, fetchSha);
+    expect(upstreamChange()).toBe("f".repeat(40));
+    expect(upstreamStale(now + 60_000)).toBe(false);
+    refreshUpstream(now + 60_000, fetchSha);
     expect(calls).toBe(1);
-    upstreamChange(now + 25 * 60 * 60 * 1000, fetchSha);
+    refreshUpstream(now + 25 * 60 * 60 * 1000, fetchSha);
     expect(calls).toBe(2);
   });
 
   test("stays quiet when the hash matches or the fetch fails", () => {
     online();
     const sha = loadCatalog().sha;
-    expect(upstreamChange(Date.now(), () => sha)).toBeUndefined();
+    refreshUpstream(Date.now(), () => sha);
+    expect(upstreamChange()).toBeUndefined();
     online();
-    expect(
-      upstreamChange(Date.now(), () => {
-        throw new Error("offline");
-      }),
-    ).toBeUndefined();
+    refreshUpstream(Date.now(), () => {
+      throw new Error("offline");
+    });
+    expect(upstreamChange()).toBeUndefined();
   });
 
   test("an updated catalog in the data directory wins", () => {
@@ -153,14 +160,51 @@ describe("lazy upstream check", () => {
 
   test("offline, nothing is fetched", () => {
     let calls = 0;
-    expect(
-      upstreamChange(Date.now(), () => {
-        calls += 1;
-        return "x";
-      }),
-    ).toBeUndefined();
+    expect(upstreamStale()).toBe(false);
+    refreshUpstream(Date.now(), () => {
+      calls += 1;
+      return "x";
+    });
     expect(calls).toBe(0);
+    expect(upstreamChange()).toBeUndefined();
   });
+});
+
+test("the gh login comes from `hosts.yml` in gh's config directory", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-gh-"));
+  const write = (sub, text) => {
+    fs.mkdirSync(path.join(dir, sub), { recursive: true });
+    fs.writeFileSync(path.join(dir, sub, "hosts.yml"), text);
+  };
+  write(
+    "a",
+    "github.com:\n    git_protocol: https\n    users:\n        Me:\n    user: Me\n",
+  );
+  write("xdg/gh", "github.com:\n    user: other\n");
+  write("none", "gitlab.com:\n    user: me\n");
+  write("bad", "github.com: [\n");
+  const env = (e) => ({ HOME: path.join(dir, "home"), ...e });
+  expect(hostsUser(env({ GH_CONFIG_DIR: path.join(dir, "a") }))).toBe("me");
+  expect(
+    hostsUser(
+      env({
+        GH_CONFIG_DIR: path.join(dir, "a"),
+        XDG_CONFIG_HOME: path.join(dir, "xdg"),
+      }),
+    ),
+    "`GH_CONFIG_DIR` wins",
+  ).toBe("me");
+  expect(hostsUser(env({ XDG_CONFIG_HOME: path.join(dir, "xdg") }))).toBe(
+    "other",
+  );
+  expect(hostsUser(env({ GH_CONFIG_DIR: path.join(dir, "none") }))).toBe("");
+  expect(
+    hostsUser(env({ GH_CONFIG_DIR: path.join(dir, "bad") })),
+  ).toBeUndefined();
+  expect(
+    hostsUser(env({ GH_CONFIG_DIR: path.join(dir, "missing") })),
+    "a missing file falls back to `gh`",
+  ).toBeUndefined();
 });
 
 describe("contribution guard", () => {

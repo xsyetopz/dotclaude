@@ -79,8 +79,17 @@ export function waitsForUser(transcriptPath) {
 export function recentPrompts(transcriptPath, limit = 5, maxChars = 600) {
   const text = tail(transcriptPath);
   if (text === null) return [];
+  // Scan from the end and stop at `limit` prompts: parsing every line of an
+  // 8 MB tail costs about 20 ms. With a `limit` that is not a positive
+  // integer, the scan reads all lines, and `slice` gives the old result.
   const prompts = [];
-  for (const line of text.split("\n")) {
+  const lines = text.split("\n");
+  for (
+    let i = lines.length - 1;
+    i >= 0 && !(limit > 0 && prompts.length === limit);
+    i -= 1
+  ) {
+    const line = lines[i];
     if (!line.trim()) continue;
     let entry;
     try {
@@ -95,7 +104,7 @@ export function recentPrompts(transcriptPath, limit = 5, maxChars = 600) {
       prompt.length > maxChars ? `${prompt.slice(0, maxChars)} [...]` : prompt,
     );
   }
-  return prompts.slice(-limit);
+  return prompts.reverse().slice(-limit);
 }
 
 /**

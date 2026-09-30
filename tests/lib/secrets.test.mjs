@@ -1,5 +1,8 @@
-import { expect, test } from "bun:test";
-import { redact, strings } from "../../hooks/lib/_secrets.mjs";
+import { afterEach, expect, test } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { redact, scan, strings } from "../../hooks/lib/_secrets.mjs";
 
 const find = (rule, secret) => ({ rule, secret });
 
@@ -52,4 +55,40 @@ test("strings lists every string in order", () => {
     "3",
     "4",
   ]);
+});
+
+// A fake `betterleaks` first on PATH, so `scan` runs a known script.
+const realPath = process.env.PATH;
+afterEach(() => {
+  process.env.PATH = realPath;
+});
+const fakeScanner = (body) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-bl-"));
+  fs.writeFileSync(path.join(dir, "betterleaks"), `#!/bin/sh\n${body}\n`, {
+    mode: 0o755,
+  });
+  process.env.PATH = `${dir}${path.delimiter}${realPath}`;
+};
+
+test("scan gives stdin to the scanner and reads its JSON report", async () => {
+  // The report's secret is the whole stdin, so the text must arrive intact.
+  fakeScanner(`printf '[{"RuleID":"r","Secret":"%s"},{"Secret":""}]' "$(cat)"`);
+  expect(await scan("héllo ✓")).toStrictEqual([
+    { rule: "r", secret: "héllo ✓" },
+  ]);
+});
+
+test("scan gives null when the scanner fails or prints no report", async () => {
+  fakeScanner("cat >/dev/null; echo '[]'; exit 1");
+  expect(await scan("x")).toBeNull();
+  fakeScanner("cat >/dev/null; echo 'not json'");
+  expect(await scan("x")).toBeNull();
+  fakeScanner("cat >/dev/null; kill -TERM $$");
+  expect(await scan("x")).toBeNull();
+});
+
+test("scan skips empty text and treats empty output as no findings", async () => {
+  fakeScanner("cat >/dev/null");
+  expect(await scan("")).toBeNull();
+  expect(await scan("x")).toStrictEqual([]);
 });

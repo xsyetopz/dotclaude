@@ -6,6 +6,9 @@
 // ask, so the user approves each contribution that an agent makes as them.
 
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { forbids, lookup, remoteKey, updateNotice } from "./_ai-policies.mjs";
 import { git, positional } from "./_bash-args.mjs";
 import { gitCwd, gitSplit } from "./_rules-git.mjs";
@@ -23,10 +26,38 @@ const GRAPHQL_WRITE =
 const API_WRITE =
   /^\/?repos\/([^/]+)\/([^/]+)\/(pulls|issues|comments|git|contents|merges)\b/;
 
+/** gh's config directory, found as gh finds it. */
+function ghConfigDir(env) {
+  if (env.GH_CONFIG_DIR) return env.GH_CONFIG_DIR;
+  if (env.XDG_CONFIG_HOME) return path.join(env.XDG_CONFIG_HOME, "gh");
+  if (process.platform === "win32" && env.AppData)
+    return path.join(env.AppData, "GitHub CLI");
+  return path.join(os.homedir(), ".config", "gh");
+}
+
+/**
+ * The github.com login in gh's `hosts.yml` ("" when it has none), or
+ * undefined when the file cannot be read or parsed. gh keeps the login there
+ * also when the token is in the system keyring.
+ */
+export function hostsUser(env = process.env) {
+  try {
+    const hosts = Bun.YAML.parse(
+      fs.readFileSync(path.join(ghConfigDir(env), "hosts.yml"), "utf8"),
+    );
+    const user = hosts?.["github.com"]?.user;
+    return typeof user === "string" ? user.trim().toLowerCase() : "";
+  } catch {
+    return undefined;
+  }
+}
+
 let login;
 /** The gh login for github.com, read from the local config (no network). */
 function ghUser(ctx) {
   if (ctx.ghUser !== undefined) return ctx.ghUser;
+  // Reading `hosts.yml` costs under 1 ms. Starting `gh` costs about 50 ms.
+  login ??= hostsUser();
   if (login === undefined) {
     try {
       login = execFileSync(

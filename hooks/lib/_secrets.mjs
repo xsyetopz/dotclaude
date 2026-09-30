@@ -10,7 +10,6 @@
 // applies. Live validation stays off, so no secret leaves the machine. A run
 // takes about 30 ms.
 
-import { execFile } from "node:child_process";
 import os from "node:os";
 
 const ARGS = [
@@ -34,24 +33,33 @@ export const scannerInstalled = () => Bun.which("betterleaks") !== null;
  * gitleaks is missing or fails.
  */
 export async function scan(text) {
-  if (!text || !scannerInstalled()) return null;
+  // `Bun.which` reads the start-up PATH unless it gets the current one.
+  const bin = text
+    ? Bun.which("betterleaks", { PATH: process.env.PATH ?? "" })
+    : null;
+  if (!bin) return null;
   // Async, so the dispatcher runs the other PostToolUse actions while
-  // Betterleaks runs.
-  const stdout = await new Promise((resolve) => {
-    const child = execFile(
-      "betterleaks",
-      ARGS,
-      {
-        encoding: "utf8",
-        cwd: os.tmpdir(),
-        timeout: 8000,
-        maxBuffer: 64 * 1024 * 1024,
-      },
-      (err, out) => resolve(err ? null : out),
-    );
-    child.stdin.on("error", () => {});
-    child.stdin.end(text);
-  });
+  // Betterleaks runs. `Bun.spawn`, not `node:child_process`: loading the
+  // Node stream layer costs about 15 ms per hook run. A timeout or a full
+  // buffer kills the child, which leaves `exitCode` null.
+  let stdout = null;
+  try {
+    const child = Bun.spawn([bin, ...ARGS], {
+      cwd: os.tmpdir(),
+      stdin: new Blob([text]),
+      stdout: "pipe",
+      stderr: "ignore",
+      timeout: 8000,
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    const [out, code] = await Promise.all([
+      new Response(child.stdout).text(),
+      child.exited,
+    ]);
+    if (code === 0) stdout = out;
+  } catch {
+    // Betterleaks went missing after the check, or the spawn failed.
+  }
   if (stdout === null) return null;
   try {
     const report = JSON.parse(stdout || "[]");

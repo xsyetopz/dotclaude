@@ -28,28 +28,6 @@ test("removing an assertion from a test file asks", () => {
   expect(f[0][1]).toMatch(/\b1\b/);
 });
 
-test("removing assertions passes when the user asked to remove the tests", () => {
-  const edit = {
-    file_path: "/repo/tests/test_api.py",
-    old_string: "r = get()\nassert r.ok\nassert r.body",
-    new_string: "r = get()\nassert r.ok",
-  };
-  expect(
-    check("Edit", edit, { ...ctx, testRemovalRequested: true }),
-  ).toStrictEqual([]);
-  const skip = check(
-    "Edit",
-    {
-      file_path: "/repo/src/api.test.ts",
-      old_string: "it('works', () => {",
-      new_string: "it.skip('works', () => {",
-    },
-    { ...ctx, testRemovalRequested: true },
-  );
-  // The request covers removed assertions, not a new skip marker.
-  expect(levels(skip)).toStrictEqual(["ask"]);
-});
-
 test("test-removal requests are recognized in the user's own words", () => {
   for (const said of [
     "rip it out: legacy.js, the USE_LEGACY_PRICING flag, its tests, all of it",

@@ -3,7 +3,6 @@
 // the shipped profile, so any profile change reads as out of date until it is
 // applied again, without a check per release.
 
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -23,7 +22,7 @@ export const STAMP_KEY = "DOTCLAUDE_SETTINGS_PROFILE";
  * skipped does not change the stamp; a change to the shipped files does.
  */
 export function profileStamp(file = RECOMMENDED) {
-  const hash = createHash("sha256").update(fs.readFileSync(file));
+  const hash = new Bun.CryptoHasher("sha256").update(fs.readFileSync(file));
   if (path.resolve(file) === RECOMMENDED)
     hash.update(fs.readFileSync(OPTIONAL));
   return hash.digest("hex").slice(0, 12);

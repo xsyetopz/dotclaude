@@ -56,10 +56,11 @@ yours, and a prompt gives you the facts for it.
 
 ## Updates
 
-**What:** the guard checks the upstream README lazily. It checks only when a
-contribution command runs, and at most once a day. It downloads the raw
-file with a 3-second limit and compares its git blob hash with the catalog.
-When the two differ, the deny or ask reason tells you to run:
+**What:** at session start, a detached process checks the upstream README
+when the last check is more than a day old. It downloads the raw file with a
+3-second limit, and it keeps the git blob hash of the file. The guard reads
+only that stored hash and compares it with the catalog. It never waits for
+the network. When the two differ, the deny or ask reason tells you to run:
 
 ```bash
 bun <plugin>/scripts/update-ai-policies.mjs
@@ -68,10 +69,11 @@ bun <plugin>/scripts/update-ai-policies.mjs
 The script writes a new catalog to the plugin data directory, and that copy
 wins over the shipped one. `--dry-run` shows the counts and writes nothing.
 `--ship` writes the shipped file, for a dotclaude release. With
-`DOTCLAUDE_OFFLINE=1` set, the guard never checks. The tests set it.
+`DOTCLAUDE_OFFLINE=1` set, nothing checks. The tests set it.
 
 **Why:** the upstream list changes often. A check on every command costs
-time, and an automatic update would change what the guard denies without
+time, a check in the guard can hold a command for 3 seconds, and an automatic
+update would change what the guard denies without
 your knowledge.
 
 ## Drafts

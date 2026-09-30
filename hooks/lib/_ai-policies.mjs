@@ -3,12 +3,11 @@
 //
 // The plugin ships a snapshot in `_ai-policies.json`. The update script writes
 // a newer copy to the plugin data directory, and that copy wins. The upstream
-// README hash is checked lazily: only when a contribution command targets a
-// repository that is not the user's, at most once a day, and never when
-// `DOTCLAUDE_OFFLINE` is set (the tests set it).
+// README hash is fetched at session start in a detached process, at most once
+// a day, and never when `DOTCLAUDE_OFFLINE` is set (the tests set it). The
+// guard reads only the stored hash.
 
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -214,14 +213,16 @@ export function lookup(key) {
   );
 }
 
-// --- the lazy upstream check -------------------------------------------------
+// --- the upstream check ----------------------------------------------------
 
 export const RAW_URL = `https://raw.githubusercontent.com/${UPSTREAM.repo}/${UPSTREAM.branch}/${UPSTREAM.path}`;
 
 /** The git blob hash of `text`, the same value GitHub reports as `sha`. */
 export function blobSha(text) {
   const body = Buffer.from(text, "utf8");
-  return createHash("sha1")
+  // `Bun.CryptoHasher`, not `node:crypto`: loading `node:crypto` costs about
+  // 8 ms per hook run.
+  return new Bun.CryptoHasher("sha1")
     .update(`blob ${body.length}\0`)
     .update(body)
     .digest("hex");
@@ -241,39 +242,55 @@ function fetchUpstreamSha() {
   return text.includes("|") ? blobSha(text) : undefined;
 }
 
-/**
- * The upstream README hash when it differs from the catalog in use, else
- * undefined. Checks the network at most once a day, and never offline.
- */
-export function upstreamChange(now = Date.now(), fetchSha = fetchUpstreamSha) {
-  if (process.env.DOTCLAUDE_OFFLINE) return undefined;
-  let state = {};
+function readState() {
   try {
-    state = JSON.parse(fs.readFileSync(checkPath(), "utf8"));
+    return JSON.parse(fs.readFileSync(checkPath(), "utf8"));
   } catch {
-    // never checked
+    return {}; // never checked
   }
-  if (!(now - (state.checked ?? 0) < CHECK_EVERY_MS)) {
-    let sha;
-    try {
-      sha = fetchSha();
-    } catch {
-      // offline or rate limited: keep the last answer until the next day
-    }
-    state = { checked: now, sha: sha ?? state.sha ?? null };
-    try {
-      fs.mkdirSync(dataDir(), { recursive: true });
-      fs.writeFileSync(checkPath(), JSON.stringify(state));
-    } catch {
-      // a read-only data directory only repeats the check
-    }
+}
+
+/** True when the upstream hash is older than a day and the check is on. */
+export function upstreamStale(now = Date.now()) {
+  if (process.env.DOTCLAUDE_OFFLINE) return false;
+  return !(now - (readState().checked ?? 0) < CHECK_EVERY_MS);
+}
+
+/**
+ * Fetch the upstream README hash and store it, at most once a day and never
+ * offline. The SessionStart hook runs this in a detached process, so a slow
+ * network never holds a tool call.
+ */
+export function refreshUpstream(now = Date.now(), fetchSha = fetchUpstreamSha) {
+  if (!upstreamStale(now)) return;
+  let sha;
+  try {
+    sha = fetchSha();
+  } catch {
+    // offline or rate limited: keep the last answer until the next day
   }
+  const state = { checked: now, sha: sha ?? readState().sha ?? null };
+  try {
+    fs.mkdirSync(dataDir(), { recursive: true });
+    fs.writeFileSync(checkPath(), JSON.stringify(state));
+  } catch {
+    // a read-only data directory only repeats the check
+  }
+}
+
+/**
+ * The stored upstream README hash when it differs from the catalog in use,
+ * else undefined. Reads only the file that `refreshUpstream` writes.
+ */
+export function upstreamChange() {
+  if (process.env.DOTCLAUDE_OFFLINE) return undefined;
+  const { sha } = readState();
   const current = loadCatalog().sha;
-  return state.sha && current && state.sha !== current ? state.sha : undefined;
+  return sha && current && sha !== current ? sha : undefined;
 }
 
 /** A sentence for the user when the upstream catalog changed, else "". */
-export function updateNotice(now) {
-  if (!upstreamChange(now)) return "";
+export function updateNotice() {
+  if (!upstreamChange()) return "";
   return ` The upstream AI policy list changed after this catalog was made. To update the catalog, run \`bun ${UPDATE_SCRIPT}\`.`;
 }

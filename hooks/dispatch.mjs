@@ -28,6 +28,7 @@ export const ACTIONS = {
     ["compact", "session-start/restore-context-after-compact.mjs"],
     ["startup|resume", "session-start/warn-incomplete-setup.mjs"],
     ["startup|resume", "session-start/prune-scratchpads.mjs"],
+    ["startup|resume", "session-start/refresh-ai-policies.mjs"],
     ["startup|resume", "session-start/warn-instruction-size.mjs"],
     ["*", "session-start/add-session-notes.mjs"],
   ],
@@ -52,6 +53,7 @@ export const ACTIONS = {
     [`Bash|Read|${TOOL_EDITS}`, "post-tool-use/record-edits-and-checks.mjs"],
     ["Bash", "post-tool-use/load-nested-instructions.mjs"],
     ["*", "post-tool-use/redact-secrets.mjs"],
+    ["*", "post-tool-use/note-context-size.mjs"],
   ],
   PostToolUseFailure: [
     [`Bash|${TOOL_EDITS}`, "post-tool-use-failure/record-failed-checks.mjs"],

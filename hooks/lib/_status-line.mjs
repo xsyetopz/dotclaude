@@ -24,7 +24,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { stripVTControlCharacters } from "node:util";
 import {
   k,
   MAIN_CONTEXT_TOKENS,
@@ -49,7 +48,9 @@ const SEP = C.dim(" · ");
 
 /** Visible width: ANSI colors and OSC 8 links take no columns. */
 export function width(text) {
-  return [...stripVTControlCharacters(text)].length;
+  // `Bun.stripANSI`, not `node:util`: loading `node:util` costs about 2 ms per
+  // status line. The two differ only on escapes this file never writes.
+  return [...Bun.stripANSI(text)].length;
 }
 
 const link = (url, text) => `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
