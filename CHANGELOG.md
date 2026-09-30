@@ -10,6 +10,8 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-30
+
 ### Added
 
 - The `exclude_session_files` hook (on by default) adds files that describe
@@ -620,4 +622,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.15.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.16.0...HEAD
