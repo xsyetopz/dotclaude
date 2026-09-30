@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: Implements one small, well-scoped slice of work end to end, from a plan or clear request, such as one feature slice, endpoint, module, or fix with a known cause, and the few files it touches. Split larger work into slices, one agent each. Not for drafting a plan. Use for independent work that can run in parallel or would fill the main context. Give it the goal, files or area, constraints, and how to check it is done.
+description: Implements one small, well-scoped slice of work end to end, from a plan or clear request, such as one feature slice, endpoint, module, or fix with a known cause, and the few files it touches. Split larger work into slices, one agent each. The same change to many like files (for example, every locale file) is one slice for one agent. Not for drafting a plan. Use for independent work that can run in parallel or would fill the main context. Give it the goal, files or area, constraints, and how to check it is done.
 disallowedTools: Agent
 model: claude-sonnet-5-5
 effort: medium

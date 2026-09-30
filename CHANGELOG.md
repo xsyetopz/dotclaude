@@ -52,6 +52,10 @@ steps after each update.
   audit agents stopped in the middle of an item and left their scratch files.
 - The stop checks send Claude back with `additionalContext`, so Claude Code
   shows them as "Stop hook feedback", not as "Stop hook error".
+- Main-conversation audits fix each finding that an MRE confirms before the
+  report. The output style does not put a confirmed bug in the follow-ups.
+- The same change to many like files, for example each locale file, is one
+  slice for one agent. Before, one session started an agent for each locale.
 
 ### Fixed
 
