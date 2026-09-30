@@ -4,10 +4,6 @@ description: Check a project's AI contribution policy, verify the claim, and dra
 argument-hint: "[repository and what to contribute, for example: owner/repo bug in the parser]"
 ---
 
-<task>
-Prepare the contribution in `$ARGUMENTS`, or in the user's last message when `$ARGUMENTS` is empty, for a project that the user does not own. The text goes out under the user's name, and maintainers read it as the user's words. So check that the project accepts AI contributions, verify the claim, and give the user a draft. The user sends it.
-</task>
-
 <procedure>
 1. Find the AI policy. Read these files in the target repository, if they exist: `AI_POLICY.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CODE_OF_CONDUCT.md`, the pull request template, and the issue templates. Use `gh api repos/<owner>/<repo>/contents/<path>` or the web page. Also check the organization's `.github` repository. dotclaude's Bash guard reads a catalog of projects that forbid AI contributions and denies contribution commands to them.
 
@@ -32,3 +28,7 @@ Prepare the contribution in `$ARGUMENTS`, or in the user's last message when `$A
 
 6. After the draft is sent, do not reply in the thread, push follow-up commits, or answer reviewers unless the user asks. Later replies come from the user. When the user asks for help with a reply, draft it the same way.
 </procedure>
+
+<task>
+Prepare the contribution in `$ARGUMENTS`, or in the user's last message when `$ARGUMENTS` is empty, for a project that the user does not own. The text goes out under the user's name, and maintainers read it as the user's words. So check that the project accepts AI contributions, verify the claim, and give the user a draft. The user sends it.
+</task>

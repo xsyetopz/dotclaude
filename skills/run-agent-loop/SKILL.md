@@ -4,10 +4,6 @@ description: Run a large change that tests cover (a migration, port, rewrite, or
 argument-hint: "[the change, for example: port src/parser to Rust]"
 ---
 
-<task>
-Run the change in `$ARGUMENTS`, or in the user's last message when `$ARGUMENTS` is empty, as a loop of small slices. Each slice goes through an implementer, a reviewer that sees only the diff, a fixer, and a frozen test oracle.
-</task>
-
 <context>
 Three large ports used the same workflow: Bun from Zig to Rust, the GitHub Copilot runtime from TypeScript to Rust, and pnpm v12. Each one wrote a guide first. Each one cut the work into small slices, leaves first. Each one kept the existing tests frozen as the oracle, and each one let a separate reviewer read each diff. This skill applies that workflow with dotclaude's agents. dotclaude hooks enforce two parts: a subagent cannot change a protected oracle file, and a slice with the status `implemented` and no review stops the turn once.
 </context>
@@ -68,3 +64,7 @@ Run each command from your worktree root, as a plain command. Claude Code refuse
 Report: what changed, the oracle result, and anything left open.
 ```
 </brief>
+
+<task>
+Run the change in `$ARGUMENTS`, or in the user's last message when `$ARGUMENTS` is empty, as a loop of small slices. Each slice goes through an implementer, a reviewer that sees only the diff, a fixer, and a frozen test oracle.
+</task>

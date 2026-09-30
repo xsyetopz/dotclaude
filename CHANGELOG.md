@@ -40,6 +40,12 @@ steps after each update.
   work sets the earlier one to `superseded`. dotclaude does not read
   `.claude/handoff.md` anymore. To continue from an old note, move it into
   `.claude/handoffs/`, or give its path to Claude.
+- Skills that take `$ARGUMENTS` put their `<task>` last, after the reference
+  sections, as Anthropic's prompt guidance orders data before the query.
+- The `integration-setup` agent gets the reason for each of its limits, and
+  it does not state a training cutoff that a model override makes wrong.
+- The output style lists apology with the other replies that tell the user
+  nothing.
 
 ### Fixed
 

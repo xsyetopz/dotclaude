@@ -7,12 +7,6 @@ agent: integration-setup
 allowed-tools: Bash(bun *status.mjs*)
 ---
 
-<task>
-Request: $ARGUMENTS
-
-Complete the request for the integrations that it names. With no argument or `status`, report the status below and what is missing, and change nothing.
-</task>
-
 <status>
 !`bun "${CLAUDE_SKILL_DIR}/scripts/status.mjs"`
 </status>
@@ -90,3 +84,9 @@ The `dotclaude-browser` plugin adds the `drive-web-browser` skill (agent-browser
 - The options `cloakbrowser`, `cloakbrowser_humanize`, `cloakbrowser_headless`, and `captcha_ocr_ddddocr` are in `/config` under dotclaude-browser. Tell the user to set them there, because settings edits are theirs to make.
 - After a restart or `/reload-plugins`, the status shows `installed: true`.
 </browser>
+
+<task>
+Request: $ARGUMENTS
+
+Complete the request for the integrations that it names. With no argument or `status`, report the status above and what is missing, and change nothing.
+</task>

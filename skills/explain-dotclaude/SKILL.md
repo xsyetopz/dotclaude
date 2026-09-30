@@ -4,10 +4,6 @@ description: Explain why dotclaude makes Claude work as it does, from the plugin
 argument-hint: "[the behavior to explain]"
 ---
 
-<task>
-Answer the user's question about a dotclaude behavior with its reason and its evidence. The question is `$ARGUMENTS`, or the user's last message when `$ARGUMENTS` is empty. The dotclaude documentation holds the reason for each behavior. Answer from it, because an answer from memory can describe an older version.
-</task>
-
 <procedure>
 1. Read `${CLAUDE_PLUGIN_ROOT}/docs/README.md`. It lists the pages and what each page covers.
 2. Open the page that covers the behavior. If the question names a hook message that starts with `[dotclaude]`, start with `hooks.md`.
@@ -25,3 +21,7 @@ Give a short answer in this order:
 
 Keep a dotclaude rule and your own judgment apart. If you did the thing because of your own judgment and not because of a dotclaude rule, say that.
 </output_format>
+
+<task>
+Answer the user's question about a dotclaude behavior with its reason and its evidence. The question is `$ARGUMENTS`, or the user's last message when `$ARGUMENTS` is empty. The dotclaude documentation holds the reason for each behavior. Answer from it, because an answer from memory can describe an older version.
+</task>
