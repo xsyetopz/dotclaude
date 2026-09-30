@@ -8,6 +8,10 @@ import os from "node:os";
 import path from "node:path";
 import { stripVTControlCharacters as plain } from "node:util";
 import {
+  AUTO_COMPACT_TOKENS,
+  COMPACTIONS_BEFORE_HANDOFF,
+  CONTEXT_NOTE_TOKENS,
+  k,
   MAIN_CONTEXT_TOKENS,
   STALE_CACHE_CONTEXT_TOKENS,
   SUBAGENT_CONTEXT_TOKENS,
@@ -16,6 +20,7 @@ import {
   cachePart,
   contextPart,
   limitPart,
+  mainContextPart,
   renderMain,
   renderTask,
   shortModel,
@@ -51,6 +56,45 @@ test("context is measured against the budget, with a handoff mark past it", () =
   const over = contextPart(MAIN_CONTEXT_TOKENS + 10_000, MAIN_CONTEXT_TOKENS);
   expect(plain(over)).toBe("160k/150k █████ handoff");
   expect(over).toContain(`${RED}handoff`);
+});
+
+test("the main context is measured against the compaction point, with the compactions so far", () => {
+  expect(plain(mainContextPart(40_000, 0))).toBe(
+    `40k/${k(AUTO_COMPACT_TOKENS)} ██░░░`,
+  );
+  // Past the compaction point, Claude Code compacts, so no handoff mark.
+  expect(plain(mainContextPart(AUTO_COMPACT_TOKENS + 3_000, 0))).toBe(
+    `${k(AUTO_COMPACT_TOKENS + 3_000)}/${k(AUTO_COMPACT_TOKENS)} █████`,
+  );
+  const before = mainContextPart(CONTEXT_NOTE_TOKENS + 5_000, 1);
+  expect(plain(before)).toEndWith(` ⇊1/${COMPACTIONS_BEFORE_HANDOFF}`);
+  expect(before).not.toContain("handoff");
+  // The handoff mark comes when the context note asks for a handoff.
+  const early = mainContextPart(30_000, COMPACTIONS_BEFORE_HANDOFF);
+  expect(early).not.toContain("handoff");
+  const due = mainContextPart(CONTEXT_NOTE_TOKENS, COMPACTIONS_BEFORE_HANDOFF);
+  expect(plain(due)).toEndWith(
+    ` ⇊${COMPACTIONS_BEFORE_HANDOFF}/${COMPACTIONS_BEFORE_HANDOFF} handoff`,
+  );
+  expect(due).toContain(`${RED}handoff`);
+});
+
+test("the main line counts the compactions in its transcript", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "statusline-"));
+  const file = path.join(dir, "s.jsonl");
+  const boundary = JSON.stringify({
+    type: "system",
+    subtype: "compact_boundary",
+  });
+  fs.writeFileSync(file, `${boundary}\n${boundary}\n`);
+  const line = renderMain(
+    { ...DATA, transcript_path: file },
+    { columns: 200, now: NOW, git: GIT },
+  );
+  expect(plain(line)).toContain(
+    `87k/117k ████░ ⇊2/${COMPACTIONS_BEFORE_HANDOFF}`,
+  );
+  fs.rmSync(dir, { recursive: true });
 });
 
 test("the cache part shows the expiry while warm and the re-read cost when cold", () => {
@@ -208,7 +252,7 @@ test("the main line shows the place on one row and the usage on the next, with c
   const line = renderMain(DATA, { columns: 200, now: NOW, git: GIT });
   expect(plain(line).split("\n")).toEqual([
     "dotclaude · ⎇ main ±3 ↑1 · #42",
-    "Opus 5.5 medium · 87k/150k ███░░ · ◷ 40m 93% · 5h 23% · 7d 41%",
+    "Opus 5.5 medium · 87k/117k ████░ · ◷ 40m 93% · 5h 23% · 7d 41%",
   ]);
   expect(line).toContain("\x1b]8;;https://github.com/o/r/pull/42\x07");
   const api = renderMain(
@@ -250,7 +294,7 @@ test("the main line shows the session facts that advanced users check", () => {
   const text = plain(renderMain(FULL, { columns: 400, now: NOW, git: GIT }));
   expect(text.split("\n")).toEqual([
     "dotclaude/hooks +2 · ⊞ feature-x · ⎇ main ±3 ↑1 · #42 · @security-reviewer · NORMAL · status line rows",
-    "Opus 5.5 medium · 87k/150k ███░░ · ◷ 40m 93% ✗2 tools · 5h 23% · 7d 41% · spend 63% · +156 -23 · 1h12m",
+    "Opus 5.5 medium · 87k/117k ████░ · ◷ 40m 93% ✗2 tools · 5h 23% · 7d 41% · spend 63% · +156 -23 · 1h12m",
   ]);
 });
 
@@ -261,7 +305,7 @@ test("a narrow terminal wraps parts to new rows instead of cutting them off", ()
   expect(rows.length).toBeLessThanOrEqual(3);
   for (const row of rows) expect(width(row)).toBeLessThanOrEqual(80);
   const text = plain(rows.join("\n"));
-  for (const part of ["87k/150k", "Opus 5.5", "5h 23%", "◷ 40m 93%"])
+  for (const part of ["87k/117k", "Opus 5.5", "5h 23%", "◷ 40m 93%"])
     expect(text).toContain(part);
 });
 
@@ -271,7 +315,7 @@ test("past three rows the lowest-priority parts go first", () => {
   );
   expect(rows).toHaveLength(3);
   const text = plain(rows.join("\n"));
-  expect(text).toContain("87k/150k");
+  expect(text).toContain("87k/117k");
   expect(text).not.toContain("1h12m");
   expect(text).not.toContain("status line rows");
   expect(text).not.toContain("5h");

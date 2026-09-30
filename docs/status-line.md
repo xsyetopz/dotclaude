@@ -10,13 +10,14 @@ An example, with colors removed:
 
 ```text
 dotclaude/hooks +2 · ⊞ feature-x · ⎇ main ±3 ↑1 · #42
-Opus 5.5 high · 87k/150k ███░░ · ◷ 40m 93% ✗2 tools · 5h 82% ▲12%→12:46 ↻13:30
+Opus 5.5 high · 87k/117k ████░ ⇊1/4 · ◷ 40m 93% ✗2 tools · 5h 82% ▲12%→12:46
 ```
 
 Each part is short. A one-column glyph replaces a word where it saves space:
 
 | Glyph | Meaning |
 | --- | --- |
+| `⇊` | compactions of the main conversation, out of those before a handoff |
 | `⎇` | git branch, with `±` changed files and `↑` `↓` commits ahead and behind |
 | `⊞` | worktree |
 | `◷` | warm prompt cache, with the minutes until it expires |
@@ -40,8 +41,10 @@ The first row shows where the session works:
 
 The second row shows what the session uses:
 
-- the model with its effort, and the context against the 150k handoff point,
-  with a bar that turns yellow at 75% and red at 90%, and `handoff` past it
+- the model with its effort, and the context against the 117k compaction
+  point, with a bar that turns yellow at 75% and red at 90%. After a
+  compaction, `⇊1/4` gives the compactions so far out of the four before a
+  handoff. `handoff` shows when the context note asks for one
 - the prompt cache: the minutes until it expires, its hit ratio, and its
   misses with the last cause, or the tokens that the next turn re-reads when
   it is cold on 100k or more
@@ -53,10 +56,16 @@ The second row shows what the session uses:
 
 ## Why Each Part
 
-- **Context against 150k, not the model's window:** the settings profile
-  compacts at 150k, and calls over 150k tokens were 74.7% of the measured
-  cost ([usage evidence](dossier/usage.md)). A bar against a 1M window stays
-  near empty while usage climbs.
+- **Context against 117k, not the model's window:** with the settings
+  profile's `autoCompactWindow` of 150k, Claude Code compacts at 117k (150k,
+  minus 20k for output, minus a 13k buffer). Calls over 150k tokens were
+  74.7% of the measured cost ([usage evidence](dossier/usage.md)). A bar
+  against a 1M window stays near empty while usage climbs, and a bar against
+  150k never fills.
+- **Compactions, not a token count, set the handoff:** a compaction and a
+  handoff cost about the same, and the facts that a compaction keeps drop
+  after the fourth one
+  ([Usage Notes](hooks.md#usage-notes-usage_notes)).
 - **Cache expiry and misses:** a prompt after the cache expired writes the
   whole context to the cache again. When you see the time left, you can
   answer before it or decide on a handoff. The miss cause tells you what broke

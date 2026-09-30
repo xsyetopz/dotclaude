@@ -132,7 +132,8 @@ reports that start with the outcome.
 ### [Status Line](docs/status-line.md)
 
 Two rows: where the session works, and what it uses. The context bar measures
-against the 150k handoff point. The cache part shows the minutes until the
+against the 117k point where Claude Code compacts, and `⇊2/4` counts the
+compactions before a handoff. The cache part shows the minutes until the
 prompt cache expires. Usage limits show from 75%, and their pace shows a
 deficit (`▲`) or a reserve (`▼`). Short glyphs replace words, so the rows
 stay compact. A row that is too wide continues on the

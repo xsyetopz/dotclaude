@@ -1,11 +1,11 @@
 // dotclaude's status lines. The main line measures the session against
-// dotclaude's own bounds: context against the 150k handoff point, not the
-// model's window; the prompt cache's expiry and hit ratio; and the usage
+// dotclaude's own bounds: context against the point where Claude Code
+// compacts, not the model's window, with the compactions so far; the prompt cache's expiry and hit ratio; and the usage
 // limits at the levels the usage notes use. The subagent rows measure each
 // agent's context against the subagent budget.
 //
 // Each part is short and starts with a one-column glyph where a word would
-// cost more columns: `⎇` branch, `⊞` worktree, `◷` warm cache, `◌` cold
+// cost more columns: `⇊` compactions, `⎇` branch, `⊞` worktree, `◷` warm cache, `◌` cold
 // cache, `✗` cache misses, `▲` limit deficit, `▼` limit reserve, `↻` limit
 // reset. A space follows a glyph that labels a name or a time (`⎇`, `⊞`,
 // `◷`, `◌`), so the glyph and the text do not run together. No emoji,
@@ -25,12 +25,15 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  AUTO_COMPACT_TOKENS,
+  COMPACTIONS_BEFORE_HANDOFF,
+  CONTEXT_NOTE_TOKENS,
   k,
-  MAIN_CONTEXT_TOKENS,
   STALE_CACHE_CONTEXT_TOKENS,
   subagentContextTokens,
   USAGE_LEVELS,
 } from "./_budget.mjs";
+import { compactions } from "./_usage.mjs";
 
 const ESC = "\x1b[";
 const paint = (code) => (text) => `${ESC}${code}m${text}${ESC}0m`;
@@ -73,13 +76,32 @@ function levelColor(pct) {
 }
 const byLevel = (pct, text) => levelColor(pct)(text);
 
-/** Context tokens against `limit`, with a bar and a handoff mark past it. */
-export function contextPart(tokens, limit, cells = 5) {
+/**
+ * Context tokens against `limit`, with a bar, and a handoff mark past it
+ * unless `markPast` is false.
+ */
+export function contextPart(tokens, limit, cells = 5, markPast = true) {
   const fraction = tokens / limit;
   const color = levelColor(fraction * 100);
   const full = Math.round(Math.min(fraction, 1) * cells);
   let text = `${color(`${k(tokens)}/${k(limit)}`)} ${color("█".repeat(full))}${C.dim("░".repeat(cells - full))}`;
-  if (fraction >= 1) text += ` ${C.red("handoff")}`;
+  if (markPast && fraction >= 1) text += ` ${C.red("handoff")}`;
+  return text;
+}
+
+/**
+ * The main context against the compaction point, and `⇊2/4` for the
+ * compactions so far out of those before a handoff. `handoff` shows when the
+ * context note asks for one.
+ */
+export function mainContextPart(tokens, count) {
+  let text = contextPart(tokens, AUTO_COMPACT_TOKENS, 5, false);
+  if (count > 0) {
+    const color = count >= COMPACTIONS_BEFORE_HANDOFF ? C.red : C.dim;
+    text += ` ${color(`⇊${count}/${COMPACTIONS_BEFORE_HANDOFF}`)}`;
+  }
+  if (count >= COMPACTIONS_BEFORE_HANDOFF && tokens >= CONTEXT_NOTE_TOKENS)
+    text += ` ${C.red("handoff")}`;
   return text;
 }
 
@@ -311,7 +333,7 @@ export function renderMain(
 
   const ctx = data.context_window?.total_input_tokens;
   if (typeof ctx === "number" && ctx > 0)
-    add(usage, 10, contextPart(ctx, MAIN_CONTEXT_TOKENS));
+    add(usage, 10, mainContextPart(ctx, compactions(data.transcript_path)));
 
   add(usage, 7, cachePart(data.prompt_cache, now));
   // A limit past the first usage level outranks all but the context.
