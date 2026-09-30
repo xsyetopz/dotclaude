@@ -19,8 +19,8 @@ Use these sections in this order. Skip a section only when it is truly empty:
 
 1. **Goal**: the user's request in their own words, plus any constraints they added later, quoted exactly.
 2. **State**: what is done, with file paths, and whether each part is verified (name the command and its result) or not.
-3. **Decisions**: choices made and the reason for each, including options tried or rejected and why, so the next session does not retry them.
-4. **Open**: remaining steps in order, and each blocked item with what blocks it.
+3. **Decisions**: choices made and the reason for each, including options tried or rejected and why, so the next session does not retry them. When a later decision replaced an earlier one, give the later one and say which one it replaced.
+4. **Open**: remaining steps in order, each request from the user that is not started, and each blocked item with what blocks it.
 5. **Details that are hard to rebuild**: exact error messages, commands, IDs, versions, and `file:line` locations the next session would otherwise have to rediscover.
 </sections>
 

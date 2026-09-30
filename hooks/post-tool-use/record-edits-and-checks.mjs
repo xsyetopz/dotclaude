@@ -33,7 +33,7 @@ function checkRun(data) {
   const command = input.command;
   if (typeof command !== "string" || !isCheckCommand(command)) return undefined;
   if (input.run_in_background) return undefined; // result arrives later
-  const recorded = command.slice(0, 200);
+  const recorded = command.length > 200 ? `${command.slice(0, 199)}…` : command;
   if (data.hook_event_name === "PostToolUseFailure") {
     if (data.is_interrupt) return undefined;
     const code = /^Exit code (\d+)/.exec(data.error ?? "")?.[1];

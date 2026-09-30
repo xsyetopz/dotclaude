@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  AUTO_COMPACT_TOKENS,
   COMPACTIONS_BEFORE_HANDOFF,
   CONTEXT_NOTE_TOKENS,
   k,
@@ -169,7 +170,9 @@ export function compactions(transcriptPath) {
  * more after COMPACTIONS_BEFORE_HANDOFF compactions, else null. Before that,
  * automatic compaction runs. With `once`, the note comes only the first time
  * after the context was last under the bound, so a long run of tool calls
- * gets it once.
+ * gets it once. Without `once`, a later note in the same crossing gives only
+ * the size and refers to the first one, so Claude does not write the handoff
+ * again for each prompt.
  * Each note marks the session, so a note after a prompt also counts.
  */
 export function contextNote(data, once = false) {
@@ -184,9 +187,12 @@ export function contextNote(data, once = false) {
     fs.rmSync(file, { force: true });
     return null;
   }
-  if (once && fs.existsSync(file)) return null;
+  const told = fs.existsSync(file);
+  if (once && told) return null;
   const count = compactions(data.transcript_path);
   if (count < COMPACTIONS_BEFORE_HANDOFF) return null;
+  if (told)
+    return `<context_use source="dotclaude">The main context is ${k(used)} tokens after ${count} compactions. An earlier note in this context asked for a handoff note. If you did not write it, write it now. If you wrote it, update it only when a decision or the state changed, or when this request cannot finish before Claude Code compacts at about ${k(AUTO_COMPACT_TOKENS)} tokens. Continue the work, and at the next natural stop ask the user to run \`/clear\`.</context_use>`;
   fs.writeFileSync(file, "");
-  return `<context_use source="dotclaude">The main context is ${k(used)} tokens after ${count} compactions. Each compaction summarizes the previous summary again, so the earliest facts degrade. Finish the current step. Then write a handoff note with the \`write-session-handoff\` skill, and ask the user to run \`/clear\`.</context_use>`;
+  return `<context_use source="dotclaude">The main context is ${k(used)} tokens after ${count} compactions. Each compaction summarizes the previous summary again, so the earliest facts degrade. Claude Code compacts again at about ${k(AUTO_COMPACT_TOKENS)} tokens, and a step can take longer than that. Thus write a handoff note now with the \`write-session-handoff\` skill, before you finish the current step. If you wrote one after the last compaction, update it only when the state changed. This note does not stop the work. After the handoff, continue the current step and the user's requests, and add each new request to the handoff note. At the next natural stop, ask the user to run \`/clear\`.</context_use>`;
 }

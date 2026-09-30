@@ -149,6 +149,18 @@ test("subagent stop checks the subagent's own ledger", () => {
   expect(out.reason).toMatch(/src\/worker\.js/);
 });
 
+test("a long check command in the stop reason shows that it was cut", () => {
+  const sid = session();
+  const command = `bun test ${Array.from({ length: 30 }, (_, i) => `tests/unit/case-${i}.test.mjs`).join(" ")}`;
+  checkRun(sid, command);
+  edit(sid);
+  const out = stop(sid);
+  expect(out?.decision).toBe("block");
+  const shown = /last check: `([^`]*)`/.exec(out.reason)?.[1];
+  expect(shown?.endsWith("…"), out.reason).toBe(true);
+  expect(command.startsWith(shown.slice(0, -1))).toBe(true);
+});
+
 test("a multi-file sd records every file as this session's edit", () => {
   const sid = session();
   fs.mkdirSync(path.join(repo, "src"), { recursive: true });

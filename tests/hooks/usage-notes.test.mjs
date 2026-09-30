@@ -4,6 +4,7 @@ import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  AUTO_COMPACT_TOKENS,
   COMPACTIONS_BEFORE_HANDOFF,
   CONTEXT_NOTE_TOKENS,
   k,
@@ -234,11 +235,12 @@ test("mainContextTokens reads the last main response, or a later compaction", ()
 });
 
 test("a context note tells Claude its context size past the note bound", () => {
+  const data = tmp("dotclaude-data-");
   const prompt = (file) =>
     hook(
       "user-prompt-submit/note-usage-limits.mjs",
       { session_id: "s5", prompt: "next step", transcript_path: file },
-      { CLAUDE_CONFIG_DIR: tmp("dotclaude-none-") },
+      { CLAUDE_CONFIG_DIR: tmp("dotclaude-none-"), CLAUDE_PLUGIN_DATA: data },
     );
   const below = CONTEXT_NOTE_TOKENS - 20_000;
   expect(prompt(transcript(response(10, below)))).toBe(null);
@@ -248,14 +250,18 @@ test("a context note tells Claude its context size past the note bound", () => {
   ).hookSpecificOutput.additionalContext;
   expect(note).toMatch(/^\[dotclaude\] <context_use/);
   expect(note).toContain(`${k(above)} tokens`);
+  expect(note).toContain(`${k(AUTO_COMPACT_TOKENS)} tokens`);
   expect(note).toContain("`write-session-handoff`");
   expect(note).toContain("`/clear`");
-  // The note repeats on each prompt past the bound.
-  expect(
-    prompt(
-      afterCompactions(COMPACTIONS_BEFORE_HANDOFF, response(0, above - 1_000)),
-    ),
-  ).not.toBe(null);
+  // The size repeats on each prompt past the bound, but only the first note
+  // asks for the handoff, so Claude does not write it again for each prompt.
+  const again = prompt(
+    afterCompactions(COMPACTIONS_BEFORE_HANDOFF, response(0, above - 1_000)),
+  ).hookSpecificOutput.additionalContext;
+  expect(again).toContain(`${k(above)} tokens`);
+  expect(again).toContain("`/clear`");
+  expect(again).not.toContain("`write-session-handoff`");
+  expect(again.length).toBeLessThan(note.length);
   expect(
     hook(
       "user-prompt-submit/note-usage-limits.mjs",

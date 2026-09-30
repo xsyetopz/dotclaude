@@ -265,13 +265,18 @@ with the reset time. At 75%, Claude writes a handoff with
 `write-session-handoff` and asks you to run `/clear`. At 90%, when the work does
 not fit, Claude writes a handoff and tells you the reset time. After four
 compactions, past 100k tokens of main context, each prompt (or one tool call in
-a run with no prompt) gives the context size and asks for a handoff. A
+a run with no prompt) gives the context size and asks for a handoff before the
+current step ends. The note does not stop the work. Claude continues and asks
+you to run `/clear` at the next natural stop. Until a compaction, a later
+prompt gives only the size and does not ask for the handoff again. A
 notification names a limit that stops a turn, its reset time, and
 `claude --resume`.
 
 **Why:** no hook input gives Claude its usage or its context size. A compaction
 and a handoff cost the same per turn, but compactions 5 to 8 kept fewer facts
-than 1 to 4 ([evals](dossier/evals.md#8-compactions-before-a-handoff)).
+than 1 to 4 ([evals](dossier/evals.md#8-compactions-before-a-handoff)). The
+note comes at 100k and compaction at about 117k, and one step can use more than
+the 17k between them. Thus the handoff comes first.
 `COMPACTIONS_BEFORE_HANDOFF` in `hooks/lib/_budget.mjs` sets the count.
 
 ### Model Lock And Plan Awareness (`model_lock`, `claude_plan`)

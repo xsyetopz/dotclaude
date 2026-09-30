@@ -10,6 +10,30 @@ steps after each update.
 
 ## [Unreleased]
 
+### Changed
+
+- The context note asks for the handoff before the current step ends, not
+  after it. The note comes at 100k tokens and compaction at about 117k, and
+  one step can use more than the 17k between them. In one 0.15.0 session, a
+  fifth compaction came right after the handoff. The note now gives the
+  compaction point and says that it does not stop the work. In two 0.15.0
+  sessions, Claude put off new requests from the user after the note, and in
+  two it said that the context limit was reached. The Claude prompting best
+  practices also tell Claude not to stop tasks early because of the token
+  budget.
+- Only the first context note after a crossing of 100k tokens asks for the
+  handoff. A later prompt before the next compaction gets a short note with the
+  size, and Claude updates the handoff only when the state changed. Before,
+  each prompt asked for the handoff again, and in one 0.15.0 session Claude
+  updated the handoff instead of starting a new request.
+- The `write-session-handoff` skill records which decision replaced an
+  earlier one, and each request from the user that is not started.
+
+### Fixed
+
+- A check command longer than 200 characters now ends with `…` in the Stop
+  message. Before, the message cut it with no mark, for example `…; py`.
+
 ## [0.15.0] - 2026-09-30
 
 ### Changed
