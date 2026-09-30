@@ -12,6 +12,12 @@ steps after each update.
 
 ### Added
 
+- The `exclude_session_files` hook (on by default) adds files that describe
+  one session or one user to `.git/info/exclude` when an agent creates them:
+  the handoff note, `.dotclaude/`, `CLAUDE.local.md`,
+  `.claude/settings.local.json`, and `.claude/worktrees/`. Before, the
+  handoff skill only told the user to add the note to `.gitignore`. Files
+  that their tools say to commit, such as `openspec/`, stay tracked.
 - The `handoff_pointer` hook (on by default) tells a new session, at startup
   and after `/clear`, where the newest open handoff note is. Claude reads the
   note only when you ask to continue, and checks it against `git status` and

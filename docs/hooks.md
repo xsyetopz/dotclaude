@@ -215,6 +215,18 @@ working rules let Claude read with Bash, so without this hook it would miss
 the rules of the directory it works in. Path-scoped rules in `.claude/rules`
 are not covered yet ([open items](dossier/open-items.md)).
 
+### Session Files (`exclude_session_files`)
+
+**What:** when an agent creates a handoff note (`.claude/handoffs/`),
+`.dotclaude/` loop state, `CLAUDE.local.md`, `.claude/settings.local.json`,
+or `.claude/worktrees/`, adds the path to `.git/info/exclude`.
+
+**Why:** these files describe one session or one user, and the Claude Code
+docs say not to commit the last three. `.git/info/exclude` keeps them out of
+commits with no change to the tracked `.gitignore`. OpenSpec (`openspec/`)
+and Spec Kit (`.specify/`) tell you to commit their files, so the hook does
+not touch them.
+
 ### Compaction Carry-Over (`compact_carryover`)
 
 **What:** after compaction, restores your last messages word for word, the
@@ -309,7 +321,7 @@ because it deletes files.
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `bash_guard`, `edit_guard`, `secret_redaction`, `nested_instructions`, `stop_gate`, `task_check`, `goal_loop_guard`, `compact_carryover`, `handoff_pointer`, `model_lock`, `commit_hygiene` | on | the hooks above |
+| `bash_guard`, `edit_guard`, `secret_redaction`, `nested_instructions`, `exclude_session_files`, `stop_gate`, `task_check`, `goal_loop_guard`, `compact_carryover`, `handoff_pointer`, `model_lock`, `commit_hygiene` | on | the hooks above |
 | `subagent_guidance` | on | shared rules and report format for agents, and the `general-purpose` refusal |
 | `ask_in_auto_mode` | off | asks about recoverable actions in auto mode too |
 | `git_attribution` | on | adds the `Co-Authored-By` trailer and pull request footer |

@@ -1,0 +1,77 @@
+#!/usr/bin/env bun
+// PostToolUse: when an agent creates a file that describes one session or
+// one user, add it to `.git/info/exclude`, so it stays out of commits without
+// a change to the project's tracked `.gitignore`. Prints nothing.
+//
+// Only paths whose own docs say "do not commit" are here. OpenSpec
+// (`openspec/`) and Spec Kit (`.specify/`) tell users to commit their files,
+// so they are not.
+
+import fs from "node:fs";
+import path from "node:path";
+import { git } from "../lib/_bash-args.mjs";
+import { option, projectRoot, run } from "../lib/_common.mjs";
+
+// [test on the repo-relative path, entry for the exclude file]
+const SESSION_FILES = [
+  // dotclaude: the notes of `write-session-handoff`.
+  [(rel) => rel.startsWith(".claude/handoffs/"), () => "/.claude/handoffs/"],
+  // dotclaude: `run-agent-loop` state.
+  [(rel) => rel.startsWith(".dotclaude/"), () => "/.dotclaude/"],
+  // Claude Code docs: personal memory and settings, and `--worktree` checkouts.
+  [(rel) => path.basename(rel) === "CLAUDE.local.md", (rel) => `/${rel}`],
+  [
+    (rel) => rel === ".claude/settings.local.json",
+    () => "/.claude/settings.local.json",
+  ],
+  [
+    (rel) =>
+      rel === ".claude/worktrees" || rel.startsWith(".claude/worktrees/"),
+    () => "/.claude/worktrees/",
+  ],
+];
+
+/** The exclude entry for `abs`, with the repo root, or undefined. */
+function entryFor(file) {
+  let abs;
+  try {
+    // git prints the real path of the top level (`/private/var` on macOS).
+    abs = fs.realpathSync(file);
+  } catch {
+    return undefined;
+  }
+  const top = git(path.dirname(abs), ["rev-parse", "--show-toplevel"])?.trim();
+  if (!top) return undefined;
+  const rel = path.relative(top, abs).split(path.sep).join("/");
+  if (rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
+  const hit = SESSION_FILES.find(([test]) => test(rel));
+  return hit && { top, rel, entry: hit[1](rel) };
+}
+
+function exclude(abs) {
+  const found = entryFor(abs);
+  if (!found) return;
+  const { top, rel, entry } = found;
+  // `check-ignore -q` exits 0 (empty output) only for an ignored path.
+  if (git(top, ["check-ignore", "-q", "--", rel]) !== undefined) return;
+  const file = git(top, ["rev-parse", "--git-path", "info/exclude"])?.trim();
+  if (!file) return;
+  const target = path.resolve(top, file);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  const old = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : "";
+  if (old.split("\n").includes(entry)) return;
+  const sep = old === "" || old.endsWith("\n") ? "" : "\n";
+  fs.appendFileSync(target, `${sep}${entry}\n`);
+}
+
+run((data) => {
+  if (!option("exclude_session_files")) return;
+  const input = data.tool_input ?? {};
+  if (data.tool_name === "EnterWorktree") {
+    const dir = path.join(projectRoot(data), ".claude", "worktrees");
+    if (fs.existsSync(dir)) exclude(dir);
+    return;
+  }
+  const file = input.file_path || input.notebook_path;
+  if (typeof file === "string" && file) exclude(path.resolve(file));
+});

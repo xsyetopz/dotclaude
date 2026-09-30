@@ -41,6 +41,12 @@
       "description": "Scan every tool output with Betterleaks and replace each secret it finds with [REDACTED:<rule>] before the model sees it. Needs betterleaks on PATH. Without it, output passes through and session start says so.",
       "default": true
     },
+    "exclude_session_files": {
+      "type": "boolean",
+      "title": "Exclude session files",
+      "description": "When an agent creates a handoff note in `.claude/handoffs/`, `.dotclaude/` loop state, `CLAUDE.local.md`, `.claude/settings.local.json`, or `.claude/worktrees/`, add the path to `.git/info/exclude`, so it stays out of commits.",
+      "default": true
+    },
     "nested_instructions": {
       "type": "boolean",
       "title": "Nested instructions",
