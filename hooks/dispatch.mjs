@@ -30,6 +30,7 @@ export const ACTIONS = {
     ["startup|resume", "session-start/prune-scratchpads.mjs"],
     ["startup|resume", "session-start/refresh-ai-policies.mjs"],
     ["startup|resume", "session-start/warn-instruction-size.mjs"],
+    ["startup|clear", "session-start/point-to-handoff.mjs"],
     ["*", "session-start/add-session-notes.mjs"],
   ],
   UserPromptSubmit: [

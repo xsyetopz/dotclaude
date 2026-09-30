@@ -71,6 +71,12 @@
       "description": "After compaction, restore your last few prompts verbatim plus git diff stat and the last check result.",
       "default": true
     },
+    "handoff_pointer": {
+      "type": "boolean",
+      "title": "Point new sessions at the handoff note",
+      "description": "At startup and after `/clear`, when `.claude/handoffs/` holds a handoff note whose status is `in-progress` or `blocked`, tell Claude where the newest one is and to check it against the repository before it continues.",
+      "default": true
+    },
     "scratchpad_prune_days": {
       "type": "number",
       "title": "Prune idle scratchpads after (days)",

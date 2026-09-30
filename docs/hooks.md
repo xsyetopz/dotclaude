@@ -224,6 +224,19 @@ last check result, and the files this session edited.
 result, and the list of edited files are the facts that the next turn acts
 on, so the hook restores them unchanged.
 
+### Handoff Pointer (`handoff_pointer`)
+
+**What:** at startup and after `/clear`, when `.claude/handoffs/` holds a
+note with status `in-progress` or `blocked`, tells Claude the path of the
+newest one, its branch and commit, and the count of older open notes. Claude
+reads the note when you ask to continue, and checks it against `git status`
+and `git log` first.
+
+**Why:** a new session does not know that a handoff note exists. The pointer
+costs one line, and the note loads only when the work needs it. Notes with
+status `done` or `superseded` get no pointer, so finished work does not
+mislead the next session.
+
 ### Instruction-File Lint
 
 **What:** at session start, reports `CLAUDE.md`, `AGENTS.md`, and rule files
@@ -296,7 +309,7 @@ because it deletes files.
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `bash_guard`, `edit_guard`, `secret_redaction`, `nested_instructions`, `stop_gate`, `task_check`, `goal_loop_guard`, `compact_carryover`, `model_lock`, `commit_hygiene` | on | the hooks above |
+| `bash_guard`, `edit_guard`, `secret_redaction`, `nested_instructions`, `stop_gate`, `task_check`, `goal_loop_guard`, `compact_carryover`, `handoff_pointer`, `model_lock`, `commit_hygiene` | on | the hooks above |
 | `subagent_guidance` | on | shared rules and report format for agents, and the `general-purpose` refusal |
 | `ask_in_auto_mode` | off | asks about recoverable actions in auto mode too |
 | `git_attribution` | on | adds the `Co-Authored-By` trailer and pull request footer |

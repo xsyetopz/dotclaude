@@ -10,6 +10,28 @@ steps after each update.
 
 ## [Unreleased]
 
+### Added
+
+- The `handoff_pointer` hook (on by default) tells a new session, at startup
+  and after `/clear`, where the newest open handoff note is. Claude reads the
+  note only when you ask to continue, and checks it against `git status` and
+  `git log` first.
+- A handoff note starts with front matter: `status` (`in-progress`,
+  `blocked`, `done`, or `superseded`), `branch`, `head`, and `written`. The
+  **Goal** section ends with a **Done when** line, **State** marks partial
+  work, and **Open** lists the questions for you and the promises made to
+  you. These follow the common handoff templates: a status field that tools
+  can read, a definition of done, and a flag on unfinished work.
+
+### Changed
+
+- Breaking: `write-session-handoff` writes a new note to
+  `.claude/handoffs/<YYYY-MM-DD-HHMM>-<topic>.md` (UTC time), not to
+  `.claude/handoff.md`, and keeps the earlier notes. A newer note for the same
+  work sets the earlier one to `superseded`. dotclaude does not read
+  `.claude/handoff.md` anymore. To continue from an old note, move it into
+  `.claude/handoffs/`, or give its path to Claude.
+
 ### Fixed
 
 - A permission prompt no longer starts with `[dotclaude]`. Claude Code already
