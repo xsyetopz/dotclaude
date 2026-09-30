@@ -6,6 +6,7 @@ import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  AUTO_COMPACT_TOKENS,
   COMPACTIONS_BEFORE_HANDOFF,
   k,
   LIMITS,
@@ -28,9 +29,10 @@ const PROMPT = "skills/apply-settings-profile/profiles/system-prompt.md";
 // constant fails here until the file follows. The sentences around the
 // numbers are free to change.
 const QUOTED = {
-  [PROMPT]: [MAIN_CONTEXT_TOKENS, SUBAGENT_CONTEXT_TOKENS],
+  [PROMPT]: [AUTO_COMPACT_TOKENS, SUBAGENT_CONTEXT_TOKENS],
   "skills/apply-settings-profile/SKILL.md": [
     MAIN_CONTEXT_TOKENS,
+    AUTO_COMPACT_TOKENS,
     SUBAGENT_CONTEXT_TOKENS,
   ],
   ".claude-plugin/plugin.json": [
@@ -41,6 +43,7 @@ const QUOTED = {
 const BOUNDS = new Set(
   [
     MAIN_CONTEXT_TOKENS,
+    AUTO_COMPACT_TOKENS,
     SUBAGENT_CONTEXT_TOKENS,
     STALE_CACHE_CONTEXT_TOKENS,
   ].map(k),

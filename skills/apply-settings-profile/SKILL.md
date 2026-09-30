@@ -119,7 +119,7 @@ Apply the dotclaude settings profile to a settings file the user picks. Claude C
    - the folder
    - the git branch with changed files and ahead/behind counts
    - the model and effort
-   - the context against the 150k handoff point
+   - the context against the 117k compaction point
    - when the prompt cache goes cold, and its hit ratio
    - the 5-hour and weekly limits
 

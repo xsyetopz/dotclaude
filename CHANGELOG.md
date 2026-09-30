@@ -77,6 +77,8 @@ steps after each update.
 
   A write to a settings file in a heredoc, or `rm -rf` of a loop word
   outside the temp folder, still asks.
+- The context note and the system prompt give the compaction point as about
+  117k tokens, not "before 150k".
 
 ## [0.15.1] - 2026-09-30
 

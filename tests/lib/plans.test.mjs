@@ -6,9 +6,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  AUTO_COMPACT_TOKENS,
   COMPACTIONS_BEFORE_HANDOFF,
   k,
-  MAIN_CONTEXT_TOKENS,
 } from "../../hooks/lib/_budget.mjs";
 import {
   currentPlan,
@@ -131,7 +131,7 @@ test("planNote describes Fable per plan and one Pro-sized handoff bound for ever
   expect(new Set(lines).size).toBe(3);
   expect(fableLine(enterprise)).toBe("");
   for (const text of [max, pro, credits, enterprise]) {
-    expect(text).toContain(k(MAIN_CONTEXT_TOKENS));
+    expect(text).toContain(`at about ${k(AUTO_COMPACT_TOKENS)} tokens`);
     expect(text).toContain(`first ${COMPACTIONS_BEFORE_HANDOFF} compactions`);
   }
   expect(planNote({ CLAUDE_CONFIG_DIR: configDir(null) })).toBe(null);
