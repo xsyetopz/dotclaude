@@ -6,7 +6,7 @@ A Claude Code plugin in Bun ESM. Design and evidence: `docs/dossier.md`.
 
 - `just check` runs lint, tests, and validation. It must pass before done.
 - `bun test tests/rules/search-rules.test.mjs` runs one test file.
-- `bunx markdownlint-cli2 README.md` lints Markdown at 80 columns.
+- `bunx markdownlint-cli2 README.md` lints Markdown at 100 columns.
 - `just sandbox` runs Claude Code with this checkout in a separate config.
   Read `docs/sandbox.md` first.
 
