@@ -70,6 +70,9 @@ steps after each update.
 - An allow reason no longer starts with `[dotclaude]`, because only the user
   sees it. The foreground rewrite of an `Agent` call shows no reason, because
   it showed on every spawn.
+- The open-task check stops Claude again only for a task that it did not
+  report before. Before, closing one of the reported tasks made the rest
+  block again.
 - A `/dotclaude:` skill named in the middle of a message runs at the step
   where the message puts it. Before, the hook said to run it now, also for
   "commit this, then `/dotclaude:write-session-handoff`".

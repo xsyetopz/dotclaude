@@ -1,5 +1,5 @@
 // Open-task check: a turn that ends with tasks still pending or in progress
-// is sent back once per set of open tasks.
+// is sent back when an open task was not reported before.
 
 import { expect, test } from "bun:test";
 import fs from "node:fs";
@@ -48,7 +48,7 @@ test("open tasks are pending or in progress, in ID order", () => {
   expect(openTasks(path.join(config, "tasks", "missing"))).toEqual([]);
 });
 
-test("a stop with open tasks blocks once per set of open tasks", () => {
+test("a stop blocks only when an open task was not reported before", () => {
   const sid = session();
   tasks(sid, [
     ["1", "completed"],
@@ -61,9 +61,15 @@ test("a stop with open tasks blocks once per set of open tasks", () => {
   expect(stop(sid), "the same open set lets the stop through").toBeNull();
   tasks(sid, [["3", "pending"]]);
   expect(blocked(stop(sid)), "a new open task blocks again").toBe("Stop");
+  tasks(sid, [["3", "completed"]]);
+  expect(stop(sid), "a task already reported stays open").toBeNull();
+  tasks(sid, [["4", "pending"]]);
+  const again = stop(sid);
+  expect(blocked(again), "a new task blocks again").toBe("Stop");
+  expect(feedback(again)).toContain("#2 Task 2");
   tasks(sid, [
     ["2", "completed"],
-    ["3", "completed"],
+    ["4", "completed"],
   ]);
   expect(stop(sid)).toBeNull();
 });
