@@ -10,6 +10,8 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-09-30
+
 ### Changed
 
 - The context note asks for the handoff before the current step ends, not
@@ -535,4 +537,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.15.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.15.1...HEAD
