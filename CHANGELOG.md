@@ -10,6 +10,37 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-30
+
+### Changed
+
+- The context note waits for four compactions of the main conversation.
+  Before 0.15.0, it asked for a handoff at the first crossing of 100k tokens,
+  so every long session stopped there. A compaction and a handoff both start
+  the next part from about 20k tokens, so they cost about the same per turn.
+  In the local transcripts, compactions 1 to 4 kept 49% to 57% of the facts
+  that Claude used next, and compactions 5 to 8 kept 42%. The note now gives
+  the compaction count. `COMPACTIONS_BEFORE_HANDOFF` in
+  `hooks/lib/_budget.mjs` sets the count.
+- The status line measures the main context against 117k, where Claude Code
+  compacts with the 150k `autoCompactWindow`, not against 150k, which the
+  context never reached. `⇊2/4` gives the compactions so far, and `handoff`
+  shows when the context note asks for one. To count compactions, each
+  refresh reads only the transcript lines added since the last refresh.
+- `scripts/compaction-report.mjs` measures the cost and the kept facts of each
+  compaction from the local transcripts.
+- The session note and the system prompt no longer tell Claude to hand off
+  near 150k tokens. With `autoCompactWindow` at 150k, Claude Code compacts at
+  about 117k, so that point never came, and Claude started handoffs on its own
+  estimate. Claude now waits for the context note.
+
+### Documentation
+
+- The hook docs and the README name `claude plugin configure
+  dotclaude@dotclaude` (Claude Code 2.1.285) to list the plugin options.
+- The design dossier notes that Claude Code 2.1.285 removed the second reply
+  after a background report, and why forks stay off.
+
 ## [0.14.1] - 2026-09-30
 
 ### Changed
@@ -480,4 +511,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.14.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.15.0...HEAD
