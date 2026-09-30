@@ -10,6 +10,23 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-09-30
+
+### Changed
+
+- The model lock now denies a subagent or a `claude` command that would run
+  at an effort level that dotclaude does not support for its model. Opus 5.5
+  supports `low` to `xhigh`. Sonnet 5.5 supports only `low` and `medium`,
+  because work that needs `high` needs judgment, and Opus 5.5 gives more for
+  the same cost there. The deny reason names where the effort came from and
+  what to do. `EFFORT_LEVELS` in `hooks/lib/_models.mjs` holds the table.
+
+### Documentation
+
+- `docs/models.md` lists the supported effort levels for each model and the
+  limits of the check. Model Fit adds the ProjectArchitect Bench A/B as
+  reported evidence, with its limits.
+
 ## [0.14.0] - 2026-09-30
 
 ### Added
@@ -463,4 +480,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.14.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.14.1...HEAD

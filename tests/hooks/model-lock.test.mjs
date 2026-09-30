@@ -169,7 +169,7 @@ test("general-purpose is refused, and other subagents run in the foreground", ()
 
 test("each dotclaude agent runs on a model that the default lock allows", async () => {
   const { definition } = await import("../../hooks/lib/_agents.mjs");
-  const { allowed, DEFAULT_ALLOWED } = await import(
+  const { allowed, DEFAULT_ALLOWED, effortLevels } = await import(
     "../../hooks/lib/_models.mjs"
   );
   const dir = path.join(import.meta.dir, "..", "..", "agents");
@@ -183,5 +183,68 @@ test("each dotclaude agent runs on a model that the default lock allows", async 
     expect(def?.maxTurns, name).toBeGreaterThan(0);
     expect(def.model, name).toMatch(/^claude-/);
     expect(allowed(def.model, DEFAULT_ALLOWED.split(",")), name).toBe(true);
+    const levels = effortLevels(def.model);
+    if (levels) expect(levels, name).toContain(def.effort);
   }
+});
+
+test("the model lock denies a subagent effort outside EFFORT_LEVELS", () => {
+  const agent = (tool_input, level, env = {}) =>
+    hook(
+      "pre-tool-use/restrict-subagent-models.mjs",
+      {
+        hook_event_name: "PreToolUse",
+        tool_name: "Agent",
+        ...(level ? { effort: { level } } : {}),
+        tool_input: { prompt: "x", ...tool_input },
+      },
+      {
+        ANTHROPIC_DEFAULT_SONNET_MODEL: "",
+        ANTHROPIC_DEFAULT_OPUS_MODEL: "",
+        CLAUDE_CODE_EFFORT_LEVEL: "",
+        ...env,
+      },
+    );
+  const decision = (out) => out?.hookSpecificOutput?.permissionDecision;
+  // The call's model with the session effort.
+  for (const level of ["high", "xhigh", "max"])
+    expect(decision(agent({ model: "sonnet" }, level)), level).toBe("deny");
+  for (const level of ["low", "medium", undefined])
+    expect(agent({ model: "sonnet" }, level), String(level)).toBe(null);
+  expect(decision(agent({ model: "opus" }, "max"))).toBe("deny");
+  expect(agent({ model: "opus" }, "xhigh")).toBe(null);
+  expect(agent({ model: "haiku" }, "high")).toBe(null);
+  // A dotclaude definition's effort wins over the session effort.
+  expect(agent({ subagent_type: "dotclaude:implementer" }, "high")).toBe(null);
+  const reviewer = agent(
+    { subagent_type: "dotclaude:code-reviewer", model: "sonnet" },
+    "low",
+  );
+  expect(decision(reviewer)).toBe("deny");
+  expect(reviewer.hookSpecificOutput.permissionDecisionReason).toContain(
+    "definition sets it",
+  );
+  expect(
+    agent({ subagent_type: "dotclaude:code-reviewer", model: "opus" }, "low"),
+  ).toBe(null);
+  // CLAUDE_CODE_EFFORT_LEVEL overrides every definition.
+  const forced = agent(
+    { subagent_type: "dotclaude:mechanical-worker" },
+    "low",
+    {
+      CLAUDE_CODE_EFFORT_LEVEL: "high",
+    },
+  );
+  expect(decision(forced)).toBe("deny");
+  expect(forced.hookSpecificOutput.permissionDecisionReason).toContain(
+    "`CLAUDE_CODE_EFFORT_LEVEL`",
+  );
+  // An agent from elsewhere with no `model` is not judged.
+  expect(agent({ subagent_type: "Explore" }, "max")).toBe(null);
+  // The lock off turns the check off.
+  expect(
+    agent({ model: "sonnet" }, "high", {
+      CLAUDE_PLUGIN_OPTION_MODEL_LOCK: "false",
+    }),
+  ).toBe(null);
 });

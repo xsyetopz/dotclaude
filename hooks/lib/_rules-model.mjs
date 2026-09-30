@@ -1,7 +1,7 @@
 // Bash guard rules for the fast-mode and model lock.
 
 import { positional } from "./_bash-args.mjs";
-import { allowed } from "./_models.mjs";
+import { allowed, effortLevels } from "./_models.mjs";
 
 // --- fast mode and model lock -----------------------------------------------
 
@@ -30,6 +30,7 @@ export function claude(cmd, ctx) {
       ]);
     }
   });
+  out.push(...cliEffort(cmd));
   const pos = positional(args);
   if (
     pos[0] === "config" &&
@@ -40,6 +41,30 @@ export function claude(cmd, ctx) {
     out.push(["deny", FAST_DENY]);
   }
   return out;
+}
+
+/** The value of `--name value` or `--name=value`, or "". */
+function flagValue(args, name) {
+  const i = args.indexOf(name);
+  if (i >= 0) return args[i + 1] ?? "";
+  return (
+    args.find((a) => a.startsWith(`${name}=`))?.slice(name.length + 1) ?? ""
+  );
+}
+
+/** A `claude` run whose model and effort are outside EFFORT_LEVELS. */
+function cliEffort(cmd) {
+  const model = flagValue(cmd.args, "--model");
+  const levels = model ? effortLevels(model) : null;
+  const effort =
+    cmd.assigns.CLAUDE_CODE_EFFORT_LEVEL || flagValue(cmd.args, "--effort");
+  if (!levels || !effort || levels.includes(effort)) return [];
+  return [
+    [
+      "deny",
+      `dotclaude supports \`${model}\` only at the effort levels ${levels.map((l) => `\`${l}\``).join(", ")}, not \`${effort}\`. Work that needs more effort than Sonnet 5.5 \`medium\` needs judgment, so run it on Opus 5.5 at \`xhigh\` or lower`,
+    ],
+  ];
 }
 
 export function modelEnv(cmd, ctx) {

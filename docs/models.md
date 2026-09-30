@@ -62,6 +62,22 @@ Claude what the plan means for model choice.
   picker warns that `max` uses about 5.5 times the usage on Opus 5.5.
 - **Each agent file sets its effort,** because Claude Code ignores an effort
   passed at spawn time. See [Agents And Skills](agents-and-skills.md).
+- **dotclaude supports only some effort levels for each model:**
+
+  | Model | Supported | Not supported |
+  | --- | --- | --- |
+  | Opus 5.5 | `low`, `medium`, `high`, `xhigh` | `max` |
+  | Sonnet 5.5 | `low`, `medium` | `high`, `xhigh`, `max` |
+
+  Sonnet 5.5 gets only fully specified work. Work that needs `high` needs
+  judgment, and Opus 5.5 gives more score for the same cost there
+  ([Model Fit](dossier/plans-and-models.md#model-fit)). The model lock
+  denies a subagent that would run outside this table, and a
+  `claude --model … --effort …` command outside it. A hook cannot see an
+  effort change in the main conversation, so the lock cannot stop a main
+  session on Sonnet 5.5 at `high`. For an agent from outside dotclaude, the
+  lock checks the effort only when the call names a model, and it uses the
+  session effort.
 - **Haiku 4.5 has no effort setting.** It uses extended thinking with a
   token budget, not adaptive thinking (**official**,
   [Haiku 4.5](https://platform.claude.com/docs/en/models/haiku-4-5/overview)).

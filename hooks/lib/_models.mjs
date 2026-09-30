@@ -26,6 +26,31 @@ function resolveAlias(m) {
   return mapped?.trim() ? canonical(mapped) : m;
 }
 
+/**
+ * The effort levels that dotclaude supports for each model family. A family
+ * that is not listed has no effort limit here. Sonnet 5.5 gets only fully
+ * specified work, and work that needs `high` needs judgment, so it goes to
+ * Opus 5.5. On hard work, Sonnet 5.5 at `high` cost as much as Opus 5.5 at
+ * `medium` and scored lower (ProjectArchitect bench, 2026-09-29). `max` uses
+ * about 5.5x the usage on Opus 5.5 (claude.ai effort picker).
+ */
+export const EFFORT_LEVELS = {
+  opus: ["low", "medium", "high", "xhigh"],
+  sonnet: ["low", "medium"],
+};
+
+/** The family (`opus`, `sonnet`, ...) of a model alias or ID, or "". */
+export function family(model) {
+  const m = resolveAlias(canonical(model));
+  if (FAMILIES.has(m)) return m;
+  return /^claude-([a-z]+)/.exec(m)?.[1] ?? "";
+}
+
+/** The supported effort levels of a model, or null when it has no limit. */
+export function effortLevels(model) {
+  return EFFORT_LEVELS[family(model)] ?? null;
+}
+
 export function allowed(model, allowlist) {
   const m = resolveAlias(canonical(model));
   if (ALWAYS.has(m)) return true;

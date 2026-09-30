@@ -31,7 +31,9 @@ source labels.
   Anthropic recalibrated Sonnet 5.5's effort levels, so also re-check the
   `low` and `medium` settings of the Sonnet agents. The runs on this machine
   had different tasks (see
-  [Model Fit](plans-and-models.md#model-fit)).
+  [Model Fit](plans-and-models.md#model-fit)). The ProjectArchitect Bench
+  A/B is outside evidence on a different harness with a private hard tier,
+  so this item stays open.
 - Load path-scoped `.claude/rules` files for Bash reads too.
   `load-nested-instructions.mjs` covers only `CLAUDE.md`, `.claude/CLAUDE.md`,
   and `CLAUDE.local.md`

@@ -511,3 +511,24 @@ test("`git add` of an ELF, Mach-O, or PE file warns, and text files pass", () =>
   expect(level("git add -p", c)).toBe("pass");
   expect(level("git add missing.bin", c)).toBe("pass");
 });
+
+test("claude runs outside EFFORT_LEVELS are denied", () => {
+  const c = {
+    ...ctx,
+    allowedModels: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5"],
+  };
+  for (const command of [
+    "claude --model sonnet --effort high -p hi",
+    "claude --model claude-sonnet-5-5 --effort=xhigh -p hi",
+    "CLAUDE_CODE_EFFORT_LEVEL=high claude --model sonnet -p hi",
+    "claude --model opus --effort max -p hi",
+  ])
+    expect(level(command, c), command).toBe("deny");
+  for (const command of [
+    "claude --model sonnet --effort medium -p hi",
+    "claude --model opus --effort xhigh -p hi",
+    "claude --model haiku --effort high -p hi",
+    "claude --effort high -p hi",
+  ])
+    expect(level(command, c), command).not.toBe("deny");
+});

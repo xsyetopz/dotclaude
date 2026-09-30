@@ -126,7 +126,14 @@ This section weighs **reported** experience and Anthropic's guidance.
   subagents spend mostly on cache reads, which cost $0.20 per million tokens
   on both models, so the suite overstates the gap for subagents. Claude Code
   has separate weekly limits for Opus and Sonnet on Pro and Max, so Sonnet
-  agents can continue work after the Opus limit. In one
+  agents can continue work after the Opus limit. **reported:** The
+  ProjectArchitect Bench (2026-09-29) ran an A/B on its own harness. On its
+  public coder suite, Sonnet 5.5 at `medium` passed 56 of 56 at about 35% of
+  the Opus 5.5 cost, but the suite is at its ceiling. On its private hard
+  batch of 10 tasks, Sonnet 5.5 at `high` cost as much as Opus 5.5 at
+  `medium` and scored lower. The hard tasks are not public and n is small.
+  From 0.14.1, dotclaude runs Sonnet 5.5 only at `low` and `medium`
+  ([Models](../models.md#effort)). In one
   user's test of 35 bug-fix tasks, both models fixed 34, but Sonnet 5.5 wrote
   outside its assigned folder 4 times and Opus 5.5 0 times. From 0.11.1, the
   reminder keeps Sonnet 5.5 agents inside the files of their brief.
@@ -138,6 +145,11 @@ This section weighs **reported** experience and Anthropic's guidance.
 
 - `maxEffortLevel: "xhigh"` blocks `max`. The claude.ai effort picker warns
   that `max` uses about 5.5x the usage on Opus 5.5 and 3.5x on Fable 5.1.
+- `EFFORT_LEVELS` in `hooks/lib/_models.mjs` lists the supported levels:
+  Opus 5.5 `low` to `xhigh`, Sonnet 5.5 `low` and `medium`. The model lock
+  enforces it for subagents and `claude` commands. **binary:** no hook event
+  fires on an effort change, and `PreModelSwitch` has no effort field, so
+  the main session is not covered.
 - **official:** Effort can change per turn without a cache miss on Opus 5.5
   and Fable 5.1 (code.claude.com/docs/en/prompt-caching).
 - **official:** Medium effort costs about 70% of high for about 2.5 points

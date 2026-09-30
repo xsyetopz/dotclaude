@@ -3,7 +3,10 @@
 import fs from "node:fs";
 import path from "node:path";
 
-/** `maxTurns` and `model` from a dotclaude agent's definition, or undefined. */
+/**
+ * `maxTurns`, `model`, and `effort` from a dotclaude agent's definition, or
+ * undefined.
+ */
 export function definition(agentType) {
   if (!/^dotclaude:[a-z0-9-]+$/.test(agentType)) return undefined;
   try {
@@ -19,6 +22,7 @@ export function definition(agentType) {
     return {
       maxTurns: n > 0 ? n : null,
       model: /^model:\s*(\S+)\s*$/m.exec(head)?.[1] ?? "",
+      effort: /^effort:\s*(\S+)\s*$/m.exec(head)?.[1] ?? "",
     };
   } catch {
     return undefined;
