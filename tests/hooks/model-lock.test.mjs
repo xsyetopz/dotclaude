@@ -146,6 +146,8 @@ test("general-purpose is refused, and other subagents run in the foreground", ()
     run_in_background: true,
   });
   expect(rewritten.permissionDecision).toBe("allow");
+  // The rewrite happens on every spawn, so it shows the user no reason.
+  expect(rewritten.permissionDecisionReason).toBeUndefined();
   expect(rewritten.updatedInput).toEqual({
     subagent_type: "dotclaude:implementer",
     prompt: "x",

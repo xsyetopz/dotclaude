@@ -13,11 +13,18 @@ test("bash guard emits ask and deny decisions, and nothing for safe commands", (
     tool_input: { command: "git push --force" },
   });
   expect(ask.hookSpecificOutput.permissionDecision).toBe("ask");
+  // The ask reason is the user's permission prompt: no tag there.
+  expect(ask.hookSpecificOutput.permissionDecisionReason).not.toContain(
+    "[dotclaude]",
+  );
   const deny = hook("pre-tool-use/block-destructive-commands.mjs", {
     tool_name: "Bash",
     tool_input: { command: "rm -rf ~" },
   });
   expect(deny.hookSpecificOutput.permissionDecision).toBe("deny");
+  expect(deny.hookSpecificOutput.permissionDecisionReason).toStartWith(
+    "[dotclaude]",
+  );
   expect(
     hook("pre-tool-use/block-destructive-commands.mjs", {
       tool_name: "Bash",

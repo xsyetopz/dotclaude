@@ -64,9 +64,8 @@ run((data) => {
   emit({
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
+      // No reason: the user would see it on every spawn.
       permissionDecision: "allow",
-      permissionDecisionReason:
-        "dotclaude runs subagents in the foreground: a background agent wakes the main conversation when it finishes, and each wake is a full turn.",
       updatedInput: { ...input, run_in_background: false },
     },
   });

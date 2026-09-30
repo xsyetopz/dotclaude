@@ -32,6 +32,8 @@ test("a capped agent gets one report request, then only a fresh agent", () => {
     );
   const first = send("a243ca59c15b9edd2").hookSpecificOutput;
   expect(first.permissionDecision).toBe("allow");
+  // Only the user sees an allow reason, and Claude Code labels it as a hook's.
+  expect(first.permissionDecisionReason).toStartWith("The agent stopped");
   // The message is replaced by one fixed report request, whatever was sent.
   expect(first.updatedInput.message).toBeTruthy();
   expect(first.updatedInput.message).not.toContain("keep going");

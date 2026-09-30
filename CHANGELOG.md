@@ -10,6 +10,14 @@ steps after each update.
 
 ## [Unreleased]
 
+### Fixed
+
+- A permission prompt no longer starts with `[dotclaude]`. Claude Code already
+  labels the prompt as a hook's. Messages to Claude keep the tag.
+- An allow reason no longer starts with `[dotclaude]`, because only the user
+  sees it. The foreground rewrite of an `Agent` call shows no reason, because
+  it showed on every spawn.
+
 ## [0.15.1] - 2026-09-30
 
 ### Changed

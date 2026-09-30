@@ -95,7 +95,8 @@ the contribution when the project forbids AI work, and otherwise asks you.
 
 You can turn off each hook in `/config` under dotclaude, or list the options
 with `claude plugin configure dotclaude@dotclaude`. Every dotclaude
-message starts with `[dotclaude]`. To run a command that a guard denied, type
+message starts with `[dotclaude]`, except the text of a permission prompt. To
+run a command that a guard denied, type
 `! <command>`.
 
 ### [Models](docs/models.md)

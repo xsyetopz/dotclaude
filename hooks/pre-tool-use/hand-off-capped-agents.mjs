@@ -73,7 +73,7 @@ run((data) => {
       hookEventName: "PreToolUse",
       permissionDecision: "allow",
       permissionDecisionReason:
-        "the agent stopped at its turn limit, so this message asks only for its handoff report.",
+        "The agent stopped at its turn limit, so this message asks only for its handoff report.",
       updatedInput: { ...input, message: REPORT_REQUEST },
       additionalContext: `This hook replaced the message to \`${to}\` with a request for its handoff report, because it stopped at its turn limit. When the report arrives, continue the work with a fresh agent of the same type, briefed from it. This hook blocks further messages to \`${to}\`.`,
     },

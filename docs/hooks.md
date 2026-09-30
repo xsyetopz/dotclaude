@@ -6,7 +6,8 @@ the measured week ([usage evidence](dossier/usage.md)). Turn off a hook in
 `/config` or with `claude plugin configure dotclaude@dotclaude`. The option
 name is after each heading.
 
-Every dotclaude message starts with `[dotclaude]`. The guards never approve
+Every dotclaude message starts with `[dotclaude]`, except the text of a
+permission prompt, which Claude Code already labels. The guards never approve
 anything, and they fail open, so a bug in a guard does not stop your work.
 After you approve an ask and the tool runs, the guards do not ask again in
 that session for the same command or edit. Each deny and ask goes to

@@ -119,8 +119,11 @@ export function emit(obj) {
     if (key in out) out[key] = tagged(out[key]);
   if (out.hookSpecificOutput) {
     const h = { ...out.hookSpecificOutput };
-    for (const key of ["permissionDecisionReason", "additionalContext"])
-      if (key in h) h[key] = tagged(h[key]);
+    // Only a "deny" reason goes to Claude. Claude Code shows an "ask" or
+    // "allow" reason to the user and labels it as a hook's, so it gets no tag.
+    const keys = ["additionalContext"];
+    if (h.permissionDecision === "deny") keys.push("permissionDecisionReason");
+    for (const key of keys) if (key in h) h[key] = tagged(h[key]);
     out.hookSpecificOutput = h;
   }
   const mode = dispatchMode();
