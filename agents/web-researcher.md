@@ -1,6 +1,6 @@
 ---
 name: web-researcher
-description: Answers a question from the web with sources (version-specific API docs, error messages, release notes, standards, product facts, comparisons). Use for any lookup needing web pages rather than local code, especially several pages. Give it the question, the versions that matter, and what the answer is for.
+description: Answers a question from the web with sources, such as API docs, errors, release notes, and standards. Use for lookups that need web pages.
 tools: WebSearch, WebFetch, Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-opus-5-5

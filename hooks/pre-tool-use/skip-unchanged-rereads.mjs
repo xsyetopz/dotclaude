@@ -24,7 +24,7 @@ function targets(data) {
 }
 
 run((data) => {
-  if (!option("bash_guard") || !data.session_id) return;
+  if (!option("guard_bash") || !data.session_id) return;
   const files = targets(data);
   if (!files.length) return;
   const reads = load(data.session_id, data.agent_id).reads ?? {};

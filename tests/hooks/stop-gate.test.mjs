@@ -23,7 +23,22 @@ test("stop gate blocks once after an unverified edit", () => {
   const first = stop(sid);
   expect(blocked(first)).toBe("Stop");
   expect(feedback(first)).toMatch(/src\/app\.js/);
+  // Claude Code can show a Stop reason twice (anthropics/claude-code#96909).
+  expect(feedback(first).length, "a short reason").toBeLessThan(300);
   expect(stop(sid), "same edit state does not block twice").toBe(null);
+});
+
+test("dotfile config edits are not code edits", () => {
+  for (const file of [
+    ".prettierrc",
+    ".github/workflows/ci.yml",
+    ".vscode/settings.json",
+  ]) {
+    const sid = session();
+    checkRun(sid, "bun test");
+    edit(sid, file);
+    expect(stop(sid), file).toBe(null);
+  }
 });
 
 test("stop gate counts files written through Bash as edits", () => {

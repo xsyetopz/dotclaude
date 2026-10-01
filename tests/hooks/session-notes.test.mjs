@@ -6,43 +6,52 @@ import fs from "node:fs";
 import path from "node:path";
 import { LIMITS } from "../../hooks/lib/_budget.mjs";
 import { profileStamp } from "../../hooks/lib/_profile.mjs";
+import {
+  MIN_CLAUDE_CODE,
+  TESTED_CLAUDE_CODE,
+} from "../../hooks/lib/_version.mjs";
 import { hook, tmp } from "../support/hooks.mjs";
 
-test("session start warns about incomplete setup and notes a CodeGraph index", () => {
-  const start = (env) =>
-    hook(
-      "session-start/warn-incomplete-setup.mjs",
-      { hook_event_name: "SessionStart", source: "startup" },
-      // The launcher notice has its own test in apply-launcher.test.mjs.
-      {
-        CLAUDE_CODE_EFFORT_LEVEL: "",
-        DOTCLAUDE_SYSTEM_PROMPT: "0",
-        CLAUDE_PLUGIN_OPTION_SECRET_REDACTION: "false",
-        ...env,
-      },
-    );
-  const current = { DOTCLAUDE_SETTINGS_PROFILE: profileStamp() };
-  expect(start(current)).toBe(null);
-  const missing = start({ DOTCLAUDE_SETTINGS_PROFILE: "" }).systemMessage;
+const agent = (version) => `claude-code_${version.replaceAll(".", "-")}_agent`;
+
+/** Run the setup check on the tested Claude Code release, with a fresh data dir. */
+function setupCheck(env = {}, data = tmp("dotclaude-data-")) {
+  return hook(
+    "session-start/warn-incomplete-setup.mjs",
+    { hook_event_name: "SessionStart", source: "startup" },
+    {
+      CLAUDE_PLUGIN_DATA: data,
+      AI_AGENT: agent(TESTED_CLAUDE_CODE),
+      CLAUDE_CODE_EXECPATH: "",
+      CLAUDE_CODE_EFFORT_LEVEL: "",
+      DOTCLAUDE_SETTINGS_PROFILE: profileStamp(),
+      CLAUDE_PLUGIN_OPTION_GUARD_SECRETS: "false",
+      ...env,
+    },
+  );
+}
+test("session start warns about incomplete setup", () => {
+  expect(setupCheck()).toBe(null);
+  const missing = setupCheck({ DOTCLAUDE_SETTINGS_PROFILE: "" }).systemMessage;
   // Any change to the shipped profile reads as out of date, with no check
   // written per release.
-  const stale = start({
+  const stale = setupCheck({
     DOTCLAUDE_SETTINGS_PROFILE: "0123456789ab",
   }).systemMessage;
-  // Both point to the command that applies the profile, and a missing
-  // profile gets a different notice from a stale one.
-  expect(missing).toContain("/dotclaude:apply-settings-profile");
-  expect(stale).toContain("/dotclaude:apply-settings-profile");
+  // Both point to the setup skill, and a missing profile gets a different
+  // notice from a stale one.
+  expect(missing).toContain("/dotclaude:setup");
+  expect(stale).toContain("/dotclaude:setup");
   expect(stale).not.toBe(missing);
   expect(
-    start({
+    setupCheck({
       DOTCLAUDE_SETTINGS_PROFILE: "",
       CLAUDE_PLUGIN_OPTION_MODEL_LOCK: "false",
     }),
   ).toBe(null);
-  expect(
-    start({ ...current, CLAUDE_CODE_EFFORT_LEVEL: "max" }).systemMessage,
-  ).toMatch(/CLAUDE_CODE_EFFORT_LEVEL=max/);
+  expect(setupCheck({ CLAUDE_CODE_EFFORT_LEVEL: "max" }).systemMessage).toMatch(
+    /CLAUDE_CODE_EFFORT_LEVEL=max/,
+  );
 });
 
 test("session start says when secret redaction has no betterleaks", () => {
@@ -50,50 +59,39 @@ test("session start says when secret redaction has no betterleaks", () => {
   const bin = tmp("dotclaude-bin-");
   fs.symlinkSync(Bun.which("bun"), path.join(bin, "bun"));
   const start = (option) =>
-    hook(
-      "session-start/warn-incomplete-setup.mjs",
-      { hook_event_name: "SessionStart", source: "startup" },
-      {
-        PATH: bin,
-        CLAUDE_CODE_EFFORT_LEVEL: "",
-        DOTCLAUDE_SYSTEM_PROMPT: "0",
-        DOTCLAUDE_SETTINGS_PROFILE: profileStamp(),
-        CLAUDE_PLUGIN_OPTION_SECRET_REDACTION: option,
-      },
-    );
+    setupCheck({ PATH: bin, CLAUDE_PLUGIN_OPTION_GUARD_SECRETS: option });
   expect(start("true").systemMessage).toContain("`brew install betterleaks`");
   expect(start("false")).toBe(null);
 });
 
 test("session start says when Claude Code is older than the plugin needs", () => {
-  // A stand-in for the running binary that prints a given version.
-  const claude = (output) => {
-    const file = path.join(tmp("dotclaude-claude-"), "claude");
-    fs.writeFileSync(file, `#!/bin/sh\necho "${output}"\n`);
-    fs.chmodSync(file, 0o755);
-    return file;
-  };
-  const start = (execpath) =>
-    hook(
-      "session-start/warn-incomplete-setup.mjs",
-      { hook_event_name: "SessionStart", source: "startup" },
-      {
-        CLAUDE_CODE_EXECPATH: execpath,
-        CLAUDE_CODE_EFFORT_LEVEL: "",
-        DOTCLAUDE_SYSTEM_PROMPT: "0",
-        DOTCLAUDE_SETTINGS_PROFILE: profileStamp(),
-        CLAUDE_PLUGIN_OPTION_SECRET_REDACTION: "false",
-      },
-    );
-  const old = start(claude("2.1.283 (Claude Code)")).systemMessage;
-  expect(old).toContain("2.1.284 or later");
+  const old = setupCheck({ AI_AGENT: agent("2.1.283") }).systemMessage;
+  expect(old).toContain(`${MIN_CLAUDE_CODE} or later`);
   expect(old).toContain("`claude update`");
-  // Numeric order, not string order: 2.1.1000 is newer than 2.1.284.
-  expect(start(claude("2.1.284 (Claude Code)"))).toBe(null);
-  expect(start(claude("2.1.1000 (Claude Code)"))).toBe(null);
-  expect(start(claude("2.2.0 (Claude Code)"))).toBe(null);
+  expect(setupCheck({ AI_AGENT: agent(MIN_CLAUDE_CODE) })).toBe(null);
+  // A native install names the version in the binary path.
+  expect(
+    setupCheck({
+      AI_AGENT: "",
+      CLAUDE_CODE_EXECPATH: "/u/.local/share/claude/versions/2.1.283",
+    }).systemMessage,
+  ).toContain(`${MIN_CLAUDE_CODE} or later`);
   // An unknown version gives no notice, because the check cannot tell.
-  expect(start(claude("not a version"))).toBe(null);
+  expect(setupCheck({ AI_AGENT: "" })).toBe(null);
+});
+
+test("a Claude Code newer than the tested release gets one note per version", () => {
+  const data = tmp("dotclaude-data-");
+  // Numeric order, not string order: 2.1.1000 is newer than 2.1.286.
+  const newer = setupCheck({ AI_AGENT: agent("2.1.1000") }, data).systemMessage;
+  expect(newer).toContain(TESTED_CLAUDE_CODE);
+  expect(newer).toContain("2.1.1000");
+  // The note is for the user once, not at every start.
+  expect(setupCheck({ AI_AGENT: agent("2.1.1000") }, data)).toBe(null);
+  expect(
+    setupCheck({ AI_AGENT: agent("2.2.0") }, data).systemMessage,
+  ).toContain("2.2.0");
+  expect(setupCheck({ AI_AGENT: agent(TESTED_CLAUDE_CODE) }, data)).toBe(null);
 });
 
 test("Fable sessions get the Fable adjustments; Opus sessions get nothing", () => {

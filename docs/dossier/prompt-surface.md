@@ -38,22 +38,24 @@ actions with care", the task-tool section, and the tone section. It keeps a
 one-line form of the first four. The same switch sends shorter descriptions
 for Glob, Grep, Write, and WebSearch.
 
-### dotclaude's System Prompt
+### dotclaude's Working Rules
 
 Only the `--system-prompt-file` flag replaces the built-in prompt. No setting
 or environment variable does (**binary**, all settings keys and
 `CLAUDE_CODE_*` names with SYSTEM, PROMPT, or STYLE). A plugin cannot pass
-flags, so the settings skill installs a `claude` shell function as a launcher.
+flags. So dotclaude 0.16 installed a `claude` shell function that passed the
+flag with a 4.3k-token replacement prompt.
 
-- The flag must come before a subcommand.
-- The replacement holds dotclaude's engineering and git rules, about 14.4 KB.
-  The output style keeps only how Claude talks and reports, about 2.3 KB.
-- The replacement must carry the `<pasted_content>` rule, the security
-  paragraph, the paragraph on hard-to-reverse actions, and the `/<skill-name>`
-  and `! <command>` guidance. Nothing else in the request explains them.
-- It leaves out `# Memory`, because the memory path changes per project. The
-  profile turns auto memory off.
-- The header and identity line are still sent (**capture**).
+0.17 removes the shell function. The profile turns on the lean prompt, and the
+output style carries the engineering, git, and report rules in about 2.3k
+tokens (`LIMITS.outputStyleTokens`). The 0.16 prompt and style took about
+4.9k tokens.
+
+- The style carries the `<pasted_content>` rule, the security paragraph, the
+  paragraph on hard-to-reverse actions, and the `/<skill-name>` and
+  `! <command>` guidance. The lean prompt does not explain them.
+- The profile turns auto memory off, so no `# Memory` section is necessary.
+- The header and identity line are always sent (**capture**).
 
 Anthropic's published model system prompts are the Claude apps' prompts, not
 Claude Code's. Use them for tag structure only.
@@ -61,13 +63,13 @@ Claude Code's. Use them for tag structure only.
 ### Output Styles
 
 An output style arrives in the role-`system` message, not in the `system`
-blocks. It survives `--system-prompt-file` (**capture**). The docs say that
-the style is "appended to the end of the system prompt", which 2.1.283 does
-not do.
+blocks (**capture**). The docs say that the style is "appended to the end of
+the system prompt", which 2.1.283 does not do.
 
-`keep-coding-instructions: true` sends the same request as `false`
-(**capture**). The flag does not bring the coding rules back. A session
-without the launcher therefore gets no engineering rules from dotclaude.
+`keep-coding-instructions` changes only the full prompt. The lean prompt has
+no coding instructions, and the flag does not add them (**binary**, 2.1.286).
+With the 0.16 replacement prompt, `true` sent the same request as `false`
+(**capture**).
 
 ### Tool Removal
 

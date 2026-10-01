@@ -1,14 +1,18 @@
 #!/usr/bin/env bun
 // SessionStart(compact): restore the user's recent messages verbatim, the
 // uncommitted files split into this session's edits and everyone else's, and
-// the last check result after compaction.
+// the last check result after compaction. It also restates the report rule,
+// because a plugin output style has no per-turn reminder (#88189).
 
 import { execFileSync } from "node:child_process";
 import { emit, option, projectRoot, run } from "../lib/_common.mjs";
 import { editedBySession, load } from "../lib/_ledger.mjs";
-import { recentPrompts } from "../lib/_transcript.mjs";
+import { isSubagent, recentPrompts } from "../lib/_transcript.mjs";
 
 const CONTEXT_BUDGET = 2500;
+
+const REPORT_RULE =
+  "The `dotclaude` output style still applies. When you finish, start with the outcome. Then give what changed, what ran and its result, and what is unverified.";
 
 /** Uncommitted paths (tracked changes and untracked files), relative to root. */
 function changedPaths(root) {
@@ -33,7 +37,12 @@ const list = (paths) =>
     : paths.join(", ");
 
 run((data) => {
-  if (data.source !== "compact" || !option("compact_carryover")) return;
+  if (
+    data.source !== "compact" ||
+    !option("context_compact_carryover") ||
+    isSubagent(data)
+  )
+    return;
   const state = load(data.session_id, null);
   const prompts = state.prompts?.length
     ? state.prompts
@@ -68,14 +77,17 @@ run((data) => {
       `Last check run: \`${c.command}\` ${c.ok ? "passed" : `failed${c.code ? ` (exit ${c.code})` : ""}`}${stale}.`,
     );
   }
-  if (!parts.length) return;
-  let text = `The dotclaude plugin kept this state from before compaction:\n\n${parts.join("\n\n")}`;
-  if (text.length > CONTEXT_BUDGET)
-    text = `${text.slice(0, CONTEXT_BUDGET)} [...]`;
+  let text = "";
+  if (parts.length) {
+    text = `The dotclaude plugin kept this state from before compaction:\n\n${parts.join("\n\n")}`;
+    if (text.length > CONTEXT_BUDGET)
+      text = `${text.slice(0, CONTEXT_BUDGET)} [...]`;
+    text += "\n\n";
+  }
   emit({
     hookSpecificOutput: {
       hookEventName: "SessionStart",
-      additionalContext: text,
+      additionalContext: text + REPORT_RULE,
     },
   });
 });

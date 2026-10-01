@@ -13,15 +13,17 @@ import { subagentTranscript } from "./_transcript.mjs";
 export const NON_CODE =
   /\.(md|mdx|markdown|txt|rst|adoc|org|csv|tsv|svg|png|jpe?g|gif|webp|ico|pdf|log)$/i;
 
-const GIT_META = /^\.(claude|git)\/|(^|\/)\.git(ignore|attributes)$/;
+// Dotfiles and dot folders hold tool config (`.prettierrc`, `.github/`,
+// `.vscode/`), which a local check seldom covers.
+const DOT_CONFIG = /(^|\/)\./;
 
 /**
  * True when a write to `rel` (relative to `root`) changes code that a check
- * must cover. Docs, git config, and gitignored files (scratch files, build
- * output) do not count.
+ * must cover. Docs, dotfile config, and gitignored files (scratch files,
+ * build output) do not count.
  */
 export function codeFile(rel, root) {
-  if (NON_CODE.test(rel) || GIT_META.test(rel)) return false;
+  if (NON_CODE.test(rel) || DOT_CONFIG.test(rel)) return false;
   // `check-ignore -q` exits 0 only for an ignored path.
   return git(root, ["check-ignore", "-q", "--", rel]) === undefined;
 }

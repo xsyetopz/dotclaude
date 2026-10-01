@@ -123,7 +123,7 @@ test("other commands and the option turned off add nothing", () => {
         tool_name: "Bash",
         tool_input: { command: "cat pkg/api/server.ts" },
       },
-      { CLAUDE_PLUGIN_OPTION_NESTED_INSTRUCTIONS: "false" },
+      { CLAUDE_PLUGIN_OPTION_CONTEXT_NESTED_INSTRUCTIONS: "false" },
     ),
   ).toBeNull();
 });

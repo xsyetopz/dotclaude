@@ -188,7 +188,7 @@ function sentences(findings) {
 /**
  * Turn guard findings into one PreToolUse decision. `label` names what was
  * checked ("command", "edit"). Deny wins; then ask; "warn" asks only when the
- * session is in an attended permission mode or `ask_in_auto_mode` is on.
+ * session is in an attended permission mode or `guard_ask_in_auto` is on.
  */
 export function decide(findings, data, label) {
   const v = verdict(findings, data, label);
@@ -208,7 +208,7 @@ export function verdict(findings, data, label) {
       }`,
     ];
   const quiet =
-    UNATTENDED.has(data.permission_mode) && !option("ask_in_auto_mode", false);
+    UNATTENDED.has(data.permission_mode) && !option("guard_ask_in_auto", false);
   const asks = findings.filter(
     ([level]) => level === "ask" || (level === "warn" && !quiet),
   );

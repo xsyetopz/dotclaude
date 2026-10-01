@@ -79,7 +79,7 @@ function firstTime(data, mark) {
 }
 
 run((data) => {
-  if (!option("turn_limit_handoff")) return;
+  if (!option("usage_agent_bounds")) return;
   // The report tool must stay open, or the agent could not deliver it.
   if (data.tool_name === "SubagentHandback") return;
   if (!data.agent_id || !data.transcript_path || !data.session_id) return;

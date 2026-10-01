@@ -36,8 +36,15 @@ import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /** @returns {Finding[]} */
 export function check(command, ctx) {
-  const c = { modelLock: true, editGuard: true, commitHygiene: true, ...ctx };
   const parsed = parse(command);
+  const c = {
+    modelLock: true,
+    editGuard: true,
+    commitHygiene: true,
+    ...ctx,
+    command,
+    commands: parsed.commands,
+  };
   const findings = parsed.commands.flatMap((cmd) => checkCommand(cmd, c));
   if (parsed.unparsed.length) findings.push(...rawScan(command));
   findings.push(
@@ -132,8 +139,79 @@ const BACKTICK_SHELL = new Set(["perl", "ruby", "php"]);
 
 const STRING_LIT = /'([^'\\]*(?:\\.[^'\\]*)*)'|"([^"\\]*(?:\\.[^"\\]*)*)"/g;
 
-// A JavaScript template literal with no `${...}` holds no code.
-const TEMPLATE_LIT = /`[^`\\$]*(?:(?:\\.|\$(?!\{))[^`\\$]*)*`/g;
+const HASH_COMMENTS = new Set([
+  "python",
+  "python3",
+  "python2",
+  "perl",
+  "ruby",
+  "php",
+]);
+const SLASH_COMMENTS = new Set(["node", "bun", "deno", "php"]);
+const TEMPLATES = new Set(["node", "bun", "deno"]);
+
+/**
+ * The code of an inline script with its comments removed and each string
+ * literal replaced by `""`. A delete call named in a comment or a string is
+ * not a call. Only the `${...}` parts of a template literal stay, because
+ * they run.
+ */
+function codeOnly(code, lang) {
+  let i = 0;
+  const scan = (inExpr) => {
+    let out = "";
+    let depth = 0;
+    while (i < code.length) {
+      const c = code[i];
+      const two = code.slice(i, i + 2);
+      const three = code.slice(i, i + 3);
+      if (inExpr && c === "{") depth += 1;
+      if (inExpr && c === "}" && depth-- === 0) {
+        i += 1;
+        return out;
+      }
+      // `$#a` and `s#a#b#` in Perl are code, not comments.
+      if (
+        HASH_COMMENTS.has(lang) &&
+        c === "#" &&
+        !/[\w$]/.test(code[i - 1] ?? "")
+      ) {
+        while (i < code.length && code[i] !== "\n") i += 1;
+      } else if (SLASH_COMMENTS.has(lang) && two === "//") {
+        while (i < code.length && code[i] !== "\n") i += 1;
+      } else if (SLASH_COMMENTS.has(lang) && two === "/*") {
+        const end = code.indexOf("*/", i + 2);
+        i = end === -1 ? code.length : end + 2;
+      } else if (three === '"""' || three === "'''") {
+        const end = code.indexOf(three, i + 3);
+        i = end === -1 ? code.length : end + 3;
+        out += '""';
+      } else if (c === "'" || c === '"') {
+        i += 1;
+        while (i < code.length && code[i] !== c && code[i] !== "\n")
+          i += code[i] === "\\" ? 2 : 1;
+        i += 1;
+        out += '""';
+      } else if (TEMPLATES.has(lang) && c === "`") {
+        i += 1;
+        while (i < code.length && code[i] !== "`") {
+          if (code[i] === "\\") i += 2;
+          else if (code.startsWith("${", i)) {
+            i += 2;
+            out += ` ${scan(true)} `;
+          } else i += 1;
+        }
+        i += 1;
+        out += '""';
+      } else {
+        out += c;
+        i += 1;
+      }
+    }
+    return out;
+  };
+  return scan(false);
+}
 
 function interpreterInline(cmd, ctx) {
   let code;
@@ -147,11 +225,7 @@ function interpreterInline(cmd, ctx) {
     code = cmd.heredoc;
   if (!code) return [];
   const out = [];
-  // A delete call named inside a string literal (`s.replace('unlink(', x)`)
-  // is data, not a call.
-  let data = code.replace(STRING_LIT, '""');
-  if (!BACKTICK_SHELL.has(cmd.name)) data = data.replace(TEMPLATE_LIT, '""');
-  if (DESTRUCTIVE_CODE.test(data))
+  if (DESTRUCTIVE_CODE.test(codeOnly(code, cmd.name)))
     out.push(["warn", `inline \`${cmd.name}\` code deletes files`]);
   if (
     SHELL_OUT.test(code) ||

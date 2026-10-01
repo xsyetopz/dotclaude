@@ -1,13 +1,13 @@
-// setup-integrations status.mjs, run against a temporary HOME.
+// The setup skill's status.mjs, run against a temporary HOME.
 
 import { expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { tempHome } from "../support/setup.mjs";
+import { SCRIPTS, tempHome } from "../support/setup.mjs";
 
-test("setup-integrations status reports MCP servers and index state", () => {
+test("status reports MCP servers and index state", () => {
   const home = tempHome();
   const project = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-proj-")),
@@ -22,14 +22,7 @@ test("setup-integrations status reports MCP servers and index state", () => {
   );
   const res = spawnSync(
     "bun",
-    [
-      path.resolve(
-        import.meta.dirname,
-        "../../skills/setup-integrations/scripts/status.mjs",
-      ),
-      "--project",
-      project,
-    ],
+    [path.join(SCRIPTS, "status.mjs"), "--project", project],
     {
       encoding: "utf8",
       env: { ...process.env, HOME: home, PATH: path.dirname(process.execPath) },
@@ -56,14 +49,7 @@ function ghidraStatus({ stubs = {}, env = {}, claude = {} } = {}) {
   fs.writeFileSync(path.join(home, ".claude.json"), JSON.stringify(claude));
   const res = spawnSync(
     process.execPath,
-    [
-      path.resolve(
-        import.meta.dirname,
-        "../../skills/setup-integrations/scripts/status.mjs",
-      ),
-      "--project",
-      project,
-    ],
+    [path.join(SCRIPTS, "status.mjs"), "--project", project],
     {
       encoding: "utf8",
       env: { HOME: home, PATH: `${bin}:/bin:/usr/bin`, ...env },
@@ -121,10 +107,7 @@ test("status reports OpenSpec setup in the project", () => {
   const project = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-proj-")),
   );
-  const script = path.resolve(
-    import.meta.dirname,
-    "../../skills/setup-integrations/scripts/status.mjs",
-  );
+  const script = path.join(SCRIPTS, "status.mjs");
   const status = () => {
     const res = spawnSync(process.execPath, [script, "--project", project], {
       encoding: "utf8",

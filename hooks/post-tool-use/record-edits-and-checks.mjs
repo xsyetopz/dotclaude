@@ -60,9 +60,9 @@ function recordEdited(state, rel) {
 run((data) => {
   approveAsk(data);
   if (
-    !option("stop_gate") &&
-    !option("compact_carryover") &&
-    !option("bash_guard")
+    !option("gate_verify") &&
+    !option("context_compact_carryover") &&
+    !option("guard_bash")
   )
     return;
   const state = load(data.session_id, data.agent_id);

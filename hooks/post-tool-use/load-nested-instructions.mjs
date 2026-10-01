@@ -24,7 +24,7 @@ function stateFile(data) {
 }
 
 run((data) => {
-  if (!option("nested_instructions")) return;
+  if (!option("context_nested_instructions")) return;
   const command = data.tool_input?.command;
   if (typeof command !== "string") return;
   const root = projectRoot(data);

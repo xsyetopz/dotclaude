@@ -10,7 +10,8 @@
 // independent. With a no-plugin arm, or with --before, it also prints the
 // paired per-case difference (see anthropic.com/research/
 // statistical-approach-to-model-evals and
-// anthropic.com/engineering/demystifying-evals-for-ai-agents).
+// anthropic.com/engineering/demystifying-evals-for-ai-agents). Per arm it
+// prints the cost per pass and, after `evals/oracle.mjs`, the token split.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -60,6 +61,8 @@ export function meanSe(values) {
   return { mean, se: Math.sqrt(variance / n) };
 }
 
+const warned = new Set();
+
 // Pass counts per case. With `shared`, graders only the plugin arm can pass
 // are left out, and a case left with none is skipped.
 export function armRates(result, arm, root, shared = false) {
@@ -67,9 +70,14 @@ export function armRates(result, arm, root, shared = false) {
   for (const c of result.cases) {
     const runs = c.arms[arm] ?? [];
     if (!runs.length) continue;
-    const skip = shared
-      ? withOnlyGraders(path.resolve(root, c.dir ?? ""))
-      : new Set();
+    const caseDir = path.resolve(root, c.dir ?? "");
+    if (shared && !fs.existsSync(caseDir) && !warned.has(caseDir)) {
+      warned.add(caseDir);
+      console.error(
+        `No case files for ${c.name} at ${caseDir}, so its with-only graders count in both arms.`,
+      );
+    }
+    const skip = shared ? withOnlyGraders(caseDir) : new Set();
     if (shared && runs[0].graders.every((g) => skip.has(g.name))) continue;
     const k = runs.filter((r) => trialPassed(r, skip)).length;
     rates.set(c.name, { k, n: runs.length });
@@ -77,18 +85,52 @@ export function armRates(result, arm, root, shared = false) {
   return rates;
 }
 
+// Cost per pass: the agent spend of every trial, failures included, divided
+// by the trials that passed. Judge cost is left out. Token means need the
+// `tokens` that `evals/oracle.mjs` adds.
+export function armCost(result, arm) {
+  let spend = 0;
+  let passes = 0;
+  const runs = result.cases.flatMap((c) => c.arms[arm] ?? []);
+  for (const run of runs) {
+    spend += run.costUsd ?? 0;
+    if (trialPassed(run)) passes += 1;
+  }
+  const counted = runs.filter((r) => r.tokens);
+  const tokens = counted.length
+    ? Object.fromEntries(
+        ["input", "output", "cacheRead", "cacheWrite"].map((k) => [
+          k,
+          Math.round(
+            counted.reduce((s, r) => s + r.tokens[k], 0) / counted.length,
+          ),
+        ]),
+      )
+    : null;
+  return {
+    trials: runs.length,
+    passes,
+    spend,
+    perPass: passes ? spend / passes : null,
+    tokens,
+  };
+}
+
 const pct = (x) => `${Math.round(x * 100)}%`;
 const signed = (x) => `${x >= 0 ? "+" : "-"}${pct(Math.abs(x))}`;
 
 function paired(label, a, b) {
   const names = [...a.keys()].filter((name) => b.has(name));
-  if (names.length < 2) return;
+  if (!names.length) return;
   const diffs = names.map(
     (name) => a.get(name).k / a.get(name).n - b.get(name).k / b.get(name).n,
   );
   const { mean, se } = meanSe(diffs);
+  const ci = Number.isNaN(se)
+    ? "no CI with one case"
+    : `95% CI ${signed(mean - Z * se)} to ${signed(mean + Z * se)}`;
   console.log(
-    `\n${label}: ${signed(mean)} mean pass-rate difference over ${names.length} cases, 95% CI ${signed(mean - Z * se)} to ${signed(mean + Z * se)}`,
+    `\n${label}: ${signed(mean)} mean pass-rate difference over ${names.length} case${names.length === 1 ? "" : "s"}, ${ci}`,
   );
   for (const [i, name] of names.entries())
     if (diffs[i] !== 0) console.log(`  ${name}: ${signed(diffs[i])}`);
@@ -115,8 +157,19 @@ function main(argv) {
   }
   const { mean, se } = meanSe([...withRates.values()].map(({ k, n }) => k / n));
   console.log(
-    `\nsuite: ${pct(mean)} of trials pass, clustered SE ${pct(se)}, 95% CI ${pct(Math.max(0, mean - Z * se))}-${pct(Math.min(1, mean + Z * se))}`,
+    Number.isNaN(se)
+      ? `\nsuite: ${pct(mean)} of trials pass. A clustered SE needs 2 or more cases.`
+      : `\nsuite: ${pct(mean)} of trials pass, clustered SE ${pct(se)}, 95% CI ${pct(Math.max(0, mean - Z * se))}-${pct(Math.min(1, mean + Z * se))}`,
   );
+
+  for (const arm of ["with", "without"]) {
+    const c = armCost(result, arm);
+    if (!c.trials) continue;
+    const t = c.tokens;
+    console.log(
+      `${arm} plugin: $${c.spend.toFixed(2)} for ${c.passes} of ${c.trials} trials passed, ${c.perPass === null ? "no pass" : `$${c.perPass.toFixed(2)} per pass`}${t ? `. Mean tokens per trial: input ${t.input}, output ${t.output}, cache read ${t.cacheRead}, cache write ${t.cacheWrite}` : ""}`,
+    );
+  }
 
   const without = armRates(result, "without", root, true);
   if (without.size) {

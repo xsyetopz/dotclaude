@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: t4-slices
+description: "Tier 4. /dotclaude:slices sets up a migration across seven files. In print mode it should write the guide, oracle, and slice list, then stop for approval."
+tags: [tier-4, skills]
+context:
+  scaffold_script: fixture.sh

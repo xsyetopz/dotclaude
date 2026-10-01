@@ -4,12 +4,17 @@ import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import { profileStamp } from "../../hooks/lib/_profile.mjs";
-import { run, tempHome } from "../support/setup.mjs";
+import {
+  backups as backupsOf,
+  FIXTURES,
+  run,
+  runWith,
+  SCRIPTS,
+  tempHome,
+} from "../support/setup.mjs";
 
 const backups = (home) =>
-  fs
-    .readdirSync(path.join(home, ".claude"))
-    .filter((f) => f.startsWith("settings.json.dotclaude-backup-"));
+  backupsOf(path.join(home, ".claude", "settings.json"));
 
 // A second --apply with nothing to change leaves the bytes and makes no backup.
 function expectNoChange(home, file) {
@@ -148,7 +153,6 @@ test("apply-settings adds the optional switches unless skipped", () => {
   run("apply-settings.mjs", home, "--apply");
   const all = JSON.parse(fs.readFileSync(file, "utf8"));
   expect(all.env.CLAUDE_CODE_DISABLE_ARTIFACT).toBe("1");
-  expect(all.env.DISABLE_AUTOUPDATER).toBe("1");
   expect(all.permissions.deny).toContain("ScheduleWakeup");
   expect(all.permissions.deny).toContain("ReportFindings");
   expect(all.disableBundledSkills).toBe(true);
@@ -174,66 +178,6 @@ test("apply-settings adds the optional switches unless skipped", () => {
   expect(some.env.DOTCLAUDE_SETTINGS_PROFILE).toBe(profileStamp());
 });
 
-test("apply-settings raises the 0.11.1 agent cap and keeps a user's own cap", () => {
-  const keys = [
-    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS",
-    "CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS",
-  ];
-  for (const [before, after] of [
-    ["3", "5"],
-    ["8", "8"],
-    [undefined, "5"],
-  ]) {
-    const home = tempHome();
-    const file = path.join(home, ".claude", "settings.json");
-    const env = Object.fromEntries(keys.map((k) => [k, before]));
-    fs.writeFileSync(file, JSON.stringify(before ? { env } : {}));
-    run("apply-settings.mjs", home, "--apply");
-    const merged = JSON.parse(fs.readFileSync(file, "utf8"));
-    for (const key of keys)
-      expect(merged.env[key], `${key} ${before}`).toBe(after);
-    expectNoChange(home, file);
-  }
-});
-
-test("apply-settings removes exact entries older profiles wrote and keeps look-alikes", () => {
-  const home = tempHome();
-  const file = path.join(home, ".claude", "settings.json");
-  fs.writeFileSync(
-    file,
-    JSON.stringify({
-      env: { ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-opus-5-5" },
-      permissions: {
-        allow: [
-          "Bash(codex exec -p dotclaude-luna *)",
-          "Bash(codex exec -p dotclaude-review *)",
-          "Bash(codex exec *)",
-        ],
-        deny: ["AskUserQuestion", "Read(~/.ssh/**)"],
-      },
-    }),
-  );
-  const preview = run("apply-settings.mjs", home);
-  expect(preview).toContain('permissions.deny: remove "AskUserQuestion"');
-  expect(preview).toMatch(/env\.ANTHROPIC_DEFAULT_SONNET_MODEL: remove/);
-  run("apply-settings.mjs", home, "--apply");
-  const merged = JSON.parse(fs.readFileSync(file, "utf8"));
-  expect(merged.permissions.allow).toStrictEqual(["Bash(codex exec *)"]);
-  expect(merged.permissions.deny).not.toContain("AskUserQuestion");
-  expect(merged.permissions.deny).toContain("Read(~/.ssh/**)");
-  expect(merged.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBeUndefined();
-  expect(merged.env.CLAUDE_CODE_FORK_SUBAGENT).toBe("0");
-  expectNoChange(home, file);
-});
-
-// The file that 0.11.1's `--apply` wrote over a user's own settings (theme,
-// model, a token path, `just` and `.ssh` rules, a Stop hook).
-const SETTINGS_0_11_1 = path.join(
-  import.meta.dirname,
-  "fixtures",
-  "settings-0.11.1.json",
-);
-
 /** Each leaf value of `obj` as [dotted path, value]; array items one by one. */
 function leaves(obj, prefix = "") {
   return Object.entries(obj).flatMap(([key, value]) => {
@@ -247,17 +191,31 @@ function leaves(obj, prefix = "") {
 
 const at = (obj, where) => where.split(".").reduce((o, key) => o?.[key], obj);
 
-test("apply-settings migrates a 0.11.1 settings file and loses no value", () => {
-  const home = tempHome();
+function seed(home, settings) {
   const file = path.join(home, ".claude", "settings.json");
-  const old = JSON.parse(fs.readFileSync(SETTINGS_0_11_1, "utf8"));
-  fs.writeFileSync(file, JSON.stringify(old, null, 2));
+  fs.writeFileSync(file, JSON.stringify(settings, null, 2));
+  return file;
+}
+
+const read = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
+
+// The file that 0.16.1's `--apply` wrote over a user's own theme, model,
+// env value, and permission rules, with every optional switch applied.
+const SETTINGS_0_16_1 = path.join(FIXTURES, "0.16.1", "settings.json");
+
+test("a 0.16.1 settings file gets auto-update on and keeps every other value", () => {
+  const home = tempHome();
+  const old = read(SETTINGS_0_16_1);
+  const file = seed(home, old);
+  const preview = run("apply-settings.mjs", home);
+  expect(preview).toContain('env.DISABLE_AUTOUPDATER: remove "1"');
+  expect(preview).toContain('autoUpdatesChannel: (unset) -> "stable"');
   run("apply-settings.mjs", home, "--apply");
-  const merged = JSON.parse(fs.readFileSync(file, "utf8"));
-  // Only the values that 0.12.0 changed on purpose differ.
+  const merged = read(file);
+  expect(merged.autoUpdatesChannel).toBe("stable");
+  expect(merged.minimumVersion).toBe("2.1.286");
   const changed = {
-    "env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "5",
-    "env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS": "5",
+    "env.DISABLE_AUTOUPDATER": undefined,
     "env.DOTCLAUDE_SETTINGS_PROFILE": profileStamp(),
   };
   for (const [where, value] of leaves(old)) {
@@ -267,4 +225,94 @@ test("apply-settings migrates a 0.11.1 settings file and loses no value", () => 
     else expect(now, where).toStrictEqual(value);
   }
   expectNoChange(home, file);
+});
+
+test("auto-update keeps the running version as the floor and never lowers one", () => {
+  for (const [running, before, after] of [
+    // A newer CLI on the latest channel does not step back to stable's.
+    ["2-1-290", undefined, "2.1.290"],
+    // An older CLI gets the tested release as its floor.
+    ["2-1-285", undefined, "2.1.286"],
+    // A higher floor that the user set stays.
+    ["2-1-286", "2.1.300", "2.1.300"],
+  ]) {
+    const home = tempHome();
+    const file = seed(home, before ? { minimumVersion: before } : {});
+    const env = { AI_AGENT: `claude-code_${running}_agent` };
+    runWith(env, "apply-settings.mjs", home, "--apply");
+    expect(read(file).minimumVersion, running).toBe(after);
+  }
+});
+
+test("auto-update off writes DISABLE_AUTOUPDATER and a re-run keeps it off", () => {
+  const home = tempHome();
+  const file = seed(home, {});
+  run("apply-settings.mjs", home, "--auto-update", "off", "--apply");
+  const off = read(file);
+  expect(off.env.DISABLE_AUTOUPDATER).toBe("1");
+  expect(off.autoUpdatesChannel).toBeUndefined();
+  expect(off.minimumVersion).toBeUndefined();
+  const bytes = fs.readFileSync(file, "utf8");
+  run("apply-settings.mjs", home, "--auto-update", "off", "--apply");
+  expect(fs.readFileSync(file, "utf8")).toBe(bytes);
+});
+
+test("auto-update names DISABLE_UPDATES and leaves it, because dotclaude never wrote it", () => {
+  const home = tempHome();
+  const file = seed(home, { env: { DISABLE_UPDATES: "1" } });
+  const out = run("apply-settings.mjs", home, "--apply");
+  expect(out).toContain("DISABLE_UPDATES");
+  expect(read(file).env.DISABLE_UPDATES).toBe("1");
+});
+
+test("project and local scopes leave the auto-update keys alone", () => {
+  const home = tempHome();
+  const project = fs.mkdtempSync(path.join(home, "proj-"));
+  const file = path.join(project, ".claude", "settings.json");
+  fs.mkdirSync(path.dirname(file));
+  fs.writeFileSync(file, JSON.stringify({ env: { DISABLE_AUTOUPDATER: "1" } }));
+  runWith(
+    { CLAUDE_PROJECT_DIR: project },
+    "apply-settings.mjs",
+    home,
+    "--scope",
+    "project",
+    "--apply",
+  );
+  const merged = read(file);
+  expect(merged.env.DISABLE_AUTOUPDATER).toBe("1");
+  expect(merged.autoUpdatesChannel).toBeUndefined();
+  expect(merged.minimumVersion).toBeUndefined();
+});
+
+test("an unknown --auto-update value stops before any write", () => {
+  const home = tempHome();
+  const file = seed(home, {});
+  const res = Bun.spawnSync(
+    [
+      "bun",
+      path.join(SCRIPTS, "apply-settings.mjs"),
+      "--auto-update",
+      "maybe",
+      "--apply",
+    ],
+    { env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: "" } },
+  );
+  expect(res.exitCode).toBe(2);
+  expect(fs.readFileSync(file, "utf8")).toBe("{}");
+});
+
+test("user scope follows CLAUDE_CONFIG_DIR for settings.json and CLAUDE.md", () => {
+  const home = tempHome();
+  const config = path.join(home, "other-config");
+  fs.mkdirSync(config);
+  const env = { CLAUDE_CONFIG_DIR: config };
+  runWith(env, "apply-settings.mjs", home, "--apply");
+  runWith(env, "apply-claude-md.mjs", home, "--apply");
+  expect(fs.existsSync(path.join(config, "settings.json"))).toBe(true);
+  expect(fs.existsSync(path.join(config, "CLAUDE.md"))).toBe(true);
+  expect(fs.existsSync(path.join(home, ".claude", "settings.json"))).toBe(
+    false,
+  );
+  expect(fs.existsSync(path.join(home, ".claude", "CLAUDE.md"))).toBe(false);
 });

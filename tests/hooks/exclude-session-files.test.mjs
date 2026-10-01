@@ -85,7 +85,7 @@ test("entering a worktree excludes `.claude/worktrees/`", () => {
 test("the option turns the hook off", () => {
   const dir = freshRepo();
   write(dir, ".claude/handoffs/2026-09-30-1200-retries.md", {
-    CLAUDE_PLUGIN_OPTION_EXCLUDE_SESSION_FILES: "false",
+    CLAUDE_PLUGIN_OPTION_CONTEXT_SESSION_FILES: "false",
   });
   expect(untracked(dir)).toContain(".claude/handoffs/");
 });

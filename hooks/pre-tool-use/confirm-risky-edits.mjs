@@ -13,7 +13,7 @@ import { guardDecision } from "../lib/_verdicts.mjs";
 const REMOVES_ASSERTIONS = /assertion\(s\) from a test file/;
 
 run((data) => {
-  const editGuard = option("edit_guard");
+  const editGuard = option("guard_edit");
   const modelLock = option("model_lock");
   if (!editGuard && !modelLock) return;
   let findings = check(data.tool_name ?? "", data.tool_input ?? {}, {

@@ -1,0 +1,22 @@
+export PATH="$HOME/bin:$PATH"
+alias ll="ls -l"
+
+# >>> dotclaude system prompt >>>
+# Managed by /dotclaude:apply-settings-profile. Edits inside this block are replaced.
+claude() {
+  local f="${DOTCLAUDE_SYSTEM_PROMPT_FILE:-/home/user/.claude/dotclaude/system-prompt.md}" a
+  if [ "${DOTCLAUDE_SYSTEM_PROMPT:-1}" = 0 ] || [ ! -r "$f" ]; then
+    DOTCLAUDE_LAUNCHER=1 command claude "$@"
+    return
+  fi
+  for a in "$@"; do
+    case $a in
+      --system-prompt | --system-prompt=* | --system-prompt-file | --system-prompt-file=*)
+        DOTCLAUDE_LAUNCHER=1 command claude "$@"
+        return
+        ;;
+    esac
+  done
+  DOTCLAUDE_LAUNCHER=1 command claude --system-prompt-file "$f" "$@"
+}
+# <<< dotclaude system prompt <<<

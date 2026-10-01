@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // SessionStart(startup|clear): when `.claude/handoffs/` holds a note from
-// `write-session-handoff` whose status is not `done` or `superseded`, tell
+// the `handoff` skill whose status is not `done` or `superseded`, tell
 // Claude where the newest one is and to check it against the repository
 // before it acts.
 // The note stays unread until the user's request needs it, because a note
@@ -50,7 +50,7 @@ function openNotes(dir) {
 run((data) => {
   // A resumed or compacted session already has the context the note holds.
   if (!["startup", "clear"].includes(data.source)) return;
-  if (!option("handoff_pointer")) return;
+  if (!option("context_handoff_pointer")) return;
   const notes = openNotes(path.join(projectRoot(data), DIR));
   if (!notes.length) return;
   const [{ name, meta }, ...older] = notes;

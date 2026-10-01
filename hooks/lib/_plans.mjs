@@ -1,6 +1,6 @@
 // The user's Claude plan and what dotclaude changes for it.
 //
-// The plan comes from the `claude_plan` option, or with `auto` from the
+// The plan comes from the `model_plan` option, or with `auto` from the
 // account Claude Code caches in ~/.claude.json (`oauthAccount`). The mapping
 // follows Claude Code 2.1.283: organizationType claude_pro/claude_max/
 // claude_team/claude_enterprise is the subscription type, and a Team account
@@ -11,11 +11,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {
-  AUTO_COMPACT_TOKENS,
-  COMPACTIONS_BEFORE_HANDOFF,
-  k,
-} from "./_budget.mjs";
+import { AUTO_COMPACT_TOKENS, k } from "./_budget.mjs";
 import { optionList } from "./_common.mjs";
 import { canonical, DEFAULT_ALLOWED } from "./_models.mjs";
 
@@ -95,7 +91,7 @@ export function detectPlan(account, env = process.env) {
 
 /** The configured plan, or the detected one for `auto`. */
 export function currentPlan(env = process.env, account = undefined) {
-  const set = String(env.CLAUDE_PLUGIN_OPTION_CLAUDE_PLAN ?? "")
+  const set = String(env.CLAUDE_PLUGIN_OPTION_MODEL_PLAN ?? "")
     .trim()
     .toLowerCase();
   if (PLANS.includes(set)) return { plan: set, detected: false };
@@ -127,11 +123,11 @@ export function fableAccess(plan, account = null) {
 }
 
 /**
- * The model allowlist for the current plan: `allowed_models`, minus Fable when
+ * The model allowlist for the current plan: `model_allowed`, minus Fable when
  * the plan cannot run it. `note` explains the removal for deny messages.
  */
 export function planAllowlist(env = process.env) {
-  const list = optionList("allowed_models", DEFAULT_ALLOWED);
+  const list = optionList("model_allowed", DEFAULT_ALLOWED);
   const { plan, account } = currentPlan(env);
   if (fableAccess(plan, account) !== "unavailable") return { list, note: "" };
   return {
@@ -145,7 +141,7 @@ export function planNote(env = process.env) {
   const { plan, detected, account } = currentPlan(env);
   if (!plan) return null;
   const lines = [
-    `Claude plan: ${LABELS[plan]} (${detected ? "detected" : "set in dotclaude's `claude_plan` option"}).`,
+    `Claude plan: ${LABELS[plan]} (${detected ? "detected" : "set in dotclaude's `model_plan` option"}).`,
   ];
   const fable = fableAccess(plan, account);
   switch (fable) {
@@ -170,9 +166,14 @@ export function planNote(env = process.env) {
       );
       break;
   }
+  if (plan.startsWith("team_") || plan === "enterprise")
+    lines.push(
+      "This seat uses an organization budget that an admin controls. Keep the main conversation at medium effort. Give bounded work to `implementer` or `mechanical-worker`, because they run Sonnet 5.5.",
+    );
   // One bound for every plan, sized for Pro: larger plans only run out later.
+  // The handoff rule that uses it is in the output style.
   lines.push(
-    `Every turn re-reads the whole context. Claude Code compacts the main conversation automatically at about ${k(AUTO_COMPACT_TOKENS)} tokens. Let the first ${COMPACTIONS_BEFORE_HANDOFF} compactions occur. After them, dotclaude tells you the context size. Then write a handoff note with the \`write-session-handoff\` skill before you finish the current step, continue the work, and ask the user to run \`/clear\` at the next natural stop. The note does not stop the work. Do not start a handoff on your own estimate of the context size. Keep subagent briefs small. Use few subagents. dotclaude sizes this for Pro's 5-hour window and applies it on every plan. Larger plans only reach their limits later.`,
+    `Claude Code compacts the main conversation at about ${k(AUTO_COMPACT_TOKENS)} tokens. dotclaude sizes its bounds for Pro's 5-hour window and applies them on every plan.`,
   );
   return `<claude_plan source="dotclaude">\n${lines.join("\n")}\n</claude_plan>`;
 }

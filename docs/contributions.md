@@ -23,7 +23,7 @@ when Claude did not look.
 
 ## The Guard
 
-**What:** the [Bash guard](hooks.md#bash-guard-bash_guard) finds these
+**What:** the [Bash guard](hooks.md#bash-guard-guard_bash) finds these
 commands:
 
 - `git commit` and `git push`
@@ -78,7 +78,7 @@ your knowledge.
 
 ## Drafts
 
-**What:** the `contribute-upstream` skill and the system prompt tell Claude
+**What:** the `contribute` skill and the system prompt tell Claude
 to do these steps:
 
 1. Read the project's `AI_POLICY.md`, `CONTRIBUTING.md`, `AGENTS.md`, and

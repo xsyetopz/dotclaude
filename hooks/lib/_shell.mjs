@@ -158,6 +158,10 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
 
 const DECLARE = new Set(["export", "local", "declare", "readonly", "typeset"]);
 const LITERAL = /^[^$`*?[\]{}~]*$/;
+// `S="$TMPDIR/run"`: a temp folder variable and a literal rest. The guard
+// rules decide later whether the variable is a known temp folder.
+const TEMP_VAR_PATH =
+  /^\$(\{TMPDIR\}|TMPDIR|\{CLAUDE_CODE_TMPDIR\}|CLAUDE_CODE_TMPDIR)\/[^$`*?[\]{}~]*$/;
 
 const WRITES = [
   /(?:^|[\s;&|(!{`])(?:(?:export|local|declare|readonly|typeset)\s+(?:-\w+\s+)*)?([A-Za-z_]\w*)\+?=/g,
@@ -238,7 +242,7 @@ function recordVars(cmd, vars, resolvable, temps = new Set()) {
     else if (
       resolvable.has(key) &&
       value &&
-      LITERAL.test(value) &&
+      (LITERAL.test(value) || TEMP_VAR_PATH.test(value)) &&
       !/\s/.test(value) && // unquoted $S splits on whitespace
       !value.includes("__SUBST__")
     )

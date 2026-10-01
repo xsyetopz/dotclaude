@@ -14,7 +14,7 @@ import { openTasks, taskListDir } from "../lib/_tasks.mjs";
 import { waitsForUser } from "../lib/_transcript.mjs";
 
 run((data) => {
-  if (!option("task_check") || data.stop_hook_active || data.agent_id) return;
+  if (!option("gate_tasks") || data.stop_hook_active || data.agent_id) return;
   // Claude is waiting for background work, which can finish a task later.
   if (
     (data.background_tasks ?? []).some(

@@ -19,7 +19,7 @@ a guard denied, type `! <command>`.
 
 ## Guards
 
-### Bash Guard (`bash_guard`)
+### Bash Guard (`guard_bash`)
 
 **What:** asks before destructive or public commands, such as force push,
 `reset --hard`, publishing, `gh` writes, destructive SQL, and `curl | sh`. It
@@ -94,7 +94,7 @@ header.
 **Why:** reverse engineering and builds leave binaries in the working tree.
 A committed binary stays in the history after a delete.
 
-### Edit Guard (`edit_guard`)
+### Edit Guard (`guard_edit`)
 
 **What:** asks before an edit removes test assertions or skips an existing
 test. It also asks before edits to Claude settings, generated files, or
@@ -105,7 +105,7 @@ hides the signal. An edit to Claude settings can change what Claude is
 permitted to do, so you approve it. A tool writes generated files and
 lockfiles, and a hand edit is lost or drifts from its source.
 
-### Agent-Loop Oracle (`edit_guard`)
+### Agent-Loop Oracle (`guard_edit`)
 
 **What:** while `.dotclaude/loop/loop.json` lists `protected` globs, denies a
 subagent's change to a file that matches one, and denies its removal. The
@@ -120,7 +120,7 @@ oracle can make a failing slice pass. The deny tells the agent to make the
 code pass, or to say in its report that the oracle is wrong. The user directs
 the main conversation, so it can still change the oracle.
 
-### Commit Hygiene (`commit_hygiene`)
+### Commit Hygiene (`git_commit_hygiene`)
 
 **What:** on `git commit`, asks when the staged files include `.DS_Store`,
 `.env` files, keys, build output, or a lockfile without its manifest.
@@ -130,7 +130,7 @@ must be rotated. When the `attribution` setting leaves the Claude trailer out,
 the guard also denies a commit message that still has it
 ([#4287](https://github.com/anthropics/claude-code/issues/4287)).
 
-### Secret Redaction (`secret_redaction`)
+### Secret Redaction (`guard_secrets`)
 
 **What:** runs [Betterleaks](https://github.com/betterleaks/betterleaks) on
 every tool output and replaces each secret with `[REDACTED:<rule>]` before
@@ -143,7 +143,7 @@ directory with `--ignore-gitleaks-allow`, so a repository cannot turn
 redaction off. Live validation stays off, so no secret leaves the machine. A
 run takes about 30 ms.
 
-### Quiet In Auto Mode (`ask_in_auto_mode`, off)
+### Quiet In Auto Mode (`guard_ask_in_auto`, off)
 
 **What:** in auto mode, recoverable actions do not ask. Irreversible and
 public actions still ask.
@@ -153,7 +153,7 @@ mode's own classifier already decides recoverable actions.
 
 ## Gates
 
-### Verify-Before-Stop (`stop_gate`)
+### Verify-Before-Stop (`gate_verify`)
 
 **What:** sends Claude back once when it edits code and stops without a test,
 build, or lint run. It does the same when Claude says that tests pass after a
@@ -169,7 +169,7 @@ with `AskUserQuestion` or `ExitPlanMode`.
 **Why:** "done" without a check that ran moves the finding of defects to you.
 The working rules say this in prose, and the gate enforces it.
 
-### Open-Task Check (`task_check`)
+### Open-Task Check (`gate_tasks`)
 
 **What:** sends Claude back once when it ends a turn with tasks still pending
 or in progress. It does not apply to subagents, or to a turn that ends with
@@ -178,11 +178,11 @@ or in progress. It does not apply to subagents, or to a turn that ends with
 **Why:** a stale task list tells you that work is open when it is done, or
 done when it is open. Claude marks each task done or says why it stays open.
 
-### Loop Reviews (`task_check`)
+### Loop Reviews (`gate_tasks`)
 
 **What:** sends Claude back once when `.dotclaude/loop/slices.jsonl` has a
 slice with `status: "implemented"`, and names the slices. Claude gives each
-diff to `diff-reviewer` and sets the status to `reviewed`, or sets `failed`
+diff to `reviewer` with the `diff` lens and sets the status to `reviewed`, or sets `failed`
 with a reason. The same set of slices blocks at most once in a session. The
 gate does not apply to subagents, to a turn that waits for the user, or while
 a background shell or subagent runs.
@@ -191,7 +191,7 @@ a background shell or subagent runs.
 implementer rationalized. A slice that merges without it loses that check.
 One block at most lets the user pause a loop and stop.
 
-### Stalled Goals (`goal_loop_guard`)
+### Stalled Goals (`gate_goal_stall`)
 
 **What:** ends the turn and pauses a `/goal` when its check blocks a stop
 twice in a row with no work between.
@@ -202,7 +202,7 @@ work.
 
 ## Context
 
-### Nested Instructions (`nested_instructions`)
+### Nested Instructions (`context_nested_instructions`)
 
 **What:** when a Bash command such as `cat`, `sed`, or `rg` reads files in a
 directory, adds that directory's `CLAUDE.md`, `.claude/CLAUDE.md`, and
@@ -215,7 +215,7 @@ working rules let Claude read with Bash, so without this hook it would miss
 the rules of the directory it works in. Path-scoped rules in `.claude/rules`
 are not covered yet ([open items](dossier/open-items.md)).
 
-### Session Files (`exclude_session_files`)
+### Session Files (`context_session_files`)
 
 **What:** when an agent creates a handoff note (`.claude/handoffs/`),
 `.dotclaude/` loop state, `CLAUDE.local.md`, `.claude/settings.local.json`,
@@ -227,16 +227,25 @@ commits with no change to the tracked `.gitignore`. OpenSpec (`openspec/`)
 and Spec Kit (`.specify/`) tell you to commit their files, so the hook does
 not touch them.
 
-### Compaction Carry-Over (`compact_carryover`)
+### Compaction Carry-Over (`context_compact_carryover`)
 
 **What:** after compaction, restores your last messages word for word, the
 last check result, and the files this session edited.
 
 **Why:** a compaction summary paraphrases. Your exact words, the last test
 result, and the list of edited files are the facts that the next turn acts
-on, so the hook restores them unchanged.
+on, so the hook restores them unchanged. A subagent compaction keeps and
+restores nothing, so it cannot replace the main session's messages.
 
-### Handoff Pointer (`handoff_pointer`)
+### Edit-Miss Lines
+
+**What:** when an `Edit` fails because `old_string` matches no text, gives
+Claude the closest lines of the file with their line numbers.
+
+**Why:** without them, Claude often guesses the text again or reads the
+whole file again. The idea comes from DensePack `edit_gate.py` (MIT).
+
+### Handoff Pointer (`context_handoff_pointer`)
 
 **What:** at startup and after `/clear`, when `.claude/handoffs/` holds a
 note with status `in-progress` or `blocked`, tells Claude the path of the
@@ -269,11 +278,11 @@ The usage bounds, usage notes, model lock, and scratchpad pruning are on
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `bash_guard`, `edit_guard`, `secret_redaction`, `nested_instructions`, `exclude_session_files`, `stop_gate`, `task_check`, `goal_loop_guard`, `compact_carryover`, `handoff_pointer`, `model_lock`, `commit_hygiene` | on | the hooks above |
-| `subagent_guidance` | on | shared rules and report format for agents, and the `general-purpose` refusal |
-| `ask_in_auto_mode` | off | asks about recoverable actions in auto mode too |
+| `guard_bash`, `guard_edit`, `guard_secrets`, `context_nested_instructions`, `context_session_files`, `gate_verify`, `gate_tasks`, `gate_goal_stall`, `context_compact_carryover`, `context_handoff_pointer`, `model_lock`, `git_commit_hygiene` | on | the hooks above |
+| `agent_guidance` | on | shared rules and report format for agents, and the `general-purpose` refusal |
+| `guard_ask_in_auto` | off | asks about recoverable actions in auto mode too |
 | `git_attribution` | on | adds the `Co-Authored-By` trailer and pull request footer |
-| `allowed_models` | the four models | the models that the lock accepts |
-| `claude_plan` | `auto` | `pro`, `max_5x`, `max_20x`, `team_standard`, `team_premium`, `enterprise`, or `api` |
-| `usage_notes`, `turn_limit_handoff` | on | usage notes, and the subagent context and turn bounds |
-| `scratchpad_prune_days` | `0` (off) | removes idle Claude Code scratchpads older than this many days |
+| `model_allowed` | the four models | the models that the lock accepts |
+| `model_plan` | `auto` | `pro`, `max_5x`, `max_20x`, `team_standard`, `team_premium`, `enterprise`, or `api` |
+| `usage_notes`, `usage_agent_bounds` | on | usage notes, and the subagent context and turn bounds |
+| `usage_scratchpad_prune_days` | `0` (off) | removes idle Claude Code scratchpads older than this many days |

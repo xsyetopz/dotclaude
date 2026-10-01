@@ -69,7 +69,7 @@ test("a /goal check loop with no work in between ends after two blocks", () => {
   ).toBe(null);
   expect(
     run([worked, said, blocked, said, blocked, said], {
-      CLAUDE_PLUGIN_OPTION_GOAL_LOOP_GUARD: "false",
+      CLAUDE_PLUGIN_OPTION_GATE_GOAL_STALL: "false",
     }),
   ).toBe(null);
 });

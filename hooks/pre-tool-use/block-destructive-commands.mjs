@@ -21,7 +21,7 @@ const REMOVES_ASSERTIONS = /assertion\(s\) from a test file/;
 run((data) => {
   const command = data.tool_input?.command;
   if (typeof command !== "string" || !command.trim()) return;
-  const guard = option("bash_guard");
+  const guard = option("guard_bash");
   const modelLock = option("model_lock");
   if (!guard && !modelLock) return;
   const root = projectRoot(data);
@@ -30,8 +30,8 @@ run((data) => {
     cwd: path.resolve(data.cwd || root),
     allowedModels: planAllowlist().list,
     modelLock,
-    editGuard: option("edit_guard"),
-    commitHygiene: option("commit_hygiene"),
+    editGuard: option("guard_edit"),
+    commitHygiene: option("git_commit_hygiene"),
     claudeTrailerOff: claudeTrailerOff(root),
     background: Boolean(data.tool_input?.run_in_background),
     oracle: oracleFor(data, root),

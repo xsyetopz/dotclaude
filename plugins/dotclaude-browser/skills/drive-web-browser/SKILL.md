@@ -1,6 +1,6 @@
 ---
 name: drive-web-browser
-description: Drive a real browser with agent-browser, or with CloakBrowser on antibot sites. Load it before the first browser command, and when a task must open, click, log in, fill a form, screenshot, or scrape a rendered page.
+description: Drives a real browser with agent-browser, or CloakBrowser on antibot sites. Use before a task opens, clicks, fills, logs in to, or scrapes a web page.
 allowed-tools: Bash(agent-browser *), Bash(bun */cloakbrowser-launch.mjs *)
 ---
 

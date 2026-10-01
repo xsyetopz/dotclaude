@@ -34,11 +34,13 @@ import { logVerdict } from "../lib/_verdicts.mjs";
 
 const OFF = new Set(["0", "false", "no", "off"]);
 
+// The agent descriptions already say what each agent is for, so the reason
+// only points at them.
 const AGENTS =
-  "Use the dotclaude agent for the job instead. Use `dotclaude:implementer` for a scoped code change and `dotclaude:mechanical-worker` for fully specified edits. Use `dotclaude:debugger` for an unknown cause and `dotclaude:docs-writer` for docs. Use `dotclaude:web-researcher` for the web and `dotclaude:test-runner` for long test output. Do a search yourself. Draft a plan yourself, in plan mode. Then have `dotclaude:plan-reviewer` review it. An implementer builds from a plan, and it uses all of its context when it has to write one. For work too large for one agent, split it into slices.";
+  "Use the `dotclaude:` agent whose description fits the job. Write a plan yourself, in plan mode.";
 
 run((data) => {
-  if (!option("subagent_guidance")) return;
+  if (!option("agent_guidance")) return;
   const input = data.tool_input ?? {};
   const forksOff = OFF.has(
     String(process.env.CLAUDE_CODE_FORK_SUBAGENT ?? "").toLowerCase(),

@@ -60,7 +60,7 @@ test("a closed note, no note, or the option off adds nothing", () => {
   expect(start(undefined)).toBeUndefined();
   expect(
     start(note("in-progress"), "clear", {
-      CLAUDE_PLUGIN_OPTION_HANDOFF_POINTER: "false",
+      CLAUDE_PLUGIN_OPTION_CONTEXT_HANDOFF_POINTER: "false",
     }),
   ).toBeUndefined();
 });

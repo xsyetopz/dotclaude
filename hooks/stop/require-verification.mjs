@@ -29,7 +29,7 @@ function ownWords(message) {
 }
 
 run((data) => {
-  if (!option("stop_gate") || data.stop_hook_active) return;
+  if (!option("gate_verify") || data.stop_hook_active) return;
   if (
     (data.background_tasks ?? []).some(
       (t) => t.type === "shell" || t.type === "subagent",
@@ -52,8 +52,8 @@ run((data) => {
   ) {
     state.blockedEdit = lastEdit.seq;
     reason = lastCheck
-      ? `Code changed after the last check run (last edit: \`${lastEdit.path}\`, last check: \`${lastCheck.command}\`). Run the tests, build, or lint that cover this change. Otherwise, say in your reply that the change is unverified, and give the reason.`
-      : `Code changed (last edit: \`${lastEdit.path}\`), and no test, build, or lint command ran this session. Run the tests, build, or lint that cover this change. Otherwise, say in your reply that the change is unverified, and give the reason.`;
+      ? `Code changed after the last check (last edit: \`${lastEdit.path}\`, last check: \`${lastCheck.command}\`). Run a check that covers it, or say that the change is unverified.`
+      : `Code changed (last edit: \`${lastEdit.path}\`), and no check ran. Run a check that covers it, or say that the change is unverified.`;
   } else if (
     lastCheck &&
     lastCheck.ok === false &&
@@ -63,7 +63,7 @@ run((data) => {
     !ADMITS_GAP.test(message)
   ) {
     state.blockedCheck = lastCheck.seq;
-    reason = `The last check (\`${lastCheck.command}\`) failed${lastCheck.code ? ` with exit code ${lastCheck.code}` : ""}, and no check passed after it, but the reply describes it as passing. Fix the failure, or report it as failing.`;
+    reason = `The last check (\`${lastCheck.command}\`) failed${lastCheck.code ? ` with exit code ${lastCheck.code}` : ""}, but the reply says it passes. Fix it, or report it as failing.`;
   }
 
   if (!reason) return;
@@ -71,6 +71,6 @@ run((data) => {
   // The reply written after this becomes the final report, so it has to
   // carry the whole outcome, not only the new check result.
   reason +=
-    " Then write the complete report again at the end (what changed, what ran and its result). Your next reply replaces this one as the report.";
+    " Then write the full report again, because your next reply replaces this one.";
   stopFeedback(data, reason);
 });

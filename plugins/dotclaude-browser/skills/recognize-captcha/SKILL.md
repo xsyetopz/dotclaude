@@ -1,6 +1,6 @@
 ---
 name: recognize-captcha
-description: Read a text CAPTCHA image with offline OCR (ddddocr-rs). Use it only when a text CAPTCHA appears, because CloakBrowser usually keeps CAPTCHAs away.
+description: Reads a text CAPTCHA image with offline ddddocr-rs OCR. Use only when a text CAPTCHA appears, because CloakBrowser usually keeps CAPTCHAs away.
 allowed-tools: Bash(bun */captcha/ddddocr.mjs *)
 ---
 

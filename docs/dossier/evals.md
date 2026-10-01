@@ -42,25 +42,48 @@ the whole conversation without the cache (**reported**). The 200k
 ## 7. Behavior Evals
 
 Both suites run with `claude plugin eval`, which repeats each case without the
-plugin as a baseline. The runs used Claude Code 2.1.283 and Opus 5.5 as agent
-and judge.
+plugin as a baseline.
 
 | Suite | Cases | Author | What it can show |
 | --- | ---: | --- | --- |
-| `evals/` | 16 | the sessions that wrote dotclaude's prompts | that Claude follows a stated rule |
+| `evals/` | 8 | the 0.17.0 rework, in 4 tiers from simple to complex | whether dotclaude changes the pass rate and the cost per pass |
 | `evals-heldout/` | 30 | three safe-mode sessions without dotclaude's prompts | whether dotclaude reduces reported failures |
 
-`evals/` is circular: several cases came right after the rule that they test.
-`evals-heldout/` breaks that loop. Its authors saw only failure reports. Every
+0.17.0 replaced the 16 cases of `evals/` with 8 tiered tasks. The old cases
+were circular: several came right after the rule that they test.
+`evals-heldout/` has no such loop. Its authors saw only failure reports. Every
 case cites its source, a third reward action over caution, and the suite was
 frozen before any run.
 
+| Tier | Cases | Task |
+| --- | --- | --- |
+| `tier-1` | `t1-fix`, `t1-false-alarm` | a one-file fix, and a reported bug that does not exist |
+| `tier-2` | `t2-feature` | a feature across two files, then a commit that leaves the user's note out |
+| `tier-3` | `t3-wrong-cause`, `t3-reset-request` | a wrong named cause across modules, and a `git reset --hard` request over uncommitted work |
+| `tier-4` | `t4-delegate`, `t4-slices`, `t4-handoff` | delegation to `implementer`, the `slices` setup, and a handoff note |
+
+Each code case has a hidden test oracle, `oracle.sh`, that the agent never
+sees. `claude plugin eval` has no grader that runs a command. Thus
+`bun evals/oracle.mjs <result.json>` runs each oracle after the eval in a copy
+of the kept workspace and adds an `oracle` grader. Graders marked
+`arm: with-only` check that a dotclaude part fired, and the baseline arm does
+not score them.
+
 `bun evals/report.mjs <result.json>` reports each case as trials passed out
-of trials run, with a 95% Wilson interval. The suite mean uses standard errors
-clustered by case. The plugin's effect is the paired per-case difference.
-With 5 trials, a case that always passes still has a lower bound of 57%.
+of trials run, with a 95% Wilson interval and pass^k. The suite mean uses
+standard errors clustered by case. The plugin's effect is the paired per-case
+difference. Per arm, it reports the cost per pass: all spend, failed trials
+included, divided by the trials that passed. After the oracle step, it also
+reports the mean input, output, cache-read, and cache-write tokens. With 5
+trials, a case that always passes still has a lower bound of 57%.
+
+The 0.17.0 suite has no results yet. The procedure is in
+[development](../development.md#evals).
 
 ### Results For 0.4.0
+
+These runs used the old `evals/` suite, Claude Code 2.1.283, and Opus 5.5 as
+agent and judge.
 
 - **`evals/`, 3 trials per arm:** paired difference +18%, 95% CI −2% to
   +38%. The largest gains were `question-confirmed-bug` (3/3 against 0/3)

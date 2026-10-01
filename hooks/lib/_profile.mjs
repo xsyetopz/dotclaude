@@ -8,7 +8,7 @@ import path from "node:path";
 
 export const RECOMMENDED = path.resolve(
   import.meta.dir,
-  "../../skills/apply-settings-profile/profiles/recommended.json",
+  "../../skills/setup/profiles/recommended.json",
 );
 
 /** Switches applied with the profile unless the user skips them. */

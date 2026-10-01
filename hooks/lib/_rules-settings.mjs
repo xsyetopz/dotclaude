@@ -10,12 +10,14 @@
 const SCRIPTS = {
   "apply-settings": "a Claude Code settings file",
   "apply-claude-md": "the global `CLAUDE.md`",
-  "apply-launcher": "the shell startup file and the system-prompt copy",
   "apply-statusline": "the user settings' `statusLine` and its stub",
   "install-managed": "the managed settings (admin rights)",
+  migrate:
+    "the shell startup files, the 0.16 system-prompt copy, and the renamed dotclaude options in the user settings",
 };
+// `migrate.mjs` is a common name, so it counts only in the setup skill.
 const SCRIPT =
-  /\b(apply-settings|apply-claude-md|apply-launcher|apply-statusline|install-managed)\.mjs\b/g;
+  /\b(apply-settings|apply-claude-md|apply-statusline|install-managed|(?<=setup[/\\]scripts[/\\])migrate)\.mjs\b/g;
 
 export const SETTINGS_PATH =
   /(^|[/"'\s])(\.claude\/settings(\.local)?\.json|managed-settings(\.json|\.d\b))/;

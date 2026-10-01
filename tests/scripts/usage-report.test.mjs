@@ -346,3 +346,34 @@ test("entrypoints, wakes, limit hits, skill use, and guard verdicts per rule", (
     report(root, new Date("2026-09-20"), path.join(root, "none")).verdicts,
   ).toEqual([]);
 });
+
+test("a message streamed in several records counts its largest output once", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "usage-report-"));
+  fs.mkdirSync(path.join(root, "proj"), { recursive: true });
+  const record = (id, output, stop) =>
+    JSON.stringify({
+      type: "assistant",
+      timestamp: "2026-09-27T10:00:00.000Z",
+      message: {
+        id,
+        model: "claude-opus-5-5",
+        stop_reason: stop,
+        usage: { output_tokens: output },
+      },
+    });
+  // m1: the stream-start record, then the final one. m2: only partial
+  // records, as subagent transcripts often keep.
+  fs.writeFileSync(
+    path.join(root, "proj", "s1.jsonl"),
+    [
+      record("m1", 5, null),
+      record("m1", 500_000, "end_turn"),
+      record("m2", 3, null),
+      record("m2", 100_000, null),
+    ].join("\n"),
+  );
+  const r = report(root, new Date("2026-09-20"));
+  // 600k output tokens at $20 per million.
+  expect(r.total).toBe(12);
+  expect(r.output).toEqual({ tokens: 600_000, messages: 2, unfinished: 1 });
+});

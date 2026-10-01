@@ -101,7 +101,7 @@ test("the usage note gives each limit's reset time", () => {
   ).hookSpecificOutput.additionalContext;
   expect(note).toContain("session 92% (resets 2026-09-27 08:09 UTC)");
   expect(note).toContain("weekly 40% (resets 2026-10-02 17:00 UTC)");
-  expect(note).toContain("`write-session-handoff`");
+  expect(note).toContain("`handoff`");
 });
 
 /** A main transcript: one entry per line, as Claude Code writes it. */
@@ -251,7 +251,7 @@ test("a context note tells Claude its context size past the note bound", () => {
   expect(note).toMatch(/^\[dotclaude\] <context_use/);
   expect(note).toContain(`${k(above)} tokens`);
   expect(note).toContain(`${k(AUTO_COMPACT_TOKENS)} tokens`);
-  expect(note).toContain("`write-session-handoff`");
+  expect(note).toContain("`handoff`");
   expect(note).toContain("`/clear`");
   // The size repeats on each prompt past the bound, but only the first note
   // asks for the handoff, so Claude does not write it again for each prompt.
@@ -260,7 +260,7 @@ test("a context note tells Claude its context size past the note bound", () => {
   ).hookSpecificOutput.additionalContext;
   expect(again).toContain(`${k(above)} tokens`);
   expect(again).toContain("`/clear`");
-  expect(again).not.toContain("`write-session-handoff`");
+  expect(again).not.toContain("`handoff`");
   expect(again.length).toBeLessThan(note.length);
   expect(
     hook(
@@ -313,7 +313,7 @@ test("a tool call past the note bound tells the main agent once per crossing", (
   // After a compaction the context is under the bound, so the next crossing
   // gives a new note.
   expect(tool(below)).toBe(null);
-  expect(tool(above)).toContain("`write-session-handoff`");
+  expect(tool(above)).toContain("`handoff`");
   // A note after a prompt counts, so the next tool call does not repeat it.
   expect(tool(below)).toBe(null);
   expect(prompt(above)).not.toBe(null);

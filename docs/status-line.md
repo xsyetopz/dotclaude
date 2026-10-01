@@ -35,7 +35,7 @@ The first row shows where the session works:
 - the folder below the project and the added directories, the worktree, the
   git branch with changed files and commits ahead or behind, and the pull
   request number as a link
-- `loop 2/7`, the merged slices out of all slices of a `run-agent-loop` run,
+- `loop 2/7`, the merged slices out of all slices of a `slices` run,
   when `.dotclaude/loop/slices.jsonl` has slices
 - the `--agent` name, the vim mode, and the session name
 
@@ -135,8 +135,8 @@ Session start keeps the stub pointing at the current plugin version. To
 install or remove it yourself, run one of these in the plugin directory:
 
 ```sh
-bun skills/apply-settings-profile/scripts/apply-statusline.mjs --apply
-bun skills/apply-settings-profile/scripts/apply-statusline.mjs --remove --apply
+bun skills/setup/scripts/apply-statusline.mjs --apply
+bun skills/setup/scripts/apply-statusline.mjs --remove --apply
 ```
 
 Run `--apply` again after an update to add new settings such as

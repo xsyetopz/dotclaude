@@ -1,0 +1,41 @@
+{
+  "artifact": {
+    "why": "Removes the Artifact tool (publishing pages to claude.ai), about 34 KB on every request.",
+    "settings": { "env": { "CLAUDE_CODE_DISABLE_ARTIFACT": "1" } }
+  },
+  "workflows": {
+    "why": "Removes the Workflow tool and workflow skills, about 5.4 KB per request; workflows are multi-agent fan-out, the most expensive way to spend a plan.",
+    "settings": { "env": { "CLAUDE_CODE_DISABLE_WORKFLOWS": "1" } }
+  },
+  "loops": {
+    "why": "Removes the cron tools and ScheduleWakeup (self-paced /loop), about 4.6 KB per request; every wake-up is a full turn over the whole context.",
+    "settings": {
+      "env": { "CLAUDE_CODE_DISABLE_CRON": "1" },
+      "permissions": { "deny": ["ScheduleWakeup"] }
+    }
+  },
+  "report-findings": {
+    "why": "Removes ReportFindings, about 2.2 KB per request; only Claude Code's /code-review uses it, and dotclaude's reviewers report in text.",
+    "settings": { "permissions": { "deny": ["ReportFindings"] } }
+  },
+  "advisor": {
+    "why": "Removes the advisor tool. Each call reads the whole conversation without the cache, and counts toward plan limits.",
+    "settings": { "env": { "CLAUDE_CODE_DISABLE_ADVISOR_TOOL": "1" } }
+  },
+  "explore-plan": {
+    "why": "Removes the built-in Explore and Plan agents, which run on the main model; dotclaude's agents cover their jobs.",
+    "settings": { "env": { "CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS": "1" } }
+  },
+  "bundled-skills": {
+    "why": "Removes the skills and workflows bundled with Claude Code from the skill listing sent every turn; built-in slash commands stay.",
+    "settings": { "disableBundledSkills": true }
+  },
+  "auto-memory": {
+    "why": "Stops auto memory, which loads its index into every session and writes memory files.",
+    "settings": { "autoMemoryEnabled": false }
+  },
+  "refusal-retry": {
+    "why": "Stops the automatic extra request after a refusal.",
+    "settings": { "env": { "CLAUDE_CODE_DISABLE_REFUSAL_RETRY": "1" } }
+  }
+}

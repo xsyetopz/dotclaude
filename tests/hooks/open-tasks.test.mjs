@@ -82,7 +82,7 @@ test("no block for a continuation, background work, or the option off", () => {
     stop(sid, { background_tasks: [{ type: "subagent", id: "a1" }] }),
   ).toBeNull();
   expect(
-    stop(sid, {}, { CLAUDE_PLUGIN_OPTION_TASK_CHECK: "false" }),
+    stop(sid, {}, { CLAUDE_PLUGIN_OPTION_GATE_TASKS: "false" }),
   ).toBeNull();
   expect(stop(session()), "a session without tasks").toBeNull();
 });

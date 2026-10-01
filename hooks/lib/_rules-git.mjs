@@ -120,6 +120,99 @@ export function gitCwd(globals, ctx) {
   return cwd;
 }
 
+// Commands that can bring back changes before a later discard in the same
+// line runs. The worktree state at check time then says nothing.
+const RESTORES_GIT = new Set([
+  "apply",
+  "am",
+  "cherry-pick",
+  "merge",
+  "pull",
+  "rebase",
+]);
+
+function restoresEarlier(cmd, ctx) {
+  const at = ctx.commands?.indexOf(cmd) ?? -1;
+  if (at === -1) return true;
+  return ctx.commands.slice(0, at).some((c) => {
+    if (c.name === "patch") return true;
+    if (c.name !== "git") return false;
+    const { sub, rest } = gitSplit(c.args);
+    return (
+      RESTORES_GIT.has(sub) ||
+      (sub === "stash" && ["pop", "apply"].includes(rest[0]))
+    );
+  });
+}
+
+/** The folder git runs in, after an earlier `cd` and `-C`, or undefined. */
+function discardCwd(cmd, globals, ctx) {
+  if (globals.some((g) => /^--(git-dir|work-tree)/.test(g))) return undefined;
+  let cwd = ctx.cwd;
+  if (cmd.cwdHint) {
+    if (/[$~`]/.test(cmd.cwdHint)) return undefined;
+    cwd = path.resolve(cwd, cmd.cwdHint);
+  }
+  for (let i = 0; i < globals.length - 1; i += 1) {
+    if (globals[i] !== "-C") continue;
+    if (/[$~`]/.test(globals[i + 1])) return undefined;
+    cwd = path.resolve(cwd, globals[i + 1]);
+  }
+  return cwd;
+}
+
+/**
+ * True when the paths a discard overwrites can hold uncommitted work. An
+ * empty `paths` means the whole worktree. Untracked files count for named
+ * paths, because a checkout from another commit can overwrite them.
+ */
+function mayLoseWork(cmd, globals, ctx, paths) {
+  if (paths.some((p) => /[$`]|__SUBST__/.test(p))) return true;
+  if (restoresEarlier(cmd, ctx)) return true;
+  const cwd = discardCwd(cmd, globals, ctx);
+  if (!cwd) return true;
+  const untracked = paths.length
+    ? "--untracked-files=all"
+    : "--untracked-files=no";
+  const status = git(cwd, ["status", "--porcelain", untracked, "--", ...paths]);
+  return status === undefined || status.trim() !== "";
+}
+
+/**
+ * True when a reset to `rev` overwrites a file that git does not track now:
+ * a path that `rev` has and `HEAD` does not, which exists on disk.
+ */
+function overwritesUntracked(cmd, globals, ctx, rev) {
+  if (/[$`]|__SUBST__/.test(rev)) return true;
+  const cwd = discardCwd(cmd, globals, ctx);
+  if (!cwd) return true;
+  const top = git(cwd, ["rev-parse", "--show-toplevel"])?.trim();
+  const added = git(cwd, [
+    "diff",
+    "--name-only",
+    "-z",
+    "--no-renames",
+    "--diff-filter=A",
+    "HEAD",
+    rev,
+    "--",
+  ]);
+  if (!top || added === undefined) return true;
+  return added.split("\0").some((f) => f && fs.existsSync(path.join(top, f)));
+}
+
+/** Pathspecs after `--`, or the positionals after `skip` values. */
+function pathspecs(args, valueFlags) {
+  const dash = args.indexOf("--");
+  if (dash !== -1) return args.slice(dash + 1);
+  const out = [];
+  for (let i = 0; i < args.length; i += 1) {
+    if (valueFlags.includes(args[i])) i += 1;
+    else if (!args[i].startsWith("-")) out.push(args[i]);
+  }
+  return out;
+}
+
 export function gitRule(cmd, ctx) {
   const { globals, sub, rest: args } = gitSplit(cmd.args);
   const out = [];
@@ -151,19 +244,34 @@ export function gitRule(cmd, ctx) {
       if (hasFlag(args, ["--no-verify"]))
         out.push(["ask", "`git push --no-verify` skips pre-push hooks"]);
       break;
-    case "reset":
-      if (hasFlag(args, ["--hard", "--merge", "--keep"]))
+    case "reset": {
+      if (!hasFlag(args, ["--hard", "--merge", "--keep"])) break;
+      const end = args.indexOf("--");
+      const rev = positional(end === -1 ? args : args.slice(0, end))[0];
+      if (mayLoseWork(cmd, globals, ctx, []))
         out.push(["ask", "`git reset --hard` discards uncommitted changes"]);
+      else if (rev && overwritesUntracked(cmd, globals, ctx, rev))
+        out.push([
+          "ask",
+          `\`git reset --hard ${rev}\` overwrites files that git does not track`,
+        ]);
       break;
+    }
     case "clean":
       if (hasFlag(args, ["--force"], "f") && !hasFlag(args, ["--dry-run"], "n"))
         out.push(["ask", "`git clean -f` deletes untracked files"]);
       break;
     case "checkout":
       if (
-        args.includes("--") ||
-        args.includes(".") ||
-        hasFlag(args, ["--force"], "f")
+        (args.includes("--") ||
+          args.includes(".") ||
+          hasFlag(args, ["--force"], "f")) &&
+        mayLoseWork(
+          cmd,
+          globals,
+          ctx,
+          args.includes("--") ? args.slice(args.indexOf("--") + 1) : [],
+        )
       ) {
         out.push([
           "ask",
@@ -173,8 +281,9 @@ export function gitRule(cmd, ctx) {
       break;
     case "restore":
       if (
-        !hasFlag(args, ["--staged"], "S") ||
-        hasFlag(args, ["--worktree"], "W")
+        (!hasFlag(args, ["--staged"], "S") ||
+          hasFlag(args, ["--worktree"], "W")) &&
+        mayLoseWork(cmd, globals, ctx, pathspecs(args, ["-s", "--source"]))
       )
         out.push(["ask", "`git restore` discards uncommitted changes"]);
       break;

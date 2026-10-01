@@ -3,10 +3,10 @@
 Part of the [hooks](hooks.md) page of the [dotclaude documentation](README.md).
 These hooks keep usage inside the bounds of your plan.
 
-## Usage Bounds (`turn_limit_handoff`, `subagent_guidance`)
+## Usage Bounds (`usage_agent_bounds`, `agent_guidance`)
 
 **What:** refuses a subagent's tool calls past 100k tokens of context (150k
-for `code-reviewer`, `security-reviewer`, and `plan-reviewer`) or near its
+for `reviewer`) or near its
 turn limit, so its next action is its report. The work continues in a
 fresh agent. Claude cannot spawn `general-purpose` agents, and subagents run
 in the foreground. With 5 subagents running, Claude cannot start a sixth.
@@ -17,7 +17,7 @@ dotclaude agents. Claude Code delivers nothing from an agent that it stops at
 its turn limit, so the agent must report first. Background agents started 501
 of 861 main turns. With the bound at 150k, 34 of 69 `implementer` runs still
 passed 100k, and subagent calls from 100k to 150k were 9% of the cost. The
-reviewers keep 150k: a review finds defects across files only while the whole
+`reviewer` keeps 150k: a review finds defects across files only while the whole
 change is in view, a fresh reviewer writes that view to the cache again, and 1
 of 14 `code-reviewer` runs reached 150k. Claude Code refuses a start past
 its own cap, and that caused 50 of 77 measured `Agent` errors. The guard
@@ -29,7 +29,7 @@ and [usage evidence](dossier/usage.md).
 
 **What:** tells Claude once when the session or weekly limit passes 75% and 90%,
 with the reset time. At 75%, Claude writes a handoff with
-`write-session-handoff` and asks you to run `/clear`. At 90%, when the work does
+the `handoff` skill and asks you to run `/clear`. At 90%, when the work does
 not fit, Claude writes a handoff and tells you the reset time. After four
 compactions, past 100k tokens of main context, each prompt (or one tool call in
 a run with no prompt) gives the context size and asks for a handoff before the
@@ -46,11 +46,11 @@ note comes at 100k and compaction at about 117k, and one step can use more than
 the 17k between them. Thus the handoff comes first.
 `COMPACTIONS_BEFORE_HANDOFF` in `hooks/lib/_budget.mjs` sets the count.
 
-## Model Lock And Plan Awareness (`model_lock`, `claude_plan`)
+## Model Lock And Plan Awareness (`model_lock`, `model_plan`)
 
 See [Models](models.md).
 
-## Scratchpad Pruning (`scratchpad_prune_days`, off)
+## Scratchpad Pruning (`usage_scratchpad_prune_days`, off)
 
 **What:** at session start, deletes Claude Code scratchpads that nobody
 touched for the number of days you set.

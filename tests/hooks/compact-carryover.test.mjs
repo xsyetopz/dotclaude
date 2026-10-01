@@ -89,3 +89,70 @@ test("compaction carry-over restores prompts and last check", () => {
   expect(paragraphs.filter((p) => p.includes("src/users.js"))).toHaveLength(1);
   expect(text.length <= 2600).toBeTruthy();
 });
+
+// Custom output styles get no per-turn reminder (#88189), so the report rule
+// comes back once after each compaction, even with no other state to restore.
+test("compaction restates the report rule once, and only after compaction", () => {
+  const sid = session();
+  const input = (source) => ({
+    session_id: sid,
+    hook_event_name: "SessionStart",
+    source,
+    transcript_path: path.join(data, `${sid}-none.jsonl`),
+  });
+  const after = hook("session-start/restore-context-after-compact.mjs", {
+    ...input("compact"),
+  });
+  const text = after.hookSpecificOutput.additionalContext;
+  expect(text).toMatch(/start with the outcome/);
+  expect(text.match(/start with the outcome/g)).toHaveLength(1);
+  for (const source of ["startup", "resume", "clear"])
+    expect(
+      hook("session-start/restore-context-after-compact.mjs", input(source)),
+    ).toBeNull();
+});
+
+// Compaction hooks also fire for subagents, sometimes with no agent fields
+// (#91910). A subagent compaction must not replace the main session's prompts
+// or add context to the subagent.
+test("a subagent compaction keeps the main session's prompts", () => {
+  const sid = session();
+  const write = (file, prompt) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        type: "user",
+        origin: { kind: "human" },
+        message: { content: prompt },
+      }),
+    );
+  };
+  const main = path.join(data, `${sid}.jsonl`);
+  const sub = path.join(data, sid, "subagents", "agent-x.jsonl");
+  write(main, "Fix the login form");
+  write(sub, "Find the form handler");
+  const compact = (transcript, extra = {}) =>
+    hook("pre-compact/save-recent-prompts.mjs", {
+      session_id: sid,
+      hook_event_name: "PreCompact",
+      transcript_path: transcript,
+      ...extra,
+    });
+  compact(main);
+  compact(sub);
+  compact(sub, { agent_id: "x", agent_type: "dotclaude:implementer" });
+  const restore = (transcript, extra = {}) =>
+    hook("session-start/restore-context-after-compact.mjs", {
+      session_id: sid,
+      hook_event_name: "SessionStart",
+      source: "compact",
+      transcript_path: transcript,
+      ...extra,
+    });
+  const text = restore(main).hookSpecificOutput.additionalContext;
+  expect(text).toMatch(/1\. Fix the login form/);
+  expect(text).not.toMatch(/form handler/);
+  expect(restore(sub)).toBeNull();
+  expect(restore(sub, { agent_id: "x" })).toBeNull();
+});

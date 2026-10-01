@@ -79,7 +79,7 @@ test("a turn that an `AskUserQuestion` or `ExitPlanMode` call ended passes", () 
   fs.rmSync(dir, { recursive: true });
 });
 
-test("the `stop_gate` option turns the check off", () => {
+test("the `gate_verify` option turns the check off", () => {
   const out = hook(
     "stop/finish-announced-work.mjs",
     {
@@ -87,7 +87,7 @@ test("the `stop_gate` option turns the check off", () => {
       hook_event_name: "Stop",
       last_assistant_message: ANNOUNCED[3],
     },
-    { CLAUDE_PLUGIN_OPTION_STOP_GATE: "false" },
+    { CLAUDE_PLUGIN_OPTION_GATE_VERIFY: "false" },
   );
   expect(out).toBe(null);
 });

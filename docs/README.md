@@ -35,12 +35,14 @@ optimize for speed or for the volume of output.
 | [Usage Hooks](hooks-usage.md) | usage bounds, usage notes, model lock, and scratchpad pruning |
 | [Models](models.md) | the model lock, fast mode, Fable, effort, and plan detection |
 | [Agents And Skills](agents-and-skills.md) | each agent's model and effort, and each skill |
-| [Working Rules](working-rules.md) | the system prompt and output style rules, and the reason for each |
+| [Working Rules](working-rules.md) | the output style rules, and the reason for each |
 | [Contributions](contributions.md) | the AI policy catalog, the contribution guard, and drafts for other projects |
-| [Settings Profile](settings-profile.md) | each setting that the profile writes, the launcher, and the managed lock |
+| [Settings Profile](settings-profile.md) | each setting that the profile writes, and the managed lock |
+| [Organizations](organizations.md) | managed rollout, skill permissions, budgets, and Windows limits |
 | [Status Line](status-line.md) | what each part of the status line shows, and why |
 | [Development](development.md) | commands, tests, evals, and release steps |
 | [Sandbox](sandbox.md) | how to test a checkout in a separate Claude Code config |
+| [Attributions](attributions.md) | the projects whose ideas dotclaude reimplements |
 | [Dossier](dossier.md) | the measurements, sources, and rejected alternatives behind the choices |
 | [Changelog](../CHANGELOG.md), [older releases](changelog/) | what changed in each release, and why |
 

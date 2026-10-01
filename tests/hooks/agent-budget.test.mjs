@@ -99,7 +99,7 @@ test("other agents, missing transcripts, and the option switch pass", () => {
   const out = hook(
     "pre-tool-use/enforce-agent-budget.mjs",
     { agent_type: "dotclaude:implementer", agent_id: "a1" },
-    { CLAUDE_PLUGIN_OPTION_TURN_LIMIT_HANDOFF: "false" },
+    { CLAUDE_PLUGIN_OPTION_USAGE_AGENT_BOUNDS: "false" },
   );
   expect(out).toBeNull();
 });
@@ -111,7 +111,7 @@ test("any subagent is refused tools past the context budget, a fork past its gro
   expect(decide(grown, { tool_name: "SubagentHandback" })).toBe("pass");
   // A reviewer keeps the whole change in view up to its own, larger bound.
   const review = (context) => [...brief, call(0), result(), call(1, context)];
-  const reviewer = { agent_type: "dotclaude:code-reviewer" };
+  const reviewer = { agent_type: "dotclaude:reviewer" };
   expect(decide(review(120_000), reviewer)).toBe("pass");
   expect(decide(review(150_000), reviewer)).toBe("deny");
   const fork = [...brief, call(0, 300_000), result()];

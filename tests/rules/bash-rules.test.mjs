@@ -82,7 +82,7 @@ const ASK = [
   "git reset --hard HEAD~1",
   "git clean -fdx",
   "git checkout -- .",
-  "git restore src/a.py",
+  "git restore src/app.py",
   "git stash drop",
   "git branch -D feat",
   "git commit --no-verify -m x",
@@ -161,6 +161,11 @@ const WARN = [
   "python3 -c \"import shutil; shutil.rmtree('build')\"",
   "python3 -c \"from pathlib import Path; Path('a').unlink()\"",
   "for n in src build; do rm -rf $n; done",
+  "python3 - <<'EOF'\n# don't keep the build\nimport shutil\nshutil.rmtree('build')\nEOF",
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: JavaScript in a heredoc
+  "node - <<'EOF'\nconst s = `${fs.rmSync(dir)}`;\nEOF",
+  "node -e \"const u = 'http://x'; fs.rmSync(dir)\"",
+  "perl -e 'my $n = $#ARGV; unlink($f)'",
 ];
 
 const PASS = [
@@ -232,6 +237,11 @@ const PASS = [
   "d=$(mktemp -d) && while IFS= read -r c; do echo $c; done < f && cd / && rm -rf $d",
   "python3 - <<'EOF'\np = 'a.mjs'\nlist = ['.claude/settings.local.json']\nopen(p, 'w').write(str(list))\nEOF",
   "node - <<'EOF'\nconst s = `a\n  fs.rmSync(dir);\n`;\nconsole.log(s);\nEOF",
+  "python3 - <<'EOF'\n# remove the old __pycache__ cleanup: shutil.rmtree is gone\nprint(1)\nEOF",
+  'python3 - <<\'EOF\'\n"""Once used shutil.rmtree(\'x\')."""\nprint(1)\nEOF',
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: JavaScript in a heredoc
+  "node - <<'EOF'\nconst s = `a ${b}\n  fs.rmSync(dir);\n`;\nEOF",
+  "node - <<'EOF'\n// fs.rmSync(dir) moved to clean.mjs\n/* rimraf too */\nconsole.log(1);\nEOF",
 ];
 
 for (const command of DENY) {
@@ -534,14 +544,14 @@ test("claude runs outside EFFORT_LEVELS are denied", () => {
     allowedModels: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5"],
   };
   for (const command of [
-    "claude --model sonnet --effort high -p hi",
     "claude --model claude-sonnet-5-5 --effort=xhigh -p hi",
-    "CLAUDE_CODE_EFFORT_LEVEL=high claude --model sonnet -p hi",
+    "CLAUDE_CODE_EFFORT_LEVEL=max claude --model sonnet -p hi",
     "claude --model opus --effort max -p hi",
   ])
     expect(level(command, c), command).toBe("deny");
   for (const command of [
     "claude --model sonnet --effort medium -p hi",
+    "claude --model sonnet --effort high -p hi",
     "claude --model opus --effort xhigh -p hi",
     "claude --model haiku --effort high -p hi",
     "claude --effort high -p hi",

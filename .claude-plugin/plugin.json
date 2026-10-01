@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "description": "Guardrails, working conventions, and a set of task agents for Claude Code: destructive-command and test-weakening guards that stay quiet on recoverable actions in auto mode, a verify-before-stop gate for the session and its subagents, compaction carry-over, a fast-mode/model lock (Opus 5.5, Sonnet 5.5, Fable 5.1, Haiku 4.5) with an xhigh effort cap that adapts to the Claude plan, reviewers, workers, and researchers on tiered models and effort, and an always-on output style.",
   "author": {
     "name": "xsyetopz"
@@ -17,88 +17,88 @@
     "subagents"
   ],
   "userConfig": {
-    "bash_guard": {
+    "guard_bash": {
       "type": "boolean",
       "title": "Bash guard",
       "description": "Ask before destructive git/filesystem/database commands, hook bypasses, and public side effects (publish, gh writes); deny recursive searches that walk gitignored build output.",
       "default": true
     },
-    "ask_in_auto_mode": {
+    "guard_ask_in_auto": {
       "type": "boolean",
       "title": "Ask about recoverable actions in auto mode",
       "description": "In auto mode, the guards stay quiet about recoverable actions (deleting git-tracked files, find/fd deletes, generated-file edits) and let the auto mode classifier decide. Turn on to be asked anyway.",
       "default": false
     },
-    "edit_guard": {
+    "guard_edit": {
       "type": "boolean",
       "title": "Edit guard",
       "description": "Ask before edits that delete test assertions, add skip markers, touch generated files, or edit Claude settings files.",
       "default": true
     },
-    "secret_redaction": {
+    "guard_secrets": {
       "type": "boolean",
       "title": "Secret redaction",
       "description": "Scan every tool output with Betterleaks and replace each secret it finds with [REDACTED:<rule>] before the model sees it. Needs betterleaks on PATH. Without it, output passes through and session start says so.",
       "default": true
     },
-    "exclude_session_files": {
+    "context_session_files": {
       "type": "boolean",
       "title": "Exclude session files",
       "description": "When an agent creates a handoff note in `.claude/handoffs/`, `.dotclaude/` loop state, `CLAUDE.local.md`, `.claude/settings.local.json`, or `.claude/worktrees/`, add the path to `.git/info/exclude`, so it stays out of commits.",
       "default": true
     },
-    "nested_instructions": {
+    "context_nested_instructions": {
       "type": "boolean",
       "title": "Nested instructions",
       "description": "When a Bash command reads files in a subdirectory with its own CLAUDE.md, add that file to the context once, as the Read tool does. Claude Code loads these files only for the Read tool.",
       "default": true
     },
-    "stop_gate": {
+    "gate_verify": {
       "type": "boolean",
       "title": "Verify-before-stop gate",
       "description": "Send Claude back once when it stops after editing code without a later passing test/build/lint run.",
       "default": true
     },
-    "task_check": {
+    "gate_tasks": {
       "type": "boolean",
       "title": "Open-task check",
       "description": "Send Claude back once when it ends a turn with tasks still pending or in progress, so it updates the task list.",
       "default": true
     },
-    "goal_loop_guard": {
+    "gate_goal_stall": {
       "type": "boolean",
       "title": "End stalled /goal loops",
       "description": "When Claude Code's /goal check blocks a stop twice in a row and Claude did no work in between, end the turn. Say only you can end the goal early, with /goal clear. Otherwise each round re-reads the whole context, up to Claude Code's cap of 9.",
       "default": true
     },
-    "compact_carryover": {
+    "context_compact_carryover": {
       "type": "boolean",
       "title": "Compaction carry-over",
       "description": "After compaction, restore your last few prompts verbatim plus git diff stat and the last check result.",
       "default": true
     },
-    "handoff_pointer": {
+    "context_handoff_pointer": {
       "type": "boolean",
       "title": "Point new sessions at the handoff note",
       "description": "At startup and after `/clear`, when `.claude/handoffs/` holds a handoff note whose status is `in-progress` or `blocked`, tell Claude where the newest one is and to check it against the repository before it continues.",
       "default": true
     },
-    "scratchpad_prune_days": {
+    "usage_scratchpad_prune_days": {
       "type": "number",
       "title": "Prune idle scratchpads after (days)",
       "description": "At session start, delete Claude Code session scratchpads and loose temp entries under /tmp/claude-<uid> (or $CLAUDE_CODE_TMPDIR) that nobody has touched for this many days. Builds left there can take gigabytes. The current session is never pruned. 0 turns it off.",
       "default": 0
     },
-    "subagent_guidance": {
+    "agent_guidance": {
       "type": "boolean",
       "title": "Subagent guidance",
       "description": "Give subagents a short version of the dotclaude working conventions when they start (the main conversation gets them through the dotclaude output style). dotclaude's own agents rely on it for the shared working-tree rules, the progress log, and the report format.",
       "default": true
     },
-    "turn_limit_handoff": {
+    "usage_agent_bounds": {
       "type": "boolean",
       "title": "Hand off agents at their turn or context limit",
-      "description": "Once any subagent's context passes about 100k tokens (150k for the dotclaude reviewers), or a dotclaude agent nears its turn limit, refuse its tool calls. Its next action is then a report. When a subagent stops at its turn limit anyway, rewrite the first message to it into a request for a handoff report. Block any later messages to it. The work then continues in a fresh agent with a small context, instead of a resumed one that re-reads its whole history on every turn.",
+      "description": "Once any subagent's context passes about 100k tokens (150k for the dotclaude `reviewer`), or a dotclaude agent nears its turn limit, refuse its tool calls. Its next action is then a report. When a subagent stops at its turn limit anyway, rewrite the first message to it into a request for a handoff report. Block any later messages to it. The work then continues in a fresh agent with a small context, instead of a resumed one that re-reads its whole history on every turn.",
       "default": true
     },
     "model_lock": {
@@ -107,11 +107,21 @@
       "description": "Block fast mode and block switches or subagent calls to models outside the allowed list.",
       "default": true
     },
-    "claude_plan": {
+    "model_plan": {
       "type": "string",
       "title": "Claude plan",
-      "description": "auto (default) reads the plan from Claude Code's cached account. Or set one of: pro, max_5x, max_20x, team_standard, team_premium, enterprise, api. On Pro and standard Team seats without extra usage, the model lock leaves Fable out. Session start notes what the plan means for model choice.",
-      "default": "auto"
+      "description": "auto (default) reads the plan from Claude Code's cached account. Pick a plan when detection is wrong. On Pro and standard Team seats without extra usage, the model lock leaves Fable out. Session start notes what the plan means for model choice.",
+      "default": "auto",
+      "options": [
+        "auto",
+        "pro",
+        "max_5x",
+        "max_20x",
+        "team_standard",
+        "team_premium",
+        "enterprise",
+        "api"
+      ]
     },
     "usage_notes": {
       "type": "boolean",
@@ -119,13 +129,13 @@
       "description": "When Claude Code's cached usage shows the session or weekly limit past 75% or 90%, tell Claude once per level. Claude then routes the remaining work to stretch what is left. Past 100k tokens of main context, tell Claude the context size on each prompt, and once in a long run of tool calls. When a turn stops on a usage limit, show a terminal notification with the reset time and the resume command.",
       "default": true
     },
-    "allowed_models": {
+    "model_allowed": {
       "type": "string",
       "title": "Allowed models",
       "description": "Comma-separated model IDs or version prefixes the model lock permits.",
       "default": "claude-opus-5-5,claude-sonnet-5-5,claude-fable-5-1,claude-haiku-4-5"
     },
-    "commit_hygiene": {
+    "git_commit_hygiene": {
       "type": "boolean",
       "title": "Commit hygiene",
       "description": "On git commit, ask when the staged set contains .DS_Store, .env files, keys, build output, or a lockfile without its manifest.",

@@ -59,22 +59,16 @@ export const STALE_CACHE_CONTEXT_TOKENS = 100_000;
 export const SUBAGENT_CONTEXT_TOKENS = 100_000;
 
 /**
- * The context bound for the read-only reviewers. A review finds defects that
+ * The context bound for the read-only `reviewer`. A review finds defects that
  * cross files only while the whole change is in view, and a fresh reviewer
  * writes that view to the cache again. With the 150k bound, 1 of 14
  * code-reviewer runs from 2026-09-28 to 2026-09-29 reached it.
  */
 export const REVIEWER_CONTEXT_TOKENS = 150_000;
 
-const REVIEWERS = new Set([
-  "code-reviewer",
-  "security-reviewer",
-  "plan-reviewer",
-]);
-
 /** The context bound for a subagent type, with or without its plugin prefix. */
 export const subagentContextTokens = (agentType) =>
-  REVIEWERS.has(String(agentType ?? "").replace(/^dotclaude:/, ""))
+  String(agentType ?? "").replace(/^dotclaude:/, "") === "reviewer"
     ? REVIEWER_CONTEXT_TOKENS
     : SUBAGENT_CONTEXT_TOKENS;
 
@@ -133,12 +127,12 @@ export const RUNNING_AGENT_IDLE_MINUTES = 10;
  *   without `paths:`).
  * - instructionFileBytes: Claude Code skips a larger file.
  * - importHops: Claude Code follows at most four `@path` hops.
- * - outputStyleTokens: the output style loads into every main turn. It
- *   measured 515 tokens in 0.13.0, inside the ~900-token rule set that the
- *   plan targets, so the ceiling keeps it there.
- * - skillDescriptionChars: the description and `when_to_use` of one skill.
- *   Claude Code lists them in every main turn. They were 190 to 540
- *   characters before 0.13.0 and 150 to 230 after the cut.
+ * - outputStyleTokens: the output style loads into every main turn. In 0.17.0
+ *   it carries the rules that the 0.16 replacement system prompt held: 2.3k
+ *   tokens against 4.3k plus 0.6k for the 0.16 prompt and style.
+ * - sessionNoteChars: one note that a hook adds at every session or
+ *   subagent start. In one week of 0.16 sessions, the subagent conventions
+ *   (3.3k characters) were injected 746 times.
  * - The rest are dotclaude's own files.
  */
 export const LIMITS = {
@@ -146,12 +140,9 @@ export const LIMITS = {
   startupInstructionTokens: { warn: 3000, fail: 5000 },
   instructionFileBytes: { fail: 4 * 1024 * 1024 },
   importHops: { fail: 4 },
-  skillLines: { warn: 450, fail: 500 },
-  skillBodyTokens: { warn: 4500, fail: 5000 },
-  skillDescriptionChars: { fail: 250 },
-  outputStyleTokens: { warn: 700, fail: 900 },
+  outputStyleTokens: { warn: 2400, fail: 2500 },
   agentBodyTokens: { warn: 2000, fail: 5000 },
-  systemPromptTokens: { warn: 5000, fail: 15000 },
+  sessionNoteChars: { fail: 1000 },
 };
 
 /** Estimated tokens: the larger of chars / 4 and words / 0.75. */

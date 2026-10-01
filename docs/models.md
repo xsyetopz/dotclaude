@@ -7,14 +7,14 @@ for the most quality per unit of usage quota. The evidence is in
 ## The Four Models
 
 The model lock (`model_lock`) accepts only these models. A switch or a
-subagent call to another model is blocked. `allowed_models` changes the list.
+subagent call to another model is blocked. `model_allowed` changes the list.
 
 | Model | Role | Why |
 | --- | --- | --- |
 | Opus 5.5 | the session, the advisor, and most agents | Many subscribers report that it gives the most quality per quota. Users report that it matches or beats Fable 5.1 on coding at a much lower cost. |
 | Sonnet 5.5 | cheap delegated subagent work, never the main model | Anthropic says that Sonnet 5 follows instructions literally and that Sonnet 5 prompts work on Sonnet 5.5. dotclaude uses it only for agents that get a full specification. Cache reads cost the same as on Opus 5.5, so it saves only on writes and output. |
 | Fable 5.1 | planning or advice in the main conversation, when Opus 5.5 did not solve the problem | Users report that it does too much: whole-file rewrites and invented tests. It costs 2.5 times Opus 5.5 per token and uses up to half of the weekly limit. |
-| Haiku 4.5 | background tasks, `integration-setup`, and `test-runner` | The latest small model, for scripted work that needs no judgment. Anthropic recommends it for subagents that a larger model plans for. Its reliable knowledge ends in Feb 2025, so its agents read tool `--help` output instead of memory. |
+| Haiku 4.5 | background tasks and `test-runner` | The latest small model, for scripted work that needs no judgment. Anthropic recommends it for subagents that a larger model plans for. Its reliable knowledge ends in Feb 2025, so its agents read tool `--help` output instead of memory. |
 
 Older models are left out, because the latest model in each tier gives more
 quality for the same quota. The model roles come from community reports
@@ -48,10 +48,13 @@ standard Team seats, Fable runs on usage credits from the first message
   work, at 2.5 times the price, on calls that read the whole context without
   the cache.
 
-**Plan awareness (`claude_plan`):** session start reads your plan from Claude
+**Plan awareness (`model_plan`):** session start reads your plan from Claude
 Code's cached account (`~/.claude.json`, not the keychain token) and tells
 Claude what the plan means for model choice.
 [Plan detection](dossier/plans-and-models.md#plan-detection) lists the fields.
+A login through `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) caches
+no account. The plan is then unknown: Claude gets no plan note, and the model
+lock keeps Fable on Pro. Set `model_plan` in `/config` for these logins.
 
 ## Effort
 
@@ -67,15 +70,15 @@ Claude what the plan means for model choice.
   | Model | Supported | Not supported |
   | --- | --- | --- |
   | Opus 5.5 | `low`, `medium`, `high`, `xhigh` | `max` |
-  | Sonnet 5.5 | `low`, `medium` | `high`, `xhigh`, `max` |
+  | Sonnet 5.5 | `low`, `medium`, `high` | `xhigh`, `max` |
 
-  Sonnet 5.5 gets only fully specified work. Work that needs `high` needs
-  judgment, and Opus 5.5 gives more score for the same cost there
+  At `xhigh` and `max`, Sonnet 5.5 costs more than Opus 5.5 one level lower
+  for a score that is not higher
   ([Model Fit](dossier/plans-and-models.md#model-fit)). The model lock
   denies a subagent that would run outside this table, and a
   `claude --model … --effort …` command outside it. A hook cannot see an
   effort change in the main conversation, so the lock cannot stop a main
-  session on Sonnet 5.5 at `high`. For an agent from outside dotclaude, the
+  session on Sonnet 5.5 at `xhigh`. For an agent from outside dotclaude, the
   lock checks the effort only when the call names a model, and it uses the
   session effort.
 - **Haiku 4.5 has no effort setting.** It uses extended thinking with a

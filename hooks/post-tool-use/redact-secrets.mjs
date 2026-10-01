@@ -9,7 +9,7 @@ import { emit, option, run } from "../lib/_common.mjs";
 import { redact, scan, strings } from "../lib/_secrets.mjs";
 
 run(async (data) => {
-  if (!option("secret_redaction")) return;
+  if (!option("guard_secrets")) return;
   const output = data.tool_response;
   if (output === undefined || output === null) return;
   const findings = await scan(strings(output).join("\n"));

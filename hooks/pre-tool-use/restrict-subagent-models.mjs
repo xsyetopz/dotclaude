@@ -39,7 +39,7 @@ function effortReason(model, data, def) {
       : "The agent takes the effort of the session.";
   const next =
     family(model) === "sonnet"
-      ? `Work that needs more effort than Sonnet 5.5 \`medium\` needs judgment, so give it to Opus 5.5: omit \`model\` for a dotclaude agent, or set \`model: "opus"\`.`
+      ? `Work that needs more effort than Sonnet 5.5 \`high\` needs judgment, so give it to Opus 5.5: omit \`model\` for a dotclaude agent, or set \`model: "opus"\`.`
       : `Use a lower session effort, for example \`/effort xhigh\`.`;
   return `dotclaude supports \`${model}\` only at the effort levels ${list(levels)}. This agent would run at \`${effort}\`. ${source} ${next}`;
 }

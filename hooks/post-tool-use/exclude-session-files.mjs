@@ -14,9 +14,9 @@ import { option, projectRoot, run } from "../lib/_common.mjs";
 
 // [test on the repo-relative path, entry for the exclude file]
 const SESSION_FILES = [
-  // dotclaude: the notes of `write-session-handoff`.
+  // dotclaude: the notes of the `handoff` skill.
   [(rel) => rel.startsWith(".claude/handoffs/"), () => "/.claude/handoffs/"],
-  // dotclaude: `run-agent-loop` state.
+  // dotclaude: `slices` skill state.
   [(rel) => rel.startsWith(".dotclaude/"), () => "/.dotclaude/"],
   // Claude Code docs: personal memory and settings, and `--worktree` checkouts.
   [(rel) => path.basename(rel) === "CLAUDE.local.md", (rel) => `/${rel}`],
@@ -65,7 +65,7 @@ function exclude(abs) {
 }
 
 run((data) => {
-  if (!option("exclude_session_files")) return;
+  if (!option("context_session_files")) return;
   const input = data.tool_input ?? {};
   if (data.tool_name === "EnterWorktree") {
     const dir = path.join(projectRoot(data), ".claude", "worktrees");

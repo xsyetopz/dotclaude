@@ -122,3 +122,14 @@ export function subagentTranscript(transcriptPath, sessionId, agentId) {
     `agent-${id}.jsonl`,
   );
 }
+
+/**
+ * True when a hook input comes from a subagent. Compaction hooks can fire for
+ * a subagent with no agent fields (#91910), so the transcript path counts too.
+ */
+export function isSubagent(data) {
+  return (
+    Boolean(data.agent_id) ||
+    /[\\/]subagents[\\/][^\\/]+$/.test(data.transcript_path ?? "")
+  );
+}

@@ -6,10 +6,11 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { MIN_CLAUDE_CODE } from "../../hooks/lib/_version.mjs";
 
 const SCRIPT = path.resolve(
   import.meta.dirname,
-  "../../skills/apply-settings-profile/scripts/install-managed.mjs",
+  "../../skills/setup/scripts/install-managed.mjs",
 );
 
 function tempManaged() {
@@ -117,4 +118,30 @@ test("install-managed leaves managed-settings.json alone and names shared keys",
   const quiet = run(other);
   expect(quiet.status, quiet.stderr).toBe(0);
   expect(quiet.stdout).not.toContain(otherBase);
+});
+
+test("install-managed --org adds the organization keys to the lock", () => {
+  const dir = tempManaged();
+  const res = run(dir, "--org", "--apply");
+  expect(res.status, res.stderr).toBe(0);
+  const written = JSON.parse(fs.readFileSync(dropIn(dir), "utf8"));
+  expect(written.fastMode).toBe(false);
+  expect(written.enforceAvailableModels).toBe(true);
+  expect(written.requiredMinimumVersion).toBe(MIN_CLAUDE_CODE);
+  expect(written.enabledPlugins).toStrictEqual({ "dotclaude@dotclaude": true });
+  // Declaring the marketplace source keeps the setup skill's allowed-tools
+  // under allowManagedPermissionRulesOnly.
+  expect(written.extraKnownMarketplaces).toStrictEqual({
+    dotclaude: { source: { source: "github", repo: "xsyetopz/dotclaude" } },
+  });
+  // An allowlist that names only dotclaude would block every other
+  // marketplace of the organization, so the drop-in sets none.
+  expect(written).not.toHaveProperty("strictKnownMarketplaces");
+
+  // The personal lock stays without the organization keys.
+  const personal = tempManaged();
+  expect(run(personal, "--apply").status).toBe(0);
+  const own = JSON.parse(fs.readFileSync(dropIn(personal), "utf8"));
+  expect(own).not.toHaveProperty("enabledPlugins");
+  expect(own).not.toHaveProperty("requiredMinimumVersion");
 });

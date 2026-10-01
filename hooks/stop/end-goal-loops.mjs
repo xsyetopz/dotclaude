@@ -71,7 +71,7 @@ export function idleGoalBlocks(lines) {
 }
 
 run((data) => {
-  if (!option("goal_loop_guard") || !data.stop_hook_active) return;
+  if (!option("gate_goal_stall") || !data.stop_hook_active) return;
   const blocks = idleGoalBlocks(tail(data.transcript_path ?? ""));
   if (blocks < LIMIT) return;
   emit({

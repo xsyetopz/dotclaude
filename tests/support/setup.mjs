@@ -7,10 +7,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-export const SCRIPTS = path.resolve(
-  import.meta.dirname,
-  "../../skills/apply-settings-profile/scripts",
-);
+export const SKILL = path.resolve(import.meta.dirname, "../../skills/setup");
+export const SCRIPTS = path.join(SKILL, "scripts");
+export const FIXTURES = path.resolve(import.meta.dirname, "../setup/fixtures");
 
 export function tempHome() {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-home-"));
@@ -18,17 +17,34 @@ export function tempHome() {
   return home;
 }
 
-export const SETUP = path.resolve(
-  import.meta.dirname,
-  "../../skills/setup-integrations",
-);
-
-export function run(script, home, ...args) {
+/**
+ * Run a setup script with HOME at `home`. `env` overrides the defaults: the
+ * plan comes from the temp HOME's .claude.json, and the running Claude Code
+ * is the tested release, so the machine that runs the tests decides nothing.
+ */
+export function runWith(env, script, home, ...args) {
   const res = spawnSync("bun", [path.join(SCRIPTS, script), ...args], {
     encoding: "utf8",
-    // The plan comes from the temp HOME's .claude.json, not the real one.
-    env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: "" },
+    env: {
+      ...process.env,
+      HOME: home,
+      CLAUDE_CONFIG_DIR: "",
+      ZDOTDIR: "",
+      XDG_CONFIG_HOME: "",
+      AI_AGENT: "claude-code_2-1-286_agent",
+      CLAUDE_CODE_EXECPATH: "",
+      ...env,
+    },
   });
   expect(res.status, res.stderr).toBe(0);
   return res.stdout;
 }
+
+export const run = (script, home, ...args) =>
+  runWith({}, script, home, ...args);
+
+/** The backups a script made next to `file`. */
+export const backups = (file) =>
+  fs
+    .readdirSync(path.dirname(file))
+    .filter((f) => f.startsWith(`${path.basename(file)}.dotclaude-backup-`));

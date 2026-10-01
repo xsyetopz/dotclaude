@@ -1,22 +1,20 @@
 # Working Rules
 
-Part of the [dotclaude documentation](README.md). Two files set how Claude
-works when dotclaude is on:
+Part of the [dotclaude documentation](README.md). The output style
+(`output-styles/dotclaude.md`) sets how Claude works and reports when
+dotclaude is on. It holds the engineering, git, and report rules. It is always
+on while the plugin is on. To use a different style, disable the plugin, or
+copy the file to `~/.claude/output-styles/` without `force-for-plugin`.
 
-- **The system prompt**
-  (`skills/apply-settings-profile/profiles/system-prompt.md`) holds the
-  engineering and git rules. The
-  [launcher](settings-profile.md#system-prompt-launcher) passes it. Without
-  the launcher, Claude Code's own prompt is used.
-- **The output style** (`output-styles/dotclaude.md`) sets how Claude talks
-  and reports. It is always on while the plugin is on. To use a different
-  style, disable the plugin, or copy the file to `~/.claude/output-styles/`
-  without `force-for-plugin`.
-
-**Why a replacement prompt and not an output style:** an output style cannot
-carry the coding rules. `keep-coding-instructions: true` sends the same
-request as `false` (**capture**). See
-[prompt surface](dossier/prompt-surface.md#dotclaudes-system-prompt).
+**Why an output style and not a replacement prompt:** the profile turns on
+Claude Code's lean prompt (`CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`), which
+already covers tools, safety, and Markdown output. The lean prompt has no
+coding instructions, and `keep-coding-instructions` does not add them
+(**binary**, 2.1.286). The flag keeps them only in the full prompt. So the
+style carries the rules that nothing else gives, in about 2.3k tokens. The
+0.16 replacement prompt and style took about 4.9k tokens and needed a shell
+function, because only a command-line flag replaces the system prompt. See
+[prompt surface](dossier/prompt-surface.md).
 
 **Why the rules give reasons and not banned phrases:** Claude routes around a
 banned phrase with a synonym. A rule that names the behavior and its reason
@@ -29,11 +27,11 @@ can check a rule, a hook enforces it, and the prompt only explains it
 
 | Rule | Why |
 | --- | --- |
-| Reproduce a reported bug with a minimal example before a fix. If it does not reproduce, change nothing. | A report and the cause it names are guesses until a run shows them. A fix for an unconfirmed cause changes working code. In the behavior evals, this rule moved `question-confirmed-bug` from 0 of 3 passes to 3 of 3 ([evals](dossier/evals.md#results-for-040)). |
+| Reproduce a reported bug with a minimal example before a fix. If it does not reproduce, change nothing. | A report and the cause it names are guesses until a run shows them. A fix for an unconfirmed cause changes working code. In the 0.4.0 behavior evals, this rule moved the case `question-confirmed-bug` from 0 of 3 passes to 3 of 3 ([evals](dossier/evals.md#results-for-040)). |
 | Check an unsure API, flag, version, or model name in the installed source, its help, or its docs. | Partial memory of fast-changing tools gives a stale answer that sounds right. |
 | Debug one stage at a time, and change one thing per run. | Two changes in one run cannot tell which one had the effect. |
-| Done only after a run that exercises the change. A test for a bug counts only after it fails without the fix. | A claim of "done" without a run moves the finding of defects to you. The [stop gate](hooks.md#verify-before-stop-stop_gate) enforces the first part. |
-| Fix a failing test at its cause. Do not skip it, loosen it, or accept a new snapshot. | Those hide the signal and keep the defect. The [edit guard](hooks.md#edit-guard-edit_guard) asks before an edit removes an assertion. |
+| Done only after a run that exercises the change. A test for a bug counts only after it fails without the fix. | A claim of "done" without a run moves the finding of defects to you. The [stop gate](hooks.md#verify-before-stop-gate_verify) enforces the first part. |
+| Fix a failing test at its cause. Do not skip it, loosen it, or accept a new snapshot. | Those hide the signal and keep the defect. The [edit guard](hooks.md#edit-guard-guard_edit) asks before an edit removes an assertion. |
 | Do not call an unsupported case "intended" or a "correct skip" only because the code does not handle it. Check public implementations and docs, and report it as a gap unless the project or you exclude it. | The current code shows what the project does, not what it should do. An agent once called four controllers "correct skips" because the app had no driver for them, although public drivers exist. |
 | Check the user's claims and proposed causes before agreeing. Change position for evidence, not for repetition. | Agreement without a check is not information. A wrong cause that Claude accepts costs a fix that does not hold. |
 
@@ -41,7 +39,7 @@ can check a rule, a hook enforces it, and the prompt only explains it
 
 | Rule | Why |
 | --- | --- |
-| The request is the deliverable. A question gets an assessment, and edits wait for a go-ahead unless a reproduced bug needs a fix. | You decide what changes in your code. In the evals, this rule moved `scope-follow-up` from 0 of 3 passes to 2 of 3. |
+| The request is the deliverable. A question gets an assessment, and edits wait for a go-ahead unless a reproduced bug needs a fix. | You decide what changes in your code. In the 0.4.0 behavior evals, this rule moved the case `scope-follow-up` from 0 of 3 passes to 2 of 3. |
 | Make the minimal diff. No unrelated renames, reformatting, or dependency changes. | A small diff is one that you can review. Unrelated changes hide the real change. |
 | Build only what the task needs now. | Structure for a future need costs usage now and is often wrong later. |
 | Do not revert or claim changes that Claude did not make. Ask before deleting files that it did not create. | You and other sessions can edit the same files. Those changes can be work in progress. |
@@ -52,12 +50,12 @@ can check a rule, a hook enforces it, and the prompt only explains it
 | Rule | Why |
 | --- | --- |
 | Commit, push, or open a pull request only when you ask. | A commit and a push put work into shared history. The decision is yours. |
-| Ask before hard-to-reverse or public actions. One approval does not cover the next context. | Content sent to an external service stays there after a delete. The [Bash guard](hooks.md#bash-guard-bash_guard) enforces the common cases. |
+| Ask before hard-to-reverse or public actions. One approval does not cover the next context. | Content sent to an external service stays there after a delete. The [Bash guard](hooks.md#bash-guard-guard_bash) enforces the common cases. |
 | An approval request says what the action does, why, what it changes, and how to undo it. Open questions go in one `AskUserQuestion` call. Claude does not ask in text for an approval that a permission prompt gives. | An approval that you read is a control. Many small approvals teach you to approve without reading. |
 | Before a contribution to a project that you do not own, read its AI policy. Stop when it forbids AI work. Give you a verified draft in plain English, and let you send it. | A contribution speaks for you. A project with no policy has possibly not written it yet. See [Contributions](contributions.md). |
 | A denied tool call is your decision. Claude changes its approach and does not reach the same result by another route. | A workaround for a denial removes your control. |
 | Use a credential only when you name it, and only by its variable name. | A credential found by chance is not permission. A value in the transcript goes to the API. |
-| Stage files by path. Never stage secrets or build output. | `git add -A` stages files that you did not mean to commit. The [commit guard](hooks.md#commit-hygiene-commit_hygiene) checks the staged files. |
+| Stage files by path. Never stage secrets or build output. | `git add -A` stages files that you did not mean to commit. The [commit guard](hooks.md#commit-hygiene-git_commit_hygiene) checks the staged files. |
 
 ## Usage
 

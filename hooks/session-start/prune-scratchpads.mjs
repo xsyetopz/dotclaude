@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // SessionStart (off by default): delete Claude Code session scratchpads and
-// loose temp entries nobody has touched in `scratchpad_prune_days` days.
+// loose temp entries nobody has touched in `usage_scratchpad_prune_days` days.
 // Claude Code keeps them under $CLAUDE_CODE_TMPDIR (else /tmp) in
 // claude-<uid>/, one folder per project and session, and never deletes them;
 // builds left there can reach gigabytes. The current session is never pruned.
@@ -43,7 +43,9 @@ function cli(args) {
 if (process.argv.includes("--days")) cli(process.argv.slice(2));
 else
   run((data) => {
-    const days = Number(process.env.CLAUDE_PLUGIN_OPTION_SCRATCHPAD_PRUNE_DAYS);
+    const days = Number(
+      process.env.CLAUDE_PLUGIN_OPTION_USAGE_SCRATCHPAD_PRUNE_DAYS,
+    );
     if (!(days > 0) || data.source !== "startup") return;
     const stale = staleEntries(
       tempRoot(),

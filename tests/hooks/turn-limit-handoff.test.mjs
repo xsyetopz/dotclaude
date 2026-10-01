@@ -62,7 +62,7 @@ test("the turn-limit handoff can be turned off", () => {
         transcript_path: cappedTranscript("abcd1234"),
         tool_input: { to: "abcd1234", message: "go on" },
       },
-      { CLAUDE_PLUGIN_OPTION_TURN_LIMIT_HANDOFF: "false" },
+      { CLAUDE_PLUGIN_OPTION_USAGE_AGENT_BOUNDS: "false" },
     ),
   ).toBe(null);
 });

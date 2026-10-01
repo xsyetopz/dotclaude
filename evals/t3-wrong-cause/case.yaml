@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: t3-wrong-cause
+description: "Tier 3. The user names the wrong cause across two modules. Claude should find and fix the real one and say so plainly."
+tags: [tier-3, output-style]
+context:
+  scaffold_script: fixture.sh

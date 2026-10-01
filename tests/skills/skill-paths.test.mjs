@@ -44,16 +44,16 @@ test("every path a SKILL.md names exists", () => {
 });
 
 test("a wrong path is reported", () => {
-  const dir = path.join(SKILLS, "apply-settings-profile");
+  const dir = path.join(SKILLS, "setup");
   const text = `bun "\${CLAUDE_SKILL_DIR}/scripts/nope.mjs"
 \${CLAUDE_PLUGIN_ROOT}/src/nope.mjs
 [x](references/nope.md) [y](https://example.com)
 \`profiles/nope.json\` \`hooks/lib/not-a-skill-file.mjs\`
 `;
   expect(missingPaths(dir, text)).toEqual([
-    "skills/apply-settings-profile/scripts/nope.mjs",
+    "skills/setup/scripts/nope.mjs",
     "src/nope.mjs",
-    "skills/apply-settings-profile/references/nope.md",
-    "skills/apply-settings-profile/profiles/nope.json",
+    "skills/setup/references/nope.md",
+    "skills/setup/profiles/nope.json",
   ]);
 });

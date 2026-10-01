@@ -46,7 +46,7 @@ test("recoverable findings ask in default mode and stay quiet in auto mode", () 
   expect(
     decision(
       { ...warn, permission_mode: "auto" },
-      { CLAUDE_PLUGIN_OPTION_ASK_IN_AUTO_MODE: "true" },
+      { CLAUDE_PLUGIN_OPTION_GUARD_ASK_IN_AUTO: "true" },
     ),
   ).toBe("ask");
   expect(
@@ -78,7 +78,7 @@ test("recoverable findings ask in default mode and stay quiet in auto mode", () 
 });
 
 test("bash guard off still enforces the model lock", () => {
-  const env = { CLAUDE_PLUGIN_OPTION_BASH_GUARD: "false" };
+  const env = { CLAUDE_PLUGIN_OPTION_GUARD_BASH: "false" };
   expect(
     hook(
       "pre-tool-use/block-destructive-commands.mjs",
@@ -115,14 +115,18 @@ test("settings writes ask in auto mode, where the classifier would deny them", (
   for (const script of [
     "apply-settings",
     "apply-claude-md",
-    "apply-launcher",
     "apply-statusline",
     "install-managed",
+    "migrate",
   ]) {
-    const out = bash(`bun "/p/scripts/${script}.mjs" --scope user --apply`);
+    const out = bash(
+      `bun "/p/skills/setup/scripts/${script}.mjs" --scope user --apply`,
+    );
     expect(out.permissionDecision, script).toBe("ask");
     expect(out.permissionDecisionReason).toContain(`${script}.mjs --apply`);
   }
+  // Another project's migration script is not a settings write.
+  expect(bash("bun scripts/migrate.mjs --apply")).toBeNull();
   expect(
     bash(
       'SUDO_ASKPASS=/p/askpass.sh sudo -A "$(command -v bun)" /p/scripts/install-managed.mjs --apply',

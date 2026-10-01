@@ -37,7 +37,7 @@ function lastParagraph(message) {
 }
 
 run((data) => {
-  if (!option("stop_gate") || data.stop_hook_active) return;
+  if (!option("gate_verify") || data.stop_hook_active) return;
   const paragraph = lastParagraph(data.last_assistant_message ?? "");
   if (!ANNOUNCES.some((re) => re.test(paragraph)) || WAITS.test(paragraph))
     return;

@@ -271,7 +271,7 @@ const FULL = {
     git_worktree: "feature-x",
   },
   session_name: "status line rows",
-  agent: { name: "security-reviewer" },
+  agent: { name: "reviewer" },
   vim: { mode: "NORMAL" },
   prompt_cache: {
     ...DATA.prompt_cache,
@@ -293,7 +293,7 @@ const FULL = {
 test("the main line shows the session facts that advanced users check", () => {
   const text = plain(renderMain(FULL, { columns: 400, now: NOW, git: GIT }));
   expect(text.split("\n")).toEqual([
-    "dotclaude/hooks +2 · ⊞ feature-x · ⎇ main ±3 ↑1 · #42 · @security-reviewer · NORMAL · status line rows",
+    "dotclaude/hooks +2 · ⊞ feature-x · ⎇ main ±3 ↑1 · #42 · @reviewer · NORMAL · status line rows",
     "Opus 5.5 medium · 87k/117k ████░ · ◷ 40m 93% ✗2 tools · 5h 23% · 7d 41% · spend 63% · +156 -23 · 1h12m",
   ]);
 });
@@ -365,7 +365,7 @@ test("the entry points print a line and one JSON row per task", () => {
     tasks: [
       { id: "t1", name: "test-runner", tokenCount: 20_000 },
       {},
-      { id: "t2", name: "code-reviewer", tokenCount: 120_000 },
+      { id: "t2", name: "reviewer", tokenCount: 120_000 },
     ],
   })
     .stdout.trim()
@@ -373,7 +373,7 @@ test("the entry points print a line and one JSON row per task", () => {
     .map((l) => JSON.parse(l));
   expect(rows.map((r) => r.id)).toEqual(["t1", "t2"]);
   expect(plain(rows[0].content)).toStartWith("test-runner · 20k/100k");
-  expect(plain(rows[1].content)).toStartWith("code-reviewer · 120k/150k");
+  expect(plain(rows[1].content)).toStartWith("reviewer · 120k/150k");
 });
 
 test("a row without a name takes the agent type from its meta file", () => {

@@ -77,7 +77,7 @@ Claude Code delivers nothing from an agent that it stops at its turn limit.
   starts from a report starts small.
 - **inference:** Splitting a 115-turn task in two cuts its cache reads by
   about 25–30%.
-- `code-reviewer` has a 60-turn limit. A capped review loses its findings. A
+- `reviewer` has a 60-turn limit. A capped review loses its findings. A
   capped `implementer` only splits its work.
 - The `implementer` limit stays 80. **measured:** in the week to
   2026-09-29, 31 of 252 runs reached it, and 27 of those were past 90k
@@ -87,7 +87,7 @@ Claude Code delivers nothing from an agent that it stops at its turn limit.
 
 ### The Agent Loop
 
-The `run-agent-loop` skill takes the workflow of the Bun, GitHub Copilot,
+The `slices` skill takes the workflow of the Bun, GitHub Copilot,
 and pnpm v12 Rust ports (**reported**). Each port used four parts:
 
 - A guide, written first. `.dotclaude/loop/GUIDE.md` holds the goal, the
@@ -96,7 +96,7 @@ and pnpm v12 Rust ports (**reported**). Each port used four parts:
   files.
 - A frozen test oracle. `loop.json` lists it as `protected` globs, and the
   edit and Bash guards deny a subagent's change to a match.
-- A reviewer that sees only the diff. `diff-reviewer` gets the git range and
+- A reviewer that sees only the diff. `reviewer` with the `diff` lens gets the git range and
   the guide, not the implementer's report. The Stop hook blocks once for a
   slice with the status `implemented`.
 
@@ -125,8 +125,8 @@ no guard for this, because the refusal already stops the command.
   Most open issues about them (#96101, #96163, #97262, #97342, #97335) are in
   Claude Code, where a plugin cannot fix them.
 - **Trimming the user's skill listing.** The user skills total 1.4 KB of
-  descriptions. dotclaude cuts only its own skill descriptions, to 250
-  characters or less each (`skillDescriptionChars` in `LIMITS`).
+  descriptions. dotclaude cuts only its own skill and agent descriptions, to
+  about 150 characters each.
 - **A per-session subagent count cap.** Concurrency and the context budget
   already bound the cost. A hard count stops legitimate long sessions.
 - **Headroom.** Removed in 0.10.0. It compresses tool output with loss. In

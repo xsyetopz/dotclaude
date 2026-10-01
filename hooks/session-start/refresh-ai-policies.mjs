@@ -14,7 +14,7 @@ import { option, run } from "../lib/_common.mjs";
 if (process.argv.includes("--refresh")) refreshUpstream();
 else
   run(() => {
-    if (!option("bash_guard") || !upstreamStale()) return;
+    if (!option("guard_bash") || !upstreamStale()) return;
     spawn(process.execPath, [fileURLToPath(import.meta.url), "--refresh"], {
       detached: true,
       stdio: "ignore",

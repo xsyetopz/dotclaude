@@ -59,6 +59,7 @@ export const ACTIONS = {
   ],
   PostToolUseFailure: [
     [`Bash|${TOOL_EDITS}`, "post-tool-use-failure/record-failed-checks.mjs"],
+    ["Edit", "post-tool-use-failure/show-closest-lines.mjs"],
   ],
   Stop: [
     ["*", "stop/require-verification.mjs"],

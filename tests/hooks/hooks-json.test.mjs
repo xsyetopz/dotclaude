@@ -25,7 +25,10 @@ test("each hooks.json matcher covers the matchers of its actions", () => {
   for (const [event, [entry]] of Object.entries(cfg.hooks)) {
     const matchers = [...new Set(ACTIONS[event].map(([m]) => m))];
     if (matchers.includes("*")) expect(entry.matcher).toBeUndefined();
-    else expect(entry.matcher).toBe(matchers.join("|"));
+    else {
+      const names = (m) => [...new Set(m.split("|"))].sort();
+      expect(names(entry.matcher)).toEqual(names(matchers.join("|")));
+    }
   }
 });
 

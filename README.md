@@ -3,14 +3,14 @@
 dotclaude is an opinionated Claude Code plugin for software engineering with
 Claude Opus 5.5. It optimizes for the most quality per unit of usage quota,
 not for speed or for the volume of output. Hooks enforce the rules that a
-program can check. A replacement system prompt and an output style set the
-other working rules. Agents and skills do review, delegated work, and
-research.
+program can check. An output style on top of Claude Code's lean system
+prompt sets the other working rules. Agents and skills do review, delegated
+work, and research.
 
 Each choice has a reason and evidence. [The documentation](docs/README.md)
 tells what each part does and why. [The dossier](docs/dossier.md) holds the
 measurements and sources behind it. To ask Claude, say "why did you do that?"
-The `explain-dotclaude` skill answers from these pages.
+The `explain` skill answers from these pages.
 
 ## The Position
 
@@ -33,15 +33,14 @@ The `explain-dotclaude` skill answers from these pages.
 /plugin install dotclaude@dotclaude
 ```
 
-Then run `/dotclaude:apply-settings-profile` and restart Claude Code. A plugin
+Then run `/dotclaude:setup` and restart Claude Code. A plugin
 cannot set permissions, environment variables, or models. This skill writes
 them into a settings file that you choose. It shows the changes and makes a
 backup first. See [Settings Profile](docs/settings-profile.md).
 
 For the optional integrations (CodeGraph, tgrep, fast-compact, Betterleaks,
-Ghidra, and the browser plugin), run
-`/dotclaude:setup-integrations`, or ask Claude, for example "set up codegraph
-for this project".
+Ghidra, and the browser plugin), run `/dotclaude:setup integrations`, for
+example `/dotclaude:setup integrations codegraph`.
 
 Browser automation and CAPTCHA OCR are in a separate plugin, so sessions
 without a browser do not load them:
@@ -64,9 +63,15 @@ claude plugin update dotclaude@dotclaude
    output style.
 1. Read the new entry in [`CHANGELOG.md`](CHANGELOG.md). Before 1.0, a release
    can change or remove behavior without a compatibility layer.
-1. Run `/dotclaude:apply-settings-profile` again. It shows every change and
+1. Run `/dotclaude:setup` again. It shows every change and
    backs up the file. A notice at session start tells you when your settings
    are behind the plugin.
+
+From 0.16, `/dotclaude:setup` is the only migration step. It removes the
+0.16 shell function and its system prompt file, and it renames the old plugin
+options. 0.17 has no aliases for the old skill, agent, and option names.
+
+To roll out dotclaude to a team, see [Organizations](docs/organizations.md).
 
 To try an unreleased checkout, run `claude --plugin-dir /path/to/dotclaude`.
 
@@ -107,7 +112,7 @@ Fast mode is off, and `max` effort is blocked.
 
 ### [Working Rules](docs/working-rules.md)
 
-The system prompt and the output style: reproduce before a fix, a minimal
+The output style: reproduce before a fix, a minimal
 diff, a check before "done", commits only when you ask, few subagents, and
 reports that start with the outcome.
 
@@ -115,19 +120,19 @@ reports that start with the outcome.
 
 | Agent | Model, effort |
 | --- | --- |
-| `code-reviewer`, `security-reviewer`, `plan-reviewer`, `debugger`, `performance-engineer`, `reverse-engineer` | Opus 5.5, high |
-| `test-writer`, `ci-investigator`, `dependency-auditor` | Opus 5.5, medium |
-| `history-investigator`, `web-researcher` | Opus 5.5, low |
-| `implementer`, `docs-writer`, `mechanical-worker`, `diff-reviewer` | Sonnet 5.5, medium |
-| `test-runner`, `integration-setup` | Haiku 4.5 |
+| `reviewer`, `debugger`, `reverse-engineer` | Opus 5.5, high |
+| `investigator` | Opus 5.5, medium |
+| `web-researcher` | Opus 5.5, low |
+| `implementer`, `mechanical-worker` | Sonnet 5.5, medium |
+| `test-runner` | Haiku 4.5 |
 
 | Skill | Use |
 | --- | --- |
-| `/dotclaude:apply-settings-profile` | applies the settings profile |
-| `/dotclaude:setup-integrations` | installs CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, OpenSpec, and `dotclaude-browser` |
-| `run-agent-loop` | runs a large change as slices with a diff-only reviewer and a frozen test oracle |
-| `write-session-handoff` | writes a note that a fresh session can continue from |
-| `explain-dotclaude` | answers "why did you do that?" from the documentation |
+| `/dotclaude:setup` | applies the settings profile, removes the 0.16 shell function, and installs CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, OpenSpec, and `dotclaude-browser` |
+| `slices` | runs a large change as slices with a diff-only reviewer and a frozen test oracle |
+| `handoff` | writes a note that a fresh session can continue from |
+| `contribute` | checks a project's AI policy and drafts an issue or pull request for you to send |
+| `explain` | answers "why did you do that?" from the documentation |
 | `drive-web-browser`, `recognize-captcha` | browser automation and offline CAPTCHA OCR, in the optional `dotclaude-browser` plugin |
 
 ### [Status Line](docs/status-line.md)
@@ -144,8 +149,8 @@ next row, so nothing is cut off.
 
 Compaction at 150k tokens, no background requests that re-read the context,
 5 subagents at once, read denies for `.env` files and credentials, auto
-memory off, and a shell launcher for the system prompt. Each setting has its
-reason on the page.
+memory off, the lean system prompt, and auto-update on the `stable` channel.
+Each setting has its reason on the page.
 
 ## Development
 
@@ -155,4 +160,5 @@ Claude Code with this checkout in a separate config. See
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). dotclaude reimplements ideas from other MIT projects, and
+[Attributions](docs/attributions.md) credits them.

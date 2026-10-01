@@ -5,15 +5,12 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {
-  AUTO_COMPACT_TOKENS,
-  COMPACTIONS_BEFORE_HANDOFF,
-  k,
-} from "../../hooks/lib/_budget.mjs";
+import { AUTO_COMPACT_TOKENS, k, LIMITS } from "../../hooks/lib/_budget.mjs";
 import {
   currentPlan,
   detectPlan,
   fableAccess,
+  PLANS,
   planAllowlist,
   planNote,
 } from "../../hooks/lib/_plans.mjs";
@@ -70,15 +67,28 @@ test("detectPlan follows Claude Code's organization types and rate-limit tiers",
   expect(detectPlan(MAX_20X, { CLAUDE_CODE_USE_BEDROCK: "1" })).toBe("api");
 });
 
-test("the claude_plan option overrides detection; junk values fall back to it", () => {
+test("the model_plan picker offers auto and each plan that the hooks read", () => {
+  const manifest = JSON.parse(
+    fs.readFileSync(
+      path.resolve(import.meta.dirname, "../../.claude-plugin/plugin.json"),
+      "utf8",
+    ),
+  );
+  expect(manifest.userConfig.model_plan.options).toStrictEqual([
+    "auto",
+    ...PLANS,
+  ]);
+});
+
+test("the model_plan option overrides detection; junk values fall back to it", () => {
   expect(
-    currentPlan({ CLAUDE_PLUGIN_OPTION_CLAUDE_PLAN: "max_5x" }, PRO),
+    currentPlan({ CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "max_5x" }, PRO),
   ).toStrictEqual({ plan: "max_5x", detected: false });
   expect(
-    currentPlan({ CLAUDE_PLUGIN_OPTION_CLAUDE_PLAN: "auto" }, PRO).plan,
+    currentPlan({ CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "auto" }, PRO).plan,
   ).toBe("pro");
   expect(
-    currentPlan({ CLAUDE_PLUGIN_OPTION_CLAUDE_PLAN: "ultra" }, PRO).plan,
+    currentPlan({ CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "ultra" }, PRO).plan,
   ).toBe("pro");
 });
 
@@ -110,14 +120,17 @@ test("planAllowlist drops Fable only where the plan cannot run it", () => {
 test("planNote describes Fable per plan and one Pro-sized handoff bound for every plan", () => {
   const note = (account, env = {}) =>
     planNote({ CLAUDE_CONFIG_DIR: configDir(account), ...env });
-  // Lines: open tag, plan, the Fable line (if any), the bound, close tag.
-  const fableLine = (text) => text.split("\n").slice(2, -2).join("\n");
+  const fableLine = (text) =>
+    text
+      .split("\n")
+      .filter((l) => l.includes("Fable"))
+      .join("\n");
   const max = note(MAX_20X);
   expect(max).toStartWith('<claude_plan source="dotclaude">');
   expect(max).toContain("Claude Max 20x");
   expect(max).toContain("50%");
   // A plan set in the option reads differently from a detected one.
-  const setMax = note(null, { CLAUDE_PLUGIN_OPTION_CLAUDE_PLAN: "max_20x" });
+  const setMax = note(null, { CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "max_20x" });
   expect(setMax).toContain("Claude Max 20x");
   expect(setMax).not.toBe(max);
   const pro = note(PRO);
@@ -130,11 +143,30 @@ test("planNote describes Fable per plan and one Pro-sized handoff bound for ever
   for (const line of lines) expect(line).toBeTruthy();
   expect(new Set(lines).size).toBe(3);
   expect(fableLine(enterprise)).toBe("");
-  for (const text of [max, pro, credits, enterprise]) {
+  const api = note(null, { CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "api" });
+  // The note loads at every session start, so it holds the facts only. The
+  // handoff rule is in the output style.
+  for (const text of [max, pro, credits, enterprise, api]) {
     expect(text).toContain(`at about ${k(AUTO_COMPACT_TOKENS)} tokens`);
-    expect(text).toContain(`first ${COMPACTIONS_BEFORE_HANDOFF} compactions`);
+    expect(text.length).toBeLessThanOrEqual(LIMITS.sessionNoteChars.fail);
   }
   expect(planNote({ CLAUDE_CONFIG_DIR: configDir(null) })).toBe(null);
+});
+
+test("planNote names the organization budget for Team and Enterprise seats only", () => {
+  const note = (account) => planNote({ CLAUDE_CONFIG_DIR: configDir(account) });
+  const budget = (text) =>
+    text.split("\n").filter((l) => l.includes("organization budget"));
+  for (const account of [
+    { organizationType: "claude_team" },
+    { organizationType: "claude_enterprise" },
+  ]) {
+    const text = note(account);
+    expect(budget(text).length).toBe(1);
+    expect(text.length).toBeLessThanOrEqual(LIMITS.sessionNoteChars.fail);
+  }
+  for (const account of [MAX_20X, PRO])
+    expect(budget(note(account))).toStrictEqual([]);
 });
 
 function hook(script, input, env) {

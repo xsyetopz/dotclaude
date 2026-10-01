@@ -53,7 +53,7 @@ function readState(file) {
 }
 
 run((data) => {
-  if (!option("turn_limit_handoff")) return;
+  if (!option("usage_agent_bounds")) return;
   const input = data.tool_input ?? {};
   const to = typeof input.to === "string" ? input.to.trim() : "";
   if (!/^[A-Za-z0-9_-]{4,64}$/.test(to)) return;

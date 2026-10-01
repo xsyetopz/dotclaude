@@ -7,7 +7,7 @@ import { exitBlocking, option, run, TAG } from "../lib/_common.mjs";
 import { load, save } from "../lib/_ledger.mjs";
 
 run((data) => {
-  if (!option("stop_gate")) return;
+  if (!option("gate_verify")) return;
   if (!data.session_id) return;
   const agentId = data.agent_id ?? null;
   const state = load(data.session_id, agentId);

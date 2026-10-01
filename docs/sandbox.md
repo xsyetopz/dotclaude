@@ -10,7 +10,9 @@ you release a change.
 `claude --plugin-dir .` in your own setup loads the checkout next to your
 installed dotclaude, your settings, and your sessions. A test there can
 change your settings files and write to your session history. The sandbox
-has its own `CLAUDE_CONFIG_DIR`, so the test changes only the sandbox.
+has its own `CLAUDE_CONFIG_DIR` and `HOME`, so the test changes only the
+sandbox. That includes the shell startup files that `/dotclaude:setup`
+changes.
 
 ## Commands
 
@@ -38,10 +40,17 @@ script cannot run those. The native installer keeps each version at
 
 ## What the Script Sets Up
 
-The sandbox directory has two parts:
+The sandbox directory has three parts:
 
 - `config/` is the sandbox `CLAUDE_CONFIG_DIR`.
 - `project/` is an empty git repository. It is the working directory.
+- `home/` is the `HOME` of `claude`. The script removes `ZDOTDIR` and
+  `XDG_CONFIG_HOME` from its environment. Your global git config does not
+  apply in the sandbox.
+
+The script also removes the variables of a Claude Code session that runs the
+script, and each variable that has the value your own settings `env` gives
+it. A value that you set on the command line for the sandbox stays.
 
 In `config/.claude.json` the script sets these keys:
 

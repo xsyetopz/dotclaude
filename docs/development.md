@@ -62,12 +62,43 @@ compatibility layer.
 
 ## Evals
 
-The behavior evals run with `claude plugin eval`. `evals/` tests dotclaude's
-own rules. `evals-heldout/` has cases written without access to dotclaude's
-prompts. `bun evals/report.mjs <result.json>` reports the results with 95%
-intervals.
+The behavior evals run with `claude plugin eval`. `evals/` has 8 tasks in 4
+tiers, from a one-file fix to delegation. `evals-heldout/` has cases written
+without access to dotclaude's prompts. Each run costs money, so run it only
+when you decide to.
 
-**Why two suites:** cases written with the rules show that Claude follows
-them. Held-out cases check that dotclaude does not make Claude worse on work
-that the rules did not foresee. The results and their limits are in
+```bash
+claude plugin eval . --model haiku --judge-model sonnet --runs 3 --scaffold \
+  --allow-tools Bash Write Edit --keep-temp --json evals/results/run.json
+bun evals/oracle.mjs evals/results/run.json   # hidden test oracles, tokens
+bun evals/report.mjs evals/results/run.json   # pass rate, pass^k, cost per pass
+```
+
+1. Write and change cases on Haiku 4.5 (`--model haiku`), because it is the
+   cheapest model. Use `--tag tier-1` or `--case <name>` to run a part.
+1. Gate a release on Opus 5.5 (`--model opus`) with 3 or more runs.
+1. To compare with an earlier release, put the release in a worktree, copy
+   the cases into it, and run the same command there. Then give both results
+   to `bun evals/report.mjs <new.json> --before <old.json>`.
+
+**Why the flags:** `--scaffold` runs each case's `fixture.sh`, which builds
+the workspace. `--allow-tools` grants the tools that the cases list.
+`evals/oracle.mjs` needs `--keep-temp`, because it runs each hidden
+`oracle.sh` in a copy of the kept workspace. When the plugin wrote to the
+run's `home/` or `tmp/`, the CLI seals them in `sealed/` with mode 000, and
+it warns you once for each run. `evals/oracle.mjs` opens the seal only for
+the copy, and it runs `git` only in the copy. `claude plugin eval` has no
+grader that runs a command. `--judge-model sonnet` sets the model of the `llm`
+graders. The default judge is Haiku 4.5, and it failed a correct `t4-slices`
+reply 3 times out of 3. The CLI does not keep the judge's text, so the cause
+is not known. Do not use the agent's model as the judge, because a model
+prefers its own output. The default ablation also runs each case without
+the plugin, so the report shows the plugin's effect.
+
+`t4-slices` and `t4-handoff` call skills that 0.17.0 renamed. Releases before
+0.17.0 fail their `with-only` graders.
+
+**Why two suites:** the tiered cases show what dotclaude changes on tasks of
+growing size. Held-out cases check that dotclaude does not make Claude worse
+on work that the rules did not foresee. The results and their limits are in
 [evals](dossier/evals.md).

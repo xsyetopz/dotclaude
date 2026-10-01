@@ -1,6 +1,6 @@
 ---
 name: test-runner
-description: Runs tests, build, type-check, or linter and returns an exact summary of what failed and where. Use to keep long output out of the main context or to run a slow suite while other work continues. Give it the command (or have it find one) and the changed files if only related tests matter.
+description: Runs tests, build, type-check, or lint and returns an exact summary of failures. Use to keep long output out of context or to run a slow suite.
 tools: Bash, Read, Grep, Glob
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-haiku-4-5

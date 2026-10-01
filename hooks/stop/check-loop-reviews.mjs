@@ -18,7 +18,7 @@ import { loopSlices } from "../lib/_loop.mjs";
 import { waitsForUser } from "../lib/_transcript.mjs";
 
 run((data) => {
-  if (!option("task_check") || data.stop_hook_active || data.agent_id) return;
+  if (!option("gate_tasks") || data.stop_hook_active || data.agent_id) return;
   if (
     (data.background_tasks ?? []).some(
       (t) => t.type === "shell" || t.type === "subagent",
@@ -47,7 +47,7 @@ run((data) => {
       "These agent-loop slices in `.dotclaude/loop/slices.jsonl` have the status `implemented`, but no review:",
       list,
       "For each slice, do one of these:",
-      "- Give its diff to `diff-reviewer`, then set its status to `reviewed`.",
+      "- Give its diff to `reviewer` with the `diff` lens, then set its status to `reviewed`.",
       "- The slice failed or you dropped it: set its status to `failed`, and give the reason in one line.",
       "This check does not stop you again for the same slices.",
     ].join("\n"),

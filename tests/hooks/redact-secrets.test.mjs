@@ -74,13 +74,13 @@ test.skipIf(!hasScanner)("clean output passes unchanged", () => {
   expect(post("Bash", { stdout: "hello world\n", stderr: "" })).toBeNull();
 });
 
-test("the secret_redaction option turns the hook off", () => {
+test("the guard_secrets option turns the hook off", () => {
   const token = `ghp_${alnum(36)}`;
   expect(
     post(
       "Bash",
       { stdout: token, stderr: "" },
-      { CLAUDE_PLUGIN_OPTION_SECRET_REDACTION: "false" },
+      { CLAUDE_PLUGIN_OPTION_GUARD_SECRETS: "false" },
     ),
   ).toBeNull();
 });

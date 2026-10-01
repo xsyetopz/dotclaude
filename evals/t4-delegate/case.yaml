@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: t4-delegate
+description: "Tier 4. A slice handed to the dotclaude implementer agent. The judge sees only part of the trace, so the hidden oracle checks the code."
+tags: [tier-4, subagent]
+context:
+  scaffold_script: fixture.sh

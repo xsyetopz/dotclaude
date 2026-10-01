@@ -8,7 +8,9 @@
 //
 // DOTCLAUDE_SANDBOX sets the sandbox directory (default: dotclaude-sandbox in
 // the system temp folder). It holds `config/` (CLAUDE_CONFIG_DIR) and
-// `project/`, an empty git repository that is the working directory. The
+// `project/`, an empty git repository that is the working directory, and
+// `home/`, the HOME of claude, so that setup scripts that change shell startup
+// files change only the sandbox. The
 // config skips onboarding and trusts the project, and has the dotclaude
 // status line installed.
 //
@@ -30,6 +32,7 @@ const root = path.resolve(
 );
 const config = path.join(root, "config");
 const project = path.join(root, "project");
+const home = path.join(root, "home");
 const args = process.argv.slice(2);
 
 if (args[0] === "--clean") {
@@ -67,8 +70,57 @@ function loginToken() {
   }
 }
 
+// Variables that the parent Claude Code session sets for its own tools. In the
+// sandbox they would join the parent session or fake its state.
+const SESSION_VARS = new Set([
+  "CLAUDECODE",
+  "AI_AGENT",
+  "CLAUDE_PID",
+  "CLAUDE_EFFORT",
+  "CLAUDE_PROJECT_DIR",
+  "CLAUDE_ENV_FILE",
+  "CLAUDE_CODE_CHILD_SESSION",
+  "CLAUDE_CODE_ENTRYPOINT",
+  "CLAUDE_CODE_EXECPATH",
+  "CLAUDE_CODE_SSE_PORT",
+]);
+const SESSION_PREFIXES = [
+  "CLAUDE_CODE_SESSION_",
+  "CLAUDE_CODE_MESSAGING_",
+  "CLAUDE_PLUGIN_",
+  "DOTCLAUDE_",
+];
+
+/**
+ * The environment without the parent session's variables, and without each
+ * variable that has the value your own settings `env` gives it. A value that
+ * you set for the sandbox on the command line stays.
+ */
+function cleanEnv() {
+  const own = path.join(
+    process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude"),
+    "settings.json",
+  );
+  let settingsEnv = {};
+  try {
+    settingsEnv = JSON.parse(fs.readFileSync(own, "utf8")).env ?? {};
+  } catch {}
+  const env = { ...process.env };
+  for (const name of Object.keys(env)) {
+    if (
+      SESSION_VARS.has(name) ||
+      SESSION_PREFIXES.some((p) => name.startsWith(p)) ||
+      (Object.hasOwn(settingsEnv, name) &&
+        String(settingsEnv[name]) === env[name])
+    )
+      delete env[name];
+  }
+  return env;
+}
+
 function setUp() {
   fs.mkdirSync(config, { recursive: true });
+  fs.mkdirSync(home, { recursive: true });
   if (!fs.existsSync(path.join(project, ".git"))) {
     fs.mkdirSync(project, { recursive: true });
     spawnSync("git", ["init", "-q", project]);
@@ -94,13 +146,7 @@ function setUp() {
   if (!fs.existsSync(path.join(config, "dotclaude", "statusline.mjs")))
     spawnSync(
       "bun",
-      [
-        path.join(
-          REPO,
-          "skills/apply-settings-profile/scripts/apply-statusline.mjs",
-        ),
-        "--apply",
-      ],
+      [path.join(REPO, "skills/setup/scripts/apply-statusline.mjs"), "--apply"],
       { env: { ...process.env, CLAUDE_CONFIG_DIR: config }, stdio: "ignore" },
     );
 }
@@ -113,7 +159,11 @@ if (!claude) {
   );
   process.exit(1);
 }
-const env = { ...process.env, CLAUDE_CONFIG_DIR: config };
+// The token is read above with the real HOME. Only the child gets the sandbox
+// HOME, without the variables that point back to the real shell files.
+const env = { ...cleanEnv(), CLAUDE_CONFIG_DIR: config, HOME: home };
+delete env.ZDOTDIR;
+delete env.XDG_CONFIG_HOME;
 const token = loginToken();
 if (token) env.CLAUDE_CODE_OAUTH_TOKEN = token;
 else console.error("No login token found. Run /login inside the sandbox.");

@@ -43,7 +43,7 @@ source labels.
 
 - **Two Max 5x plans against one Max 20x.** One user reports that Max 20x
   gives about 1.7 times the weekly usage of Max 5x. Anthropic does not state
-  a weekly ratio. `claude_plan` reads one plan.
+  a weekly ratio. `model_plan` reads one plan.
 - **Auto mode's classifier sends the whole transcript on every Bash call.**
   Not checked in the binary.
 - **A Haiku ping keeps the cache warm.** Caches are per model, so a Haiku

@@ -28,15 +28,16 @@ function resolveAlias(m) {
 
 /**
  * The effort levels that dotclaude supports for each model family. A family
- * that is not listed has no effort limit here. Sonnet 5.5 gets only fully
- * specified work, and work that needs `high` needs judgment, so it goes to
- * Opus 5.5. On hard work, Sonnet 5.5 at `high` cost as much as Opus 5.5 at
- * `medium` and scored lower (ProjectArchitect bench, 2026-09-29). `max` uses
- * about 5.5x the usage on Opus 5.5 (claude.ai effort picker).
+ * that is not listed has no effort limit here. Sonnet 5.5 at `xhigh` and `max`
+ * costs more than Opus 5.5 one level lower for a score that is not higher
+ * (Anthropic launch charts, 2026-09-28). Sonnet 5.5 at `high` costs about as
+ * much as Opus 5.5 one level lower for about the same score, so it stays
+ * supported. `max` uses about 5.5x the usage on Opus 5.5 (claude.ai effort
+ * picker).
  */
 export const EFFORT_LEVELS = {
   opus: ["low", "medium", "high", "xhigh"],
-  sonnet: ["low", "medium"],
+  sonnet: ["low", "medium", "high"],
 };
 
 /** The family (`opus`, `sonnet`, ...) of a model alias or ID, or "". */

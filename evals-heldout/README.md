@@ -39,7 +39,7 @@ The cases were committed before any agent ran against them. After that:
 ```bash
 claude plugin eval . --eval-dir evals-heldout --runs 5 --scaffold \
   --allow-tools Bash Edit Write Agent --model claude-opus-5-5 \
-  --judge-model claude-opus-5-5 -j 4 --no-publish --threshold 0 \
+  --judge-model claude-sonnet-5-5 -j 4 --no-publish --threshold 0 \
   --json results.json
 bun evals/report.mjs results.json
 ```

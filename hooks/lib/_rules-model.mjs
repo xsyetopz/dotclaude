@@ -62,7 +62,7 @@ function cliEffort(cmd) {
   return [
     [
       "deny",
-      `dotclaude supports \`${model}\` only at the effort levels ${levels.map((l) => `\`${l}\``).join(", ")}, not \`${effort}\`. Work that needs more effort than Sonnet 5.5 \`medium\` needs judgment, so run it on Opus 5.5 at \`xhigh\` or lower`,
+      `dotclaude supports \`${model}\` only at the effort levels ${levels.map((l) => `\`${l}\``).join(", ")}, not \`${effort}\`. Work that needs more effort than Sonnet 5.5 \`high\` needs judgment, so run it on Opus 5.5 at \`xhigh\` or lower`,
     ],
   ];
 }

@@ -2,8 +2,8 @@
 
 Part of the [dotclaude documentation](README.md).
 
-`/dotclaude:apply-settings-profile` merges
-`skills/apply-settings-profile/profiles/recommended.json` into your user,
+`/dotclaude:setup` merges
+`skills/setup/profiles/recommended.json` into your user,
 project, or local settings. It shows every change and makes a backup first.
 The merge only adds keys. It replaces only the model policy
 (`availableModels` and the `Agent(model:...)` denies).
@@ -51,7 +51,7 @@ you choose and can review.
   (`CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`) drops long sections that dotclaude's
   own prompt replaces ([the lean
   prompt](dossier/prompt-surface.md#the-lean-prompt)). The task-list tools
-  are on for the [open-task check](hooks.md#open-task-check-task_check). Glob
+  are on for the [open-task check](hooks.md#open-task-check-gate_tasks). Glob
   skips gitignored files (`CLAUDE_CODE_GLOB_NO_IGNORE=false`). Without it, a
   `**/*.swift` search returned files under `.build/` and `node_modules/`.
 - **Feedback:** `/feedback`, the feedback tool, surveys, and error reports are
@@ -74,7 +74,7 @@ you choose and can review.
   for you in public. An ask rule wins over an allow rule. See
   [Contributions](contributions.md).
 - **Git:** `includeGitInstructions: false` removes Claude Code's git
-  instructions, because dotclaude's system prompt has its own. The
+  instructions, because dotclaude's output style has its own. The
   `git_attribution` option keeps the commit trailer and pull request footer.
   When a user or project skill is named `verify` or `simplify`, or
   `includeCodeReviewSuggestion` is true, a session note tells Claude to run
@@ -101,27 +101,6 @@ Skip one with `--skip name,...`. The reason for each is in the file:
 | `bundled-skills` | the bundled skills are in the skill listing on every turn |
 | `auto-memory` | the index loads into every session, and the files go stale |
 | `refusal-retry` | an extra request after each refusal |
-| `auto-updates` | an update makes the prompt cache cold, so you choose when |
-
-## System Prompt Launcher
-
-**What:** the skill adds a `claude` function to your shell's startup file
-(zsh, bash, fish, or PowerShell). The function passes dotclaude's system
-prompt, which holds its engineering and git rules. See
-[Working Rules](working-rules.md).
-
-**Why:** only the `--system-prompt-file` flag replaces Claude Code's system
-prompt. No setting or environment variable does (**binary**), and a plugin
-cannot pass flags. An output style cannot carry the rules, because
-`keep-coding-instructions` does not bring the coding rules back
-([prompt surface](dossier/prompt-surface.md)).
-
-- The function adds nothing when you pass your own `--system-prompt` or
-  `--system-prompt-file`.
-- `DOTCLAUDE_SYSTEM_PROMPT=0 claude` starts one session with Claude Code's own
-  prompt. Set the same variable to silence the session-start notice in an IDE
-  that does not load your shell function.
-- `apply-launcher.mjs --remove --apply` removes the function.
 
 ## Managed Lock
 
@@ -132,3 +111,4 @@ it asks before it replaces a different drop-in.
 
 **Why:** you, or Claude, can remove the effort cap from your own settings.
 Managed settings take precedence over user settings, so the lock holds.
+For a rollout to many users, see [Organizations](organizations.md).

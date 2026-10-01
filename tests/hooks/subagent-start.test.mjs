@@ -3,6 +3,7 @@
 import { expect, test } from "bun:test";
 import {
   k,
+  LIMITS,
   REVIEWER_CONTEXT_TOKENS,
   SUBAGENT_CONTEXT_TOKENS,
 } from "../../hooks/lib/_budget.mjs";
@@ -30,6 +31,10 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   const context = out.hookSpecificOutput.additionalContext;
   expect(context).toContain(CONVENTIONS);
   expect(block(context, "working_conventions")?.trim()).toBeTruthy();
+  // Every subagent start carries this block, so it stays short.
+  expect(block(context, "working_conventions").length).toBeLessThanOrEqual(
+    LIMITS.sessionNoteChars.fail,
+  );
   expect(context).not.toMatch(/turn_budget/);
   expect(block(context, "context_budget")).toContain(
     k(SUBAGENT_CONTEXT_TOKENS),
@@ -47,22 +52,24 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   const implementerBudget = numbers(block(implementer, "turn_budget"));
   expect(implementerBudget).toContain(80);
   expect(implementerBudget).toContain(4);
-  for (const [agentType, limit] of [
-    ["dotclaude:code-reviewer", 60],
-    ["dotclaude:security-reviewer", 40],
-  ]) {
-    const text = start(agentType);
-    expect(text, agentType).not.toContain(CONVENTIONS);
-    expect(numbers(block(text, "turn_budget")), agentType).toContain(limit);
-    expect(block(text, "context_budget"), agentType).toContain(
-      k(REVIEWER_CONTEXT_TOKENS),
-    );
-  }
+  const reviewer = start("dotclaude:reviewer");
+  expect(reviewer).not.toContain(CONVENTIONS);
+  expect(numbers(block(reviewer, "turn_budget"))).toContain(60);
+  expect(block(reviewer, "context_budget")).toContain(
+    k(REVIEWER_CONTEXT_TOKENS),
+  );
+  // The read-only investigator keeps the conventions and the common bound.
+  const investigator = start("dotclaude:investigator");
+  expect(investigator).toContain(CONVENTIONS);
+  expect(numbers(block(investigator, "turn_budget"))).toContain(40);
+  expect(block(investigator, "context_budget")).toContain(
+    k(SUBAGENT_CONTEXT_TOKENS),
+  );
   expect(
     hook(
       "subagent-start/inject-working-conventions.mjs",
       { hook_event_name: "SubagentStart", agent_type: "Explore" },
-      { CLAUDE_PLUGIN_OPTION_SUBAGENT_GUIDANCE: "false" },
+      { CLAUDE_PLUGIN_OPTION_AGENT_GUIDANCE: "false" },
     ),
   ).toBe(null);
 });

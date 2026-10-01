@@ -178,6 +178,8 @@ export function report(root, since, verdictsFile = null) {
   // dotclaude agent runs with a turn limit, and whether each one reached
   // the reserve where tool calls stop.
   const limited = [];
+  // Output tokens, messages, and messages without a final record.
+  const output = { tokens: 0, messages: 0, unfinished: 0 };
   const files = fs
     .readdirSync(root, { recursive: true })
     .map(String)
@@ -201,13 +203,25 @@ export function report(root, since, verdictsFile = null) {
     let lastModel = null;
     let compacted = false;
     let entrypoint = null;
-    for (const line of fs.readFileSync(file, "utf8").split("\n")) {
-      let entry;
+    const entries = [];
+    for (const line of fs.readFileSync(file, "utf8").split("\n"))
       try {
-        entry = JSON.parse(line);
-      } catch {
-        continue;
-      }
+        entries.push(JSON.parse(line));
+      } catch {}
+    // Claude Code writes a message's usage once per content block. The first
+    // record is the stream start, with an output count near zero, so each
+    // message counts the record with the largest output. Subagent transcripts
+    // often keep no final record, so that count is a lower bound.
+    const best = new Map();
+    for (const e of entries) {
+      const u = e.type === "assistant" && e.message?.usage;
+      if (!u) continue;
+      const b = best.get(e.message.id);
+      if (!b || (u.output_tokens ?? 0) > (b.usage.output_tokens ?? 0))
+        best.set(e.message.id, { usage: u, final: b?.final });
+      if (e.message.stop_reason) best.get(e.message.id).final = true;
+    }
+    for (const entry of entries) {
       if (
         type === "main" &&
         !entrypoint &&
@@ -267,17 +281,21 @@ export function report(root, since, verdictsFile = null) {
       if (entry.type !== "assistant" || !m?.usage) continue;
       if (new Date(entry.timestamp) < since || seen.has(m.id)) continue;
       seen.add(m.id);
-      const c = callCost(m.model, m.usage);
+      const { usage, final } = best.get(m.id);
+      output.tokens += usage.output_tokens ?? 0;
+      output.messages += 1;
+      if (!final) output.unfinished += 1;
+      const c = callCost(m.model, usage);
       const at = Date.parse(entry.timestamp);
       if (firstPending && lastCallAt !== null && at - lastCallAt < 300_000) {
         const b = first[hookContext ? "with" : "without"];
         b[0] += 1;
-        b[1] += m.usage.cache_creation_input_tokens ?? 0;
+        b[1] += usage.cache_creation_input_tokens ?? 0;
         b[2] += c.context;
       }
       firstPending = false;
       lastCallAt = at;
-      for (const it of m.usage.iterations ?? []) {
+      for (const it of usage.iterations ?? []) {
         if (it.type !== "advisor_message") continue;
         const a = callCost(it.model, it).total;
         advisor.calls += 1;
@@ -342,6 +360,7 @@ export function report(root, since, verdictsFile = null) {
     mainTurns: turns,
     wakeShare: share(wakeCost),
     advisor: { calls: advisor.calls, share: share(advisor.cost) },
+    output,
     cacheHitRate: { all: hit(cache.all), main: hit(cache.main) },
     firstCallAfterPrompt: Object.fromEntries(
       Object.entries(first).map(([k, [calls, write, context]]) => [
@@ -391,6 +410,10 @@ if (import.meta.main) {
         `  ${a.type.padEnd(32)} $${a.cost.toFixed(2).padStart(9)}  ${a.share}%`,
       );
     console.log(`Calls with context past 150k: ${r.over150kShare}% of cost`);
+    const o = r.output;
+    console.log(
+      `Output tokens: ${o.tokens} in ${o.messages} messages. ${o.unfinished} messages have no final record, so their count is a lower bound.`,
+    );
     const e = r.expectedRewrites;
     console.log(
       `Full cache rewrites that nothing explains: ${r.rewriteShare}% of cost. Expected rewrites: ${r.expectedRewriteShare}% (${e.first} first calls, ${e.compaction} after compaction, ${e.model} after a model switch)`,

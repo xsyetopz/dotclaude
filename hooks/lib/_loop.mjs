@@ -1,4 +1,4 @@
-// State of a `run-agent-loop` run, read from `.dotclaude/loop/` in the main
+// State of a `slices` skill run, read from `.dotclaude/loop/` in the main
 // project root:
 //
 // - `loop.json`: `{"oracle": "<command>", "protected": ["<glob>", ...]}`.
