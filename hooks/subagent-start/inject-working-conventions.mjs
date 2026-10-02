@@ -1,14 +1,10 @@
-#!/usr/bin/env bun
 // SubagentStart: give subagents the core working conventions. Output styles
 // reach only the main conversation, so subagents get this short version.
 
-import fs from "node:fs";
-import path from "node:path";
 import { definition, reserve } from "../lib/_agents.mjs";
 import { k, subagentContextTokens } from "../lib/_budget.mjs";
-import { emit, run } from "../lib/_common.mjs";
 import { option, stateDir } from "../lib/_core.mjs";
-import { nodeIo } from "../lib/_io-node.mjs";
+import { pathFor } from "../lib/_path.mjs";
 
 const GUIDANCE = `<working_conventions source="dotclaude">
 - Claims in your brief are hypotheses. Check them in the code or with a run. Check an unsure API, flag, or version in the installed source or its docs.
@@ -26,8 +22,8 @@ const OWN_PROMPT = new Set(["reviewer"]);
 
 // An agent cut off at its turn limit delivers no report, so it is told the
 // limit, and enforce-agent-budget refuses tool calls near it.
-function budget(limit) {
-  const cutoff = option(process.env, "usage_agent_bounds")
+function budget(io, limit) {
+  const cutoff = option(io.env, "usage_agent_bounds")
     ? `With ${reserve(limit)} left, tool calls are refused and your next action must be your report. Plan to finish before then`
     : `When about ${reserve(limit)} remain, stop and write your report`;
   return `<turn_budget source="dotclaude">You have at most ${limit} turns. ${cutoff}. If work remains, make the report a handoff, because a fresh agent will continue from it, not you. Include what is done and how you verified it, and the files you changed. Include anything half-edited, and what is left in order.</turn_budget>`;
@@ -48,41 +44,38 @@ const SONNET = `<scope_note source="dotclaude">Apply each instruction in your br
 /**
  * True on the first start of this agent in this session. `SendMessage` resumes
  * fire `SubagentStart` again (#80489), and the resumed agent already has the
- * text in its context. The `wx` flag makes the marker atomic across agents
- * that start at the same time.
+ * text in its context. `io.fs.create` is atomic across agents that start at
+ * the same time.
  */
-function firstStart(data) {
+async function firstStart(io, data) {
   if (!data.session_id || !data.agent_id) return true;
   const safe = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");
-  const marker = path.join(
-    stateDir(nodeIo()),
+  const marker = pathFor(io.platform).join(
+    stateDir(io),
     `${safe(data.session_id)}.${safe(data.agent_id)}.started`,
   );
   try {
-    fs.mkdirSync(path.dirname(marker), { recursive: true });
-    fs.writeFileSync(marker, "", { flag: "wx" });
+    return await io.fs.create(marker, "");
+  } catch {
     return true;
-  } catch (err) {
-    return err.code !== "EEXIST";
   }
 }
 
-run(async (data) => {
-  const io = nodeIo(data);
-  if (!option(process.env, "agent_guidance")) return;
-  if (!firstStart(data)) return;
+export default async function (io, data) {
+  if (!option(io.env, "agent_guidance")) return;
+  if (!(await firstStart(io, data))) return;
   const agentType = String(data.agent_type ?? "");
   const type = agentType.replace(/^dotclaude:/, "");
   const parts = OWN_PROMPT.has(type) ? [] : [GUIDANCE];
   const def = await definition(io, agentType);
-  if (def?.maxTurns) parts.push(budget(def.maxTurns));
-  if (option(process.env, "usage_agent_bounds")) parts.push(context(agentType));
+  if (def?.maxTurns) parts.push(budget(io, def.maxTurns));
+  if (option(io.env, "usage_agent_bounds")) parts.push(context(agentType));
   if (/sonnet/.test(def?.model ?? "")) parts.push(SONNET);
   if (!parts.length) return;
-  emit({
+  return {
     hookSpecificOutput: {
       hookEventName: "SubagentStart",
       additionalContext: parts.join("\n"),
     },
-  });
-});
+  };
+}
