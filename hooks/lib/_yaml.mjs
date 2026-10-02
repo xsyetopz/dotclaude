@@ -4,6 +4,18 @@
 // has no Node and no Bun. It gives the same value as `Bun.YAML.parse` for the
 // subset, and throws an Error for input outside it (anchors, aliases, tags,
 // complex keys, and more than one document).
+//
+// Known differences from Bun, which this parser keeps on purpose:
+// - Anchors, aliases, tags, `?` keys, and more than one document throw here.
+// - An empty key (`: x`) and a flow collection as a key throw here.
+// - A top-level line that starts with a tab throws here.
+// - A hex literal that overflows a double becomes a Number here.
+// - The flow map `{:x}` is not read here.
+// - CRLF inside a quoted block value is not kept as Bun keeps it.
+// - A block header with a space and a chomp sign (`| -`) throws here.
+// - Some odd lines after a block scalar (a tab and a comment, then a tab-only
+//   line) are read here, and Bun throws.
+// - A hostile input of 1 MB of dashes costs about 1 second.
 
 const BLOCK_HEADER = /^([|>])(?:([1-9])([+-])?|([+-])([1-9])?)?$/;
 const ESCAPES = {
@@ -30,6 +42,24 @@ const HEX_ESCAPES = { x: 2, u: 4, U: 8 };
 // The deepest nesting of block and flow collections. A deeper input is an error,
 // so that a hostile input cannot use much time or stack.
 const MAX_DEPTH = 64;
+
+const isSpace = (c) => c === " " || c === "\t";
+
+/** Trim the YAML whitespace (space and tab) only. `trim` also cuts U+00A0. */
+function trimStart(text) {
+  let i = 0;
+  while (i < text.length && isSpace(text[i])) i++;
+  return text.slice(i);
+}
+
+/** Trim the end, but keep the first `keep` characters, as an escape asks. */
+function trimEnd(text, keep = 0) {
+  let end = text.length;
+  while (end > keep && isSpace(text[end - 1])) end--;
+  return text.slice(0, end);
+}
+
+const trim = (text) => trimStart(trimEnd(text));
 
 /** The count of spaces that start a line. */
 const indentOf = (line) => /^ */.exec(line)[0].length;
@@ -109,12 +139,15 @@ function newScan() {
 function stripComment(line, scan) {
   scan.escape = false;
   scan.closedAt = -2;
+  // The end of the last escaped space or tab, which a trim must keep.
+  let keep = 0;
   for (let i = 0; i < line.length; i++) {
     const c = line[i];
     if (scan.quote === '"') {
       if (c === "\\") {
         i++;
         scan.escape = i >= line.length;
+        if (isSpace(line[i])) keep = i + 1;
       } else if (c === '"') {
         scan.quote = "";
         scan.start = false;
@@ -129,11 +162,11 @@ function stripComment(line, scan) {
           scan.closedAt = i;
         }
       }
-    } else if (c === " " || c === "\t") {
+    } else if (isSpace(c)) {
       // A space does not change where a value starts.
     } else if (c === "#" && (i === 0 || " \t".includes(line[i - 1]))) {
       scan.cut = true;
-      return line.slice(0, i).trimEnd();
+      return trimEnd(line.slice(0, i), keep);
     } else if (scan.depth > 0 && (c === "[" || c === "{")) {
       scan.depth++;
       scan.start = true;
@@ -149,13 +182,13 @@ function stripComment(line, scan) {
     } else if (
       scan.start &&
       (c === "-" || c === "?") &&
-      (i + 1 >= line.length || " \t".includes(line[i + 1]))
+      (i + 1 >= line.length || isSpace(line[i + 1]))
     ) {
       // An indicator that a space follows: a value can still start.
     } else if (
       c === ":" &&
       (i + 1 >= line.length ||
-        " \t".includes(line[i + 1]) ||
+        isSpace(line[i + 1]) ||
         (scan.depth > 0 && scan.closedAt === i - 1))
     ) {
       scan.start = true;
@@ -163,7 +196,7 @@ function stripComment(line, scan) {
       scan.start = false;
     }
   }
-  return line.trimEnd();
+  return trimEnd(line, keep);
 }
 
 function resolvePlain(text) {
@@ -191,7 +224,7 @@ function resolvePlain(text) {
 }
 
 function checkStart(text) {
-  if ("&*!@`%|>]}#".includes(text[0]) || /^[?:](\s|$)/.test(text))
+  if ("&*!@`%|>]}#".includes(text[0]) || /^[?:]([ \t]|$)/.test(text))
     fail(`"${text[0]}" is not in the supported YAML subset`);
 }
 
@@ -199,20 +232,24 @@ function checkStart(text) {
 function parseFlow(text) {
   let i = 0;
   let level = 0;
+  // A blank line inside a flow collection is a line break in the text.
+  const isBlank = (c) => isSpace(c) || c === "\n";
   const skip = () => {
-    while (i < text.length && /\s/.test(text[i])) i++;
+    while (i < text.length && isBlank(text[i])) i++;
   };
   const plain = () => {
     const start = i;
     while (i < text.length && !",[]{}".includes(text[i])) {
       if (
         text[i] === ":" &&
-        (i + 1 >= text.length || /[\s,[\]{}]/.test(text[i + 1]))
+        (i + 1 >= text.length || /[ \t\n,[\]{}]/.test(text[i + 1]))
       )
         break;
       i++;
     }
-    return text.slice(start, i).trim();
+    let end = i;
+    while (end > start && isBlank(text[end - 1])) end--;
+    return text.slice(start, end);
   };
   // A quoted string, or null when the text at `i` is not quoted.
   const quoted = () => {
@@ -223,37 +260,54 @@ function parseFlow(text) {
     i = end;
     return str;
   };
+  // A quoted or plain scalar. Returns its value and its text as a key.
+  const scalar = () => {
+    const str = quoted();
+    if (str !== null) return [str, str];
+    const raw = plain();
+    if (raw === "") fail("an empty item in a flow collection");
+    if (/^-([ \t]|$)/.test(raw)) fail("a block sequence is not allowed here");
+    const resolved = resolvePlain(raw);
+    return [resolved, String(resolved)];
+  };
   const value = () => {
     skip();
     if (text[i] === "[") return collection("]", []);
     if (text[i] === "{") return collection("}", {});
-    const str = quoted();
-    if (str !== null) return str;
-    const raw = plain();
-    if (raw === "") fail("an empty item in a flow collection");
-    if (/^-(\s|$)/.test(raw)) fail("a block sequence is not allowed here");
-    return resolvePlain(raw);
+    return scalar()[0];
   };
-  const entry = (target) => {
-    if (Array.isArray(target)) {
-      target.push(value());
-      return;
-    }
-    let key = quoted();
-    if (key === null) {
-      key = plain();
-      if (key === "") fail("an empty key in a flow map");
-      if (/^-(\s|$)/.test(key)) fail("a block sequence is not allowed here");
-      key = String(resolvePlain(key));
-    }
-    skip();
+  // The value after a `:`. It can be empty.
+  const after = (close, target, key) => {
     let item = null;
     if (text[i] === ":") {
       i++;
       skip();
-      if (text[i] !== "," && text[i] !== "}") item = value();
+      if (text[i] !== "," && text[i] !== close) item = value();
     }
     put(target, key, item);
+  };
+  const entry = (target, close) => {
+    skip();
+    if (close === "]") {
+      // A `key: value` in a sequence is a map of one pair.
+      if (text[i] === "[" || text[i] === "{") {
+        target.push(value());
+        return;
+      }
+      const [item, key] = scalar();
+      skip();
+      if (text[i] !== ":") {
+        target.push(item);
+        return;
+      }
+      const pair = {};
+      after(close, pair, key);
+      target.push(pair);
+      return;
+    }
+    const [, key] = scalar();
+    skip();
+    after(close, target, key);
   };
   const collection = (close, target) => {
     if (++level > MAX_DEPTH) fail("flow collections are nested too deep");
@@ -261,7 +315,7 @@ function parseFlow(text) {
     for (;;) {
       skip();
       if (text[i] === close) break;
-      entry(target);
+      entry(target, close);
       skip();
       if (text[i] === ",") i++;
       else if (text[i] !== close) fail("a flow collection is not valid");
@@ -280,13 +334,13 @@ function parseFlow(text) {
 function parseScalar(text) {
   if (text[0] === "[" || text[0] === "{") return parseFlow(text);
   checkStart(text || " ");
-  if (/^-(\s|$)/.test(text)) fail("a block sequence is not allowed here");
+  if (/^-([ \t]|$)/.test(text)) fail("a block sequence is not allowed here");
   if (text[0] === '"' || text[0] === "'") {
     const [str, end] = readQuoted(text, 0);
-    if (text.slice(end).trim() !== "") fail("text after a quoted string");
+    if (trim(text.slice(end)) !== "") fail("text after a quoted string");
     return str;
   }
-  if (/:(\s|$)/.test(text)) fail("a mapping value is not allowed here");
+  if (/:([ \t]|$)/.test(text)) fail("a mapping value is not allowed here");
   return resolvePlain(text);
 }
 
@@ -296,7 +350,7 @@ function splitKey(text) {
     try {
       const [key, end] = readQuoted(text, 0);
       const colon = /^[ \t]*:(?:[ \t]+|$)/.exec(text.slice(end));
-      return colon ? [key, text.slice(end + colon[0].length).trim()] : null;
+      return colon ? [key, trimStart(text.slice(end + colon[0].length))] : null;
     } catch {
       return null;
     }
@@ -306,8 +360,8 @@ function splitKey(text) {
   if (!colon || colon.index === 0) return null;
   return [
     // A plain key resolves like a value, so `1.50` and `~` are the keys "1.5" and "null".
-    String(resolvePlain(text.slice(0, colon.index).trimEnd())),
-    text.slice(colon.index + 1).trim(),
+    String(resolvePlain(trimEnd(text.slice(0, colon.index)))),
+    trimStart(text.slice(colon.index + 1)),
   ];
 }
 
@@ -316,9 +370,10 @@ const isItem = (text) => text === "-" || text.startsWith("- ");
 /**
  * The text of a block scalar whose lines start at `start`. `parent` is the
  * indent of the owner, and the content is indented more. `header` is the match
- * of BLOCK_HEADER. Returns the text and the index of the first line after it.
+ * of BLOCK_HEADER. `open` is true when the last line has no line break. Returns
+ * the text and the index of the first line after it.
  */
-function blockScalar(lines, start, parent, header) {
+function blockScalar(lines, start, parent, header, open) {
   const folded = header[1] === ">";
   const sign = header[3] ?? header[4];
   const chomp = sign === "+" ? "keep" : sign === "-" ? "strip" : "clip";
@@ -329,13 +384,21 @@ function blockScalar(lines, start, parent, header) {
   let widest = 0;
   for (; end < lines.length; end++) {
     const line = lines[end];
-    if (line.trim() === "") {
+    if (/^ *$/.test(line)) {
       if (contentIndent < 0) widest = Math.max(widest, line.length);
       // A blank line with more spaces than the indent has content.
       body.push(contentIndent >= 0 ? line.slice(contentIndent) : "");
       continue;
     }
-    if (line[0] === "\t") fail("a tab can not indent a line");
+    if (line[0] === "\t") {
+      // A line of only tabs, or a tab and a comment, ends the scalar. A blank
+      // line before the tabs is an error.
+      const rest = trim(line);
+      if (rest !== "" && rest[0] !== "#") fail("a tab can not indent a line");
+      if (contentIndent < 0 || (rest === "" && body.at(-1) === ""))
+        fail("a tab can not indent a line");
+      break;
+    }
     if (contentIndent < 0 && indentOf(line) > parent) {
       contentIndent = indentOf(line);
       if (widest > contentIndent)
@@ -373,6 +436,9 @@ function blockScalar(lines, start, parent, header) {
       blanks = 0;
     }
   }
+  // The last line has no line break: a blank last line adds no line break.
+  if (open && end >= lines.length && body.length > 0 && trailing > 0)
+    trailing--;
   if (chomp === "keep") text += "\n".repeat(trailing + (body.length ? 1 : 0));
   else if (chomp === "clip" && body.length > 0) text += "\n";
   return [text, end];
@@ -387,7 +453,8 @@ export function parseYaml(text) {
   if (source.includes("\0")) fail("a NUL character is not allowed");
   const lines = source.split(/\r\n|\r|\n/);
   // The last line break ends the last line. It does not start an empty line.
-  if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+  const open = lines[lines.length - 1] !== "" || lines.length === 1;
+  if (!open) lines.pop();
   // The column where the content of a line starts, for a line that a dash has
   // moved. A line that has no entry starts at its own indent.
   const starts = new Map();
@@ -395,7 +462,7 @@ export function parseYaml(text) {
   const newScanOf = (i) => {
     const scan = newScan();
     return [
-      stripComment(lines[i].slice(starts.get(i) ?? 0).trim(), scan),
+      stripComment(trimStart(lines[i].slice(starts.get(i) ?? 0)), scan),
       scan,
     ];
   };
@@ -405,7 +472,7 @@ export function parseYaml(text) {
 
   const next = () => {
     while (pos < lines.length) {
-      const trimmed = lines[pos].trim();
+      const trimmed = trim(lines[pos]);
       if (trimmed !== "" && trimmed[0] !== "#") {
         if (lines[pos][0] === "\t") fail("a tab can not indent a line");
         return pos;
@@ -420,7 +487,7 @@ export function parseYaml(text) {
   const inline = (first, parent, scan) => {
     const header = BLOCK_HEADER.exec(first);
     if (header) {
-      const [value, end] = blockScalar(lines, pos, parent, header);
+      const [value, end] = blockScalar(lines, pos, parent, header, open);
       pos = end;
       return value;
     }
@@ -430,7 +497,7 @@ export function parseYaml(text) {
       let blanks = 0;
       let comments = false;
       while (j < lines.length) {
-        const trimmed = lines[j].trim();
+        const trimmed = trim(lines[j]);
         if (trimmed === "") blanks++;
         else if (trimmed[0] !== "#" || scan.quote) break;
         else comments = true;
@@ -438,7 +505,19 @@ export function parseYaml(text) {
       }
       if (j >= lines.length) break;
       if (lines[j][0] === "\t") fail("a tab can not indent a line");
-      if (indent(j) <= parent && scan.depth === 0) break;
+      if (indent(j) <= parent) {
+        if (scan.depth === 0) break;
+        // Only a `,` or a closing bracket, after a scalar, can stay at the
+        // indent of the key.
+        const after = trimStart(lines[j])[0];
+        if (
+          scan.quote ||
+          scan.start ||
+          "]}".includes(joined[joined.length - 1]) ||
+          !",]}".includes(after)
+        )
+          fail("a flow collection continues at the indent of its key");
+      }
       if (scan.depth === 0 && !scan.quote && (scan.cut || comments))
         fail("a comment is not allowed inside a plain scalar");
       // After an escaped line break the lines join with no space.
@@ -448,7 +527,7 @@ export function parseYaml(text) {
           ? "\n".repeat(blanks)
           : " ";
       scan.cut = false;
-      joined += gap + stripComment(lines[j].trim(), scan);
+      joined += gap + stripComment(trimStart(lines[j]), scan);
       pos = j + 1;
     }
     return parseScalar(joined);
@@ -459,7 +538,7 @@ export function parseYaml(text) {
     for (let i = next(); i >= 0 && indent(i) === column; i = next()) {
       const content = stripped(i);
       if (!isItem(content)) break;
-      const rest = content.slice(1).trimStart();
+      const rest = trimStart(content.slice(1));
       if (rest === "") {
         pos = i + 1;
         const j = next();
@@ -520,7 +599,7 @@ export function parseYaml(text) {
   const result = node(-1);
   const rest = next();
   if (rest >= 0) {
-    if (/^(---|\.\.\.)(\s|$)/.test(lines[rest]))
+    if (/^(---|\.\.\.)([ \t]|$)/.test(lines[rest]))
       fail("more than one document is not supported");
     fail(`line ${rest + 1} is not valid here`);
   }

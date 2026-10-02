@@ -163,6 +163,37 @@ const CASES = {
   "flow with a comment": "a: [1, # c\n 2]\n",
   "keys resolve like values": "~: a\n1.50: b\n0o7: c\n.inf: d\n",
   "flow map keys resolve like values": "a: {~: 1, 0x1F: 2}\n",
+  "flow pair in a sequence": "argument-hint: [issue: number]\n",
+  "flow pairs and items": "x: [a: b, c]\n",
+  "flow pair with a quoted key": '["a": b]\n',
+  "flow pair with a quoted key and no space": '["a":b]\n',
+  "flow pair without a value": "[a:]\n",
+  "flow pair with a space and no value": "[a: ]\n",
+  "flow pair in a nested sequence": "[a, [b: c]]\n",
+  "flow pairs in a row": "[a: b, c: d]\n",
+  "flow pair with a question mark key": "[?: x]\n",
+  "NBSP after a colon": "description: foo:\u00a0bar\n",
+  "trailing NBSP": "a: x\u00a0\n",
+  "leading NBSP": "a: \u00a0x\n",
+  "only NBSP as a value": "a: \u00a0\nb: 1\n",
+  "ideographic space at the end": "a: x\u3000\nb: y\u3000 \n",
+  "line separator in a value": "a: x\u2028y\nb: p\u2029q\n",
+  "BOM in a value": "a: \ufeffx\n",
+  "NBSP in a flow item": "a: [x\u00a0, \u00a0y]\n",
+  "NBSP before a comment": "a: x\u00a0# c\n",
+  "escaped space at the end of a line": 'a: "x\\ \n  y"\n',
+  "escaped spaces and a trailing space": 'a: "x\\   \n y"\n',
+  "escaped space at the start of a string": 'a: "\\ \n y"\n',
+  "escaped tab at the end of a line": 'a: "x\\\t\n y"\n',
+  "keep with a last blank line and no line break": "a: |+\n    true\n    ",
+  "keep folded with a last blank line and no line break": "a: >+\n  x\n\n  ",
+  "keep with a last wide line and no line break": "a: |+\n  x\n     ",
+  "tab after spaces in a block scalar": "a: |\n  x\n  \t\n  y\n",
+  "tab after one space in a block scalar": "a: |\n \t\n  y\n",
+  "tab line at the end of a block scalar": "a: |+\n  x\n\t\n",
+  "flow closing after a scalar at the key indent": 'a: ["x"\n]\nb: 1\n',
+  "flow comma at the key indent": 'a: ["x"\n, "y"]\n',
+  "flow close after a blank line": "a: [x\n\n]\n",
 };
 
 describe("parseYaml matches Bun.YAML", () => {
@@ -228,6 +259,20 @@ describe("parseYaml throws where Bun.YAML throws", () => {
     "hash after a bracket": "a: [#x]\n",
     "blank line wider than the first line": "a: |\n    \n  x\n",
     "reserved start": "a: @x\n",
+    "flow list continues at the indent of the key": "tools: [Read,\nGrep]\n",
+    "nested flow list continues at the indent of the key":
+      "a:\n  b: [1,\n  2]\n",
+    "flow list closes at the indent of the key after a comma": "a: [\n]\n",
+    "flow list in a sequence item continues at the dash": "- [1,\n2]\n",
+    "flow map continues at the indent of the key": "a: {x: 1,\ny: 2}\n",
+    "flow list after a flow list at the indent of the key": "a: [[1]\n]\n",
+    "tab-only line after a blank line in a block scalar": "a: |\n  x\n\n\t\n",
+    "tab-only first line in a block scalar": "a: |\n\t\n  y\n",
+    "tab-only line before more content in a block scalar":
+      "a: |\n  x\n\t\n  y\n",
+    "tab and comment as the first line of a block scalar": "a: |\n\t#c\nb: 1\n",
+    "only NBSP on a line": "a: 1\n\u00a0\nb: 2\n",
+    "only NBSP on a nested line": "a:\n  \u00a0\n  b: 1\n",
   };
   for (const [name, text] of Object.entries(THROWS)) {
     test(name, () => {
@@ -292,7 +337,7 @@ describe("parseYaml uses linear time and a nesting limit", () => {
   });
 
   test("a flow sequence of 60000 lines parses fast", () => {
-    const text = `a: [\n${"1,\n".repeat(60000)}]\n`;
+    const text = `a: [\n${"  1,\n".repeat(60000)}  ]\n`;
     let result;
     const ms = timed(() => {
       result = parseYaml(text);
