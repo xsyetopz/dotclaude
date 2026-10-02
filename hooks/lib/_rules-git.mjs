@@ -145,17 +145,21 @@ function restoresEarlier(cmd, ctx) {
   });
 }
 
+// A folder only known at run time. Bash expands `~` only at the start of a
+// word, so a Windows short name such as `RUNNER~1` is a known folder.
+const RUNTIME_DIR = /[$`]|^~/;
+
 /** The folder git runs in, after an earlier `cd` and `-C`, or undefined. */
 function discardCwd(cmd, globals, ctx) {
   if (globals.some((g) => /^--(git-dir|work-tree)/.test(g))) return undefined;
   let cwd = ctx.cwd;
   if (cmd.cwdHint) {
-    if (/[$~`]/.test(cmd.cwdHint)) return undefined;
+    if (RUNTIME_DIR.test(cmd.cwdHint)) return undefined;
     cwd = path.resolve(cwd, cmd.cwdHint);
   }
   for (let i = 0; i < globals.length - 1; i += 1) {
     if (globals[i] !== "-C") continue;
-    if (/[$~`]/.test(globals[i + 1])) return undefined;
+    if (RUNTIME_DIR.test(globals[i + 1])) return undefined;
     cwd = path.resolve(cwd, globals[i + 1]);
   }
   return cwd;

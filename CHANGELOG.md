@@ -27,6 +27,10 @@ Windows fixes. The Windows CI job had 75 failures.
   With `\`, the checks for dot folders and `.claude/` failed on Windows.
 - `exclude-session-files` now asks git for the path below the top level. A
   short name such as `RUNNER~1` made the path comparison fail on Windows.
+- The Bash guard asked before a `git` discard in a clean folder that `-C` or
+  `cd` gave with a `~` inside the name, such as the Windows short name
+  `RUNNER~1`. Only a `~` at the start of the name now makes the folder
+  unknown, because Bash expands `~` only there.
 - Tests write paths in commands with `/`, set `USERPROFILE` beside `HOME`,
   and expect native paths. Tests that run a `#!/bin/sh` stub or a mode 000
   folder run only on POSIX systems.

@@ -29,6 +29,9 @@ function repo(name) {
 const dirty = repo("dirty");
 fs.writeFileSync(path.join(dirty, "a.js"), "work\n");
 const clean = repo("clean");
+// `short` has a `~` inside its name, as a Windows short name such as
+// `RUNNER~1` has. Bash expands `~` only at the start of a word.
+const short = repo("short~1");
 // `collide` deleted `c.js` in its last commit and has an untracked `c.js`.
 const collide = repo("collide");
 fs.writeFileSync(path.join(collide, "c.js"), "old\n");
@@ -64,6 +67,8 @@ test.each([
   [`git -C ${sh(clean)} checkout .`],
   [`git -C ${sh(collide)} reset --hard HEAD`],
   [`git -C ${sh(collide)} reset --hard HEAD~3`],
+  [`git -C ${sh(short)} reset --hard`],
+  [`cd ${sh(short)} && git checkout .`],
 ])("a discard of clean paths runs: %s", (command) => {
   expect(decision(command)).toBe(null);
 });
@@ -77,6 +82,7 @@ test.each([
   ["git checkout -f main", "a worktree with a change"],
   ["git checkout -- $F", "a path only known at run time"],
   ["cd $W && git reset --hard", "a folder only known at run time"],
+  ["git -C ~/w reset --hard", "a folder only known at run time"],
   [
     `git -C ${sh(clean)} stash pop && git -C ${sh(clean)} reset --hard`,
     "changes that an earlier command restores",
