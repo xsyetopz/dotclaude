@@ -410,6 +410,9 @@ export async function gitRule(cmd, ctx) {
  */
 const PE_MAX_OFFSET = 4 * 1024 * 1024;
 
+// The hooks-module io cannot read a file larger than this, so it is unreadable.
+const READ_LIMIT = 4 * 1024 * 1024;
+
 async function isExecutable(io, file) {
   try {
     if ((await io.fs.stat(file)).kind !== "file") return false;
@@ -434,7 +437,11 @@ async function isExecutable(io, file) {
       pe[at + 3] === 0
     );
   } catch {
-    return false;
+    // A warning is safe, so a large file that `head` cannot read gets one.
+    return await io.fs.stat(file).then(
+      (s) => s.kind === "file" && s.size > READ_LIMIT,
+      () => false,
+    );
   }
 }
 

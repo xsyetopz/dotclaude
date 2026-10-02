@@ -49,10 +49,16 @@ export function isUnder(child, parent, path) {
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }
 
+// The old `execFileSync` stopped at 1 MiB of output, so `git()` does the same.
+const GIT_MAX_BYTES = 1024 * 1024;
+
 /** The stdout of `git -C cwd ...args`, or undefined when git fails. */
 export async function git(io, cwd, args) {
   try {
-    const r = await io.run(["git", "-C", cwd, ...args], { timeoutMs: 3000 });
+    const r = await io.run(["git", "-C", cwd, ...args], {
+      timeoutMs: 3000,
+      maxBytes: GIT_MAX_BYTES,
+    });
     return r.exitCode === 0 ? r.stdout : undefined;
   } catch {
     return undefined;
