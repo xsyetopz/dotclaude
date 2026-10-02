@@ -5,7 +5,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { git } from "./_bash-args.mjs";
 import { expandHome, writeTargets } from "./_bash-writes.mjs";
-import { stateDir } from "./_common.mjs";
+import { stateDir } from "./_core.mjs";
+import { nodeIo } from "./_io-node.mjs";
 import { parse } from "./_shell.mjs";
 import { subagentTranscript } from "./_transcript.mjs";
 
@@ -31,7 +32,7 @@ export function codeFile(rel, root) {
 function file(sessionId, agentId) {
   const safe = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");
   return path.join(
-    stateDir(),
+    stateDir(nodeIo()),
     `${safe(sessionId || "unknown")}${agentId ? `.${safe(agentId)}` : ""}.json`,
   );
 }
@@ -90,6 +91,7 @@ export function editedBySession(sessionId) {
 export function save(sessionId, agentId, state) {
   const target = file(sessionId, agentId);
   const tmp = `${target}.${process.pid}.tmp`;
+  fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(tmp, JSON.stringify(state));
   fs.renameSync(tmp, target);
 }
@@ -243,25 +245,37 @@ export function agentStarted(sessionId, agentId, transcriptPath) {
   const transcript = transcriptPath
     ? subagentTranscript(transcriptPath, sessionId, agentId)
     : "";
+  const dir = stateDir(nodeIo());
+  fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(
-    path.join(stateDir(), `${safeId(sessionId)}.${safeId(agentId)}${RUNNING}`),
+    path.join(dir, `${safeId(sessionId)}.${safeId(agentId)}${RUNNING}`),
     transcript,
   );
 }
 
 export function agentStopped(sessionId, agentId) {
   fs.rmSync(
-    path.join(stateDir(), `${safeId(sessionId)}.${safeId(agentId)}${RUNNING}`),
+    path.join(
+      stateDir(nodeIo()),
+      `${safeId(sessionId)}.${safeId(agentId)}${RUNNING}`,
+    ),
     { force: true },
   );
 }
 
 /** Subagents of a session that started, did not stop, and are not idle. */
 export function runningAgents(sessionId, idleMs, now = Date.now()) {
-  const dir = stateDir();
+  const dir = stateDir(nodeIo());
   const prefix = `${safeId(sessionId)}.`;
   let count = 0;
-  for (const name of fs.readdirSync(dir)) {
+  let names;
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    // No folder, so no agent started.
+    return 0;
+  }
+  for (const name of names) {
     if (!name.startsWith(prefix) || !name.endsWith(RUNNING)) continue;
     try {
       const marker = path.join(dir, name);

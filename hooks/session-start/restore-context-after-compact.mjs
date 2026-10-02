@@ -5,7 +5,9 @@
 // because a plugin output style has no per-turn reminder (#88189).
 
 import { execFileSync } from "node:child_process";
-import { emit, option, projectRoot, run } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { option, projectRoot } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { editedBySession, load } from "../lib/_ledger.mjs";
 import { isSubagent, recentPrompts } from "../lib/_transcript.mjs";
 
@@ -39,7 +41,7 @@ const list = (paths) =>
 run((data) => {
   if (
     data.source !== "compact" ||
-    !option("context_compact_carryover") ||
+    !option(process.env, "context_compact_carryover") ||
     isSubagent(data)
   )
     return;
@@ -56,7 +58,7 @@ run((data) => {
   // Split uncommitted changes by who made them: the transcript before
   // compaction was the only record, and git diff mixes everyone's edits.
   const mine = editedBySession(data.session_id);
-  const changed = changedPaths(projectRoot(data));
+  const changed = changedPaths(projectRoot(nodeIo(data), data));
   const ours = changed.filter((p) => mine.has(p));
   const theirs = changed.filter((p) => !mine.has(p));
   if (ours.length)

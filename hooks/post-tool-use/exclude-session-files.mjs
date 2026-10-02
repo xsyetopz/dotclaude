@@ -10,7 +10,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { git } from "../lib/_bash-args.mjs";
-import { option, projectRoot, run } from "../lib/_common.mjs";
+import { run } from "../lib/_common.mjs";
+import { option, projectRoot } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 
 // [test on the repo-relative path, entry for the exclude file]
 const SESSION_FILES = [
@@ -72,10 +74,14 @@ function exclude(abs) {
 }
 
 run((data) => {
-  if (!option("context_session_files")) return;
+  if (!option(process.env, "context_session_files")) return;
   const input = data.tool_input ?? {};
   if (data.tool_name === "EnterWorktree") {
-    const dir = path.join(projectRoot(data), ".claude", "worktrees");
+    const dir = path.join(
+      projectRoot(nodeIo(data), data),
+      ".claude",
+      "worktrees",
+    );
     if (fs.existsSync(dir)) exclude(dir);
     return;
   }

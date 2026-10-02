@@ -24,13 +24,9 @@ import {
   SUBAGENT_WRAP_UP_TOKENS,
   subagentContextTokens,
 } from "../lib/_budget.mjs";
-import {
-  emit,
-  option,
-  preToolDecision,
-  run,
-  stateDir,
-} from "../lib/_common.mjs";
+import { emit, preToolDecision, run } from "../lib/_common.mjs";
+import { option, stateDir } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { isTempChild, shellResolve } from "../lib/_rules-filesystem.mjs";
 import { parse } from "../lib/_shell.mjs";
 import { subagentTranscript } from "../lib/_transcript.mjs";
@@ -70,16 +66,17 @@ function deletesTempOnly(data) {
 /** True the first time this agent passes `mark`. */
 function firstTime(data, mark) {
   const file = path.join(
-    stateDir(),
+    stateDir(nodeIo()),
     `${data.session_id}.${String(data.agent_id).replace(/[^\w-]/g, "_")}.${mark}`,
   );
   if (fs.existsSync(file)) return false;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, "");
   return true;
 }
 
 run((data) => {
-  if (!option("usage_agent_bounds")) return;
+  if (!option(process.env, "usage_agent_bounds")) return;
   // The report tool must stay open, or the agent could not deliver it.
   if (data.tool_name === "SubagentHandback") return;
   if (!data.agent_id || !data.transcript_path || !data.session_id) return;

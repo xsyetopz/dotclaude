@@ -12,7 +12,8 @@
 // so an agent from elsewhere is checked only when the call names a model.
 
 import { definition } from "../lib/_agents.mjs";
-import { option, preToolDecision, run } from "../lib/_common.mjs";
+import { preToolDecision, run } from "../lib/_common.mjs";
+import { option } from "../lib/_core.mjs";
 import { allowed, canonical, effortLevels, family } from "../lib/_models.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 
@@ -45,7 +46,7 @@ function effortReason(model, data, def) {
 }
 
 run((data) => {
-  if (!option("model_lock")) return;
+  if (!option(process.env, "model_lock")) return;
   const input = data.tool_input ?? {};
   const model = typeof input.model === "string" ? input.model : "";
   if (model && isFable(model)) {

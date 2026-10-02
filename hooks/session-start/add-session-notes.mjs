@@ -6,25 +6,30 @@
 // that the profile's `includeGitInstructions: false` drops.
 
 import { attributionNote, preCommitNote } from "../lib/_attribution.mjs";
-import { emit, option, projectRoot, pruneState, run } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { option, projectRoot, pruneState } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { FABLE, isFable } from "../lib/_model-notes.mjs";
 import { planNote } from "../lib/_plans.mjs";
 
-run((data) => {
+run(async (data) => {
   const parts = [];
   // A resumed or forked transcript already holds the note from its first
   // session, and a model restored on resume reaches PostModelSwitch.
   const continued = data.source === "resume" || data.source === "fork";
   if (!continued && isFable(data.model)) parts.push(FABLE);
-  if (data.source === "startup") pruneState();
+  if (data.source === "startup") await pruneState(nodeIo(data));
   if (!continued) {
     const plan = planNote();
     if (plan) parts.push(plan);
-    if (option("git_attribution")) {
-      const attribution = attributionNote(data.model, projectRoot(data));
+    if (option(process.env, "git_attribution")) {
+      const attribution = attributionNote(
+        data.model,
+        projectRoot(nodeIo(data), data),
+      );
       if (attribution) parts.push(attribution);
     }
-    const preCommit = preCommitNote(projectRoot(data));
+    const preCommit = preCommitNote(projectRoot(nodeIo(data), data));
     if (preCommit) parts.push(preCommit);
   }
   if (!parts.length) return;

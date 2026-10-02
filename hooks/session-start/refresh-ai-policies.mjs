@@ -9,12 +9,13 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { refreshUpstream, upstreamStale } from "../lib/_ai-policies.mjs";
-import { option, run } from "../lib/_common.mjs";
+import { run } from "../lib/_common.mjs";
+import { option } from "../lib/_core.mjs";
 
 if (process.argv.includes("--refresh")) refreshUpstream();
 else
   run(() => {
-    if (!option("guard_bash") || !upstreamStale()) return;
+    if (!option(process.env, "guard_bash") || !upstreamStale()) return;
     spawn(process.execPath, [fileURLToPath(import.meta.url), "--refresh"], {
       detached: true,
       stdio: "ignore",

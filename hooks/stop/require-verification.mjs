@@ -1,11 +1,13 @@
 #!/usr/bin/env bun
+
 // Stop and SubagentStop hook: send Claude (or a subagent) back once when it
 // ends after code edits with no later check run, or with a failed check it
 // reports as passing. Each ledger state blocks at most once, and a
 // continuation is never blocked again. A pass claim with nothing edited and
 // nothing run is not blocked: read-only agents quote results that others ran.
 
-import { option, run, stopFeedback } from "../lib/_common.mjs";
+import { run, stopFeedback } from "../lib/_common.mjs";
+import { option } from "../lib/_core.mjs";
 import { load, save } from "../lib/_ledger.mjs";
 
 const CLAIMS_PASS =
@@ -29,7 +31,7 @@ function ownWords(message) {
 }
 
 run((data) => {
-  if (!option("gate_verify") || data.stop_hook_active) return;
+  if (!option(process.env, "gate_verify") || data.stop_hook_active) return;
   if (
     (data.background_tasks ?? []).some(
       (t) => t.type === "shell" || t.type === "subagent",

@@ -8,8 +8,10 @@
 import path from "node:path";
 import { claudeTrailerOff } from "../lib/_attribution.mjs";
 import { check } from "../lib/_bash-rules.mjs";
-import { option, projectRoot, run } from "../lib/_common.mjs";
+import { run } from "../lib/_common.mjs";
+import { option, projectRoot } from "../lib/_core.mjs";
 import { ASKS_TEST_REMOVAL } from "../lib/_edit-rules.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { oracleFor } from "../lib/_loop.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 import { recentPrompts } from "../lib/_transcript.mjs";
@@ -21,17 +23,17 @@ const REMOVES_ASSERTIONS = /assertion\(s\) from a test file/;
 run((data) => {
   const command = data.tool_input?.command;
   if (typeof command !== "string" || !command.trim()) return;
-  const guard = option("guard_bash");
-  const modelLock = option("model_lock");
+  const guard = option(process.env, "guard_bash");
+  const modelLock = option(process.env, "model_lock");
   if (!guard && !modelLock) return;
-  const root = projectRoot(data);
+  const root = projectRoot(nodeIo(data), data);
   let findings = check(command, {
     root,
     cwd: path.resolve(data.cwd || root),
     allowedModels: planAllowlist().list,
     modelLock,
-    editGuard: option("guard_edit"),
-    commitHygiene: option("git_commit_hygiene"),
+    editGuard: option(process.env, "guard_edit"),
+    commitHygiene: option(process.env, "git_commit_hygiene"),
     claudeTrailerOff: claudeTrailerOff(root),
     background: Boolean(data.tool_input?.run_in_background),
     oracle: oracleFor(data, root),

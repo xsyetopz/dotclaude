@@ -1,11 +1,13 @@
 #!/usr/bin/env bun
+
 // StopFailure (rate_limit): when a turn stops on a usage limit, show a
 // terminal notification with the limit that was hit, when it resets (from
 // Claude Code's cached usage), and the command that resumes this session.
 // Claude Code ignores every other StopFailure output, and writes
 // `terminalSequence` only in an interactive session.
 
-import { emit, option, run } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { option } from "../lib/_core.mjs";
 import { readUsage } from "../lib/_usage.mjs";
 
 const ESC = "\u001b";
@@ -34,7 +36,7 @@ function notification(title, body, env = process.env) {
 }
 
 run((data) => {
-  if (!option("usage_notes")) return;
+  if (!option(process.env, "usage_notes")) return;
   if (data.error !== "rate_limit") return;
   const hit = limitHit(readUsage());
   const what = hit ? `${hit.name} usage limit` : "Usage limit";

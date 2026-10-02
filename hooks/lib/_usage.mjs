@@ -13,7 +13,8 @@ import {
   CONTEXT_NOTE_TOKENS,
   k,
 } from "./_budget.mjs";
-import { stateDir } from "./_common.mjs";
+import { stateDir } from "./_core.mjs";
+import { nodeIo } from "./_io-node.mjs";
 import { readConfig } from "./_plans.mjs";
 import { tail } from "./_transcript.mjs";
 
@@ -116,7 +117,7 @@ export function compactions(transcriptPath) {
   try {
     const stat = fs.fstatSync(fd);
     const cacheFile = path.join(
-      stateDir(),
+      stateDir(nodeIo()),
       `compactions-${createHash("sha256").update(String(transcriptPath)).digest("hex").slice(0, 16)}.json`,
     );
     let { ino, offset, count } = { ino: stat.ino, offset: 0, count: 0 };
@@ -147,6 +148,7 @@ export function compactions(transcriptPath) {
     if (end > 0) {
       const tmp = `${cacheFile}.${process.pid}.tmp`;
       try {
+        fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
         fs.writeFileSync(
           tmp,
           JSON.stringify({ ino, offset: offset + end, count }),
@@ -182,7 +184,7 @@ export function contextNote(data, once = false) {
     /[^A-Za-z0-9_-]/g,
     "_",
   );
-  const file = path.join(stateDir(), `${safe}.context-note`);
+  const file = path.join(stateDir(nodeIo()), `${safe}.context-note`);
   if (used < CONTEXT_NOTE_TOKENS) {
     fs.rmSync(file, { force: true });
     return null;
@@ -193,6 +195,7 @@ export function contextNote(data, once = false) {
   if (count < COMPACTIONS_BEFORE_HANDOFF) return null;
   if (told)
     return `<context_use source="dotclaude">The main context is ${k(used)} tokens after ${count} compactions. An earlier note in this context asked for a handoff note. If you did not write it, write it now. If you wrote it, update it only when a decision or the state changed, or when this request cannot finish before Claude Code compacts at about ${k(AUTO_COMPACT_TOKENS)} tokens. Continue the work, and at the next natural stop ask the user to run \`/clear\`.</context_use>`;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, "");
   return `<context_use source="dotclaude">The main context is ${k(used)} tokens after ${count} compactions. Each compaction summarizes the previous summary again, so the earliest facts degrade. Claude Code compacts again at about ${k(AUTO_COMPACT_TOKENS)} tokens, and a step can take longer than that. Thus write a handoff note now with the \`handoff\` skill, before you finish the current step. If you wrote one after the last compaction, update it only when the state changed. This note does not stop the work. After the handoff, continue the current step and the user's requests, and add each new request to the handoff note. At the next natural stop, ask the user to run \`/clear\`.</context_use>`;
 }

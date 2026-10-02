@@ -9,12 +9,19 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { option, run, stateDir, stopFeedback } from "../lib/_common.mjs";
+import { run, stopFeedback } from "../lib/_common.mjs";
+import { option, stateDir } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { openTasks, taskListDir } from "../lib/_tasks.mjs";
 import { waitsForUser } from "../lib/_transcript.mjs";
 
 run((data) => {
-  if (!option("gate_tasks") || data.stop_hook_active || data.agent_id) return;
+  if (
+    !option(process.env, "gate_tasks") ||
+    data.stop_hook_active ||
+    data.agent_id
+  )
+    return;
   // Claude is waiting for background work, which can finish a task later.
   if (
     (data.background_tasks ?? []).some(
@@ -25,7 +32,7 @@ run((data) => {
   const open = openTasks(taskListDir(data.session_id));
   if (!open.length || waitsForUser(data.transcript_path)) return;
   const file = path.join(
-    stateDir(),
+    stateDir(nodeIo()),
     `${String(data.session_id).replace(/[^A-Za-z0-9_-]/g, "_")}.open-tasks`,
   );
   // The IDs of the open tasks that a block already listed. A task that
@@ -38,6 +45,7 @@ run((data) => {
   }
   if (open.every((t) => reported.includes(t.id))) return;
   const ids = new Set([...reported, ...open.map((t) => t.id)]);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, [...ids].filter(Boolean).join(","));
   const list = open.map((t) => `- #${t.id} ${t.subject}`).join("\n");
   stopFeedback(

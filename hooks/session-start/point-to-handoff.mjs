@@ -8,7 +8,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { emit, option, projectRoot, run } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { option, projectRoot } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 
 const DIR = ".claude/handoffs";
 // Statuses of a note that no session continues from.
@@ -50,8 +52,8 @@ function openNotes(dir) {
 run((data) => {
   // A resumed or compacted session already has the context the note holds.
   if (!["startup", "clear"].includes(data.source)) return;
-  if (!option("context_handoff_pointer")) return;
-  const notes = openNotes(path.join(projectRoot(data), DIR));
+  if (!option(process.env, "context_handoff_pointer")) return;
+  const notes = openNotes(path.join(projectRoot(nodeIo(data), data), DIR));
   if (!notes.length) return;
   const [{ name, meta }, ...older] = notes;
   const facts = [

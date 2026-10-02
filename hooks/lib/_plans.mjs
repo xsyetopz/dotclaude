@@ -12,7 +12,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { AUTO_COMPACT_TOKENS, k } from "./_budget.mjs";
-import { optionList } from "./_common.mjs";
+import { optionList } from "./_core.mjs";
 import { canonical, DEFAULT_ALLOWED } from "./_models.mjs";
 
 export const PLANS = [
@@ -127,7 +127,7 @@ export function fableAccess(plan, account = null) {
  * the plan cannot run it. `note` explains the removal for deny messages.
  */
 export function planAllowlist(env = process.env) {
-  const list = optionList("model_allowed", DEFAULT_ALLOWED);
+  const list = optionList(env, "model_allowed", DEFAULT_ALLOWED);
   const { plan, account } = currentPlan(env);
   if (fableAccess(plan, account) !== "unavailable") return { list, note: "" };
   return {
