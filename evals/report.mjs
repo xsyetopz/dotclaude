@@ -5,10 +5,11 @@
 //
 // A trial passes when every scored grader passed. Per case it prints trials
 // passed out of trials run, a 95% Wilson interval for that pass rate, and
-// pass^k (every one of k trials passing, estimated as p^k). Suite means use
-// standard errors clustered by case, since trials of one case are not
-// independent. With a no-plugin arm, or with --before, it also prints the
-// paired per-case difference (see anthropic.com/research/
+// pass^k (every one of k trials passing, estimated as p^k), and how often
+// each grader failed. Suite means use standard errors clustered by case,
+// since trials of one case are not independent. With a no-plugin arm, or
+// with --before, it also prints the paired per-case difference (see
+// anthropic.com/research/
 // statistical-approach-to-model-evals and
 // anthropic.com/engineering/demystifying-evals-for-ai-agents). Per arm it
 // prints the cost per pass and, after `evals/oracle.mjs`, the token split.
@@ -62,6 +63,16 @@ export function meanSe(values) {
 }
 
 const warned = new Set();
+
+// Failed-grader counts over `runs`, such as "format 2, works 1", or "".
+export function failedGraders(runs) {
+  const counts = new Map();
+  for (const run of runs)
+    for (const g of run.graders ?? [])
+      if (g.scored !== false && !g.passed)
+        counts.set(g.name, (counts.get(g.name) ?? 0) + 1);
+  return [...counts].map(([name, n]) => `${name} ${n}`).join(", ");
+}
 
 // Pass counts per case. With `shared`, graders only the plugin arm can pass
 // are left out, and a case left with none is skipped.
@@ -151,8 +162,10 @@ function main(argv) {
   console.log("case                      passed  95% CI      pass^k");
   for (const [name, { k, n }] of withRates) {
     const [lo, hi] = wilson(k, n);
+    const runs = result.cases.find((c) => c.name === name).arms.with;
+    const failed = failedGraders(runs);
     console.log(
-      `${name.padEnd(25)} ${`${k}/${n}`.padStart(6)}  ${`${pct(lo)}-${pct(hi)}`.padEnd(10)}  ${pct((k / n) ** n)}`,
+      `${name.padEnd(25)} ${`${k}/${n}`.padStart(6)}  ${`${pct(lo)}-${pct(hi)}`.padEnd(10)}  ${pct((k / n) ** n).padEnd(6)}${failed ? `  failed: ${failed}` : ""}`,
     );
   }
   const { mean, se } = meanSe([...withRates.values()].map(({ k, n }) => k / n));

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: t5-debug
+description: "Tier 5, role. A test fails only after another test runs. The cause is shared state in a third module, and a shallow fix leaves a nested leak."
+tags: [tier-5, role, debug]
+context:
+  scaffold_script: fixture.sh

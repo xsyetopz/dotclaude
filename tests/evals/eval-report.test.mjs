@@ -150,3 +150,33 @@ test("a one-case result prints its comparison and no NaN", () => {
   expect(r.stdout).not.toContain("NaN");
   expect(r.stdout).toContain("with plugin vs without: +67%");
 });
+
+test("the case table names the graders that failed, with counts", () => {
+  const run = (format, works) => ({
+    costUsd: 1,
+    graders: [
+      { name: "format", passed: format, scored: true },
+      { name: "works", passed: works, scored: true },
+    ],
+  });
+  const result = {
+    cases: [
+      {
+        name: "split",
+        dir: "evals/no-such-case",
+        arms: { with: [run(false, true), run(false, false), run(true, true)] },
+      },
+    ],
+  };
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "eval-report-"));
+  const file = path.join(tmp, "result.json");
+  fs.writeFileSync(file, JSON.stringify(result));
+  const r = spawnSync(
+    "bun",
+    [path.join(import.meta.dirname, "../../evals/report.mjs"), file],
+    { encoding: "utf8" },
+  );
+  fs.rmSync(tmp, { recursive: true, force: true });
+  expect(r.status).toBe(0);
+  expect(r.stdout).toMatch(/split\s+1\/3 .*failed: format 2, works 1/);
+});

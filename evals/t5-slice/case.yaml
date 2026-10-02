@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: t5-slice
+description: "Tier 5, role. A specified feature across four files with seven requirements. Hidden tests check each requirement."
+tags: [tier-5, role, implement]
+context:
+  scaffold_script: fixture.sh
