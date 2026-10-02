@@ -1,20 +1,18 @@
-#!/usr/bin/env bun
 // PostToolUse(Bash): add the subdirectory CLAUDE.md files that a Read of the
 // same paths would have loaded (#90450). Each file is added once per session
 // or subagent: the hook skips files the transcript shows Claude Code loaded,
 // and files it added before.
 
-import path from "node:path";
-import { emit, run } from "../lib/_common.mjs";
 import { option, projectRoot, stateDir } from "../lib/_core.mjs";
-import { nodeIo } from "../lib/_io-node.mjs";
 import {
   contextFor,
   instructionFiles,
   readPaths,
 } from "../lib/_nested-instructions.mjs";
+import { pathFor } from "../lib/_path.mjs";
 
 function stateFile(io, data) {
+  const path = pathFor(io.platform);
   const safe = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");
   const agent = data.agent_id ? `.${safe(data.agent_id)}` : "";
   return path.join(
@@ -23,13 +21,13 @@ function stateFile(io, data) {
   );
 }
 
-run(async (data) => {
-  const io = nodeIo(data);
-  if (!option(process.env, "context_nested_instructions")) return;
+export default async function (io, data) {
+  const path = pathFor(io.platform);
+  if (!option(io.env, "context_nested_instructions")) return;
   const command = data.tool_input?.command;
   if (typeof command !== "string") return;
   const root = projectRoot(io, data);
-  const cwd = data.cwd ? path.resolve(data.cwd) : root;
+  const cwd = data.cwd ? path.resolve(io.cwd, data.cwd) : root;
   const wanted = new Set();
   for (const p of await readPaths(io, command, cwd, root))
     for (const f of await instructionFiles(io, p, root)) wanted.add(f);
@@ -55,10 +53,10 @@ run(async (data) => {
   const text = await contextFor(io, fresh, root);
   if (!text) return;
   await io.fs.write(file, JSON.stringify([...added, ...fresh]));
-  emit({
+  return {
     hookSpecificOutput: {
       hookEventName: "PostToolUse",
       additionalContext: text,
     },
-  });
-});
+  };
+}

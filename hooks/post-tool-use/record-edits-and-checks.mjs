@@ -1,12 +1,8 @@
-#!/usr/bin/env bun
 // PostToolUse / PostToolUseFailure hook: record edits and check runs in the
 // session ledger, and mark an asked guard decision as approved. Prints
 // nothing.
 
-import path from "node:path";
-import { run } from "../lib/_common.mjs";
 import { option, projectRoot } from "../lib/_core.mjs";
-import { nodeIo } from "../lib/_io-node.mjs";
 import {
   checkCommand,
   codeFile,
@@ -17,10 +13,12 @@ import {
   save,
   shellWrites,
 } from "../lib/_ledger.mjs";
+import { pathFor } from "../lib/_path.mjs";
 import { approveAsk } from "../lib/_verdicts.mjs";
 
 /** Project-relative path an edit tool wrote, or null. */
 function editedPath(io, data) {
+  const path = pathFor(io.platform);
   if (data.hook_event_name === "PostToolUseFailure") return undefined;
   const input = data.tool_input ?? {};
   const file = input.file_path || input.notebook_path || "";
@@ -62,13 +60,13 @@ function recordEdited(state, rel) {
   state.edited = list.slice(-300);
 }
 
-run(async (data) => {
-  const io = nodeIo(data);
+export default async function (io, data) {
+  const path = pathFor(io.platform);
   await approveAsk(io, data);
   if (
-    !option(process.env, "gate_verify") &&
-    !option(process.env, "context_compact_carryover") &&
-    !option(process.env, "guard_bash")
+    !option(io.env, "gate_verify") &&
+    !option(io.env, "context_compact_carryover") &&
+    !option(io.env, "guard_bash")
   )
     return;
   const state = await load(io, data.session_id, data.agent_id);
@@ -144,4 +142,4 @@ run(async (data) => {
       return;
   }
   await save(io, data.session_id, data.agent_id, state);
-});
+}

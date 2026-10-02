@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 // PostToolUse: when an agent creates a file that describes one session or
 // one user, add it to `.git/info/exclude`, so it stays out of commits without
 // a change to the project's tracked `.gitignore`. Prints nothing.
@@ -7,12 +6,9 @@
 // (`openspec/`) and Spec Kit (`.specify/`) tell users to commit their files,
 // so they are not.
 
-import fs from "node:fs";
-import path from "node:path";
-import { gitSync } from "../lib/_bash-args.mjs";
-import { run } from "../lib/_common.mjs";
+import { git } from "../lib/_bash-args.mjs";
 import { option, projectRoot } from "../lib/_core.mjs";
-import { nodeIo } from "../lib/_io-node.mjs";
+import { pathFor } from "../lib/_path.mjs";
 
 // [test on the repo-relative path, entry for the exclude file]
 const SESSION_FILES = [
@@ -21,7 +17,7 @@ const SESSION_FILES = [
   // dotclaude: `slices` skill state.
   [(rel) => rel.startsWith(".dotclaude/"), () => "/.dotclaude/"],
   // Claude Code docs: personal memory and settings, and `--worktree` checkouts.
-  [(rel) => path.basename(rel) === "CLAUDE.local.md", (rel) => `/${rel}`],
+  [(rel) => rel.split("/").pop() === "CLAUDE.local.md", (rel) => `/${rel}`],
   [
     (rel) => rel === ".claude/settings.local.json",
     () => "/.claude/settings.local.json",
@@ -34,11 +30,12 @@ const SESSION_FILES = [
 ];
 
 /** The exclude entry for `abs`, with the repo root, or undefined. */
-function entryFor(abs) {
+async function entryFor(io, abs) {
+  const path = pathFor(io.platform);
   let dir = abs;
   let base = "";
   try {
-    if (!fs.statSync(abs).isDirectory()) {
+    if ((await io.fs.stat(abs)).kind !== "directory") {
       dir = path.dirname(abs);
       base = path.basename(abs);
     }
@@ -48,7 +45,11 @@ function entryFor(abs) {
   // git gives the folder's path below the top level, with `/`. A path
   // comparison with the top level fails where the two name one folder
   // differently: `/private/var` on macOS, `RUNNER~1` short names on Windows.
-  const out = gitSync(dir, ["rev-parse", "--show-toplevel", "--show-prefix"]);
+  const out = await git(io, dir, [
+    "rev-parse",
+    "--show-toplevel",
+    "--show-prefix",
+  ]);
   const [top, prefix] = (out ?? "").split("\n");
   if (!top) return undefined;
   const rel = `${prefix}${base}`.replace(/\/$/, "");
@@ -57,38 +58,35 @@ function entryFor(abs) {
   return hit && { top, rel, entry: hit[1](rel) };
 }
 
-function exclude(abs) {
-  const found = entryFor(abs);
+async function exclude(io, abs) {
+  const path = pathFor(io.platform);
+  const found = await entryFor(io, abs);
   if (!found) return;
   const { top, rel, entry } = found;
   // `check-ignore -q` exits 0 (empty output) only for an ignored path.
-  if (gitSync(top, ["check-ignore", "-q", "--", rel]) !== undefined) return;
-  const file = gitSync(top, [
-    "rev-parse",
-    "--git-path",
-    "info/exclude",
-  ])?.trim();
+  if ((await git(io, top, ["check-ignore", "-q", "--", rel])) !== undefined)
+    return;
+  const file = (
+    await git(io, top, ["rev-parse", "--git-path", "info/exclude"])
+  )?.trim();
   if (!file) return;
   const target = path.resolve(top, file);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  const old = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : "";
+  const old = (await io.fs.exists(target)) ? await io.fs.read(target) : "";
   if (old.split("\n").includes(entry)) return;
   const sep = old === "" || old.endsWith("\n") ? "" : "\n";
-  fs.appendFileSync(target, `${sep}${entry}\n`);
+  await io.fs.append(target, `${sep}${entry}\n`);
 }
 
-run((data) => {
-  if (!option(process.env, "context_session_files")) return;
+export default async function (io, data) {
+  const path = pathFor(io.platform);
+  if (!option(io.env, "context_session_files")) return;
   const input = data.tool_input ?? {};
   if (data.tool_name === "EnterWorktree") {
-    const dir = path.join(
-      projectRoot(nodeIo(data), data),
-      ".claude",
-      "worktrees",
-    );
-    if (fs.existsSync(dir)) exclude(dir);
+    const dir = path.join(projectRoot(io, data), ".claude", "worktrees");
+    if (await io.fs.exists(dir)) await exclude(io, dir);
     return;
   }
   const file = input.file_path || input.notebook_path;
-  if (typeof file === "string" && file) exclude(path.resolve(file));
-});
+  if (typeof file === "string" && file)
+    await exclude(io, path.resolve(io.cwd, file));
+}
