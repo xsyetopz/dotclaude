@@ -258,6 +258,16 @@ costs one line, and the note loads only when the work needs it. Notes with
 status `done` or `superseded` get no pointer, so finished work does not
 mislead the next session.
 
+### Cold Cache On Resume
+
+**What:** when you resume or fork a session with 100k tokens of context or
+more, and its prompt cache has expired, tells you the size of the context and
+the estimated cost to write it to the cache again.
+
+**Why:** the first prompt of such a session writes the whole context to the
+cache at 1.25x or 2x the input price. The status line shows this only after
+that prompt. A `/clear` and a handoff note avoid the cost.
+
 ### Instruction-File Lint
 
 **What:** at session start, reports `CLAUDE.md`, `AGENTS.md`, and rule files

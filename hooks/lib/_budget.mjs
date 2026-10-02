@@ -44,8 +44,12 @@ export const COMPACTIONS_BEFORE_HANDOFF = 4;
 
 /**
  * Main-conversation context (tokens) at which the status line shows a cold
- * cache in red: the next turn writes the whole context to the cache again, at 1.25x the input price instead of reads at 0.05x on
- * Opus 5.5.
+ * cache in red, and a resumed session with an expired cache tells the user:
+ * the next turn writes the whole context to the cache again, at 2x the input
+ * price for the 1-hour cache of a subscription (1.25x for the 5-minute cache)
+ * instead of reads at 0.05x on Opus 5.5. One user measured that turns more
+ * than an hour after the last one were 1.6% of turns and 80% of cache writes
+ * (reported, 2026-10-01).
  */
 export const STALE_CACHE_CONTEXT_TOKENS = 100_000;
 

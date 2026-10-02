@@ -31,6 +31,7 @@ export const ACTIONS = {
     ["startup|resume", "session-start/refresh-ai-policies.mjs"],
     ["startup|resume", "session-start/warn-instruction-size.mjs"],
     ["startup|clear", "session-start/point-to-handoff.mjs"],
+    ["resume|fork", "session-start/warn-cold-cache-resume.mjs"],
     ["*", "session-start/add-session-notes.mjs"],
   ],
   UserPromptSubmit: [["*", "user-prompt-submit/note-usage-limits.mjs"]],
