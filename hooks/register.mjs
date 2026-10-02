@@ -270,6 +270,18 @@ const notesOf = (out) => {
 };
 
 /**
+ * The `tool.call` input with the tool arguments replaced by `updated`. A
+ * classic `updatedInput` replaces the whole tool input, so an argument that
+ * it does not give is removed.
+ */
+function rewrite(e, updated) {
+  const out = {};
+  for (const [key, value] of Object.entries(e))
+    if (RESERVED.has(key)) out[key] = value;
+  return { ...updated, ...out };
+}
+
+/**
  * The classic PreToolUse input for one `tool.call` input. The engine gives
  * no `agent_type`, so it comes from the agent list. On the main thread the
  * input has no `agent_id` and no `agent_type`. `effort` is the effort level of
@@ -395,7 +407,7 @@ export function register(on, options) {
     }
     let r;
     try {
-      r = await next(h.updatedInput ? { ...e, ...h.updatedInput } : e);
+      r = await next(h.updatedInput ? rewrite(e, h.updatedInput) : e);
     } finally {
       if (keep) verdicts.delete(id);
     }
