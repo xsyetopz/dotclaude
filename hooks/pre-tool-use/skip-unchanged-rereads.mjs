@@ -16,32 +16,35 @@ import { fullReads, load, readStamp } from "../lib/_ledger.mjs";
 import { logVerdict } from "../lib/_verdicts.mjs";
 
 /** Absolute paths that this call reads in full, or []. */
-function targets(data) {
+function targets(io, data) {
   const input = data.tool_input ?? {};
   if (data.tool_name === "Bash")
     return fullReads(
       input.command,
-      data.cwd || projectRoot(nodeIo(data), data),
+      data.cwd || projectRoot(io, data),
+      io.home,
+      io.platform,
     );
   if (data.tool_name !== "Read" || !input.file_path) return [];
   if (input.offset || input.limit) return [];
-  return [path.resolve(projectRoot(nodeIo(data), data), input.file_path)];
+  return [path.resolve(projectRoot(io, data), input.file_path)];
 }
 
-run((data) => {
+run(async (data) => {
   if (!option(process.env, "guard_bash") || !data.session_id) return;
-  const files = targets(data);
+  const io = nodeIo(data);
+  const files = targets(io, data);
   if (!files.length) return;
-  const reads = load(data.session_id, data.agent_id).reads ?? {};
+  const reads = (await load(io, data.session_id, data.agent_id)).reads ?? {};
   const earlier = [];
   for (const abs of files) {
     const seen = reads[abs];
-    const now = readStamp(abs);
+    const now = await readStamp(io, abs);
     if (!seen || !now) return;
     if (seen.size !== now.size || seen.mtimeMs !== now.mtimeMs) return;
     earlier.push(`${path.basename(abs)} (by ${seen.how})`);
   }
   const reason = `You already read ${earlier.join(", ")} in full, and the file did not change since. Use that earlier output, because a second copy adds the same text to the context again. If you need only part of the file, use \`Read\` with \`offset\` and \`limit\`.`;
-  logVerdict(data, "deny", reason);
+  await logVerdict(io, data, "deny", reason);
   preToolDecision("deny", reason);
 });

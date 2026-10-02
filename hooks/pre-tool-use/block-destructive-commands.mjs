@@ -8,7 +8,7 @@
 import path from "node:path";
 import { claudeTrailerOff } from "../lib/_attribution.mjs";
 import { check } from "../lib/_bash-rules.mjs";
-import { run } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
 import { option, projectRoot } from "../lib/_core.mjs";
 import { ASKS_TEST_REMOVAL } from "../lib/_edit-rules.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
@@ -25,7 +25,8 @@ run(async (data) => {
   const guard = option(process.env, "guard_bash");
   const modelLock = option(process.env, "model_lock");
   if (!guard && !modelLock) return;
-  const root = projectRoot(nodeIo(data), data);
+  const io = nodeIo(data);
+  const root = projectRoot(io, data);
   let findings = check(command, {
     root,
     cwd: path.resolve(data.cwd || root),
@@ -42,10 +43,11 @@ run(async (data) => {
   // Read the transcript only when a Bash write removes assertions.
   if (
     findings.some(([, reason]) => REMOVES_ASSERTIONS.test(reason)) &&
-    ASKS_TEST_REMOVAL.test(await nodeIo(data).session.lastPrompt())
+    ASKS_TEST_REMOVAL.test(await io.session.lastPrompt())
   )
     findings = findings.filter(
       ([, reason]) => !REMOVES_ASSERTIONS.test(reason),
     );
-  guardDecision(findings, data, "command");
+  const out = await guardDecision(io, findings, data, "command");
+  if (out) emit(out);
 });

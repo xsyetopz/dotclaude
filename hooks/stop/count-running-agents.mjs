@@ -5,9 +5,10 @@
 // call itself.
 
 import { run } from "../lib/_common.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { agentStopped } from "../lib/_ledger.mjs";
 
-run((data) => {
+run(async (data) => {
   if (!data.session_id || !data.agent_id) return;
-  agentStopped(data.session_id, data.agent_id);
+  await agentStopped(nodeIo(data), data.session_id, data.agent_id);
 });

@@ -7,14 +7,15 @@
 
 import { run } from "../lib/_common.mjs";
 import { option } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { agentStarted } from "../lib/_ledger.mjs";
 
-run((data) => {
+run(async (data) => {
   if (
     !option(process.env, "agent_guidance") ||
     !data.session_id ||
     !data.agent_id
   )
     return;
-  agentStarted(data.session_id, data.agent_id, data.transcript_path);
+  await agentStarted(nodeIo(data), data.session_id, data.agent_id);
 });

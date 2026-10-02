@@ -6,13 +6,15 @@
 
 import { exitBlocking, run } from "../lib/_common.mjs";
 import { option, TAG } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { load, save } from "../lib/_ledger.mjs";
 
-run((data) => {
+run(async (data) => {
   if (!option(process.env, "gate_verify")) return;
   if (!data.session_id) return;
   const agentId = data.agent_id ?? null;
-  const state = load(data.session_id, agentId);
+  const io = nodeIo(data);
+  const state = await load(io, data.session_id, agentId);
   const { lastEdit, lastCheck } = state;
   if (
     !lastEdit ||
@@ -21,7 +23,7 @@ run((data) => {
   )
     return;
   state.blockedTask = lastEdit.seq;
-  save(data.session_id, agentId, state);
+  await save(io, data.session_id, agentId, state);
   // Input fields, as logged from Claude Code 2.1.28x: `task_id`,
   // `task_subject`, `task_description`.
   const task = [

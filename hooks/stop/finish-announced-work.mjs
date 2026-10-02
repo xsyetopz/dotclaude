@@ -11,6 +11,7 @@
 
 import { run, stopFeedback } from "../lib/_common.mjs";
 import { option } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { waitsForUser } from "../lib/_transcript.mjs";
 import { logVerdict } from "../lib/_verdicts.mjs";
 
@@ -38,7 +39,7 @@ function lastParagraph(message) {
   return parts.at(-1) ?? "";
 }
 
-run((data) => {
+run(async (data) => {
   if (!option(process.env, "gate_verify") || data.stop_hook_active) return;
   const paragraph = lastParagraph(data.last_assistant_message ?? "");
   if (!ANNOUNCES.some((re) => re.test(paragraph)) || WAITS.test(paragraph))
@@ -49,6 +50,6 @@ run((data) => {
     `"${paragraph.slice(0, 200)}". The user must answer before that work happens, which costs a turn. ` +
     "If the step is part of the request or the approved plan, do that work now and then report. " +
     "If only the user can decide it, or the user asked only a question, end the turn again with no change.";
-  logVerdict(data, "block", reason);
+  await logVerdict(nodeIo(data), data, "block", reason);
   stopFeedback(data, reason);
 });

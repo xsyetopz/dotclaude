@@ -30,6 +30,7 @@ import {
 } from "../lib/_budget.mjs";
 import { emit, preToolDecision, run } from "../lib/_common.mjs";
 import { option } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { runningAgents } from "../lib/_ledger.mjs";
 import { logVerdict } from "../lib/_verdicts.mjs";
 
@@ -40,7 +41,7 @@ const OFF = new Set(["0", "false", "no", "off"]);
 const AGENTS =
   "Use the `dotclaude:` agent whose description fits the job. Write a plan yourself, in plan mode.";
 
-run((data) => {
+run(async (data) => {
   if (!option(process.env, "agent_guidance")) return;
   const input = data.tool_input ?? {};
   const forksOff = OFF.has(
@@ -54,12 +55,17 @@ run((data) => {
     );
     return;
   }
+  const io = nodeIo(data);
   const running = data.session_id
-    ? runningAgents(data.session_id, RUNNING_AGENT_IDLE_MINUTES * 60_000)
+    ? await runningAgents(
+        io,
+        data.session_id,
+        RUNNING_AGENT_IDLE_MINUTES * 60_000,
+      )
     : 0;
   if (running >= MAX_CONCURRENT_AGENTS) {
     const reason = `${running} subagents run now, and the limit is ${MAX_CONCURRENT_AGENTS} at once. Claude Code refuses a start past the limit. Wait until one agent reports, with \`Monitor\` if it runs in the background. Then send the next agents as a new wave.`;
-    logVerdict(data, "deny", reason);
+    await logVerdict(io, data, "deny", reason);
     preToolDecision("deny", reason);
     return;
   }
