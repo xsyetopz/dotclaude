@@ -62,6 +62,32 @@
  */
 
 /**
+ * @typedef {object} IoSession Facts about the session of the hook input that
+ *   made the io (`session_id`, `agent_id`, `transcript_path`). The Node io
+ *   reads them from the transcript files, the hooks module from the engine.
+ *   The io gives facts, not transcript text, because the engine gives only
+ *   parsed messages. When the host cannot tell, a fact resolves to its "do
+ *   not know" value, and the caller treats that value as no finding. Thus
+ *   the guards stay fail-open.
+ * @property {() => Promise<string>} lastPrompt The last prompt that the user
+ *   typed, cut at 4000 characters. `""` when not known.
+ * @property {() => Promise<string>} agentTranscriptPath The transcript file
+ *   of the subagent. `""` when the input is not from a subagent or the host
+ *   has no transcript file.
+ * @property {() => Promise<number | null>} agentTurns The subagent's API
+ *   calls since its latest prompt, resume, or wake-up. Claude Code counts
+ *   `maxTurns` from there. Null when not known.
+ * @property {() => Promise<{ first: number, last: number } | null>}
+ *   agentContext The context tokens of the subagent's first and latest API
+ *   calls. Null when not known.
+ * @property {() => Promise<Set<string>>} loadedNested The paths of the
+ *   nested memory files that Claude Code loaded. Empty when not known.
+ * @property {() => Promise<number | null>} mainContextTokens The context
+ *   tokens of the main conversation: the input of its last response, or the
+ *   size after a later compaction. Null when not known.
+ */
+
+/**
  * @typedef {object} Io
  * @property {"posix" | "win32"} platform The path flavor of the host.
  * @property {Record<string, string | undefined>} env The host environment.
@@ -75,10 +101,7 @@
  *   timeoutMs?: number, env?: Record<string, string> }) => Promise<IoRunResult>}
  *   run Runs a command with no shell. Resolves for every exit code. Rejects
  *   when the command cannot start or passes the timeout (30 s by default).
- * @property {object} session Facts about the running session. The Node io
- *   reads them from the transcript, the hooks module from the engine. The
- *   slice that ports `_transcript.mjs`, `_usage.mjs`, and `_agents.mjs`
- *   defines the members.
+ * @property {IoSession} session Facts about the running session.
  */
 
 export {};

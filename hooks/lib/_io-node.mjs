@@ -5,6 +5,15 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { subagentTranscript, tail } from "./_transcript.mjs";
+import {
+  contextFromText,
+  LAST_PROMPT_CHARS,
+  mainContextFromText,
+  nestedFromText,
+  promptsFromText,
+  turnsFromText,
+} from "./_transcript-parse.mjs";
 
 const kindOf = (stat) =>
   stat.isFile() ? "file" : stat.isDirectory() ? "dir" : "other";
@@ -131,6 +140,50 @@ function run(argv, init = {}) {
 }
 
 /**
+ * The session facts for one hook input, from the transcript files. The main
+ * transcript can be tens of MB, so the facts about it read only its end.
+ * @returns {import("./_io.mjs").IoSession}
+ */
+function nodeSession(data) {
+  const transcript = data.transcript_path ?? "";
+  const agentPath = () =>
+    transcript && data.session_id && data.agent_id
+      ? subagentTranscript(transcript, data.session_id, data.agent_id)
+      : "";
+  const agentText = () => {
+    const file = agentPath();
+    if (!file) return null;
+    try {
+      return fs.readFileSync(file, "utf8");
+    } catch {
+      return null;
+    }
+  };
+  return {
+    lastPrompt: async () =>
+      promptsFromText(tail(transcript) ?? "", 1, LAST_PROMPT_CHARS).at(-1) ??
+      "",
+    agentTranscriptPath: async () => agentPath(),
+    agentTurns: async () => {
+      const text = agentText();
+      return text === null ? null : turnsFromText(text);
+    },
+    agentContext: async () => {
+      const text = agentText();
+      return text === null ? null : contextFromText(text);
+    },
+    loadedNested: async () => {
+      const text = transcript ? tail(transcript) : null;
+      return text ? nestedFromText(text) : new Set();
+    },
+    mainContextTokens: async () => {
+      const text = transcript ? tail(transcript, 1_000_000) : null;
+      return text ? mainContextFromText(text) : null;
+    },
+  };
+}
+
+/**
  * The Node io for one hook input. `data` is the hook's stdin JSON, from which
  * the session facts come.
  * @returns {import("./_io.mjs").Io}
@@ -158,6 +211,6 @@ export function nodeIo(data = {}) {
       list,
     },
     run,
-    session: { data },
+    session: nodeSession(data),
   };
 }

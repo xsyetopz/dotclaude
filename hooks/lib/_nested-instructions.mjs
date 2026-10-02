@@ -11,6 +11,7 @@ import path from "node:path";
 import { NESTED_INSTRUCTIONS_CHARS } from "./_budget.mjs";
 import { parse } from "./_shell.mjs";
 import { tail } from "./_transcript.mjs";
+import { nestedFromText } from "./_transcript-parse.mjs";
 
 /** Programs whose path arguments are files Claude reads or searches. */
 const READERS = new Set([
@@ -81,18 +82,7 @@ export function instructionFiles(target, root) {
 /** Paths that the transcript shows Claude Code loaded as nested memory. */
 export function loadedInTranscript(transcriptPath) {
   const text = transcriptPath ? tail(transcriptPath) : null;
-  const loaded = new Set();
-  if (!text) return loaded;
-  for (const line of text.split("\n")) {
-    if (!line.includes('"nested_memory"')) continue;
-    try {
-      const att = JSON.parse(line).attachment;
-      if (att?.type === "nested_memory" && att.path) loaded.add(att.path);
-    } catch {
-      // A line cut at the start of the tail.
-    }
-  }
-  return loaded;
+  return text ? nestedFromText(text) : new Set();
 }
 
 /**

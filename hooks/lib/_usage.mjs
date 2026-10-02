@@ -17,6 +17,7 @@ import { stateDir } from "./_core.mjs";
 import { nodeIo } from "./_io-node.mjs";
 import { readConfig } from "./_plans.mjs";
 import { tail } from "./_transcript.mjs";
+import { mainContextFromText } from "./_transcript-parse.mjs";
 
 const MAX_AGE_MS = 60 * 60 * 1000;
 
@@ -67,32 +68,7 @@ export function readUsage(env = process.env, now = Date.now()) {
  */
 export function mainContextTokens(transcriptPath) {
   const text = transcriptPath ? tail(transcriptPath, 1_000_000) : null;
-  if (!text) return null;
-  const lines = text.split("\n");
-  for (let i = lines.length - 1; i >= 0; i -= 1) {
-    const line = lines[i];
-    if (!line.includes('"usage"') && !line.includes('"compact_boundary"'))
-      continue;
-    let entry;
-    try {
-      entry = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (entry.isSidechain) continue;
-    if (entry.type === "system" && entry.subtype === "compact_boundary") {
-      const after = Number(entry.compactMetadata?.postTokens);
-      return Number.isFinite(after) ? after : null;
-    }
-    const u = entry.type === "assistant" ? entry.message?.usage : null;
-    if (u)
-      return (
-        (u.input_tokens ?? 0) +
-        (u.cache_read_input_tokens ?? 0) +
-        (u.cache_creation_input_tokens ?? 0)
-      );
-  }
-  return null;
+  return text ? mainContextFromText(text) : null;
 }
 
 const BOUNDARY = Buffer.from('"subtype":"compact_boundary"');
