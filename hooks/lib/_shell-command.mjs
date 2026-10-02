@@ -1,14 +1,19 @@
 // One simple command after `VAR=` prefixes and wrappers such as sudo, env,
 // timeout, and xargs are stripped.
 
-import path from "node:path";
 import { tokenize } from "./_shell-lexer.mjs";
 
 const ASSIGN = /^[A-Za-z_][A-Za-z0-9_]*=/;
 
-/** Normalize `/usr/bin/rm`, `\rm` to `rm`. */
+/**
+ * Normalize `/usr/bin/rm`, `\rm`, `C:\bin\rm` to `rm`. The name starts after
+ * the last `/` or `\`. A trailing `/` does not count.
+ */
 export function program(token) {
-  return path.basename(token.replace(/^\\+/, ""));
+  const name = token.replace(/^\\+/, "").replace(/\/+$/, "");
+  return name.slice(
+    Math.max(name.lastIndexOf("/"), name.lastIndexOf("\\")) + 1,
+  );
 }
 
 // Wrappers whose flags we skip, with the flags that consume a value.

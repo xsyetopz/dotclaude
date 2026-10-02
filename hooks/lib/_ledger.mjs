@@ -165,7 +165,7 @@ export function shellWrites(command, root, cwd = root) {
   const inProject = (target, base) => {
     if (!target || target.includes("$") || target.startsWith("/dev/"))
       return undefined;
-    const abs = path.resolve(base, expandHome(target));
+    const abs = path.resolve(base, expandHome(target, process.env.HOME));
     const rel = path.relative(root, abs).split(path.sep).join("/");
     if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
     if (NON_CODE.test(rel) || rel.startsWith(".claude/")) return undefined;
@@ -182,10 +182,10 @@ export function shellWrites(command, root, cwd = root) {
     // An unresolvable `cd $DIR` leaves the base at cwd, as the bash guard does.
     const base =
       cmd.cwdHint && !cmd.cwdHint.includes("$")
-        ? path.resolve(cwd, expandHome(cmd.cwdHint))
+        ? path.resolve(cwd, expandHome(cmd.cwdHint, process.env.HOME))
         : cwd;
     // Scratch files outside the project, such as in /tmp, are not edits.
-    for (const { target } of writeTargets(cmd, base)) {
+    for (const { target } of writeTargets(cmd, base, process.env.HOME, path)) {
       const rel = inProject(target, base);
       if (rel) out.add(rel);
     }
@@ -207,7 +207,7 @@ export function fullReads(command, cwd) {
   return words
     .map((w) => w.replace(/^(['"])(.*)\1$/, "$2"))
     .filter((w) => !w.startsWith("-"))
-    .map((w) => path.resolve(cwd, expandHome(w)));
+    .map((w) => path.resolve(cwd, expandHome(w, process.env.HOME)));
 }
 
 /** Size and mtime of a file, or null when it cannot be read. */

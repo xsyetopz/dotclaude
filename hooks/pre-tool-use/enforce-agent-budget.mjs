@@ -56,7 +56,7 @@ function deletesTempOnly(data) {
           !/[$~*?[]|__SUBST__/.test(p) &&
           !p.split("/").includes("..") &&
           isTempChild(abs) &&
-          !isUnder(abs, project)
+          !isUnder(abs, project, path)
         );
       })
     );

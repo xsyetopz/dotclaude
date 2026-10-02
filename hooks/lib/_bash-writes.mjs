@@ -4,8 +4,8 @@
 // sends them through the Edit rules.
 
 import fs from "node:fs";
-import path from "node:path";
 import { positional } from "./_bash-args.mjs";
+import { posix } from "./_path.mjs";
 
 const IN_PLACE = /^(sed|gsed|perl)$/;
 const INTERPRETER = /^(python[0-9.]*|node|bun|deno|ruby|perl)$/;
@@ -45,20 +45,20 @@ function inlineWrites(code) {
   ].filter((target) => target !== undefined);
 }
 
-export const expandHome = (p) =>
-  p.replace(/^~(?=\/|$)/, process.env.HOME ?? "~");
+export const expandHome = (p, home) => p.replace(/^~(?=\/|$)/, home ?? "~");
 
 /**
  * The directory a command runs in after an earlier `cd`, or undefined when
- * that is unknown (`cd $DIR`, or `~` without HOME).
+ * that is unknown (`cd $DIR`, or `~` without `home`). `path` is the path module
+ * of the caller.
  */
-export function commandBase(cmd, cwd) {
+export function commandBase(cmd, cwd, home, path = posix) {
   const hint = cmd.cwdHint;
   if (!hint) return cwd;
   if (hint.includes("$")) return undefined;
   if (hint.startsWith("~") && !/^~(\/|$)/.test(hint)) return undefined;
-  if (hint.startsWith("~") && !process.env.HOME) return undefined;
-  return path.resolve(cwd, expandHome(hint));
+  if (hint.startsWith("~") && !home) return undefined;
+  return path.resolve(cwd, expandHome(hint, home));
 }
 
 /**
@@ -67,7 +67,7 @@ export function commandBase(cmd, cwd) {
  * that `cat` or `tee` writes over the target. Otherwise it is undefined.
  * @returns {{target: string, content?: string}[]}
  */
-export function writeTargets(cmd, base) {
+export function writeTargets(cmd, base, home, path = posix) {
   const out = [];
   const whole =
     cmd.heredoc !== null &&
@@ -89,7 +89,7 @@ export function writeTargets(cmd, base) {
     // the script unless -e gave it, and only existing files count.
     const scriptGiven = cmd.args.some((a) => /^-[a-zA-Z]*e$/.test(a));
     for (const t of operands.slice(scriptGiven ? 0 : 1))
-      if (base && fs.existsSync(path.resolve(base, expandHome(t))))
+      if (base && fs.existsSync(path.resolve(base, expandHome(t, home))))
         out.push({ target: t });
   }
   if (cmd.name === "sd")

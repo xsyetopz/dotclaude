@@ -244,12 +244,17 @@ function interpreterInline(cmd, ctx) {
 // A Bash write gets the same Edit rules as the edit tools, so a heredoc cannot
 // weaken a test or break frontmatter that `Write` would have caught.
 function fileWrites(cmd, ctx) {
-  const base = commandBase(cmd, ctx.cwd);
+  const base = commandBase(cmd, ctx.cwd, process.env.HOME, path);
   if (!base) return [];
   const out = [];
-  for (const { target, content } of writeTargets(cmd, base)) {
+  for (const { target, content } of writeTargets(
+    cmd,
+    base,
+    process.env.HOME,
+    path,
+  )) {
     if (/\$|__SUBST__|^\/dev\//.test(target)) continue;
-    const file_path = path.resolve(base, expandHome(target));
+    const file_path = path.resolve(base, expandHome(target, process.env.HOME));
     const input =
       content === undefined
         ? ["Edit", { file_path, old_string: "", new_string: "" }]
@@ -268,7 +273,7 @@ function fileWrites(cmd, ctx) {
 // `rm` and `git rm` of an oracle file, and `mv` or `git mv` away from one.
 // `fileWrites` covers the files that a command writes.
 function oracleRemovals(cmd, ctx) {
-  let base = commandBase(cmd, ctx.cwd);
+  let base = commandBase(cmd, ctx.cwd, process.env.HOME, path);
   if (!base) return [];
   let args = cmd.args;
   let sub = cmd.name;
@@ -286,7 +291,7 @@ function oracleRemovals(cmd, ctx) {
   const out = [];
   for (const target of operands) {
     if (/\$|__SUBST__/.test(target)) continue;
-    const file = path.resolve(base, expandHome(target));
+    const file = path.resolve(base, expandHome(target, process.env.HOME));
     const glob =
       protectedMatch(file, root, globs) ?? protectedUnder(file, root, globs);
     if (glob)
