@@ -74,7 +74,7 @@ you choose and can review.
   for you in public. An ask rule wins over an allow rule. See
   [Contributions](contributions.md).
 - **Git:** `includeGitInstructions: false` removes Claude Code's git
-  instructions, because dotclaude's output style has its own. The
+  instructions, because dotclaude's working rules have their own. The
   `git_attribution` option keeps the commit trailer and pull request footer.
   When a user or project skill is named `verify` or `simplify`, or
   `includeCodeReviewSuggestion` is true, a session note tells Claude to run
@@ -101,6 +101,8 @@ Skip one with `--skip name,...`. The reason for each is in the file:
 | `bundled-skills` | the bundled skills are in the skill listing on every turn |
 | `auto-memory` | the index loads into every session, and the files go stale |
 | `refusal-retry` | an extra request after each refusal |
+| `builtin-plugins` | the built-in plugins add context or hooks to each session; it turns on `you-should-know` and turns the others off |
+| `skill-descriptions` | the skill listing goes with every request, and this cuts each description to 300 characters |
 
 ## Managed Lock
 

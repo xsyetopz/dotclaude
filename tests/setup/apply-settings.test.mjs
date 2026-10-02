@@ -157,6 +157,14 @@ test("apply-settings adds the optional switches unless skipped", () => {
   expect(all.permissions.deny).toContain("ReportFindings");
   expect(all.disableBundledSkills).toBe(true);
   expect(all.autoMemoryEnabled).toBe(false);
+  expect(all.skillListingMaxDescChars).toBe(300);
+  expect(all.enabledPlugins["cc-plugin-you-should-know@builtin"]).toBe(true);
+  expect(all.enabledPlugins["cc-plugin-agents-md@builtin"]).toBe(false);
+  expect(all.enabledPlugins["cc-plugin-telemetry@builtin"]).toBe(false);
+  // `sec-default` is set only from policy, so the profile leaves it out.
+  expect(all.enabledPlugins).not.toHaveProperty(
+    "cc-plugin-sec-default@builtin",
+  );
 
   const other = tempHome();
   const out = run(
@@ -209,11 +217,11 @@ test("a 0.16.1 settings file gets auto-update on and keeps every other value", (
   const file = seed(home, old);
   const preview = run("apply-settings.mjs", home);
   expect(preview).toContain('env.DISABLE_AUTOUPDATER: remove "1"');
-  expect(preview).toContain('autoUpdatesChannel: (unset) -> "stable"');
+  expect(preview).not.toContain("autoUpdatesChannel");
   run("apply-settings.mjs", home, "--apply");
   const merged = read(file);
-  expect(merged.autoUpdatesChannel).toBe("stable");
-  expect(merged.minimumVersion).toBe("2.1.287");
+  expect(merged.autoUpdatesChannel).toBeUndefined();
+  expect(merged.minimumVersion).toBe("2.1.288");
   const changed = {
     "env.DISABLE_AUTOUPDATER": undefined,
     "env.DOTCLAUDE_SETTINGS_PROFILE": profileStamp(),
@@ -229,10 +237,10 @@ test("a 0.16.1 settings file gets auto-update on and keeps every other value", (
 
 test("auto-update keeps the running version as the floor and never lowers one", () => {
   for (const [running, before, after] of [
-    // A newer CLI on the latest channel does not step back to stable's.
+    // A newer CLI does not step back to the tested release.
     ["2-1-290", undefined, "2.1.290"],
     // An older CLI gets the tested release as its floor.
-    ["2-1-285", undefined, "2.1.287"],
+    ["2-1-285", undefined, "2.1.288"],
     // A higher floor that the user set stays.
     ["2-1-286", "2.1.300", "2.1.300"],
   ]) {
@@ -322,4 +330,56 @@ test("user scope follows CLAUDE_CONFIG_DIR for settings.json and CLAUDE.md", () 
     false,
   );
   expect(fs.existsSync(path.join(home, ".claude", "CLAUDE.md"))).toBe(false);
+});
+
+test("setup sets no output style, and a re-run keeps the one selected", () => {
+  const home = tempHome();
+  const file = seed(home, {});
+  run("apply-settings.mjs", home, "--apply");
+  expect(read(file)).not.toHaveProperty("outputStyle");
+  run("apply-settings.mjs", home, "--style", "Concise", "--apply");
+  expect(read(file).outputStyle).toBe("dotclaude:Concise");
+  run("apply-settings.mjs", home, "--apply");
+  expect(read(file).outputStyle).toBe("dotclaude:Concise");
+  expectNoChange(home, file);
+  run("apply-settings.mjs", home, "--style", "Default", "--apply");
+  expect(read(file)).not.toHaveProperty("outputStyle");
+});
+
+test("setup keeps another style, and removes the 0.17 style", () => {
+  const home = tempHome();
+  const file = seed(home, { outputStyle: "Explanatory" });
+  run("apply-settings.mjs", home, "--apply");
+  expect(read(file).outputStyle).toBe("Explanatory");
+  seed(home, { outputStyle: "dotclaude:dotclaude" });
+  expect(run("apply-settings.mjs", home)).toContain(
+    'outputStyle: "dotclaude:dotclaude" -> (unset)',
+  );
+  run("apply-settings.mjs", home, "--apply");
+  expect(read(file)).not.toHaveProperty("outputStyle");
+});
+
+test("an unknown --style value stops before any write", () => {
+  const home = tempHome();
+  const file = seed(home, {});
+  const res = Bun.spawnSync(
+    [
+      "bun",
+      path.join(SCRIPTS, "apply-settings.mjs"),
+      "--style",
+      "Terse",
+      "--apply",
+    ],
+    {
+      env: {
+        ...process.env,
+        HOME: home,
+        USERPROFILE: home,
+        CLAUDE_CONFIG_DIR: "",
+      },
+    },
+  );
+  expect(res.exitCode).toBe(2);
+  expect(res.stderr.toString()).toContain("Default, ");
+  expect(fs.readFileSync(file, "utf8")).toBe("{}");
 });

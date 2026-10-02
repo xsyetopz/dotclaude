@@ -57,11 +57,11 @@ copy of each guard as a command hook would run twice where mods are on.
 - **Settings profile**: the [optional switches](settings-profile.md) remove
   the bundled skills, `Explore` and `Plan`, `ReportFindings`, and other
   built-in features that cost context on each request.
-- **Built-in mods**: dotclaude turns off none. `agents-md`, `diff`,
-  `telemetry`, and `plugin-authoring` do work that dotclaude does not do.
-  `you-should-know` is off by default. Keep it off: its side agent uses
-  quota. To turn off a built-in mod, use `/plugin`, tab **Installed**, under
-  **Built-in**.
+- **Built-in mods**: the setup switch `builtin-plugins` turns on
+  `you-should-know` and turns off the other built-in mods that settings can
+  switch. `you-should-know` is off by default, and its side agent uses
+  quota. It runs with the `telemetry` mod off. To turn a built-in mod on or
+  off, use `/plugin`, tab **Installed**, under **Built-in**.
 
 ## Differences From The Classic Hooks
 

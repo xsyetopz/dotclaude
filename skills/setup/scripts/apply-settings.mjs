@@ -2,7 +2,8 @@
 // Merge a dotclaude settings profile into a Claude Code settings file.
 //
 //   bun apply-settings.mjs [--scope user|project|local] [--profile file]
-//                          [--skip name,...] [--auto-update on|off] [--apply]
+//                          [--skip name,...] [--auto-update on|off]
+//                          [--style name] [--apply]
 //
 // With the shipped profile, the switches in profiles/optional.json are merged
 // too, except the ones named in --skip.
@@ -10,8 +11,10 @@
 // backs the file up next to itself, then writes the merged result.
 // Merge rules: objects merge key by key, arrays gain missing entries, scalars
 // take the profile value. The model policy (OWNED below) is replaced, not
-// merged. In user scope, --auto-update (on by default) sets the update
-// channel and its version floor, or turns automatic updates off.
+// merged. In user scope, --auto-update (on by default) sets the version
+// floor of automatic updates, or turns them off. --style selects one of the
+// plugin's output styles as `outputStyle`, and `Default` removes the key.
+// Without it, the current value stays.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -50,6 +53,24 @@ const skip = new Set(
 const autoUpdate = flag("--auto-update", "on");
 if (!["on", "off"].includes(autoUpdate)) {
   console.error(`Unknown --auto-update "${autoUpdate}". Use on or off.`);
+  process.exit(2);
+}
+const STYLE_DIR = path.join(here, "..", "..", "..", "output-styles");
+/** The `name` of each style file, which Claude Code prefixes with the plugin's name. */
+const styleNames = fs
+  .readdirSync(STYLE_DIR)
+  .filter((file) => file.endsWith(".md"))
+  .map((file) =>
+    /^name: (.+)$/m.exec(fs.readFileSync(path.join(STYLE_DIR, file), "utf8")),
+  )
+  .filter(Boolean)
+  .map((match) => match[1].trim());
+// `Default` is no output style: the working rules come from a hook, so
+// Claude Code's own default style carries them too.
+const STYLES = ["Default", ...styleNames];
+const style = flag("--style", undefined);
+if (style !== undefined && !STYLES.includes(style)) {
+  console.error(`Unknown --style "${style}". Use ${STYLES.join(", ")}.`);
   process.exit(2);
 }
 const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -167,10 +188,29 @@ if (profilePath === RECOMMENDED) {
 }
 
 if (scope === "user") merged = applyAutoUpdate(merged);
+merged = applyStyle(merged);
 
 /**
- * On: the stable channel, with the running version as the floor, so a CLI on
- * the latest channel does not step back. A higher floor stays. Off:
+ * `outputStyle` names a plugin style as `dotclaude:<name>`. 0.17 forced the
+ * one style `dotclaude:dotclaude`. That name no longer exists, and its rules
+ * now come from a hook, so every run removes it.
+ */
+function applyStyle(settings) {
+  const current = settings.outputStyle;
+  if (style === undefined || style === "Default") {
+    const clear = style === "Default" || current === "dotclaude:dotclaude";
+    if (!clear || current === undefined) return settings;
+    changes.push(`outputStyle: ${JSON.stringify(current)} -> (unset)`);
+    const { outputStyle: _, ...rest } = settings;
+    return rest;
+  }
+  return merge(settings, { outputStyle: `dotclaude:${style}` }, "", {});
+}
+
+/**
+ * On: the running version as the floor, so the CLI does not step back. A
+ * higher floor stays. The channel stays as the user set it, because the
+ * default channel `latest` gets each fix first. Off:
  * `DISABLE_AUTOUPDATER`. `autoUpdates` in `~/.claude.json` is the native
  * installer's own flag, so this never writes it.
  */
@@ -194,12 +234,7 @@ function applyAutoUpdate(settings) {
     console.log(
       "Note: env.DISABLE_UPDATES is set, and it blocks every update. dotclaude did not write it, so it stays. Remove it to let auto-update run.",
     );
-  return merge(
-    out,
-    { autoUpdatesChannel: "stable", minimumVersion: floor },
-    "",
-    {},
-  );
+  return merge(out, { minimumVersion: floor }, "", {});
 }
 
 console.log(`Target: ${target} (${scope} scope)`);
