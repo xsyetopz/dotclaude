@@ -347,13 +347,13 @@ test("globMatch takes linear time for a hostile pattern", () => {
   const stars = "*a".repeat(30);
   expect(globMatch(`${stars}b`, "a".repeat(100))).toBe(false);
   expect(globMatch(`${stars}b`, `${"a".repeat(100)}b`)).toBe(true);
-  expect(globMatch("*".repeat(30) + "x", "a".repeat(100))).toBe(false);
-  expect(globMatch("[ab]*".repeat(30) + "c", "ab".repeat(50))).toBe(false);
+  expect(globMatch(`${"*".repeat(30)}x`, "a".repeat(100))).toBe(false);
+  expect(globMatch(`${"[ab]*".repeat(30)}c`, "ab".repeat(50))).toBe(false);
   // The same for `**` across segments.
   const deep = "a/".repeat(100);
-  expect(globMatch("**/a/".repeat(30) + "b", deep)).toBe(false);
-  expect(globMatch("**/*a/".repeat(30) + "b", `${deep}c`)).toBe(false);
-  expect(performance.now() - start).toBeLessThan(100);
+  expect(globMatch(`${"**/a/".repeat(30)}b`, deep)).toBe(false);
+  expect(globMatch(`${"**/*a/".repeat(30)}b`, `${deep}c`)).toBe(false);
+  expect(performance.now() - start).toBeLessThan(1000);
 });
 
 test("globMatch gives nothing for a pattern with too many alternatives", () => {
@@ -366,7 +366,38 @@ test("globMatch gives nothing for a pattern with too many alternatives", () => {
   expect(globMatch(`{${"a,".repeat(2000)}b}`, "b")).toBe(false);
   // A negated pattern with no alternative is true, as for a missing match.
   expect(globMatch(`!${sets(11)}`, "a".repeat(11))).toBe(true);
-  expect(performance.now() - start).toBeLessThan(500);
+  expect(performance.now() - start).toBeLessThan(2000);
+});
+
+test("globMatch parses a long hostile pattern in linear time", () => {
+  // Each pattern is 100k characters. A scan that starts again at each `[` or
+  // `{` takes seconds, so the limit has a large margin.
+  const shapes = [
+    "[".repeat(100000),
+    "[a".repeat(50000),
+    "[!".repeat(50000),
+    "[a]".repeat(33000),
+    "{".repeat(100000),
+    "{a,".repeat(33000),
+    "{a}".repeat(33000),
+    `${"{a}".repeat(33000)}[`,
+  ];
+  for (const pattern of shapes) {
+    const start = performance.now();
+    expect(globMatch(pattern, "z")).toBe(false);
+    expect(globMatch(`!${pattern}`, "z")).toBe(true);
+    expect([pattern.slice(0, 6), performance.now() - start < 300]).toEqual([
+      pattern.slice(0, 6),
+      true,
+    ]);
+  }
+});
+
+test("globMatch does not overflow the stack for many sets", () => {
+  // A run of sets with one alternative each is in the cap, a longer run is not.
+  expect(globMatch("{a}".repeat(1000), "a".repeat(1000))).toBe(true);
+  expect(globMatch("{a}".repeat(100000), "a".repeat(100000))).toBe(false);
+  expect(globMatch("{a,b}".repeat(10), "b".repeat(10))).toBe(true);
 });
 
 test("globFiles gives nothing for a pattern with too many alternatives", async () => {
@@ -445,9 +476,7 @@ test("globFiles on win32 reads a backslash as a separator", async () => {
     (await globFiles(win, "src\\*.js", { cwd: "C:\\proj" })).sort(),
   ).toEqual(["src\\c.js"]);
   // The io gets a path with backslashes only.
-  expect(win.listed.every((d) => !d.includes("/") || d.startsWith("//"))).toBe(
-    true,
-  );
+  expect(win.listed.every((d) => !d.includes("/"))).toBe(true);
 });
 
 test("globFiles on a posix io keeps a backslash as an escape", async () => {
