@@ -40,3 +40,22 @@ test("no context note when the count or the size is not known", async () => {
     await contextNote(noteIo(null, COMPACTIONS_BEFORE_HANDOFF), data, true),
   ).toBeNull();
 });
+
+test("the note comes again after the context was under the bound, when remove only empties the marker", async () => {
+  // The hooks module cannot delete a file, so its `remove` writes "".
+  const io = noteIo(0, COMPACTIONS_BEFORE_HANDOFF);
+  const sizes = [CONTEXT_NOTE_TOKENS + 1, 10, CONTEXT_NOTE_TOKENS + 1];
+  const module = {
+    ...io,
+    fs: {
+      ...io.fs,
+      remove: async (file) => {
+        if (await io.fs.exists(file)) await io.fs.write(file, "");
+      },
+    },
+    session: { ...io.session, mainContextTokens: async () => sizes.shift() },
+  };
+  expect(await contextNote(module, data, true)).toContain("handoff");
+  expect(await contextNote(module, data, true)).toBeNull();
+  expect(await contextNote(module, data, true)).toContain("handoff");
+});
