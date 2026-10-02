@@ -8,6 +8,7 @@
 
 import { emit, run } from "../lib/_common.mjs";
 import { option } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { readUsage } from "../lib/_usage.mjs";
 
 const ESC = "\u001b";
@@ -35,10 +36,10 @@ function notification(title, body, env = process.env) {
   return `${ESC}]777;notify;${title};${body}${BEL}`;
 }
 
-run((data) => {
+run(async (data) => {
   if (!option(process.env, "usage_notes")) return;
   if (data.error !== "rate_limit") return;
-  const hit = limitHit(readUsage());
+  const hit = limitHit(await readUsage(nodeIo(data)));
   const what = hit ? `${hit.name} usage limit` : "Usage limit";
   const when = hit?.when ? `, resets ${hit.when}` : "";
   const resume = data.session_id

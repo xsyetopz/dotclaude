@@ -9,6 +9,7 @@ import {
   CONTEXT_NOTE_TOKENS,
   k,
 } from "../../hooks/lib/_budget.mjs";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 import {
   compactions,
   mainContextTokens,
@@ -46,9 +47,16 @@ function usageDir(
   return dir;
 }
 
-test("readUsage reads Claude Code's cached usage and ignores a stale copy", () => {
-  const fresh = readUsage({
-    CLAUDE_CONFIG_DIR: usageDir(60_000, { session: 28, weekly: 87, fable: 3 }),
+test("readUsage reads Claude Code's cached usage and ignores a stale copy", async () => {
+  const fresh = await readUsage({
+    ...nodeIo(),
+    env: {
+      CLAUDE_CONFIG_DIR: usageDir(60_000, {
+        session: 28,
+        weekly: 87,
+        fable: 3,
+      }),
+    },
   });
   expect({
     session: fresh.session,
@@ -56,8 +64,11 @@ test("readUsage reads Claude Code's cached usage and ignores a stale copy", () =
     fable: fresh.fable,
   }).toStrictEqual({ session: 28, weekly: 87, fable: 3 });
   expect(
-    readUsage({
-      CLAUDE_CONFIG_DIR: usageDir(2 * 3600_000, { session: 99, weekly: 99 }),
+    await readUsage({
+      ...nodeIo(),
+      env: {
+        CLAUDE_CONFIG_DIR: usageDir(2 * 3600_000, { session: 99, weekly: 99 }),
+      },
     }),
   ).toBe(null);
 });
@@ -327,13 +338,16 @@ test("a tool call past the note bound tells the main agent once per crossing", (
   ).toBe(null);
 });
 
-test("readUsage returns the reset times", () => {
-  const usage = readUsage({
-    CLAUDE_CONFIG_DIR: usageDir(60_000, {
-      session: 100,
-      weekly: 40,
-      sessionReset: "2026-09-27T08:09:59.549386+00:00",
-    }),
+test("readUsage returns the reset times", async () => {
+  const usage = await readUsage({
+    ...nodeIo(),
+    env: {
+      CLAUDE_CONFIG_DIR: usageDir(60_000, {
+        session: 100,
+        weekly: 40,
+        sessionReset: "2026-09-27T08:09:59.549386+00:00",
+      }),
+    },
   });
   expect(usage.sessionResetsAt).toBe(Date.parse("2026-09-27T08:09:59.549Z"));
   expect(usage.weeklyResetsAt).toBe(null);

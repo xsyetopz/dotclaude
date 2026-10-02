@@ -25,15 +25,17 @@ run(async (data) => {
   const guard = option(process.env, "guard_bash");
   const modelLock = option(process.env, "model_lock");
   if (!guard && !modelLock) return;
-  const root = projectRoot(nodeIo(data), data);
+  const io = nodeIo(data);
+  const root = projectRoot(io, data);
   let findings = check(command, {
     root,
     cwd: path.resolve(data.cwd || root),
-    allowedModels: planAllowlist().list,
+    allowedModels: (await planAllowlist(io)).list,
+    env: io.env,
     modelLock,
     editGuard: option(process.env, "guard_edit"),
     commitHygiene: option(process.env, "git_commit_hygiene"),
-    claudeTrailerOff: claudeTrailerOff(root),
+    claudeTrailerOff: await claudeTrailerOff(io, root),
     background: Boolean(data.tool_input?.run_in_background),
     oracle: oracleFor(data, root),
   });
@@ -42,7 +44,7 @@ run(async (data) => {
   // Read the transcript only when a Bash write removes assertions.
   if (
     findings.some(([, reason]) => REMOVES_ASSERTIONS.test(reason)) &&
-    ASKS_TEST_REMOVAL.test(await nodeIo(data).session.lastPrompt())
+    ASKS_TEST_REMOVAL.test(await io.session.lastPrompt())
   )
     findings = findings.filter(
       ([, reason]) => !REMOVES_ASSERTIONS.test(reason),

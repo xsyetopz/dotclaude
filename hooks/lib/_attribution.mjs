@@ -7,21 +7,20 @@
 // instructions carry the pre-commit skill line (2.1.286 bundle), which
 // `preCommitNote` puts back.
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { canonical } from "./_models.mjs";
+import { pathFor } from "./_path.mjs";
 
 const PR_FOOTER =
   "🤖 Generated with [Claude Code](https://claude.com/claude-code)";
 const FALSE = new Set(["0", "false", "no", "off"]);
 
-const configDir = () =>
-  process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+const configDir = (io) =>
+  io.env.CLAUDE_CONFIG_DIR || pathFor(io.platform).join(io.home, ".claude");
 
 /** User, project, then local settings, merged key by key; later files win. */
-function settings(projectDir) {
-  const config = configDir();
+async function settings(io, projectDir) {
+  const path = pathFor(io.platform);
+  const config = configDir(io);
   const merged = {};
   for (const file of [
     path.join(config, "settings.json"),
@@ -29,7 +28,7 @@ function settings(projectDir) {
     path.join(projectDir, ".claude", "settings.local.json"),
   ]) {
     try {
-      const s = JSON.parse(fs.readFileSync(file, "utf8"));
+      const s = JSON.parse(await io.fs.read(file));
       for (const key of [
         "includeGitInstructions",
         "includeCoAuthoredBy",
@@ -60,8 +59,8 @@ export function modelName(model) {
  * configured `attribution.commit` without one, or `includeCoAuthoredBy: false`.
  * Opus 5.5 still adds the line from habit (claude-code #4287, #93007).
  */
-export function claudeTrailerOff(projectDir) {
-  const s = settings(projectDir);
+export async function claudeTrailerOff(io, projectDir) {
+  const s = await settings(io, projectDir);
   if (s.attribution)
     return (
       typeof s.attribution.commit === "string" &&
@@ -74,17 +73,17 @@ export const CLAUDE_TRAILER =
   /(^|[\s"'])co-authored-by:[^\n]*(claude|anthropic)/im;
 
 /** True when Claude Code sends its own git instructions. */
-function builtInGit(s) {
-  const env = process.env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS;
-  return env !== undefined && env !== ""
-    ? FALSE.has(env.trim().toLowerCase())
+function builtInGit(s, env) {
+  const off = env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS;
+  return off !== undefined && off !== ""
+    ? FALSE.has(off.trim().toLowerCase())
     : s.includeGitInstructions !== false;
 }
 
 /** The attribution note, or null when Claude Code sends its own or none. */
-export function attributionNote(model, projectDir) {
-  const s = settings(projectDir);
-  if (builtInGit(s)) return null;
+export async function attributionNote(io, model, projectDir) {
+  const s = await settings(io, projectDir);
+  if (builtInGit(s, io.env)) return null;
   let commit = `Co-Authored-By: ${modelName(model)} <noreply@anthropic.com>`;
   let pr = PR_FOOTER;
   if (s.attribution) {
@@ -114,24 +113,27 @@ export function attributionNote(model, projectDir) {
 // A sandbox capture of the request confirmed each case.
 const PRE_COMMIT_SKILLS = ["verify", "simplify"];
 
-function hasSkill(projectDir, name) {
-  return [configDir(), path.join(projectDir, ".claude")].some(
-    (dir) =>
-      fs.existsSync(path.join(dir, "skills", name, "SKILL.md")) ||
-      fs.existsSync(path.join(dir, "commands", `${name}.md`)),
-  );
+async function hasSkill(io, projectDir, name) {
+  const path = pathFor(io.platform);
+  for (const dir of [configDir(io), path.join(projectDir, ".claude")])
+    if (
+      (await io.fs.exists(path.join(dir, "skills", name, "SKILL.md"))) ||
+      (await io.fs.exists(path.join(dir, "commands", `${name}.md`)))
+    )
+      return true;
+  return false;
 }
 
 /**
  * The line that tells Claude which skills to run before a commit, or null
  * when Claude Code sends it or no skill applies.
  */
-export function preCommitNote(projectDir) {
-  const s = settings(projectDir);
-  if (builtInGit(s)) return null;
-  const names = PRE_COMMIT_SKILLS.filter((n) => hasSkill(projectDir, n)).map(
-    (n) => `\`/${n}\``,
-  );
+export async function preCommitNote(io, projectDir) {
+  const s = await settings(io, projectDir);
+  if (builtInGit(s, io.env)) return null;
+  const names = [];
+  for (const n of PRE_COMMIT_SKILLS)
+    if (await hasSkill(io, projectDir, n)) names.push(`\`/${n}\``);
   if (s.includeCodeReviewSuggestion === true)
     names.push("`/code-review medium`");
   if (!names.length) return null;

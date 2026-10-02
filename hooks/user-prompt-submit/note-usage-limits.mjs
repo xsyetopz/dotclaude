@@ -26,15 +26,15 @@ const utc = (ms) =>
 const limit = (name, pct, resetsAt) =>
   `${name} ${pct ?? "?"}%${resetsAt === null ? "" : ` (resets ${utc(resetsAt)})`}`;
 
-function usageNote(data) {
-  const usage = readUsage();
+async function usageNote(io, data) {
+  const usage = await readUsage(io);
   if (!usage) return null;
   const worst = Math.max(level(usage.session), level(usage.weekly));
   const safe = String(data.session_id || "unknown").replace(
     /[^A-Za-z0-9_-]/g,
     "_",
   );
-  const file = path.join(stateDir(nodeIo()), `${safe}.usage-level`);
+  const file = path.join(stateDir(io), `${safe}.usage-level`);
   let told = 0;
   try {
     told = Number(fs.readFileSync(file, "utf8")) || 0;
@@ -57,10 +57,12 @@ function usageNote(data) {
   return `<usage_limits source="dotclaude">Claude usage as of ${asOf} UTC: ${parts.join(", ")}. ${advice}</usage_limits>`;
 }
 
-run((data) => {
+run(async (data) => {
   if (!option(process.env, "usage_notes")) return;
   if (!userTyped(data.prompt)) return;
-  const notes = [usageNote(data), contextNote(data)].filter(Boolean);
+  const notes = [await usageNote(nodeIo(data), data), contextNote(data)].filter(
+    Boolean,
+  );
   if (!notes.length) return;
   emit({
     hookSpecificOutput: {

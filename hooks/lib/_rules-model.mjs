@@ -22,7 +22,7 @@ export function claude(cmd, ctx) {
     if (
       (a === "--model" || a === "--fallback-model") &&
       value &&
-      !allowed(value, ctx.allowedModels)
+      !allowed(value, ctx.allowedModels, ctx.env)
     ) {
       out.push([
         "deny",
@@ -30,7 +30,7 @@ export function claude(cmd, ctx) {
       ]);
     }
   });
-  out.push(...cliEffort(cmd));
+  out.push(...cliEffort(cmd, ctx));
   const pos = positional(args);
   if (
     pos[0] === "config" &&
@@ -53,9 +53,9 @@ function flagValue(args, name) {
 }
 
 /** A `claude` run whose model and effort are outside EFFORT_LEVELS. */
-function cliEffort(cmd) {
+function cliEffort(cmd, ctx) {
   const model = flagValue(cmd.args, "--model");
-  const levels = model ? effortLevels(model) : null;
+  const levels = model ? effortLevels(model, ctx.env) : null;
   const effort =
     cmd.assigns.CLAUDE_CODE_EFFORT_LEVEL || flagValue(cmd.args, "--effort");
   if (!levels || !effort || levels.includes(effort)) return [];
@@ -77,7 +77,7 @@ export function modelEnv(cmd, ctx) {
     "ANTHROPIC_DEFAULT_OPUS_MODEL",
   ]) {
     const value = cmd.assigns[key];
-    if (value && !allowed(value, ctx.allowedModels))
+    if (value && !allowed(value, ctx.allowedModels, ctx.env))
       out.push(["deny", `\`${key}=${value}\` is outside the allowed models`]);
   }
   return out;

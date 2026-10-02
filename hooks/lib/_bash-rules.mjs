@@ -30,7 +30,7 @@ import { settingsWrite } from "./_rules-settings.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /**
- * @typedef {{root: string, cwd: string, allowedModels: string[], modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean, background?: boolean, ghUser?: string, oracle?: {root: string, globs: string[]}}} Context
+ * @typedef {{root: string, cwd: string, allowedModels: string[], env?: Record<string, string | undefined>, modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean, background?: boolean, ghUser?: string, oracle?: {root: string, globs: string[]}}} Context
  * @typedef {["deny" | "ask" | "warn", string]} Finding
  */
 
@@ -261,6 +261,7 @@ function fileWrites(cmd, ctx) {
         : ["Write", { file_path, content }];
     for (const [level, reason] of editCheck(...input, {
       allowedModels: ctx.allowedModels,
+      env: ctx.env,
       modelLock: ctx.modelLock,
       bashWrite: true,
       oracle: ctx.oracle,

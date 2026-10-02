@@ -25,8 +25,8 @@ const MAX_AGE_MS = 60 * 60 * 1000;
  * weeklyResetsAt } as epoch ms (each null when absent), and fetchedAtMs, or
  * null when there is no fresh copy.
  */
-export function readUsage(env = process.env, now = Date.now()) {
-  const cached = readConfig(env)?.cachedUsageUtilization;
+export async function readUsage(io, now = Date.now()) {
+  const cached = (await readConfig(io))?.cachedUsageUtilization;
   const at = Number(cached?.fetchedAtMs);
   if (!Number.isFinite(at) || now - at < 0 || now - at > MAX_AGE_MS)
     return null;

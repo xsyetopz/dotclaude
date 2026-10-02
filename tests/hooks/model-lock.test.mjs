@@ -3,10 +3,11 @@
 import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 import { planAllowlist } from "../../hooks/lib/_plans.mjs";
 import { data, hook, noAccount } from "../support/hooks.mjs";
 
-test("model lock denies disallowed subagent models and switches", () => {
+test("model lock denies disallowed subagent models and switches", async () => {
   const agent = (model, env = {}) =>
     hook(
       "pre-tool-use/restrict-subagent-models.mjs",
@@ -21,10 +22,12 @@ test("model lock denies disallowed subagent models and switches", () => {
     expect(agent(model, { ANTHROPIC_DEFAULT_SONNET_MODEL: "" })).toBe(null);
   // Fable is never a subagent model, even where the plan includes it.
   expect(
-    planAllowlist({
-      CLAUDE_CONFIG_DIR: noAccount,
-      ANTHROPIC_API_KEY: "",
-    }).list.some((m) => /fable/.test(m)),
+    (
+      await planAllowlist({
+        ...nodeIo(),
+        env: { CLAUDE_CONFIG_DIR: noAccount, ANTHROPIC_API_KEY: "" },
+      })
+    ).list.some((m) => /fable/.test(m)),
   ).toBe(true);
   for (const model of ["fable", "claude-fable-5-1"]) {
     const out = agent(model, { ANTHROPIC_DEFAULT_FABLE_MODEL: "" });
@@ -181,7 +184,7 @@ test("each dotclaude agent runs on a model that the default lock allows", async 
     .map((f) => f.slice(0, -3));
   expect(names).toContain("reverse-engineer");
   for (const name of names) {
-    const def = definition(`dotclaude:${name}`);
+    const def = await definition(nodeIo(), `dotclaude:${name}`);
     expect(def?.maxTurns, name).toBeGreaterThan(0);
     expect(def.model, name).toMatch(/^claude-/);
     expect(allowed(def.model, DEFAULT_ALLOWED.split(",")), name).toBe(true);

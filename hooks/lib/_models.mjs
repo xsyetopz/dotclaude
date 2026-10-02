@@ -18,11 +18,12 @@ export function canonical(model) {
 /**
  * The model a family alias runs as. Claude Code resolves `sonnet`, `haiku`,
  * and friends through ANTHROPIC_DEFAULT_<FAMILY>_MODEL when it is set, so an
- * alias mapped to another model is checked as that model.
+ * alias mapped to another model is checked as that model. `env` is the host
+ * environment, `io.env`.
  */
-function resolveAlias(m) {
+function resolveAlias(m, env) {
   if (!FAMILIES.has(m)) return m;
-  const mapped = process.env[`ANTHROPIC_DEFAULT_${m.toUpperCase()}_MODEL`];
+  const mapped = env[`ANTHROPIC_DEFAULT_${m.toUpperCase()}_MODEL`];
   return mapped?.trim() ? canonical(mapped) : m;
 }
 
@@ -41,25 +42,25 @@ export const EFFORT_LEVELS = {
 };
 
 /** The family (`opus`, `sonnet`, ...) of a model alias or ID, or "". */
-export function family(model) {
-  const m = resolveAlias(canonical(model));
+export function family(model, env = {}) {
+  const m = resolveAlias(canonical(model), env);
   if (FAMILIES.has(m)) return m;
   return /^claude-([a-z]+)/.exec(m)?.[1] ?? "";
 }
 
 /** The supported effort levels of a model, or null when it has no limit. */
-export function effortLevels(model) {
-  return EFFORT_LEVELS[family(model)] ?? null;
+export function effortLevels(model, env = {}) {
+  return EFFORT_LEVELS[family(model, env)] ?? null;
 }
 
-export function allowed(model, allowlist) {
-  const m = resolveAlias(canonical(model));
+export function allowed(model, allowlist, env = {}) {
+  const m = resolveAlias(canonical(model), env);
   if (ALWAYS.has(m)) return true;
   const entries = allowlist.map(canonical);
   if (FAMILIES.has(m))
     return entries.some((e) => e === m || e.startsWith(`claude-${m}`));
   if (m === "opusplan")
-    return allowed("sonnet", allowlist) && allowed("opus", allowlist);
+    return allowed("sonnet", allowlist, env) && allowed("opus", allowlist, env);
   return entries.some(
     (e) =>
       (FAMILIES.has(e) && m.startsWith(`claude-${e}`)) ||

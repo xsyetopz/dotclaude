@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { LIMITS } from "../../hooks/lib/_budget.mjs";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 import { profileStamp } from "../../hooks/lib/_profile.mjs";
 import { CLAUDE_CODE } from "../../hooks/lib/_version.mjs";
 import { hook, tmp } from "../support/hooks.mjs";
@@ -351,19 +352,19 @@ test("claudeTrailerOff follows attribution.commit and includeCoAuthoredBy", asyn
   const set = (s) =>
     fs.writeFileSync(path.join(config, "settings.json"), JSON.stringify(s));
   try {
-    expect(claudeTrailerOff(project)).toBe(false);
+    expect(await claudeTrailerOff(nodeIo(), project)).toBe(false);
     set({ attribution: { commit: "" } });
-    expect(claudeTrailerOff(project)).toBe(true);
+    expect(await claudeTrailerOff(nodeIo(), project)).toBe(true);
     set({ attribution: { commit: "Assisted-by: Claude" } });
-    expect(claudeTrailerOff(project)).toBe(true);
+    expect(await claudeTrailerOff(nodeIo(), project)).toBe(true);
     set({
       attribution: { commit: "Co-Authored-By: Claude <noreply@anthropic.com>" },
     });
-    expect(claudeTrailerOff(project)).toBe(false);
+    expect(await claudeTrailerOff(nodeIo(), project)).toBe(false);
     set({ attribution: { pr: "" } });
-    expect(claudeTrailerOff(project)).toBe(false);
+    expect(await claudeTrailerOff(nodeIo(), project)).toBe(false);
     set({ includeCoAuthoredBy: false });
-    expect(claudeTrailerOff(project)).toBe(true);
+    expect(await claudeTrailerOff(nodeIo(), project)).toBe(true);
   } finally {
     if (saved === undefined) delete process.env.CLAUDE_CONFIG_DIR;
     else process.env.CLAUDE_CONFIG_DIR = saved;
