@@ -137,11 +137,17 @@ export function emit(obj) {
  * `decision: "block"` reason shows as "Stop hook error".
  */
 export function stopFeedback(data, text) {
+  const subagent = data.hook_event_name === "SubagentStop";
+  // `claude -p` and the Agent SDK return only the last message, and so does a
+  // subagent. A short reply to this note would replace the report.
+  const lastOnly =
+    subagent || /^sdk-/.test(process.env.CLAUDE_CODE_ENTRYPOINT ?? "");
   emit({
     hookSpecificOutput: {
-      hookEventName:
-        data.hook_event_name === "SubagentStop" ? "SubagentStop" : "Stop",
-      additionalContext: text,
+      hookEventName: subagent ? "SubagentStop" : "Stop",
+      additionalContext: lastOnly
+        ? `${text} The caller gets only your last message, so make that message the full report, without the part that this note is about.`
+        : text,
     },
   });
 }

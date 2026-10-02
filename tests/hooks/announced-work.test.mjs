@@ -91,3 +91,30 @@ test("the `gate_verify` option turns the check off", () => {
   );
   expect(out).toBe(null);
 });
+
+test("a headless session or a subagent is told to end with the full report", () => {
+  const offer = "Fixed it.\n\nI can add a test if you want.";
+  const run = (env, extra) =>
+    feedback(
+      hook(
+        "stop/finish-announced-work.mjs",
+        {
+          session_id: session(),
+          hook_event_name: "Stop",
+          last_assistant_message: offer,
+          ...extra,
+        },
+        env,
+      ),
+    );
+  for (const entry of ["sdk-cli", "sdk-ts", "sdk-py"])
+    expect(run({ CLAUDE_CODE_ENTRYPOINT: entry })).toContain(
+      "only your last message",
+    );
+  expect(
+    run({ CLAUDE_CODE_ENTRYPOINT: "cli" }, { hook_event_name: "SubagentStop" }),
+  ).toContain("only your last message");
+  expect(run({ CLAUDE_CODE_ENTRYPOINT: "cli" })).not.toContain(
+    "only your last message",
+  );
+});
