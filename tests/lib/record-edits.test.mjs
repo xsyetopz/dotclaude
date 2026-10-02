@@ -43,3 +43,19 @@ test("an empty or outside file_path records nothing", async () => {
   await record(io, edit("../outside.js"));
   expect((await load(io, "s1")).edited).toBeUndefined();
 });
+
+test("a relative Bash cwd is resolved from the hook's folder", async () => {
+  const { project, io } = setup();
+  fs.mkdirSync(path.join(project, "sub"));
+  fs.writeFileSync(path.join(project, "sub", "f.txt"), "x");
+  await record(io, {
+    session_id: "s1",
+    hook_event_name: "PostToolUse",
+    tool_name: "Bash",
+    cwd: "sub",
+    tool_input: { command: "cat f.txt" },
+  });
+  expect(Object.keys((await load(io, "s1")).reads)).toEqual([
+    path.join(project, "sub", "f.txt"),
+  ]);
+});

@@ -104,15 +104,11 @@ export default async function (io, data) {
     }
     case "Bash": {
       const command = data.tool_input?.command;
+      // A relative `cwd` is from the hook's folder, as for `file_path`.
+      const cwd = path.resolve(io.cwd, data.cwd || projectRoot(io, data));
       const written =
         data.hook_event_name === "PostToolUse" && typeof command === "string"
-          ? await shellWrites(
-              io,
-              command,
-              projectRoot(io, data),
-              io.home,
-              data.cwd || projectRoot(io, data),
-            )
+          ? await shellWrites(io, command, projectRoot(io, data), io.home, cwd)
           : [];
       for (const rel of written) {
         if (!(await codeFile(io, rel, projectRoot(io, data)))) continue;
@@ -122,12 +118,7 @@ export default async function (io, data) {
       for (const rel of written) recordEdited(state, rel);
       const reads =
         data.hook_event_name === "PostToolUse"
-          ? fullReads(
-              command,
-              data.cwd || projectRoot(io, data),
-              io.home,
-              io.platform,
-            )
+          ? fullReads(command, cwd, io.home, io.platform)
           : [];
       for (const abs of reads)
         await recordRead(io, state, abs, `\`${command.trim()}\``);

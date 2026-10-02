@@ -32,10 +32,17 @@ function deletesTempOnly(io, data) {
   const { commands, unparsed } = parse(String(data.tool_input?.command ?? ""));
   if (unparsed.length || !commands.length) return false;
   const path = pathFor(io.platform);
-  // An empty or relative `cwd` would make `resolve` throw. Root it at `io.cwd`.
-  const cwd = path.resolve(io.cwd, data.cwd || io.cwd);
-  // A project can itself sit in a temp folder. Its files are not scratch.
-  const project = path.resolve(io.cwd, io.env.CLAUDE_PROJECT_DIR || cwd);
+  let cwd;
+  let project;
+  try {
+    // An empty or relative `cwd` would make `resolve` throw. Root it at
+    // `io.cwd`. The engine can give an empty `io.cwd`, so a throw denies.
+    cwd = path.resolve(io.cwd, data.cwd || io.cwd);
+    // A project can itself sit in a temp folder. Its files are not scratch.
+    project = path.resolve(io.cwd, io.env.CLAUDE_PROJECT_DIR || cwd);
+  } catch {
+    return false;
+  }
   return commands.every((cmd) => {
     if (cmd.name !== "rm" || cmd.cwdHint) return false;
     const paths = cmd.args.filter((a) => !a.startsWith("-"));
@@ -57,13 +64,12 @@ function deletesTempOnly(io, data) {
 /** True the first time this agent passes `mark`. */
 async function firstTime(io, data, mark) {
   const path = pathFor(io.platform);
+  const safe = (id) => String(id).replace(/[^\w-]/g, "_");
   const file = path.join(
     stateDir(io),
-    `${data.session_id}.${String(data.agent_id).replace(/[^\w-]/g, "_")}.${mark}`,
+    `${safe(data.session_id)}.${safe(data.agent_id)}.${mark}`,
   );
-  if (await io.fs.exists(file)) return false;
-  await io.fs.write(file, "");
-  return true;
+  return await io.fs.create(file, "");
 }
 
 export default async function (io, data) {

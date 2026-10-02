@@ -11,15 +11,14 @@
 
 import { definition } from "../lib/_agents.mjs";
 import { option, preToolOutput } from "../lib/_core.mjs";
-import { allowed, canonical, effortLevels, family } from "../lib/_models.mjs";
+import { allowed, effortLevels, family } from "../lib/_models.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 
 const HINT = `Omit \`model\` to use the agent's own model. For fully specified, mechanical work use \`dotclaude:mechanical-worker\` (Sonnet 5.5).`;
 
+/** True when `model` runs as Fable, after `ANTHROPIC_DEFAULT_*_MODEL`. */
 function isFable(model, env) {
-  const m = canonical(model);
-  const mapped = m === "fable" ? env.ANTHROPIC_DEFAULT_FABLE_MODEL : "";
-  return /fable/.test(mapped ? canonical(mapped) : m);
+  return family(model, env) === "fable";
 }
 
 const list = (items) => items.map((i) => `\`${i}\``).join(", ");
