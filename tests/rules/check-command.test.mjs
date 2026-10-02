@@ -19,6 +19,15 @@ const CHECKS = [
   ],
   ["(just fmt; just test-unit) 2>&1 | rg y", "just test-unit"],
   ["make ci-local", "make ci-local"],
+  ["node --test", "node --test"],
+  [
+    'node --test slug.test.mjs 2>&1 | grep -E "^ℹ (pass|fail)"',
+    "node --test slug.test.mjs",
+  ],
+  [
+    "ls && node --test-reporter=dot --test a.test.mjs",
+    "node --test-reporter=dot --test a.test.mjs",
+  ],
 ];
 
 const NOT_CHECKS = [
@@ -27,6 +36,8 @@ const NOT_CHECKS = [
   "just install",
   "xcrun simctl list",
   "swift package resolve",
+  "node script.mjs --test",
+  "node --test-reporter=dot app.mjs",
 ];
 
 for (const [command, found] of CHECKS)

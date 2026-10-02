@@ -103,6 +103,8 @@ const CHECK = [
   /^(npm|pnpm|yarn|bun) (run )?(test|build|lint|check|typecheck|type-check|tsc|verify|validate|ci|e2e|test:\S+|lint:\S+|build:\S+)\b/,
   /^(npm|pnpm|yarn) (t|tst)$/,
   /^bun test\b/,
+  // Node's built-in runner. Flags only before `--test`: `node app.mjs --test` runs app.mjs.
+  /^node (-\S+ )*--test( |$)/,
   /^(npx|pnpx|bunx|pnpm exec|yarn exec|pnpm dlx) (jest|vitest|tsc|eslint|biome|oxlint|playwright|mocha|ava|prettier --check|cypress run|markdownlint(?:-cli2)?)\b/,
   /^(jest|vitest|mocha|ava|tsc|eslint|biome|oxlint|playwright test|cypress run|markdownlint(?:-cli2)?)\b/,
   /^claude plugin validate\b/,
