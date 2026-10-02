@@ -10,6 +10,95 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-10-01
+
+### Breaking
+
+- dotclaude now needs Claude Code 2.1.287 or later. One version,
+  `CLAUDE_CODE` in `hooks/lib/_version.mjs`, replaces the separate minimum
+  and tested versions. The session start notice names it for an older CLI, and
+  the "tested on" notice for a newer CLI is removed. `/dotclaude:setup` with
+  auto-update on sets `minimumVersion` to 2.1.287 or to the running version,
+  whichever is later. `install-managed.mjs` sets `requiredMinimumVersion` to
+  2.1.287.
+
+### Removed
+
+- The `UserPromptSubmit` hook `expand-inline-skill.mjs`. Claude Code 2.1.287
+  tells Claude about each skill named in a message, and it lets the `Skill`
+  tool run a user-only skill that the user typed.
+
+### Added
+
+- A resumed or forked session with 100k tokens of context or more and an
+  expired prompt cache tells the user the context size and the estimated cost
+  of the first prompt, and suggests `/clear` with a handoff note. It uses the
+  new SessionStart fields of Claude Code 2.1.287.
+- Three role cases in `evals/`, with the tag `tier-5`: `t5-review` (a commit
+  with three planted defects and a correct loop that looks wrong),
+  `t5-debug` (a test that fails only after another test, from shared state
+  in a third module), and `t5-slice` (a specified feature across four files).
+  Each has a hidden test oracle.
+- `evals/report.mjs` names the graders that failed in each case, with counts.
+- Held-out group `d` in `evals-heldout/d/`: 10 harder cases, written blind
+  like groups `a` to `c`. Each is a git repository with 18 to 37 files and
+  several traps that interact, with up to 80 turns. Groups `a` to `c` were at
+  their ceiling (27 of 30 cases passed every trial in both arms). No agent has
+  run group `d` yet.
+- Held-out group `e` in `evals-heldout/e/`: 10 more hard cases, written blind
+  from dossier parts 04 and 05 and other parts that no earlier case cites.
+  Each is a git repository with 20 to 38 files, and six hold uncommitted user
+  work that must survive. No agent has run group `e` yet.
+
+### Changed
+
+- The dossier has a new part, [Claude Mods](docs/dossier/mods.md). It records
+  the plugin hooks modules of Claude Code 2.1.287 and the plan for a dotclaude
+  mod in 0.18.
+- `t1-false-alarm` has two judges. One checks that the reply says the bug
+  did not reproduce and that nothing changed. The other checks that the reply
+  shows the command with its output. A correct reply without the command now
+  fails only the second.
+- The output style tells Claude to show the MRE itself (the command, test,
+  or code) and its output in the reply. Before, it said "Report it with its
+  output", and replies gave the results without the command that made them.
+  In 3 `t1-false-alarm` runs on Sonnet 5.5, 0 replies showed the command
+  before the change, and 3 did after it.
+- The `t1-fix` grader `reproduced-first` accepts `Write` as well as `Edit`
+  after the first test run. It is now a `regex` grader on the trace, because
+  `tool_order` takes only one tool.
+- `reviewer` and `debugger` use Sonnet 5.5 at `high`, not Opus 5.5. In the
+  0.17.1 evals, Sonnet 5.5 at `high` passed `t5-review` in 20 of 20 trials
+  and the debug cases in 40 of 40, at 52% to 56% of the Opus 5.5 cost per
+  pass. The cases are at the ceiling for both models, so harder reviews are
+  not tested.
+- The output style tells Claude to state a gap or a follow-up as a fact,
+  with no offer such as "If you want it, say so". In the 0.17.1 re-run, 3 of
+  20 Sonnet 5.5 replies to `t1-fix` ended with such an offer.
+- CI runs the tests on Windows too. A `.gitattributes` file keeps LF line
+  endings on Windows checkouts.
+
+### Fixed
+
+- The Bash guard asked before `find /tmp -maxdepth 1 -name 'ojd-*' -exec rm
+  -rf {} +` when the project was in `/tmp`, which is the usual case on Linux.
+  A name-filtered delete with `-maxdepth 1` in a temp folder that holds the
+  project now runs when no name matches the project's entry in that folder.
+  The Linux CI job failed on this.
+- `node --test` did not count as a check. After an edit and a `node --test`
+  run, the Stop hook still told Claude that no check ran after the last edit.
+  In the 0.17.1 evals, 64 of 200 replies to code tasks mentioned the note.
+  A `node` command with only flags before `--test` now counts.
+- In `claude -p`, the Agent SDK, and subagents, the caller gets only the last
+  message. When a Stop hook sent Claude back after a full report, the short
+  second reply replaced the report. The Stop and SubagentStop notes now tell
+  Claude to make its last message the full report there.
+- All tracked Markdown passes markdownlint. `evals-heldout/` and the
+  `dotclaude-browser` skills get the prompt-file rules of `skills/`. The
+  `c-already-fixed` prompt puts the email address in backticks, so it is
+  not a bare URL. In `contribute`, step 1 of the procedure was inside the
+  `<procedure>` HTML block and did not render as a list item.
+
 ## [0.17.0] - 2026-10-01
 
 ### Breaking
@@ -822,4 +911,4 @@ run `/dotclaude:apply-settings-profile` again.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.17.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.17.1...HEAD
