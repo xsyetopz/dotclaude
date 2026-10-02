@@ -272,9 +272,10 @@ const notesOf = (out) => {
 /**
  * The classic PreToolUse input for one `tool.call` input. The engine gives
  * no `agent_type`, so it comes from the agent list. On the main thread the
- * input has no `agent_id` and no `agent_type`.
+ * input has no `agent_id` and no `agent_type`. `effort` is the effort level of
+ * the latest step of the main thread, or undefined.
  */
-async function classicInput($, e) {
+async function classicInput($, e, effort) {
   const toolInput = {};
   for (const [key, value] of Object.entries(e))
     if (!RESERVED.has(key)) toolInput[key] = value;
@@ -285,6 +286,7 @@ async function classicInput($, e) {
     tool_input: toolInput,
     tool_use_id: e.tool_use_id,
   };
+  if (effort) data.effort = { level: effort };
   if (typeof e.agentId === "string" && e.agentId) {
     data.agent_id = e.agentId;
     const agents = await $.agent.list().catch(() => []);
@@ -374,9 +376,10 @@ async function noteAgentContext($, options, places, agentId, usage) {
 export function register(on, options) {
   const verdicts = new Map();
   const places = new Map();
+  let effort;
 
   on("tool.call", async ($, e, next) => {
-    const data = await classicInput($, e);
+    const data = await classicInput($, e, effort);
     const pre = await runActions($, options, "PreToolUse", data);
     const h = pre?.hookSpecificOutput ?? {};
     // A deny does not call `next`, so nothing below this hook runs.
@@ -458,8 +461,10 @@ export function register(on, options) {
 
   // The engine gives no subagent transcript, so each step of a subagent
   // keeps its context tokens. Each chunk passes unchanged, and a failure to
-  // keep the tokens does not stop the step.
+  // keep the tokens does not stop the step. A step of the main thread keeps
+  // its effort level, because a `tool.call` input does not give it.
   on("turn.step", async function* ($, e, next) {
+    if (!e.agentId) effort = typeof e.effort === "string" ? e.effort : undefined;
     const r = yield* next(e);
     if (typeof e.agentId === "string" && e.agentId)
       try {

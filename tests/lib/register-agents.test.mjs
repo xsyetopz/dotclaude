@@ -207,3 +207,28 @@ test("the SessionStart hook keeps no count for a subagent or another source", ()
   compactStart(data, 2, { agent_id: "a1", agent_type: "x" });
   expect(fs.existsSync(path.join(data, "sessions"))).toBe(false);
 });
+
+test("a main step gives its effort to the model lock of a later Agent call", async () => {
+  const on = registered();
+  const $ = fake();
+  const call = { tool: "Agent", tool_use_id: "t2", model: "sonnet", prompt: "x" };
+  const run = async () => {
+    let called = false;
+    const out = await on["tool.call"]($, call, async (e) => {
+      called = true;
+      return { result: e };
+    });
+    return { out, called };
+  };
+  // No step yet, so the effort is not known and the call runs.
+  expect((await run()).called).toBe(true);
+  await drain(on["turn.step"]($, { effort: "max" }, stepOf([], {})));
+  const denied = await run();
+  expect(denied.called).toBe(false);
+  expect(denied.out.deny).toContain("`max`");
+  // A subagent step does not change the effort of the main thread.
+  await drain(
+    on["turn.step"]($, { agentId: "a1", effort: "low" }, stepOf([], {})),
+  );
+  expect((await run()).called).toBe(false);
+});
