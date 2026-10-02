@@ -33,10 +33,7 @@ export const ACTIONS = {
     ["startup|clear", "session-start/point-to-handoff.mjs"],
     ["*", "session-start/add-session-notes.mjs"],
   ],
-  UserPromptSubmit: [
-    ["*", "user-prompt-submit/expand-inline-skill.mjs"],
-    ["*", "user-prompt-submit/note-usage-limits.mjs"],
-  ],
+  UserPromptSubmit: [["*", "user-prompt-submit/note-usage-limits.mjs"]],
   SubagentStart: [
     ["*", "subagent-start/inject-working-conventions.mjs"],
     ["*", "subagent-start/count-running-agents.mjs"],

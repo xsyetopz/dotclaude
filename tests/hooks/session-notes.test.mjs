@@ -6,22 +6,19 @@ import fs from "node:fs";
 import path from "node:path";
 import { LIMITS } from "../../hooks/lib/_budget.mjs";
 import { profileStamp } from "../../hooks/lib/_profile.mjs";
-import {
-  MIN_CLAUDE_CODE,
-  TESTED_CLAUDE_CODE,
-} from "../../hooks/lib/_version.mjs";
+import { CLAUDE_CODE } from "../../hooks/lib/_version.mjs";
 import { hook, tmp } from "../support/hooks.mjs";
 
 const agent = (version) => `claude-code_${version.replaceAll(".", "-")}_agent`;
 
-/** Run the setup check on the tested Claude Code release, with a fresh data dir. */
+/** Run the setup check on the required Claude Code release, with a fresh data dir. */
 function setupCheck(env = {}, data = tmp("dotclaude-data-")) {
   return hook(
     "session-start/warn-incomplete-setup.mjs",
     { hook_event_name: "SessionStart", source: "startup" },
     {
       CLAUDE_PLUGIN_DATA: data,
-      AI_AGENT: agent(TESTED_CLAUDE_CODE),
+      AI_AGENT: agent(CLAUDE_CODE),
       CLAUDE_CODE_EXECPATH: "",
       CLAUDE_CODE_EFFORT_LEVEL: "",
       DOTCLAUDE_SETTINGS_PROFILE: profileStamp(),
@@ -65,33 +62,25 @@ test("session start says when secret redaction has no betterleaks", () => {
 });
 
 test("session start says when Claude Code is older than the plugin needs", () => {
-  const old = setupCheck({ AI_AGENT: agent("2.1.283") }).systemMessage;
-  expect(old).toContain(`${MIN_CLAUDE_CODE} or later`);
+  const old = setupCheck({ AI_AGENT: agent("2.1.286") }).systemMessage;
+  expect(old).toContain(`${CLAUDE_CODE} or later`);
   expect(old).toContain("`claude update`");
-  expect(setupCheck({ AI_AGENT: agent(MIN_CLAUDE_CODE) })).toBe(null);
+  expect(setupCheck({ AI_AGENT: agent(CLAUDE_CODE) })).toBe(null);
   // A native install names the version in the binary path.
   expect(
     setupCheck({
       AI_AGENT: "",
-      CLAUDE_CODE_EXECPATH: "/u/.local/share/claude/versions/2.1.283",
+      CLAUDE_CODE_EXECPATH: "/u/.local/share/claude/versions/2.1.286",
     }).systemMessage,
-  ).toContain(`${MIN_CLAUDE_CODE} or later`);
+  ).toContain(`${CLAUDE_CODE} or later`);
   // An unknown version gives no notice, because the check cannot tell.
   expect(setupCheck({ AI_AGENT: "" })).toBe(null);
 });
 
-test("a Claude Code newer than the tested release gets one note per version", () => {
-  const data = tmp("dotclaude-data-");
-  // Numeric order, not string order: 2.1.1000 is newer than 2.1.286.
-  const newer = setupCheck({ AI_AGENT: agent("2.1.1000") }, data).systemMessage;
-  expect(newer).toContain(TESTED_CLAUDE_CODE);
-  expect(newer).toContain("2.1.1000");
-  // The note is for the user once, not at every start.
-  expect(setupCheck({ AI_AGENT: agent("2.1.1000") }, data)).toBe(null);
-  expect(
-    setupCheck({ AI_AGENT: agent("2.2.0") }, data).systemMessage,
-  ).toContain("2.2.0");
-  expect(setupCheck({ AI_AGENT: agent(TESTED_CLAUDE_CODE) }, data)).toBe(null);
+test("a Claude Code newer than the required release gets no notice", () => {
+  // Numeric order, not string order: 2.1.1000 is newer than 2.1.287.
+  expect(setupCheck({ AI_AGENT: agent("2.1.1000") })).toBe(null);
+  expect(setupCheck({ AI_AGENT: agent("2.2.0") })).toBe(null);
 });
 
 test("Fable sessions get the Fable adjustments; Opus sessions get nothing", () => {

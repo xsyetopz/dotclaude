@@ -1,11 +1,12 @@
-// The Claude Code versions dotclaude needs and was tested on, and the version
-// of the running CLI, read without a `claude --version` spawn.
+// The Claude Code version dotclaude needs, and the version of the running CLI,
+// read without a `claude --version` spawn.
 
-/** The first release with Sonnet 5.5, which the agents and the profile use. */
-export const MIN_CLAUDE_CODE = "2.1.284";
-
-/** The release this plugin version was built and tested against. */
-export const TESTED_CLAUDE_CODE = "2.1.286";
+/**
+ * The release this plugin version was built and tested against, and the
+ * oldest that it supports. The setup's `minimumVersion` keeps auto-update at
+ * or above it.
+ */
+export const CLAUDE_CODE = "2.1.287";
 
 /**
  * The running Claude Code version, such as "2.1.286", or null. The CLI puts

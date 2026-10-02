@@ -49,7 +49,7 @@ without a browser do not load them:
 /plugin install dotclaude-browser@dotclaude
 ```
 
-Requirements: Claude Code 2.1.284 or later, [Bun](https://bun.sh) 1.4.2 or
+Requirements: Claude Code 2.1.287 or later, [Bun](https://bun.sh) 1.4.2 or
 later on `PATH`, and git.
 
 ## Update

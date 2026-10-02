@@ -20,7 +20,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
-import { MIN_CLAUDE_CODE } from "../../../hooks/lib/_version.mjs";
+import { CLAUDE_CODE } from "../../../hooks/lib/_version.mjs";
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
@@ -43,7 +43,7 @@ const LOCK = {
 // the plugin's skill allowed-tools under allowManagedPermissionRulesOnly.
 const ORG = {
   enforceAvailableModels: true,
-  requiredMinimumVersion: MIN_CLAUDE_CODE,
+  requiredMinimumVersion: CLAUDE_CODE,
   enabledPlugins: { "dotclaude@dotclaude": true },
   extraKnownMarketplaces: {
     dotclaude: { source: { source: "github", repo: "xsyetopz/dotclaude" } },

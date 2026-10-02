@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { MIN_CLAUDE_CODE } from "../../hooks/lib/_version.mjs";
+import { CLAUDE_CODE } from "../../hooks/lib/_version.mjs";
 
 const SCRIPT = path.resolve(
   import.meta.dirname,
@@ -127,7 +127,7 @@ test("install-managed --org adds the organization keys to the lock", () => {
   const written = JSON.parse(fs.readFileSync(dropIn(dir), "utf8"));
   expect(written.fastMode).toBe(false);
   expect(written.enforceAvailableModels).toBe(true);
-  expect(written.requiredMinimumVersion).toBe(MIN_CLAUDE_CODE);
+  expect(written.requiredMinimumVersion).toBe(CLAUDE_CODE);
   expect(written.enabledPlugins).toStrictEqual({ "dotclaude@dotclaude": true });
   // Declaring the marketplace source keeps the setup skill's allowed-tools
   // under allowManagedPermissionRulesOnly.

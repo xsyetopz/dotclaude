@@ -22,7 +22,7 @@ The drop-in has the personal lock from
 | `enabledPlugins` | `{"dotclaude@dotclaude": true}` | Enables dotclaude for every user. Policy settings take precedence over user and project settings. |
 | `extraKnownMarketplaces` | the `xsyetopz/dotclaude` GitHub source | Registers the marketplace for every user. It also keeps the skill `allowed-tools` (see below). |
 | `enforceAvailableModels` | `true` | The "Default" model also obeys `availableModels`. |
-| `requiredMinimumVersion` | `MIN_CLAUDE_CODE` in `hooks/lib/_version.mjs` | Claude Code exits at startup when it is older than the version that dotclaude needs. |
+| `requiredMinimumVersion` | `CLAUDE_CODE` in `hooks/lib/_version.mjs` | Claude Code exits at startup when it is older than the version that dotclaude needs. |
 
 **Why the drop-in sets no `strictKnownMarketplaces`:** that list is an
 allowlist. A list that names only dotclaude blocks every other marketplace of

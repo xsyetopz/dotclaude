@@ -213,7 +213,7 @@ test("a 0.16.1 settings file gets auto-update on and keeps every other value", (
   run("apply-settings.mjs", home, "--apply");
   const merged = read(file);
   expect(merged.autoUpdatesChannel).toBe("stable");
-  expect(merged.minimumVersion).toBe("2.1.286");
+  expect(merged.minimumVersion).toBe("2.1.287");
   const changed = {
     "env.DISABLE_AUTOUPDATER": undefined,
     "env.DOTCLAUDE_SETTINGS_PROFILE": profileStamp(),
@@ -232,7 +232,7 @@ test("auto-update keeps the running version as the floor and never lowers one", 
     // A newer CLI on the latest channel does not step back to stable's.
     ["2-1-290", undefined, "2.1.290"],
     // An older CLI gets the tested release as its floor.
-    ["2-1-285", undefined, "2.1.286"],
+    ["2-1-285", undefined, "2.1.287"],
     // A higher floor that the user set stays.
     ["2-1-286", "2.1.300", "2.1.300"],
   ]) {

@@ -24,9 +24,9 @@ import {
   STAMP_KEY,
 } from "../../../hooks/lib/_profile.mjs";
 import {
+  CLAUDE_CODE,
   claudeVersion,
   olderThan,
-  TESTED_CLAUDE_CODE,
 } from "../../../hooks/lib/_version.mjs";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
@@ -186,9 +186,7 @@ function applyAutoUpdate(settings) {
   }
   const running = claudeVersion();
   let floor =
-    running && olderThan(TESTED_CLAUDE_CODE, running)
-      ? running
-      : TESTED_CLAUDE_CODE;
+    running && olderThan(CLAUDE_CODE, running) ? running : CLAUDE_CODE;
   const own = out.minimumVersion;
   if (typeof own === "string" && olderThan(floor, own)) floor = own;
   if (env.DISABLE_UPDATES)

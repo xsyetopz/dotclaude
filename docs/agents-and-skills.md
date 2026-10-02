@@ -66,7 +66,8 @@ from an agent that it stops at its turn limit. See
 | `drive-web-browser`, `recognize-captcha` | browser automation with agent-browser or CloakBrowser, offline CAPTCHA OCR, in the optional `dotclaude-browser` plugin | The working rules require a browser check of UI changes. Research and tests meet sites with bot checks. CloakBrowser prevents CAPTCHAs, and the offline OCR is a fallback that needs no paid service. A separate plugin keeps the skills and their session note out of sessions that use no browser. |
 
 You name the skills with a leading `/`. You can put `/dotclaude:<skill>`
-anywhere in a message. A user-only skill must start the message. General
+anywhere in a message. Claude Code then tells Claude that the message names
+a skill, and Claude runs it when you ask it to. General
 workflow skills are in [xsyetopz/skills](https://github.com/xsyetopz/skills).
 
 ### Integrations
