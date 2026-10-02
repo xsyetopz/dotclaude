@@ -98,6 +98,22 @@ const TABLE = [
   ["*a*b*", ["ab", "xaxbx", "ba"]],
   ["héllo*", ["héllo", "héllow", "hello"]],
   ["日本/*", ["日本/語", "日本"]],
+  // A brace in a class is a plain character.
+  ["[{]", ["{", "a", "}"]],
+  ["[{,}]", ["{", ",", "}", "a"]],
+  ["a[{]b,c", ["a{b,c", "ab", "a{b", "ac"]],
+  ["{a,[}]}", ["}", "a", "b"]],
+  // A lone `**` in a set is a `*`.
+  ["{**,a}/x", ["x", "a/x", "q/x", "/x", "q/r/x"]],
+  ["{a,**}/x", ["x", "q/x", "q/r/x"]],
+  ["{**,a}", ["x", "x/y", "a"]],
+  ["x/{**,a}", ["x", "x/q", "x/"]],
+  ["{**/x,y}", ["x", "a/x", "y", "a/y"]],
+  ["{**/,a}x", ["x", "q/x", "ax"]],
+  // Each `!` at the start reverses the match again.
+  ["!!a", ["a", "b", ""]],
+  ["!!!a", ["a", "b"]],
+  ["!!*.js", ["a.js", "a.ts"]],
 ];
 
 test("globMatch gives the same answer as Bun.Glob#match", () => {
@@ -126,6 +142,8 @@ test("globMatch holds known answers", () => {
   expect(globMatch("\\*", "a")).toBe(false);
 });
 
+// The io of the contract: a link has `kind: "other"` and `isLink: true`,
+// whatever it points to.
 const io = {
   fs: {
     list: async (dir) => {
@@ -138,11 +156,9 @@ const io = {
           try {
             st = await fs.promises.stat(full);
           } catch {}
-          const kind = st?.isDirectory()
-            ? "dir"
-            : st?.isFile()
-              ? "file"
-              : "other";
+          let kind = "other";
+          if (!link && st?.isDirectory()) kind = "dir";
+          else if (!link && st?.isFile()) kind = "file";
           return {
             name,
             kind,
@@ -321,6 +337,141 @@ test("globFiles lists only the folders that the pattern needs", async () => {
     expect(new Set(listed).size).toBe(listed.length);
     expect(listed).not.toContain(path.join("a", ".h"));
     expect(listed).not.toContain("lnk");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("globMatch takes linear time for a hostile pattern", () => {
+  const start = performance.now();
+  const stars = "*a".repeat(30);
+  expect(globMatch(`${stars}b`, "a".repeat(100))).toBe(false);
+  expect(globMatch(`${stars}b`, `${"a".repeat(100)}b`)).toBe(true);
+  expect(globMatch("*".repeat(30) + "x", "a".repeat(100))).toBe(false);
+  expect(globMatch("[ab]*".repeat(30) + "c", "ab".repeat(50))).toBe(false);
+  // The same for `**` across segments.
+  const deep = "a/".repeat(100);
+  expect(globMatch("**/a/".repeat(30) + "b", deep)).toBe(false);
+  expect(globMatch("**/*a/".repeat(30) + "b", `${deep}c`)).toBe(false);
+  expect(performance.now() - start).toBeLessThan(100);
+});
+
+test("globMatch gives nothing for a pattern with too many alternatives", () => {
+  const sets = (n) => "{a,b}".repeat(n);
+  const start = performance.now();
+  // 2^10 alternatives are in the cap, 2^11 are not.
+  expect(globMatch(sets(10), "a".repeat(10))).toBe(true);
+  expect(globMatch(sets(11), "a".repeat(11))).toBe(false);
+  expect(globMatch(sets(30), "a".repeat(30))).toBe(false);
+  expect(globMatch(`{${"a,".repeat(2000)}b}`, "b")).toBe(false);
+  // A negated pattern with no alternative is true, as for a missing match.
+  expect(globMatch(`!${sets(11)}`, "a".repeat(11))).toBe(true);
+  expect(performance.now() - start).toBeLessThan(500);
+});
+
+test("globFiles gives nothing for a pattern with too many alternatives", async () => {
+  const root = tree();
+  try {
+    expect(await globFiles(io, "{a,b}".repeat(11), { cwd: root })).toEqual([]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// An in-memory folder tree for a Windows io. A name ends in `/` for a folder.
+function fakeWin(names) {
+  const tree = new Map();
+  for (const full of names) {
+    const parts = full.split("/");
+    for (let i = 1; i <= parts.length; i++) {
+      const dir = parts.slice(0, i - 1).join("\\");
+      const entry = {
+        name: parts[i - 1],
+        kind: i < parts.length ? "dir" : "file",
+      };
+      const list = tree.get(dir) ?? [];
+      if (!list.some((e) => e.name === entry.name)) list.push(entry);
+      tree.set(dir, list);
+    }
+  }
+  const listed = [];
+  return {
+    listed,
+    platform: "win32",
+    fs: {
+      list: async (dir) => {
+        listed.push(dir);
+        const key = dir.replace(/\\+$/, "");
+        const entries = tree.get(key);
+        if (!entries) throw new Error(`ENOENT ${dir}`);
+        return entries.map((e) => ({
+          ...e,
+          size: 0,
+          mtimeMs: 0,
+          isLink: false,
+        }));
+      },
+    },
+  };
+}
+
+test("globFiles on win32 reads a backslash as a separator", async () => {
+  const win = fakeWin([
+    "C:/proj/a.js",
+    "C:/proj/b.ts",
+    "C:/proj/src/c.js",
+    "C:/proj/src/deep/d.js",
+    "D:/x.js",
+    "//srv/share/e.js",
+  ]);
+  expect((await globFiles(win, "C:\\proj\\*.js")).sort()).toEqual([
+    "C:\\proj\\a.js",
+  ]);
+  expect((await globFiles(win, "C:/proj/*.js")).sort()).toEqual([
+    "C:\\proj\\a.js",
+  ]);
+  expect((await globFiles(win, "C:\\proj\\**\\*.js")).sort()).toEqual([
+    "C:\\proj\\a.js",
+    "C:\\proj\\src\\c.js",
+    "C:\\proj\\src\\deep\\d.js",
+  ]);
+  expect(await globFiles(win, "C:\\proj\\s*\\")).toEqual(["C:\\proj\\src"]);
+  expect(await globFiles(win, "D:\\*.js")).toEqual(["D:\\x.js"]);
+  expect(await globFiles(win, "\\\\srv\\share\\*.js")).toEqual([
+    "\\\\srv\\share\\e.js",
+  ]);
+  // A relative pattern starts in `cwd` and gives backslashes.
+  expect(
+    (await globFiles(win, "src\\*.js", { cwd: "C:\\proj" })).sort(),
+  ).toEqual(["src\\c.js"]);
+  // The io gets a path with backslashes only.
+  expect(win.listed.every((d) => !d.includes("/") || d.startsWith("//"))).toBe(
+    true,
+  );
+});
+
+test("globFiles on a posix io keeps a backslash as an escape", async () => {
+  const root = tree();
+  try {
+    expect(
+      await globFiles({ ...io, platform: "posix" }, "t\\op.js", { cwd: root }),
+    ).toEqual(["top.js"]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("globFiles uses the link flag and not the kind of a link", async () => {
+  const root = tree();
+  try {
+    const list = await io.fs.list(root);
+    const link = list.find((e) => e.name === "lnk");
+    expect(link).toMatchObject({ kind: "other", isLink: true });
+    // A link to a folder is not a folder for a wildcard or for `**`.
+    expect(await globFiles(io, "*/", { cwd: root })).not.toContain("lnk");
+    expect(await globFiles(io, "**/x.js", { cwd: root })).not.toContain(
+      "lnk/x.js",
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
