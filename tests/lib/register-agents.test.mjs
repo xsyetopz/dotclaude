@@ -1,10 +1,13 @@
-// The agent events of the hooks module (`agent.spawn`, `turn.step`, and
-// `session.compact`) and the session facts that they keep, over a fake `on`
+// The agent events of the hooks module (`agent.spawn` and `turn.step`) and
+// the session facts that the module keeps in state files, over a fake `on`
 // and a fake `$`.
 
 import { expect, test } from "bun:test";
+import fs from "node:fs";
+import path from "node:path";
 import { agentContextFile, compactionsFile } from "../../hooks/lib/_io-mod.mjs";
 import { modIo } from "../../hooks/register.mjs";
+import { isolatedHook, tmp } from "../support/hooks.mjs";
 import { fake, registered } from "./fake-engine.mjs";
 
 const spawnInput = {
@@ -148,25 +151,34 @@ test("agentContext gives null for a missing or bad file", async () => {
   expect(await (await modIo($, {}, {})).session.agentContext()).toBe(null);
 });
 
-test("session.compact counts each compaction of the main conversation", async () => {
-  const on = registered();
+test("the module reads the count of compactions from its state file", async () => {
   const $ = fake();
   const facts = await factsOf($);
   expect(await facts.compactions()).toBe(null);
-  const done = { messages: [] };
-  const compact = (e, r) => on["session.compact"]($, e, async () => r);
-  expect(await compact({ trigger: "auto", messages: [] }, done)).toBe(done);
-  expect(await facts.compactions()).toBe(1);
-  await compact({ trigger: "manual", messages: [] }, done);
-  expect(await facts.compactions()).toBe(2);
-  // A skip and a compaction of a subagent do not count.
-  const skipped = { skip: "blocked" };
-  expect(await compact({ trigger: "auto", messages: [] }, skipped)).toBe(
-    skipped,
-  );
-  await compact({ trigger: "auto", agentId: "a1", messages: [] }, done);
-  expect(await facts.compactions()).toBe(2);
   const io = await modIo($, {}, {});
+  $.files.set(compactionsFile(io, "s1"), "4");
+  expect(await facts.compactions()).toBe(4);
   $.files.set(compactionsFile(io, "s1"), "two");
   expect(await facts.compactions()).toBe(null);
+});
+
+test("the compact SessionStart hook keeps the count of the transcript", () => {
+  const boundary = JSON.stringify({
+    type: "system",
+    subtype: "compact_boundary",
+    isSidechain: false,
+  });
+  const transcript = path.join(tmp("dotclaude-transcript-"), "main.jsonl");
+  fs.writeFileSync(transcript, `${boundary}\n${boundary}\n`);
+  const data = tmp("dotclaude-data-");
+  isolatedHook(
+    "session-start/restore-context-after-compact.mjs",
+    { session_id: "s/1", source: "compact", transcript_path: transcript },
+    {
+      CLAUDE_PLUGIN_DATA: data,
+      CLAUDE_PLUGIN_OPTION_CONTEXT_COMPACT_CARRYOVER: "false",
+    },
+  );
+  const io = { platform: "posix", env: { CLAUDE_PLUGIN_DATA: data } };
+  expect(fs.readFileSync(compactionsFile(io, "s/1"), "utf8")).toBe("2");
 });

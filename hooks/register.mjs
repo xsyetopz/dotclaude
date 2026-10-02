@@ -168,8 +168,9 @@ function modRun($) {
 /**
  * The session facts for one hook input, from `$.session`. The engine gives
  * parsed rows with no token usage, no attachments, and no transcript file,
- * so some facts are not known. The hooks of `register` keep the agent context
- * and the compactions in state files, because the engine does not give them.
+ * so some facts are not known. The `turn.step` hook keeps the agent context,
+ * and `session-start/restore-context-after-compact.mjs` keeps the count of
+ * compactions, in state files.
  * `io` holds the platform and the environment of `modIo`, which give the
  * state folder.
  * It gives the `IoSession` of `_io.mjs`.
@@ -348,23 +349,14 @@ async function noteAgentContext($, options, agentId, usage) {
   );
 }
 
-/** Add 1 to the compactions of the main conversation. */
-async function countCompaction($, options) {
-  const sessionId = await $.session.id();
-  if (!sessionId) return;
-  const io = await modIo($, options, { session_id: sessionId });
-  const count = (await io.session.compactions()) ?? 0;
-  await io.fs.write(compactionsFile(io, sessionId), String(count + 1));
-}
-
 /**
  * Register the hooks of dotclaude. `tool.call` runs the PreToolUse actions
  * before the call and the PostToolUse actions after it. An "ask" stays in
  * `verdicts` until the call ends, because `tool.check` runs inside the `next`
  * of `tool.call`. An "allow" is not kept, so the engine's rules decide, as
  * they do for a classic hook's "allow". `agent.spawn` runs the SubagentStart
- * actions. `turn.step` and `session.compact` keep the session facts that the
- * engine does not give.
+ * actions. `turn.step` keeps the context of each subagent, because the engine
+ * does not give it.
  */
 export function register(on, options) {
   const verdicts = new Map();
@@ -459,19 +451,6 @@ export function register(on, options) {
         await noteAgentContext($, options, e.agentId, r?.usage);
       } catch {
         // The agent context is then not known, and its guard does not act.
-      }
-    return r;
-  });
-
-  // The engine gives no compact boundary in the main conversation, so this
-  // hook counts each compaction that it installs.
-  on("session.compact", async ($, e, next) => {
-    const r = await next(e);
-    if (r && r.skip === undefined && !e.agentId)
-      try {
-        await countCompaction($, options);
-      } catch {
-        // The count is then not known, and the context note counts 0.
       }
     return r;
   });
