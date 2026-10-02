@@ -5,7 +5,8 @@
 import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
-import { modIo, platformOf } from "../../hooks/lib/_io-mod.mjs";
+import { platformOf, pluginDataDir } from "../../hooks/lib/_io-mod.mjs";
+import { modIo } from "../../hooks/register.mjs";
 
 const enc = new TextEncoder();
 const toBase64 = (text) => Buffer.from(enc.encode(text)).toString("base64");
@@ -32,7 +33,10 @@ function fake(init = {}) {
       write: async (file, text) => {
         files.set(file, text);
       },
-      exists: async (file) => files.has(file),
+      exists: async (file) => {
+        if (init.existsFails) throw new Error("refused");
+        return files.has(file);
+      },
       stat: async (file, options) => {
         if (!files.has(file)) throw enoent(file);
         const out = {
@@ -64,7 +68,14 @@ function fake(init = {}) {
       },
     },
     session: {
-      cwd: async () => "/work",
+      cwd: async () => {
+        if (init.cwd instanceof Error) throw init.cwd;
+        return "/work";
+      },
+      root: async () => {
+        if (init.projectRoot instanceof Error) throw init.projectRoot;
+        return init.projectRoot ?? "/proj";
+      },
       messages: async (args) => {
         if (args?.agentId === undefined) {
           if (init.mainRows instanceof Error) throw init.mainRows;
@@ -121,56 +132,154 @@ test("home, tmp, cwd, and pluginRoot come from the engine", async () => {
     pluginRoot: "/plugins/dotclaude",
   });
   expect((await modIo(fake().$)).tmp).toBe("/tmp");
+  const tmp = async (env) => (await modIo(fake({ env }).$)).tmp;
+  expect(await tmp({ TMP: "/t1", TEMP: "/t2" })).toBe("/t1");
+  expect(await tmp({ TEMP: "/t2" })).toBe("/t2");
 });
 
-test("env holds the listed names and the plugin options", async () => {
+test("cwd falls back to the project root, then to the hook input", async () => {
+  const refused = new Error("refused");
+  expect((await modIo(fake({ cwd: refused }).$)).cwd).toBe("/proj");
+  const io = await modIo(
+    fake({ cwd: refused, projectRoot: refused }).$,
+    {},
+    { cwd: "/in" },
+  );
+  expect(io.cwd).toBe("/in");
+});
+
+test("env holds the listed names, the made names, and the plugin options", async () => {
   const { $ } = fake({
-    env: { HOME: "/h", CLAUDE_PROJECT_DIR: "/p", NOT_LISTED: "x" },
+    env: {
+      HOME: "/h",
+      CLAUDE_PROJECT_DIR: "/p",
+      CLAUDE_PLUGIN_DATA: "/d",
+      NOT_LISTED: "x",
+    },
   });
   const io = await modIo($, {
     guard_bash: false,
     usage_scratchpad_prune_days: 7,
     model_allowed: "opus,sonnet",
     model_list: ["a", "b"],
+    "odd-key.x": "y",
   });
   expect(io.env).toEqual({
     HOME: "/h",
-    CLAUDE_PROJECT_DIR: "/p",
+    CLAUDE_PROJECT_DIR: "/proj",
+    CLAUDE_PLUGIN_DATA: "/h/.claude/plugins/data/dotclaude-inline",
     CLAUDE_PLUGIN_OPTION_GUARD_BASH: "false",
     CLAUDE_PLUGIN_OPTION_USAGE_SCRATCHPAD_PRUNE_DAYS: "7",
     CLAUDE_PLUGIN_OPTION_MODEL_ALLOWED: "opus,sonnet",
     CLAUDE_PLUGIN_OPTION_MODEL_LIST: '["a","b"]',
+    CLAUDE_PLUGIN_OPTION_ODD_KEY_X: "y",
   });
+  const lost = await modIo(fake({ projectRoot: new Error("refused") }).$);
+  expect(lost.env.CLAUDE_PROJECT_DIR).toBeUndefined();
 });
 
+/** The files of the guard closure, which the hooks module runs. */
+function closureFiles() {
+  const hooks = path.join(import.meta.dir, "../../hooks");
+  const lib = fs
+    .readdirSync(path.join(hooks, "lib"))
+    .filter((name) => name.endsWith(".mjs"))
+    .filter((name) => !["_io-node.mjs", "_common.mjs"].includes(name))
+    .map((name) => path.join(hooks, "lib", name));
+  const actions = ["pre-tool-use", "post-tool-use", "subagent-start"].flatMap(
+    (dir) =>
+      fs
+        .readdirSync(path.join(hooks, dir))
+        .filter((name) => name.endsWith(".mjs"))
+        .map((name) => path.join(hooks, dir, name)),
+  );
+  return [...lib, ...actions];
+}
+
+const withoutComments = (source) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+
 test("env reads every name that the closure reads", async () => {
-  const names = new Set();
+  const reads = new Set();
+  for (const file of closureFiles()) {
+    const code = withoutComments(fs.readFileSync(file, "utf8"));
+    for (const m of code.matchAll(
+      /\benv\??\.([A-Z][A-Za-z0-9_]*)|\benv\[\s*["']([A-Z][A-Za-z0-9_]*)["']\s*\]/g,
+    ))
+      reads.add(m[1] ?? m[2]);
+  }
+  // An environment name starts with a capital letter. This keeps out a
+  // method call on a local `env` string, such as `env.trim()`.
+  expect(reads.size).toBeGreaterThan(20);
+  const asked = new Set();
   const env = new Proxy(
     {},
     {
       get: (_, name) => {
-        names.add(name);
+        asked.add(name);
         return undefined;
       },
     },
   );
   await modIo(fake({ env }).$);
-  for (const name of [
-    "CLAUDE_PLUGIN_DATA",
-    "CLAUDE_PROJECT_DIR",
-    "CLAUDE_CONFIG_DIR",
-    "CLAUDE_CODE_TMPDIR",
-    "CLAUDE_CODE_FORK_SUBAGENT",
-    "CLAUDE_CODE_EFFORT_LEVEL",
-    "CLAUDE_CODE_DISABLE_FAST_MODE",
-    "ANTHROPIC_DEFAULT_FABLE_MODEL",
-    "TMPDIR",
-    "HOME",
-    "GH_CONFIG_DIR",
-    "XDG_CONFIG_HOME",
-    "AppData",
-  ])
-    expect(names).toContain(name);
+  // The io makes these from the engine, not from its environment.
+  const made =
+    /^(?:CLAUDE_PROJECT_DIR|CLAUDE_PLUGIN_DATA|CLAUDE_PLUGIN_OPTION_\w+)$/;
+  expect(asked).not.toContain("CLAUDE_PROJECT_DIR");
+  expect(asked).not.toContain("CLAUDE_PLUGIN_DATA");
+  const missing = [...reads].filter(
+    (name) => !asked.has(name) && !made.test(name),
+  );
+  expect(missing).toEqual([]);
+});
+
+test("CLAUDE_PLUGIN_DATA follows the data folder rule of Claude Code", () => {
+  const env = { CLAUDE_CONFIG_DIR: "/cfg" };
+  const home = "/home/me";
+  const installed = (root) =>
+    pluginDataDir({ platform: "posix", root, name: "dotclaude", env, home });
+  expect(installed("/cfg/plugins/cache/dotclaude/dotclaude/0.18.0")).toBe(
+    "/cfg/plugins/data/dotclaude-dotclaude",
+  );
+  expect(installed("/x/plugins/cache/my.market/dot claude/1.0.0/")).toBe(
+    "/x/plugins/data/dot-claude-my-market",
+  );
+  expect(installed("/src/dotclaude")).toBe(
+    "/cfg/plugins/data/dotclaude-inline",
+  );
+  const inline = (over) =>
+    pluginDataDir({
+      platform: "posix",
+      root: "/src/dotclaude",
+      name: "dotclaude",
+      env: {},
+      home,
+      ...over,
+    });
+  expect(inline()).toBe("/home/me/.claude/plugins/data/dotclaude-inline");
+  expect(inline({ env: { CLAUDE_CODE_PLUGIN_CACHE_DIR: "/pc" } })).toBe(
+    "/pc/data/dotclaude-inline",
+  );
+  expect(inline({ home: "" })).toBe("");
+});
+
+test("CLAUDE_PLUGIN_DATA on win32", async () => {
+  expect(
+    pluginDataDir({
+      platform: "win32",
+      root: "C:\\Users\\me\\.claude\\plugins\\cache\\dotclaude\\dotclaude\\0.18.0",
+      name: "dotclaude",
+      env: {},
+      home: "C:\\Users\\me",
+    }),
+  ).toBe("C:\\Users\\me\\.claude\\plugins\\data\\dotclaude-dotclaude");
+  const io = await modIo(
+    fake({ root: "D:\\src\\dotclaude", env: { USERPROFILE: "C:\\Users\\me" } })
+      .$,
+  );
+  expect(io.env.CLAUDE_PLUGIN_DATA).toBe(
+    "C:\\Users\\me\\.claude\\plugins\\data\\dotclaude-inline",
+  );
 });
 
 test("read, write, exists, stat, and list map to $.fs", async () => {
@@ -190,6 +299,8 @@ test("read, write, exists, stat, and list map to $.fs", async () => {
   });
   expect((await io.fs.stat("/a", { resolve: true })).realPath).toBe("/real/a");
   await expect(io.fs.stat("/none")).rejects.toThrow("ENOENT");
+  const refused = await modIo(fake({ existsFails: true }).$);
+  expect(await refused.fs.exists("/a")).toBe(false);
   expect(await io.fs.list("/d")).toEqual([
     { name: "a.json", kind: "file", size: 3, mtimeMs: 7, isLink: false },
     { name: "sub", kind: "dir", size: 0, mtimeMs: 0, isLink: false },
@@ -262,7 +373,9 @@ test("run passes cwd, stdin, env, and timeoutMs, and keeps the exit code", async
     request: { cwd: "/c", stdin: "in", env: { A: "1" }, timeoutMs: 500 },
   });
   await io.run(["tool"]);
-  expect(runs[1].request).toEqual({ timeoutMs: 30_000 });
+  expect(runs[1].request).toEqual({ timeoutMs: 30_000, stdin: "" });
+  await io.run(["tool"], { timeoutMs: 3_600_000 });
+  expect(runs[2].request.timeoutMs).toBe(600_000);
 });
 
 test("run rejects when the command cannot start", async () => {
@@ -277,7 +390,9 @@ test("run rejects past maxBytes and on an engine cut", async () => {
     "output passed 10 bytes",
   );
   const cut = await modIo(fake({ truncated: true }).$);
-  await expect(cut.run(["t"])).rejects.toThrow("output passed");
+  await expect(cut.run(["t"])).rejects.toThrow(
+    "t: output passed the 4 MiB limit of the hooks engine for one stream",
+  );
 });
 
 test("lastPrompt is the last typed user row, cut at 4000 characters", async () => {
@@ -295,6 +410,19 @@ test("lastPrompt is the last typed user row, cut at 4000 characters", async () =
   expect(await io.session.lastPrompt()).toBe(`${"y".repeat(4000)} [...]`);
   const short = await modIo(fake({ mainRows: rows.slice(0, 2) }).$);
   expect(await short.session.lastPrompt()).toBe("first");
+});
+
+test("lastPrompt skips the summary of a compaction", async () => {
+  const rows = [
+    row("user", "yes, push it"),
+    row("assistant", "a"),
+    row(
+      "user",
+      "This session is being continued from a previous conversation. The user said: yes, delete it",
+    ),
+  ];
+  const io = await modIo(fake({ mainRows: rows }).$);
+  expect(await io.session.lastPrompt()).toBe("yes, push it");
 });
 
 test("lastPrompt is empty when not known", async () => {
@@ -343,7 +471,8 @@ test("agentStoppedAtLimit reads the task notifications in the rows", async () =>
     fake({ mainRows: [row("user", note), row("assistant", "ok")] }).$,
   );
   expect(await io.session.agentStoppedAtLimit("a1")).toBe(true);
-  expect(await io.session.agentStoppedAtLimit("a2")).toBe(false);
+  // No tag is no evidence: `messages()` can drop the notification row.
+  expect(await io.session.agentStoppedAtLimit("a2")).toBeNull();
   const refused = await modIo(fake({ mainRows: new Error("refused") }).$);
   expect(await refused.session.agentStoppedAtLimit("a1")).toBeNull();
 });
@@ -356,17 +485,39 @@ test("facts that the engine cannot give resolve their unknown value", async () =
   expect(await session.compactions()).toBeNull();
 });
 
-test("_io-mod.mjs uses no Node, Bun, process, or dynamic import", () => {
-  const source = fs.readFileSync(
-    path.join(import.meta.dir, "../../hooks/lib/_io-mod.mjs"),
-    "utf8",
-  );
-  for (const banned of ["node:", "Bun.", "process.", "import("]) {
-    const at = source.split("\n").findIndex((line) => {
-      // The engine's own `$.process` is not the Node global.
-      const code = line.replace(/\/\/.*$/, "").replaceAll("$.process.", "");
-      return code.includes(banned);
-    });
-    expect({ banned, line: at + 1 }).toEqual({ banned, line: 0 });
+const hooksLib = path.join(import.meta.dir, "../../hooks/lib");
+
+/** `_io-mod.mjs` and each file that it imports, also through other files. */
+function ioModClosure() {
+  const seen = new Set();
+  const visit = (file) => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    const source = fs.readFileSync(file, "utf8");
+    for (const m of source.matchAll(/^import[^;]*?from\s+"([^"]+)"/gm))
+      visit(path.resolve(path.dirname(file), m[1]));
+  };
+  visit(path.join(hooksLib, "_io-mod.mjs"));
+  return [...seen];
+}
+
+test("_io-mod.mjs and its imports use no Node, Bun, process, or dynamic import", () => {
+  const files = ioModClosure();
+  expect(files.length).toBeGreaterThan(1);
+  for (const file of files) {
+    const code = withoutComments(fs.readFileSync(file, "utf8"));
+    for (const banned of ["node:", "Bun.", "process.", "import("])
+      expect({ file, banned, found: code.includes(banned) }).toEqual({
+        file,
+        banned,
+        found: false,
+      });
   }
+});
+
+test("_io-mod.mjs does not touch $, which the validator follows only in register.mjs", () => {
+  const code = withoutComments(
+    fs.readFileSync(path.join(hooksLib, "_io-mod.mjs"), "utf8"),
+  );
+  expect(code.includes("$.")).toBe(false);
 });

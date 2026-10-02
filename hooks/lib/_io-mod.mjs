@@ -1,8 +1,9 @@
-// The hooks-module io of `_io.mjs`, over the engine's `$`, for
-// `hooks/register.mjs`. The engine has no Node and no Bun, so this file is a
-// closure file: it reaches the host only through `$`.
+// The pure helpers of the hooks-module io, which `hooks/register.mjs` builds
+// over the engine's `$`. `claude plugin validate` follows `$` only into a
+// function of the same file, so every function that touches `$` is in
+// `register.mjs`. The functions here take plain values and never `$`.
 //
-// What the engine cannot do, and what this io does in its place:
+// What the engine cannot do, and what the io does in its place:
 //
 // - `$.fs` has no delete. `remove` writes an empty file.
 // - `$.fs` has no append. `append` reads the file and writes all of it again,
@@ -12,7 +13,12 @@
 // - `$.fs.read` rejects a file over 4 MiB, also for `head`.
 // - `$.process.run` reads the whole output before it resolves. `run` checks
 //   `maxBytes` then, and cannot stop the command early.
+// - `$.process.run` keeps 4 MiB of each stream. `run` rejects a cut output.
+// - `$.env` is the environment of Claude Code itself. It has no
+//   `CLAUDE_PROJECT_DIR` and no `CLAUDE_PLUGIN_DATA`, because Claude Code
+//   sets them only for a command hook. The io makes them as Claude Code does.
 
+import { pathFor } from "./_path.mjs";
 import {
   LAST_PROMPT_CHARS,
   promptsFromText,
@@ -20,54 +26,17 @@ import {
   turnsFromText,
 } from "./_transcript-parse.mjs";
 
-const RUN_MAX_BYTES = 64 * 1024 * 1024;
-const RUN_TIMEOUT_MS = 30_000;
+export const RUN_MAX_BYTES = 64 * 1024 * 1024;
+export const RUN_TIMEOUT_MS = 30_000;
+/** The longest timeout that `$.process.run` takes. */
+export const RUN_TIMEOUT_MAX_MS = 600_000;
 
 /**
- * The environment names that the guard closure reads. `$.env.get` takes only
- * a literal name, so each name is spelled here once.
+ * The key of a plugin option in its environment name, as Claude Code makes
+ * it for a command hook.
  */
-const ENV_READS = {
-  AI_AGENT: ($) => $.env.get("AI_AGENT"),
-  ANTHROPIC_API_KEY: ($) => $.env.get("ANTHROPIC_API_KEY"),
-  ANTHROPIC_DEFAULT_FABLE_MODEL: ($) =>
-    $.env.get("ANTHROPIC_DEFAULT_FABLE_MODEL"),
-  ANTHROPIC_DEFAULT_HAIKU_MODEL: ($) =>
-    $.env.get("ANTHROPIC_DEFAULT_HAIKU_MODEL"),
-  ANTHROPIC_DEFAULT_MYTHOS_MODEL: ($) =>
-    $.env.get("ANTHROPIC_DEFAULT_MYTHOS_MODEL"),
-  ANTHROPIC_DEFAULT_OPUS_MODEL: ($) =>
-    $.env.get("ANTHROPIC_DEFAULT_OPUS_MODEL"),
-  ANTHROPIC_DEFAULT_SONNET_MODEL: ($) =>
-    $.env.get("ANTHROPIC_DEFAULT_SONNET_MODEL"),
-  AppData: ($) => $.env.get("AppData"),
-  CLAUDE_CODE_DISABLE_FAST_MODE: ($) =>
-    $.env.get("CLAUDE_CODE_DISABLE_FAST_MODE"),
-  CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS: ($) =>
-    $.env.get("CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS"),
-  CLAUDE_CODE_EFFORT_LEVEL: ($) => $.env.get("CLAUDE_CODE_EFFORT_LEVEL"),
-  CLAUDE_CODE_ENTRYPOINT: ($) => $.env.get("CLAUDE_CODE_ENTRYPOINT"),
-  CLAUDE_CODE_EXECPATH: ($) => $.env.get("CLAUDE_CODE_EXECPATH"),
-  CLAUDE_CODE_FORK_SUBAGENT: ($) => $.env.get("CLAUDE_CODE_FORK_SUBAGENT"),
-  CLAUDE_CODE_TASK_LIST_ID: ($) => $.env.get("CLAUDE_CODE_TASK_LIST_ID"),
-  CLAUDE_CODE_TMPDIR: ($) => $.env.get("CLAUDE_CODE_TMPDIR"),
-  CLAUDE_CODE_USE_BEDROCK: ($) => $.env.get("CLAUDE_CODE_USE_BEDROCK"),
-  CLAUDE_CODE_USE_FOUNDRY: ($) => $.env.get("CLAUDE_CODE_USE_FOUNDRY"),
-  CLAUDE_CODE_USE_VERTEX: ($) => $.env.get("CLAUDE_CODE_USE_VERTEX"),
-  CLAUDE_CONFIG_DIR: ($) => $.env.get("CLAUDE_CONFIG_DIR"),
-  CLAUDE_PLUGIN_DATA: ($) => $.env.get("CLAUDE_PLUGIN_DATA"),
-  CLAUDE_PROJECT_DIR: ($) => $.env.get("CLAUDE_PROJECT_DIR"),
-  DOTCLAUDE_DEBUG: ($) => $.env.get("DOTCLAUDE_DEBUG"),
-  DOTCLAUDE_OFFLINE: ($) => $.env.get("DOTCLAUDE_OFFLINE"),
-  GH_CONFIG_DIR: ($) => $.env.get("GH_CONFIG_DIR"),
-  HOME: ($) => $.env.get("HOME"),
-  SystemRoot: ($) => $.env.get("SystemRoot"),
-  TEMP: ($) => $.env.get("TEMP"),
-  TMP: ($) => $.env.get("TMP"),
-  TMPDIR: ($) => $.env.get("TMPDIR"),
-  USERPROFILE: ($) => $.env.get("USERPROFILE"),
-  XDG_CONFIG_HOME: ($) => $.env.get("XDG_CONFIG_HOME"),
-};
+export const optionKey = (key) =>
+  key.replace(/[^A-Za-z0-9_]/g, "_").toUpperCase();
 
 /**
  * The value of a plugin option as Claude Code gives it to a command hook. A
@@ -76,22 +45,18 @@ const ENV_READS = {
 const optionText = (value) =>
   Array.isArray(value) ? JSON.stringify(value) : String(value);
 
-async function readEnv($, options) {
+/**
+ * The io environment from the values that `$.env.get` gave, by name, and
+ * from the plugin options as `CLAUDE_PLUGIN_OPTION_<KEY>`. A value that is
+ * not a string is not set.
+ */
+export function envOf(values, options) {
   const env = {};
-  const names = Object.keys(ENV_READS);
-  const values = await Promise.all(
-    names.map((name) =>
-      Promise.resolve()
-        .then(() => ENV_READS[name]($))
-        .catch(() => undefined),
-    ),
-  );
-  names.forEach((name, i) => {
-    if (typeof values[i] === "string") env[name] = values[i];
-  });
+  for (const [name, value] of Object.entries(values ?? {}))
+    if (typeof value === "string") env[name] = value;
   for (const [key, value] of Object.entries(options ?? {})) {
     if (value === undefined || value === null) continue;
-    env[`CLAUDE_PLUGIN_OPTION_${key.toUpperCase()}`] = optionText(value);
+    env[`CLAUDE_PLUGIN_OPTION_${optionKey(key)}`] = optionText(value);
   }
   return env;
 }
@@ -103,18 +68,53 @@ async function readEnv($, options) {
 export const platformOf = (root) =>
   /^(?:[A-Za-z]:[\\/]|\\\\)/.test(String(root)) ? "win32" : "posix";
 
+/** The home folder as `os.homedir()` finds it. */
+export const homeOf = (platform, env) =>
+  (platform === "win32" ? env.USERPROFILE : env.HOME) ?? "";
+
 /** The temp folder as `os.tmpdir()` finds it. */
-function tmpOf(platform, env) {
+export function tmpOf(platform, env) {
   if (platform === "win32") {
     const dir =
       env.TEMP || env.TMP || `${env.SystemRoot || "C:\\Windows"}\\temp`;
     return dir.length > 3 ? dir.replace(/\\+$/, "") : dir;
   }
-  const dir = env.TMPDIR || "/tmp";
+  const dir = env.TMPDIR || env.TMP || env.TEMP || "/tmp";
   return dir.length > 1 ? dir.replace(/\/+$/, "") : dir;
 }
 
-const bytesOfBase64 = (base64) => {
+/**
+ * The `CLAUDE_PLUGIN_DATA` folder that Claude Code gives the command hooks
+ * of the plugin at `root`: `<plugins>/data/<id>`, with each character of the
+ * id that is not a letter, a digit, `-`, or `_` changed to `-`.
+ *
+ * An installed plugin is at `<plugins>/cache/<marketplace>/<name>/<version>`,
+ * and its id is `<name>@<marketplace>`. A plugin from `--plugin-dir` has the
+ * id `<name>@inline`, and `<plugins>` is `CLAUDE_CODE_PLUGIN_CACHE_DIR`, or
+ * `plugins` in `CLAUDE_CONFIG_DIR` or in `<home>/.claude`.
+ * It gives "" when it cannot find the folder.
+ */
+export function pluginDataDir({ platform, root, name, env, home }) {
+  const path = pathFor(platform);
+  const up = (p, n) => (n === 0 ? p : up(path.dirname(p), n - 1));
+  let plugins;
+  let id;
+  if (path.basename(up(root, 3)) === "cache") {
+    plugins = up(root, 4);
+    id = `${path.basename(up(root, 1))}@${path.basename(up(root, 2))}`;
+  } else {
+    const config =
+      env.CLAUDE_CONFIG_DIR || (home && path.join(home, ".claude"));
+    plugins =
+      env.CLAUDE_CODE_PLUGIN_CACHE_DIR ||
+      (config && path.join(config, "plugins"));
+    id = `${name}@inline`;
+  }
+  if (!plugins) return "";
+  return path.join(plugins, "data", id.replace(/[^a-zA-Z0-9\-_]/g, "-"));
+}
+
+export const bytesOfBase64 = (base64) => {
   const text = atob(base64);
   const out = new Uint8Array(text.length);
   for (let i = 0; i < text.length; i += 1) out[i] = text.charCodeAt(i);
@@ -123,7 +123,7 @@ const bytesOfBase64 = (base64) => {
 
 const utf8Length = (text) => new TextEncoder().encode(text).length;
 
-const statOf = (s) => {
+export const statOf = (s) => {
   const out = {
     kind: s.kind,
     size: s.kind === "file" ? s.size : 0,
@@ -134,7 +134,7 @@ const statOf = (s) => {
   return out;
 };
 
-const entryOf = (e) => ({
+export const entryOf = (e) => ({
   name: e.name,
   kind: e.kind,
   size: e.kind === "file" ? e.size : 0,
@@ -142,61 +142,36 @@ const entryOf = (e) => ({
   isLink: e.isLink,
 });
 
-/** The `IoFs` of `_io.mjs`. */
-function modFs($) {
-  const exists = (file) => $.fs.exists(file);
-  const write = (file, text) => $.fs.write(file, text);
-  return {
-    read: (file) => $.fs.read(file),
-    head: async (file, bytes) => {
-      const { base64 } = await $.fs.read(file, { as: "bytes" });
-      return bytesOfBase64(base64).subarray(0, bytes);
-    },
-    // `$.fs.write` creates the folders, so no call here makes them.
-    write,
-    append: async (file, text) => {
-      // Only a missing file counts as empty. Another read failure rejects,
-      // so that the write does not replace a file that it did not read.
-      const before = (await exists(file)) ? await $.fs.read(file) : "";
-      await write(file, before + text);
-    },
-    create: async (file, text) => {
-      if (await exists(file)) return false;
-      await write(file, text);
-      return true;
-    },
-    // The engine cannot delete a file. An empty file is the nearest state.
-    remove: async (file) => {
-      if (await exists(file)) await write(file, "");
-    },
-    exists,
-    stat: async (file, options = {}) =>
-      statOf(await $.fs.stat(file, { resolve: Boolean(options.resolve) })),
-    list: async (dir) => (await $.fs.list(dir)).map(entryOf),
+/**
+ * The `$.process.run` request for the `init` of `io.run`. The timeout stays
+ * in the engine's limit, and stdin is empty when `init` has none.
+ */
+export function runRequest(init = {}) {
+  const request = {
+    timeoutMs: Math.min(init.timeoutMs ?? RUN_TIMEOUT_MS, RUN_TIMEOUT_MAX_MS),
+    stdin: init.stdin ?? "",
   };
+  if (init.cwd !== undefined) request.cwd = init.cwd;
+  if (init.env !== undefined) request.env = init.env;
+  return request;
 }
 
-function modRun($) {
-  return async (argv, init = {}) => {
-    const request = { timeoutMs: init.timeoutMs ?? RUN_TIMEOUT_MS };
-    if (init.cwd !== undefined) request.cwd = init.cwd;
-    if (init.env !== undefined) request.env = init.env;
-    if (init.stdin !== undefined) request.stdin = init.stdin;
-    const result = await $.process.run(argv, request);
-    const maxBytes = init.maxBytes ?? RUN_MAX_BYTES;
-    // The engine keeps 4 MiB of each stream. A cut output is not whole, so
-    // it counts as past the cap.
-    if (
-      result.isStdoutTruncated ||
-      result.isStderrTruncated ||
-      utf8Length(result.stdout) + utf8Length(result.stderr) > maxBytes
-    )
-      throw new Error(`${argv[0]}: output passed ${maxBytes} bytes`);
-    return {
-      exitCode: result.exitCode,
-      stdout: result.stdout,
-      stderr: result.stderr,
-    };
+/**
+ * The `io.run` result for a `$.process.run` result. It throws when the
+ * engine cut a stream, because a cut output is not whole, and when the
+ * output passes `maxBytes`.
+ */
+export function runResult(argv, result, maxBytes = RUN_MAX_BYTES) {
+  if (result.isStdoutTruncated || result.isStderrTruncated)
+    throw new Error(
+      `${argv[0]}: output passed the 4 MiB limit of the hooks engine for one stream`,
+    );
+  if (utf8Length(result.stdout) + utf8Length(result.stderr) > maxBytes)
+    throw new Error(`${argv[0]}: output passed ${maxBytes} bytes`);
+  return {
+    exitCode: result.exitCode,
+    stdout: result.stdout,
+    stderr: result.stderr,
   };
 }
 
@@ -204,7 +179,7 @@ function modRun($) {
  * A session fact that resolves `unknown` when it throws, for example when
  * the engine refuses a call.
  */
-const known =
+export const known =
   (unknown, fact) =>
   async (...args) => {
     try {
@@ -215,6 +190,15 @@ const known =
   };
 
 const isPrompt = (row) => row.role === "user" && !row.toolResults?.length;
+
+/**
+ * The summary that a compaction puts in the conversation. It is a user row
+ * with no meta flag, but the user did not type it.
+ */
+const isSummary = (row) =>
+  String(row.text ?? "")
+    .trimStart()
+    .startsWith("This session is being continued from");
 
 /**
  * Engine rows as transcript lines, so that the parsers of
@@ -238,68 +222,21 @@ const linesOf = (rows) =>
     )
     .join("\n");
 
-/**
- * The session facts for one hook input, from `$.session`. The engine gives
- * parsed rows with no token usage, no attachments, and no transcript file,
- * so some facts are not known.
- * It gives the `IoSession` of `_io.mjs`.
- */
-function modSession($, data) {
-  const mainRows = async () => {
-    const rows = await $.session.messages();
-    return Array.isArray(rows) ? rows : null;
-  };
-  return {
-    lastPrompt: known("", async () => {
-      const rows = await mainRows();
-      if (!rows) return "";
-      const prompts = rows.filter(isPrompt);
-      return (
-        promptsFromText(linesOf(prompts), 1, LAST_PROMPT_CHARS).at(-1) ?? ""
-      );
-    }),
-    agentTranscriptPath: known("", () => ""),
-    agentTurns: known(null, async () => {
-      if (typeof data.agent_id !== "string" || !data.agent_id) return null;
-      const rows = await $.session.messages({ agentId: data.agent_id });
-      // A refusal is `{ deny }`, not a list.
-      return Array.isArray(rows) ? turnsFromText(linesOf(rows)) : null;
-    }),
-    agentContext: known(null, () => null),
-    loadedNested: known(null, () => null),
-    mainContextTokens: known(null, async () => {
-      const tokens = (await $.session.usage())?.context?.tokens;
-      return typeof tokens === "number" ? tokens : null;
-    }),
-    compactions: known(null, () => null),
-    agentStoppedAtLimit: known(null, async (id) => {
-      const rows = await mainRows();
-      if (!rows) return null;
-      const text = rows.map((row) => row.text ?? "").join("\n");
-      return stoppedAtLimitInText(text, String(id));
-    }),
-  };
+/** The last typed prompt in the rows of `$.session.messages()`, or "". */
+export function lastPromptOf(rows) {
+  const prompts = rows.filter((row) => isPrompt(row) && !isSummary(row));
+  return promptsFromText(linesOf(prompts), 1, LAST_PROMPT_CHARS).at(-1) ?? "";
 }
 
+/** The assistant turns since the last prompt in the rows of an agent. */
+export const turnsOf = (rows) => turnsFromText(linesOf(rows));
+
 /**
- * The hooks-module io for one hook event. `options` holds the plugin options
- * that `register(on, options)` got. `data` is the hook input in the shape of
- * a classic hook's stdin JSON. It is async because the engine gives the
- * environment and the working directory only through promises.
- * It resolves the `Io` of `_io.mjs`. The source has no `import` call in\n * a type, because the engine does not load a module that holds one.
+ * True when the rows hold a task notification that the agent `id` stopped
+ * at its turn limit. Else null, not false: `$.session.messages()` drops meta
+ * rows, and a task notification can be one, so no tag is no evidence.
  */
-export async function modIo($, options = {}, data = {}) {
-  const platform = platformOf($.plugin.root);
-  const [env, cwd] = await Promise.all([readEnv($, options), $.session.cwd()]);
-  return {
-    platform,
-    env,
-    home: (platform === "win32" ? env.USERPROFILE : env.HOME) ?? "",
-    tmp: tmpOf(platform, env),
-    cwd,
-    pluginRoot: $.plugin.root,
-    fs: modFs($),
-    run: modRun($),
-    session: modSession($, data),
-  };
+export function stoppedAtLimitOf(rows, id) {
+  const text = rows.map((row) => row.text ?? "").join("\n");
+  return stoppedAtLimitInText(text, String(id)) ? true : null;
 }
