@@ -7,6 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { emit, run } from "../lib/_common.mjs";
 import { option, projectRoot } from "../lib/_core.mjs";
+import { compactionsFile, countOf } from "../lib/_io-mod.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
 import { editedBySession, load } from "../lib/_ledger.mjs";
 import { isSubagent, recentPrompts } from "../lib/_transcript.mjs";
@@ -38,14 +39,30 @@ const list = (paths) =>
     ? `${paths.slice(0, 15).join(", ")}, and ${paths.length - 15} more`
     : paths.join(", ");
 
+/**
+ * Keep the count of compactions for the hooks module, because the engine
+ * gives the module no transcript and no compaction boundary. Claude Code can
+ * run this hook before it writes the new boundary to the transcript, so the
+ * count is the larger of the kept count plus one and the transcript count.
+ * A failure keeps the old count, and the carry-over still runs.
+ */
+async function keepCompactions(io, data) {
+  if (!data.session_id) return;
+  const file = compactionsFile(io, data.session_id);
+  try {
+    const kept = countOf(await io.fs.read(file).catch(() => "")) ?? 0;
+    const seen = (await io.session.compactions()) ?? 0;
+    await io.fs.write(file, String(Math.max(kept + 1, seen)));
+  } catch {
+    // The module then reads the old count or no count.
+  }
+}
+
 run(async (data) => {
-  if (
-    data.source !== "compact" ||
-    !option(process.env, "context_compact_carryover") ||
-    isSubagent(data)
-  )
-    return;
+  if (data.source !== "compact" || isSubagent(data)) return;
   const io = nodeIo(data);
+  await keepCompactions(io, data);
+  if (!option(process.env, "context_compact_carryover")) return;
   const state = await load(io, data.session_id, null);
   const prompts = state.prompts?.length
     ? state.prompts
