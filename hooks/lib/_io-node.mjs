@@ -249,6 +249,14 @@ const readText = (file) => {
 };
 
 /**
+ * Compactions recorded in a transcript, or 0 when it cannot be read. The
+ * status line shows it. The reader and its cache are `compactionCount`.
+ */
+export function compactions(transcriptPath) {
+  return compactionCount(transcriptPath) ?? 0;
+}
+
+/**
  * The session facts for one hook input, from the transcript files. The main
  * transcript can be tens of MB, so most facts about it read only its end.
  * @returns {import("./_io.mjs").IoSession}
@@ -270,6 +278,9 @@ function nodeSession(data) {
       "",
       () =>
         promptsFromText(mainTail() ?? "", 1, LAST_PROMPT_CHARS).at(-1) ?? "",
+    ),
+    recentPrompts: known([], (limit = 5, maxChars = 600) =>
+      promptsFromText(mainTail() ?? "", limit, maxChars),
     ),
     agentTranscriptPath: known("", agentPath),
     agentTurns: known(null, () => {

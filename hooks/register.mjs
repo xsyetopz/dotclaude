@@ -25,6 +25,7 @@ import {
   lastPromptOf,
   platformOf,
   pluginDataDir,
+  recentPromptsOf,
   runRequest,
   runResult,
   statOf,
@@ -38,6 +39,8 @@ import loadNestedInstructions from "./post-tool-use/load-nested-instructions.mjs
 import noteContextSize from "./post-tool-use/note-context-size.mjs";
 import recordEditsAndChecks from "./post-tool-use/record-edits-and-checks.mjs";
 import redactSecrets from "./post-tool-use/redact-secrets.mjs";
+import showClosestLines from "./post-tool-use-failure/show-closest-lines.mjs";
+import saveRecentPrompts from "./pre-compact/save-recent-prompts.mjs";
 import blockDestructiveCommands from "./pre-tool-use/block-destructive-commands.mjs";
 import confirmRiskyEdits from "./pre-tool-use/confirm-risky-edits.mjs";
 import enforceAgentBudget from "./pre-tool-use/enforce-agent-budget.mjs";
@@ -47,6 +50,7 @@ import restrictSubagentModels from "./pre-tool-use/restrict-subagent-models.mjs"
 import skipUnchangedRereads from "./pre-tool-use/skip-unchanged-rereads.mjs";
 import countRunningAgents from "./subagent-start/count-running-agents.mjs";
 import injectWorkingConventions from "./subagent-start/inject-working-conventions.mjs";
+import noteUsageLimits from "./user-prompt-submit/note-usage-limits.mjs";
 
 /** The ported actions that the module runs, by their path in `ACTIONS`. */
 const RUNS = new Map([
@@ -62,8 +66,11 @@ const RUNS = new Map([
   ["post-tool-use/note-context-size.mjs", noteContextSize],
   ["post-tool-use/exclude-session-files.mjs", excludeSessionFiles],
   ["post-tool-use/redact-secrets.mjs", redactSecrets],
+  ["post-tool-use-failure/show-closest-lines.mjs", showClosestLines],
   ["subagent-start/inject-working-conventions.mjs", injectWorkingConventions],
   ["subagent-start/count-running-agents.mjs", countRunningAgents],
+  ["user-prompt-submit/note-usage-limits.mjs", noteUsageLimits],
+  ["pre-compact/save-recent-prompts.mjs", saveRecentPrompts],
 ]);
 
 /**
@@ -186,6 +193,10 @@ function modSession($, data, io) {
       const rows = await mainRows();
       return rows ? lastPromptOf(rows) : "";
     }),
+    recentPrompts: known([], async (limit, maxChars) => {
+      const rows = await mainRows();
+      return rows ? recentPromptsOf(rows, limit, maxChars) : [];
+    }),
     agentTranscriptPath: known("", () => ""),
     agentTurns: known(null, async () => {
       if (typeof data.agent_id !== "string" || !data.agent_id) return null;
@@ -263,6 +274,21 @@ export async function modIo($, options = {}, data = {}) {
 
 /** The keys of a `tool.call` input that are not arguments of the tool. */
 const RESERVED = new Set(["tool", "tool_use_id", "agentId", "consent"]);
+
+/**
+ * The error text of a failed `tool.call` result, as a classic
+ * PostToolUseFailure input gives it in `error`: the text that the model
+ * reads, without the `<tool_use_error>` tags.
+ */
+function errorOf(r) {
+  const text =
+    typeof r.text === "string"
+      ? r.text
+      : typeof r.result === "string"
+        ? r.result
+        : "";
+  return text.replace(/^<tool_use_error>([\s\S]*)<\/tool_use_error>$/, "$1");
+}
 
 /** The `additionalContext` of a merged output, as context lines. */
 const notesOf = (out) => {
@@ -396,12 +422,14 @@ async function noteAgentContext($, options, places, agentId, usage) {
 
 /**
  * Register the hooks of dotclaude. `tool.call` runs the PreToolUse actions
- * before the call and the PostToolUse actions after it. An "ask" stays in
+ * before the call, and the PostToolUse or PostToolUseFailure actions after
+ * it. An "ask" stays in
  * `verdicts` until the call ends, because `tool.check` runs inside the `next`
  * of `tool.call`. An "allow" is not kept, so the engine's rules decide, as
  * they do for a classic hook's "allow". `agent.spawn` runs the SubagentStart
- * actions. `turn.step` keeps the context of each subagent, because the engine
- * does not give it.
+ * actions. `prompt.submit` runs the UserPromptSubmit actions, and
+ * `session.compact` runs the PreCompact actions. `turn.step` keeps the
+ * context of each subagent, because the engine does not give it.
  */
 export function register(on, options) {
   const verdicts = new Map();
@@ -430,10 +458,12 @@ export function register(on, options) {
       if (keep) verdicts.delete(id);
     }
     if (!r || "deny" in r) return r;
-    // The PostToolUseFailure actions stay command hooks, so a failed call
-    // runs no action here.
     const post = r.isError
-      ? undefined
+      ? await runActions($, options, "PostToolUseFailure", {
+          ...data,
+          hook_event_name: "PostToolUseFailure",
+          error: errorOf(r),
+        })
       : await runActions($, options, "PostToolUse", {
           ...data,
           hook_event_name: "PostToolUse",
@@ -487,6 +517,37 @@ export function register(on, options) {
         "subagent-start/count-running-agents.mjs",
       );
     return r;
+  });
+
+  // The UserPromptSubmit actions. Their context goes down with the prompt,
+  // because context put on the result after `next` is not attached.
+  on("prompt.submit", async ($, e, next) => {
+    const out = await runActions($, options, "UserPromptSubmit", {
+      hook_event_name: "UserPromptSubmit",
+      session_id: await $.session.id().catch(() => ""),
+      prompt: e.text,
+    });
+    const notes = notesOf(out);
+    return next(
+      notes.length ? { ...e, context: [...(e.context ?? []), ...notes] } : e,
+    );
+  });
+
+  // The PreCompact actions. A `precompute` installs nothing, and the
+  // compaction that uses its result fires this event again, so only that
+  // one runs the actions. The compaction always continues.
+  on("session.compact", async ($, e, next) => {
+    if (e.trigger !== "precompute") {
+      const data = {
+        hook_event_name: "PreCompact",
+        session_id: await $.session.id().catch(() => ""),
+        trigger: e.trigger,
+        custom_instructions: e.instructions ?? null,
+      };
+      if (typeof e.agentId === "string" && e.agentId) data.agent_id = e.agentId;
+      await runActions($, options, "PreCompact", data);
+    }
+    return next(e);
   });
 
   // The engine gives no subagent transcript, so each step of a subagent

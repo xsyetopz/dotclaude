@@ -9,8 +9,8 @@ import {
   CONTEXT_NOTE_TOKENS,
   k,
 } from "../../hooks/lib/_budget.mjs";
-import { nodeIo } from "../../hooks/lib/_io-node.mjs";
-import { compactions, readUsage } from "../../hooks/lib/_usage.mjs";
+import { compactions, nodeIo } from "../../hooks/lib/_io-node.mjs";
+import { readUsage } from "../../hooks/lib/_usage.mjs";
 import { isolatedHook as hook, tmp } from "../support/hooks.mjs";
 
 /** A config dir whose cached usage was fetched `ageMs` ago. */

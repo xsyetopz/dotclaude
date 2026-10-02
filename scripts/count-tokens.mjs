@@ -15,22 +15,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import { FABLE } from "../hooks/lib/_model-notes.mjs";
+import {
+  GUIDANCE_END,
+  GUIDANCE_START,
+  SONNET,
+} from "../hooks/subagent-start/inject-working-conventions.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const ENDPOINT = "https://api.anthropic.com/v1/messages/count_tokens";
 const MODEL = "claude-opus-5-5";
 const BASELINE = "Hello";
-const SUBAGENT_HOOK = "hooks/subagent-start/inject-working-conventions.mjs";
 
 const body = (text) => text.replace(/^---\n[\s\S]*?\n---\n/, "").trim();
-
-/** A template literal constant from a hook file, which exports nothing. */
-function constant(file, name) {
-  const source = fs.readFileSync(path.join(ROOT, file), "utf8");
-  const match = source.match(new RegExp(`const ${name} = \`([\\s\\S]*?)\`;`));
-  if (!match) throw new Error(`${name} not found in ${file}`);
-  return match[1].replaceAll("\\`", "`");
-}
 
 /** The named texts that dotclaude injects, as `{ name, text }`. */
 export function sources(root = ROOT) {
@@ -40,11 +36,12 @@ export function sources(root = ROOT) {
     { name: "SessionStart: Fable note", text: FABLE },
     {
       name: "SubagentStart: conventions",
-      text: constant(SUBAGENT_HOOK, "GUIDANCE"),
+      // The conventions with no project test command.
+      text: GUIDANCE_START + GUIDANCE_END,
     },
     {
       name: "SubagentStart: Sonnet scope note",
-      text: constant(SUBAGENT_HOOK, "SONNET"),
+      text: SONNET,
     },
   ];
   for (const file of fs.readdirSync(path.join(root, "agents")).sort())

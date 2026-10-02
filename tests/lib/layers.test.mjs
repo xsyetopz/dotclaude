@@ -27,7 +27,7 @@ test("hooks/lib imports only itself, and event hooks only hooks/lib", () => {
       );
       const action =
         rel === "register.mjs" &&
-        /^\.\/(pre-tool-use|post-tool-use|subagent-start)\/[a-z-]+\.mjs$/.test(
+        /^\.\/(pre-tool-use|post-tool-use|post-tool-use-failure|subagent-start|user-prompt-submit|pre-compact)\/[a-z-]+\.mjs$/.test(
           spec,
         );
       if (action) continue;

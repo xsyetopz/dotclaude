@@ -39,7 +39,7 @@ export const ACTIONS = {
     ["*", "post-tool-use/note-context-size.mjs"],
   ],
   PostToolUseFailure: [
-    [`Bash|${TOOL_EDITS}`, "post-tool-use-failure/record-failed-checks.mjs"],
+    [`Bash|${TOOL_EDITS}`, "post-tool-use/record-edits-and-checks.mjs"],
     ["Edit", "post-tool-use-failure/show-closest-lines.mjs"],
   ],
   Stop: [
@@ -68,7 +68,14 @@ export const ACTIONS = {
 
 // The events that the hooks module (`register.mjs`) runs. `hooks.json` has
 // no command hook for them, so each action runs once.
-export const MODULE_EVENTS = ["PreToolUse", "PostToolUse", "SubagentStart"];
+export const MODULE_EVENTS = [
+  "PreToolUse",
+  "PostToolUse",
+  "PostToolUseFailure",
+  "SubagentStart",
+  "UserPromptSubmit",
+  "PreCompact",
+];
 
 export const MATCH_FIELD = {
   PreToolUse: "tool_name",

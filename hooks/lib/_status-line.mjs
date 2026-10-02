@@ -33,7 +33,7 @@ import {
   subagentContextTokens,
   USAGE_LEVELS,
 } from "./_budget.mjs";
-import { compactions } from "./_usage.mjs";
+import { compactions } from "./_io-node.mjs";
 
 const ESC = "\x1b[";
 const paint = (code) => (text) => `${ESC}${code}m${text}${ESC}0m`;

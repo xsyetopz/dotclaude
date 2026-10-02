@@ -79,6 +79,17 @@ export function promptsFromText(text, limit = 5, maxChars = 600) {
 }
 
 /**
+ * True when a hook input comes from a subagent. Compaction hooks can fire for
+ * a subagent with no agent fields (#91910), so the transcript path counts too.
+ */
+export function isSubagent(data) {
+  return (
+    Boolean(data.agent_id) ||
+    /[\\/]subagents[\\/][^\\/]+$/.test(data.transcript_path ?? "")
+  );
+}
+
+/**
  * A subagent's transcript: Claude Code keeps it in
  * `<session>/subagents/agent-<id>.jsonl` next to the session's transcript.
  * `path` is a path module, `node:path` or one from `pathFor`.

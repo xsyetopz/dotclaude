@@ -2,10 +2,8 @@
 // Claude Code caches in ~/.claude.json (`cachedUsageUtilization`). Claude Code
 // writes it whenever it fetches usage and treats it as stale after an hour;
 // dotclaude uses the same limit. No token is read and nothing is fetched.
-// Also the main conversation's compactions, from its transcript, for the
-// status line.
+// The hooks module runs this file, so it reads files only through `io`.
 
-import { compactionCount } from "./_io-node.mjs";
 import { readConfig } from "./_plans.mjs";
 
 const MAX_AGE_MS = 60 * 60 * 1000;
@@ -48,12 +46,4 @@ export async function readUsage(io, now = Date.now()) {
       out.fable = pct(limit.percent);
   }
   return out.session === null && out.weekly === null ? null : out;
-}
-
-/**
- * Compactions recorded in a transcript, or 0 when it cannot be read. The
- * reader and its cache are `compactionCount` in `_io-node.mjs`.
- */
-export function compactions(transcriptPath) {
-  return compactionCount(transcriptPath) ?? 0;
 }

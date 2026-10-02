@@ -1,12 +1,9 @@
-#!/usr/bin/env bun
 // PostToolUseFailure(Edit): when `old_string` matches no text in the file,
 // give Claude the closest lines with their line numbers, so that the next try
 // copies the real text instead of guessing again. The idea comes from the
 // `edit_gate.py` hook in DensePack (MIT). This is a new implementation.
 
-import fs from "node:fs";
-import path from "node:path";
-import { emit, run } from "../lib/_common.mjs";
+import { pathFor } from "../lib/_path.mjs";
 
 const MISS = "String to replace not found";
 const MAX_BYTES = 1_000_000;
@@ -58,28 +55,28 @@ function closest(lines, wanted) {
   return best;
 }
 
-run((data) => {
+export default async (io, data) => {
   const input = data.tool_input ?? {};
   if (data.tool_name !== "Edit" || !String(data.error ?? "").includes(MISS))
-    return;
-  if (typeof input.old_string !== "string" || !input.file_path) return;
+    return null;
+  if (typeof input.old_string !== "string" || !input.file_path) return null;
   let text;
   try {
-    if (fs.statSync(input.file_path).size > MAX_BYTES) return;
-    text = fs.readFileSync(input.file_path, "utf8");
+    if ((await io.fs.stat(input.file_path)).size > MAX_BYTES) return null;
+    text = await io.fs.read(input.file_path);
   } catch {
-    return;
+    return null;
   }
   const lines = text.split("\n");
-  if (lines.length > MAX_LINES) return;
+  if (lines.length > MAX_LINES) return null;
   // Blank lines carry no signal, so the score starts at the first line with
   // text and the shown window starts there too.
   const old = input.old_string.split("\n");
   const first = old.findIndex((l) => l.trim());
-  if (first < 0) return;
+  if (first < 0) return null;
   const wanted = old.slice(first, first + SCORED_LINES).map(norm);
   const { start, score } = closest(lines, wanted);
-  if (start < 0 || score < MIN_SCORE) return;
+  if (start < 0 || score < MIN_SCORE) return null;
   const count = Math.min(old.length - first, SHOWN_LINES, lines.length - start);
   const shown = lines
     .slice(start, start + count)
@@ -91,10 +88,11 @@ run((data) => {
     .join("\n");
   const range =
     count > 1 ? `lines ${start + 1}-${start + count}` : `line ${start + 1}`;
-  emit({
+  const name = pathFor(io.platform).basename(input.file_path);
+  return {
     hookSpecificOutput: {
       hookEventName: "PostToolUseFailure",
-      additionalContext: `\`old_string\` matches no text in \`${path.basename(input.file_path)}\`. The closest text is at ${range}:\n\n${shown}\n\nCopy \`old_string\` exactly from these lines, without the line numbers, and run the edit again.`,
+      additionalContext: `\`old_string\` matches no text in \`${name}\`. The closest text is at ${range}:\n\n${shown}\n\nCopy \`old_string\` exactly from these lines, without the line numbers, and run the edit again.`,
     },
-  });
-});
+  };
+};

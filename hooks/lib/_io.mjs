@@ -76,6 +76,11 @@
  *   typed. A longer prompt is cut to 4000 characters plus the ` [...]`
  *   suffix. `""` when not known. A guard that looks for consent in the
  *   prompt then finds none and keeps its ask, which is the safe side.
+ * @property {(limit?: number, maxChars?: number) => Promise<string[]>}
+ *   recentPrompts The last `limit` prompts (5 by default) that the user
+ *   typed in the main conversation, oldest first. A longer prompt is cut to
+ *   `maxChars` characters (600 by default) plus the ` [...]` suffix. `[]`
+ *   when not known. The caller then keeps no prompts.
  * @property {() => Promise<string>} agentTranscriptPath The transcript file
  *   of the subagent. `""` when the input is not from a subagent or the host
  *   has no transcript file. The caller then reads no file.

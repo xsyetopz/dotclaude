@@ -58,7 +58,7 @@ export const checkRun = (sid, command, ok = true, stdout = "") =>
         tool_input: { command },
         tool_response: { stdout, stderr: "" },
       })
-    : hook("post-tool-use-failure/record-failed-checks.mjs", {
+    : hook("post-tool-use/record-edits-and-checks.mjs", {
         session_id: sid,
         hook_event_name: "PostToolUseFailure",
         tool_name: "Bash",

@@ -7,6 +7,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { promptsFromText, subagentTranscriptIn } from "./_transcript-parse.mjs";
 
+// The SessionStart actions import it from here.
+export { isSubagent } from "./_transcript-parse.mjs";
+
 const MAX_BYTES = 8_000_000;
 
 /** The last `maxBytes` of a file as text, or null when it cannot be read. */
@@ -61,15 +64,4 @@ export function recentPrompts(transcriptPath, limit = 5, maxChars = 600) {
 /** A subagent's transcript path, with `node:path`. */
 export function subagentTranscript(transcriptPath, sessionId, agentId) {
   return subagentTranscriptIn(path, transcriptPath, sessionId, agentId);
-}
-
-/**
- * True when a hook input comes from a subagent. Compaction hooks can fire for
- * a subagent with no agent fields (#91910), so the transcript path counts too.
- */
-export function isSubagent(data) {
-  return (
-    Boolean(data.agent_id) ||
-    /[\\/]subagents[\\/][^\\/]+$/.test(data.transcript_path ?? "")
-  );
 }

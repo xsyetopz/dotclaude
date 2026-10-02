@@ -1,5 +1,5 @@
 {
-  "description": "dotclaude hooks: register.mjs runs the tool and SubagentStart actions, and one dispatcher process runs each other event, one file per action (see hooks/dispatch.mjs)",
+  "description": "dotclaude hooks: register.mjs runs the tool, SubagentStart, UserPromptSubmit, and PreCompact actions, and one dispatcher process runs each other event, one file per action (see hooks/dispatch.mjs)",
   "modules": ["./register.mjs"],
   "hooks": {
     "SessionStart": [
@@ -11,37 +11,6 @@
             "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
               "SessionStart"
-            ],
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
-              "UserPromptSubmit"
-            ],
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
-              "PostToolUseFailure"
             ],
             "timeout": 30
           }
@@ -83,18 +52,6 @@
               "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
               "SubagentStop"
             ],
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs", "PreCompact"],
             "timeout": 30
           }
         ]

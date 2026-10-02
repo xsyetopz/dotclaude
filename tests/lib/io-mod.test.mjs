@@ -186,12 +186,18 @@ function closureFiles() {
     .filter((name) => name.endsWith(".mjs"))
     .filter((name) => !["_io-node.mjs", "_common.mjs"].includes(name))
     .map((name) => path.join(hooks, "lib", name));
-  const actions = ["pre-tool-use", "post-tool-use", "subagent-start"].flatMap(
-    (dir) =>
-      fs
-        .readdirSync(path.join(hooks, dir))
-        .filter((name) => name.endsWith(".mjs"))
-        .map((name) => path.join(hooks, dir, name)),
+  const actions = [
+    "pre-tool-use",
+    "post-tool-use",
+    "post-tool-use-failure",
+    "subagent-start",
+    "user-prompt-submit",
+    "pre-compact",
+  ].flatMap((dir) =>
+    fs
+      .readdirSync(path.join(hooks, dir))
+      .filter((name) => name.endsWith(".mjs"))
+      .map((name) => path.join(hooks, dir, name)),
   );
   return [...lib, ...actions];
 }
