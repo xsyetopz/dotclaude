@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 // SessionStart(compact): restore the user's recent messages verbatim, the
 // uncommitted files split into this session's edits and everyone else's, and
-// the last check result after compaction. It also restates the report rule,
-// because a plugin output style has no per-turn reminder (#88189).
+// the last check result after compaction. The working rules come again from
+// their own hook (`add-working-rules.mjs`).
 
 import { execFileSync } from "node:child_process";
 import { emit, run } from "../lib/_common.mjs";
@@ -11,11 +11,17 @@ import { compactionsFile, countOf } from "../lib/_io-mod.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
 import { editedBySession, load } from "../lib/_ledger.mjs";
 import { isSubagent, recentPrompts } from "../lib/_transcript.mjs";
+import { LAST_PROMPT_CHARS } from "../lib/_transcript-parse.mjs";
 
 const CONTEXT_BUDGET = 2500;
-
-const REPORT_RULE =
-  "The `dotclaude` output style still applies. When you finish, start with the outcome. Then give what changed, what ran and its result, and what is unverified.";
+// A cut message keeps its start and its end, because a long message often
+// ends with the request. Less room than this drops the message.
+const MIN_CUT = 200;
+const CUT = " [...] ";
+// Each file list has its own bound, so the newest prompt and the
+// instructions always fit in CONTEXT_BUDGET. The ledger keeps at most 200
+// characters of a check command.
+const LIST_CHARS = 400;
 
 /** Uncommitted paths (tracked changes and untracked files), relative to root. */
 function changedPaths(root) {
@@ -34,10 +40,49 @@ function changedPaths(root) {
   }
 }
 
-const list = (paths) =>
-  paths.length > 15
-    ? `${paths.slice(0, 15).join(", ")}, and ${paths.length - 15} more`
-    : paths.join(", ");
+/** The paths that fit in LIST_CHARS, and a count of the others. */
+function list(paths) {
+  let out = "";
+  let shown = 0;
+  for (const p of paths) {
+    const next = shown ? `${out}, ${p}` : p;
+    if (next.length > LIST_CHARS) break;
+    out = next;
+    shown += 1;
+  }
+  const more = paths.length - shown;
+  if (!more) return out;
+  return shown ? `${out}, and ${more} more` : `${more} files`;
+}
+
+/**
+ * The quoted lines of `prompts` that fit in `room` characters, oldest first,
+ * numbered by their place in `prompts`. The newest message holds the
+ * current request, so the fill starts there and the oldest messages drop
+ * first. `cut` is true when a message is shortened or left out.
+ */
+function fitPrompts(prompts, room) {
+  const lines = [];
+  let left = room;
+  let cut = prompts.some((p) => p.endsWith(" [...]"));
+  for (let i = prompts.length - 1; i >= 0; i -= 1) {
+    const line = `${i + 1}. ${prompts[i]}`;
+    const space = left - (lines.length ? 1 : 0);
+    if (line.length <= space) {
+      lines.unshift(line);
+      left = space - line.length;
+      continue;
+    }
+    cut = true;
+    if (space >= MIN_CUT) {
+      const keep = space - CUT.length;
+      const head = Math.ceil(keep / 2);
+      lines.unshift(line.slice(0, head) + CUT + line.slice(head - keep));
+    }
+    break;
+  }
+  return { quoted: lines.join("\n"), cut };
+}
 
 /**
  * Keep the count of compactions for the hooks module, because the engine
@@ -66,13 +111,8 @@ run(async (data) => {
   const state = await load(io, data.session_id, null);
   const prompts = state.prompts?.length
     ? state.prompts
-    : recentPrompts(data.transcript_path ?? "");
+    : recentPrompts(data.transcript_path ?? "", 5, LAST_PROMPT_CHARS);
   const parts = [];
-  if (prompts.length) {
-    parts.push(
-      `The user's most recent messages before compaction, verbatim, oldest first:\n${prompts.map((p, i) => `${i + 1}. ${p}`).join("\n")}`,
-    );
-  }
   // Split uncommitted changes by who made them: the transcript before
   // compaction was the only record, and git diff mixes everyone's edits.
   const mine = await editedBySession(io, data.session_id);
@@ -81,11 +121,11 @@ run(async (data) => {
   const theirs = changed.filter((p) => !mine.has(p));
   if (ours.length)
     parts.push(
-      `Uncommitted files this session or its subagents edited: ${list(ours)}.`,
+      `Uncommitted files that this session or its subagents edited: ${list(ours)}.`,
     );
   if (theirs.length)
     parts.push(
-      `Uncommitted files not recorded as edited through this session's tools: ${list(theirs)}. They may be the user's or another session's work, or changes from formatters or codemods this session ran. Do not revert them. Check the transcript or the diff before you say whether they are your changes.`,
+      `<other_changes>\n${list(theirs)}\n</other_changes>\nThe tools of this session did not record edits to these uncommitted files.\nThey can be the work of the user or of another session, so do not revert them.\nThey can also be changes from formatters or codemods that this session ran.\nBefore you say whether they are your changes, check the transcript or the diff.`,
     );
   if (state.lastCheck) {
     const c = state.lastCheck;
@@ -97,17 +137,33 @@ run(async (data) => {
       `Last check run: \`${c.command}\` ${c.ok ? "passed" : `failed${c.code ? ` (exit ${c.code})` : ""}`}${stale}.`,
     );
   }
-  let text = "";
-  if (parts.length) {
-    text = `The dotclaude plugin kept this state from before compaction:\n\n${parts.join("\n\n")}`;
-    if (text.length > CONTEXT_BUDGET)
-      text = `${text.slice(0, CONTEXT_BUDGET)} [...]`;
-    text += "\n\n";
+  const head = "The dotclaude plugin kept this state from before compaction.";
+  // The cut shortens only the quoted prompts, so their closing tag and the
+  // instructions after them stay.
+  if (prompts.length) {
+    const open = "<recent_user_messages>\n";
+    let close =
+      "\n</recent_user_messages>\nThese are the most recent messages of the user before compaction, verbatim and oldest first.";
+    // A cut costs a pointer to the full text, which Claude reads only when
+    // it needs the text.
+    const pointer = data.transcript_path
+      ? `\nA \`[...]\` marks text that this note leaves out, and a missing number is a message that it leaves out.\nThe full messages are in the user entries of the transcript \`${data.transcript_path}\`.`
+      : "";
+    const room =
+      CONTEXT_BUDGET -
+      [head, open + close + pointer, ...parts].join("\n\n").length;
+    const { quoted, cut } = fitPrompts(prompts, room);
+    if (cut) close += pointer;
+    if (quoted) parts.unshift(open + quoted + close);
   }
+  if (!parts.length) return;
+  let text = `${head}\n\n${parts.join("\n\n")}`;
+  if (text.length > CONTEXT_BUDGET)
+    text = `${text.slice(0, CONTEXT_BUDGET)} [...]`;
   emit({
     hookSpecificOutput: {
       hookEventName: "SessionStart",
-      additionalContext: text + REPORT_RULE,
+      additionalContext: text,
     },
   });
 });

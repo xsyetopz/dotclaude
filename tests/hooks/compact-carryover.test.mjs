@@ -1,6 +1,7 @@
 // Compaction carry-over of prompts and the last check.
 
 import { expect, test } from "bun:test";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -10,6 +11,7 @@ import {
   hook,
   repo,
   session,
+  tmp,
 } from "../support/hooks.mjs";
 
 test("compaction carry-over restores prompts and last check", () => {
@@ -90,9 +92,111 @@ test("compaction carry-over restores prompts and last check", () => {
   expect(text.length <= 2600).toBeTruthy();
 });
 
-// Custom output styles get no per-turn reminder (#88189), so the report rule
-// comes back once after each compaction, even with no other state to restore.
-test("compaction restates the report rule once, and only after compaction", () => {
+// Long prompts fill the budget. The newest message holds the current
+// request, so it stays whole, also past the old 600-character save cut.
+// The oldest messages drop first, a cut message keeps its start and its
+// end, and a pointer names the transcript that has the full text. The
+// closing tag and the instructions after the prompts stay.
+test("the budget cut keeps the newest prompt whole and drops the oldest", () => {
+  const sid = session();
+  const transcript = path.join(data, `${sid}-long.jsonl`);
+  const prompts = [1, 2, 3, 4, 5].map(
+    (n) => `Prompt ${n} ${"word ".repeat(n === 5 ? 180 : 150)}END ${n}`,
+  );
+  fs.writeFileSync(
+    transcript,
+    prompts
+      .map((p) =>
+        JSON.stringify({
+          type: "user",
+          origin: { kind: "human" },
+          message: { content: p },
+        }),
+      )
+      .join("\n"),
+  );
+  const root = tmp("dotclaude-repo-");
+  execFileSync("git", ["init", "-q", root]);
+  fs.writeFileSync(path.join(root, "users.js"), "y\n");
+  hook("pre-compact/save-recent-prompts.mjs", {
+    session_id: sid,
+    hook_event_name: "PreCompact",
+    transcript_path: transcript,
+  });
+  const text = hook(
+    "session-start/restore-context-after-compact.mjs",
+    {
+      session_id: sid,
+      hook_event_name: "SessionStart",
+      source: "compact",
+      transcript_path: transcript,
+      cwd: root,
+    },
+    { CLAUDE_PROJECT_DIR: root },
+  ).hookSpecificOutput.additionalContext;
+  expect(text).toContain(`5. ${prompts[4]}\n</recent_user_messages>`);
+  expect(text).not.toMatch(/^1\. Prompt 1/m);
+  expect(text).toMatch(
+    /^\d\. Prompt \d word[^\n]* \[\.\.\.\] [^\n]*word END \d$/m,
+  );
+  expect(text).toContain(`\`${transcript}\``);
+  expect(text).toMatch(/<other_changes>\nusers\.js\n<\/other_changes>/);
+  expect(text).toMatch(/so do not revert them/);
+  expect(text.endsWith("check the transcript or the diff.")).toBeTruthy();
+  expect(text.length <= 2600).toBeTruthy();
+});
+
+// Long file lists have their own bound, so they cannot push the newest
+// prompt, the instructions, or the last check out of the note.
+test("long file lists keep the newest prompt and the instructions", () => {
+  const sid = session();
+  const transcript = path.join(data, `${sid}-lists.jsonl`);
+  fs.writeFileSync(
+    transcript,
+    JSON.stringify({
+      type: "user",
+      origin: { kind: "human" },
+      message: { content: `Rename ${"the billing modules ".repeat(80)}END` },
+    }),
+  );
+  const root = tmp("dotclaude-repo-");
+  execFileSync("git", ["init", "-q", root]);
+  const dir = path.join(root, "src", "services", "billing", "adapters");
+  fs.mkdirSync(dir, { recursive: true });
+  for (let n = 0; n < 40; n += 1) {
+    const name = `invoice-reconciliation-adapter-${n}.js`;
+    fs.writeFileSync(path.join(dir, name), "x\n");
+    if (n < 20) edit(sid, `src/services/billing/adapters/${name}`);
+  }
+  checkRun(sid, `bun test ${"tests/billing/adapters.test.mjs ".repeat(20)}`);
+  hook("pre-compact/save-recent-prompts.mjs", {
+    session_id: sid,
+    hook_event_name: "PreCompact",
+    transcript_path: transcript,
+  });
+  const text = hook(
+    "session-start/restore-context-after-compact.mjs",
+    {
+      session_id: sid,
+      hook_event_name: "SessionStart",
+      source: "compact",
+      transcript_path: transcript,
+      cwd: root,
+    },
+    { CLAUDE_PROJECT_DIR: root },
+  ).hookSpecificOutput.additionalContext;
+  const quoted = text.match(/^1\. Rename .* \[\.\.\.\] .*END$/m)?.[0] ?? "";
+  expect(quoted.length).toBeGreaterThanOrEqual(200);
+  expect(text).toMatch(/, and \d+ more\.\n/);
+  expect(text).toMatch(/, and \d+ more\n<\/other_changes>/);
+  expect(text).toMatch(/so do not revert them/);
+  expect(text).toMatch(/`bun test [^`]*…` passed\.$/);
+  expect(text.length <= 2600).toBeTruthy();
+});
+
+// The working rules come again from their own hook, so with no state to
+// restore the carry-over adds nothing, and it runs only after compaction.
+test("the carry-over adds nothing without state, and only after compaction", () => {
   const sid = session();
   const input = (source) => ({
     session_id: sid,
@@ -100,15 +204,16 @@ test("compaction restates the report rule once, and only after compaction", () =
     source,
     transcript_path: path.join(data, `${sid}-none.jsonl`),
   });
-  const after = hook("session-start/restore-context-after-compact.mjs", {
-    ...input("compact"),
-  });
-  const text = after.hookSpecificOutput.additionalContext;
-  expect(text).toMatch(/start with the outcome/);
-  expect(text.match(/start with the outcome/g)).toHaveLength(1);
-  for (const source of ["startup", "resume", "clear"])
+  // An empty repository, so no uncommitted file is state.
+  const clean = tmp("dotclaude-repo-");
+  execFileSync("git", ["init", "-q", clean]);
+  for (const source of ["compact", "startup", "resume", "clear"])
     expect(
-      hook("session-start/restore-context-after-compact.mjs", input(source)),
+      hook(
+        "session-start/restore-context-after-compact.mjs",
+        { ...input(source), cwd: clean },
+        { CLAUDE_PROJECT_DIR: clean },
+      ),
     ).toBeNull();
 });
 

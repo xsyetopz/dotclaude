@@ -12,6 +12,7 @@ evals-heldout/results/
 !/docs/sandbox.md
 !/docs/README.md
 !/docs/hooks.md
+!/docs/hooks-context.md
 !/docs/hooks-usage.md
 !/docs/mods.md
 !/docs/models.md

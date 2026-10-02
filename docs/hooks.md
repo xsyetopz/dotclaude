@@ -203,82 +203,9 @@ work.
 
 ## Context
 
-### Nested Instructions (`context_nested_instructions`)
-
-**What:** when a Bash command such as `cat`, `sed`, or `rg` reads files in a
-directory, adds that directory's `CLAUDE.md`, `.claude/CLAUDE.md`, and
-`CLAUDE.local.md` once per session.
-
-**Why:** Claude Code loads a subdirectory's `CLAUDE.md` only when the Read
-tool opens a file there
-([#90450](https://github.com/anthropics/claude-code/issues/90450)). The
-working rules let Claude read with Bash, so without this hook it would miss
-the rules of the directory it works in. Path-scoped rules in `.claude/rules`
-are not covered yet ([open items](dossier/open-items.md)).
-
-### Session Files (`context_session_files`)
-
-**What:** when an agent creates a handoff note (`.claude/handoffs/`),
-`.dotclaude/` loop state, `CLAUDE.local.md`, `.claude/settings.local.json`,
-or `.claude/worktrees/`, adds the path to `.git/info/exclude`.
-
-**Why:** these files describe one session or one user, and the Claude Code
-docs say not to commit the last three. `.git/info/exclude` keeps them out of
-commits with no change to the tracked `.gitignore`. OpenSpec (`openspec/`)
-and Spec Kit (`.specify/`) tell you to commit their files, so the hook does
-not touch them.
-
-### Compaction Carry-Over (`context_compact_carryover`)
-
-**What:** after compaction, restores your last messages word for word, the
-last check result, and the files this session edited.
-
-**Why:** a compaction summary paraphrases. Your exact words, the last test
-result, and the list of edited files are the facts that the next turn acts
-on, so the hook restores them unchanged. A subagent compaction keeps and
-restores nothing, so it cannot replace the main session's messages.
-
-### Edit-Miss Lines
-
-**What:** when an `Edit` fails because `old_string` matches no text, gives
-Claude the closest lines of the file with their line numbers.
-
-**Why:** without them, Claude often guesses the text again or reads the
-whole file again. The idea comes from DensePack `edit_gate.py` (MIT).
-
-### Handoff Pointer (`context_handoff_pointer`)
-
-**What:** at startup and after `/clear`, when `.claude/handoffs/` holds a
-note with status `in-progress` or `blocked`, tells Claude the path of the
-newest one, its branch and commit, and the count of older open notes. Claude
-reads the note when you ask to continue, and checks it against `git status`
-and `git log` first.
-
-**Why:** a new session does not know that a handoff note exists. The pointer
-costs one line, and the note loads only when the work needs it. Notes with
-status `done` or `superseded` get no pointer, so finished work does not
-mislead the next session.
-
-### Cold Cache On Resume
-
-**What:** when you resume or fork a session with 100k tokens of context or
-more, and its prompt cache has expired, tells you the size of the context and
-the estimated cost to write it to the cache again.
-
-**Why:** the first prompt of such a session writes the whole context to the
-cache at 1.25x or 2x the input price. The status line shows this only after
-that prompt. A `/clear` and a handoff note avoid the cost.
-
-### Instruction-File Lint
-
-**What:** at session start, reports `CLAUDE.md`, `AGENTS.md`, and rule files
-that pass 150 lines (warning) or 200 lines (failure). It also reports
-startup instructions above about 3,000 tokens together, and broken imports or
-symlinks.
-
-**Why:** Claude Code targets 200 lines for an instruction file, and it skips
-a file above 4 MB. Startup instructions load into every request. The numbers
-are in `hooks/lib/_budget.mjs`.
+The working rules, nested instructions, session files, compaction carry-over, edit-miss
+lines, handoff pointer, cold-cache notice, instruction-file lint, and
+line-break check are on [Context Hooks](hooks-context.md).
 
 ## Usage
 
@@ -290,7 +217,7 @@ The usage bounds, usage notes, model lock, and scratchpad pruning are on
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `guard_bash`, `guard_edit`, `guard_secrets`, `context_nested_instructions`, `context_session_files`, `gate_verify`, `gate_tasks`, `gate_goal_stall`, `context_compact_carryover`, `context_handoff_pointer`, `model_lock`, `git_commit_hygiene` | on | the hooks above |
+| `guard_bash`, `guard_edit`, `guard_secrets`, `context_nested_instructions`, `context_session_files`, `gate_verify`, `gate_tasks`, `gate_goal_stall`, `context_compact_carryover`, `context_handoff_pointer`, `context_line_breaks`, `model_lock`, `git_commit_hygiene` | on | the hooks above |
 | `agent_guidance` | on | shared rules and report format for agents, the `general-purpose` refusal, and the [hidden built-in agents](mods.md#built-ins-that-dotclaude-replaces) |
 | `guard_ask_in_auto` | off | asks about recoverable actions in auto mode too |
 | `git_attribution` | on | adds the `Co-Authored-By` trailer and pull request footer |
