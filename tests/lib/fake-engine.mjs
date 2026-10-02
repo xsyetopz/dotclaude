@@ -8,8 +8,9 @@ const enoent = (file) =>
 
 /**
  * A fake `$`. Files are a map from path to text, which `$.files` shows to
- * the tests. `betterleaks` reports each secret in `init.secrets`, and each
- * other command exits with 1.
+ * the tests. `betterleaks` reports each secret in `init.secrets`, a string
+ * with the rule `generic-api-key` or a `{ secret, rule }`, and each other
+ * command exits with 1. `init.cwd` and `init.root` give the session folders.
  */
 export function fake(init = {}) {
   const files = new Map(Object.entries(init.files ?? {}));
@@ -39,10 +40,11 @@ export function fake(init = {}) {
     process: {
       run: async (argv) => {
         const leaks = argv[0] === "betterleaks";
-        const report = (init.secrets ?? []).map((secret) => ({
-          Secret: secret,
-          RuleID: "generic-api-key",
-        }));
+        const report = (init.secrets ?? []).map((secret) =>
+          typeof secret === "string"
+            ? { Secret: secret, RuleID: "generic-api-key" }
+            : { Secret: secret.secret, RuleID: secret.rule },
+        );
         return {
           exitCode: leaks ? 0 : 1,
           stdout: leaks ? JSON.stringify(report) : "",
@@ -54,8 +56,8 @@ export function fake(init = {}) {
     },
     session: {
       id: async () => "s1",
-      cwd: async () => "/work",
-      root: async () => "/work",
+      cwd: async () => init.cwd ?? "/work",
+      root: async () => init.root ?? init.cwd ?? "/work",
       messages: async () => init.messages ?? [],
       usage: async () => ({ startedAt: 0, context: { window: 200000 } }),
     },
@@ -64,11 +66,14 @@ export function fake(init = {}) {
   return $;
 }
 
-/** The handlers that `register` gives to a fake `on`, by event name. */
-export function registered() {
+/**
+ * The handlers that `register` gives to a fake `on`, by event name.
+ * `options` are the plugin options that `register(on, options)` gets.
+ */
+export function registered(options = {}) {
   const handlers = {};
   register((name, hook) => {
     handlers[name] = hook;
-  }, {});
+  }, options);
   return handlers;
 }
