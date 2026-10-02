@@ -73,20 +73,3 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
     ),
   ).toBe(null);
 });
-
-test("a second start of the same agent adds nothing (a `SendMessage` resume)", () => {
-  const start = (agent_id) =>
-    hook("subagent-start/inject-working-conventions.mjs", {
-      session_id: `s-resume-${process.pid}`,
-      hook_event_name: "SubagentStart",
-      agent_id,
-      agent_type: "general-purpose",
-    });
-  expect(start("r1")?.hookSpecificOutput.additionalContext).toContain(
-    CONVENTIONS,
-  );
-  expect(start("r1")).toBe(null);
-  expect(start("r2")?.hookSpecificOutput.additionalContext).toContain(
-    CONVENTIONS,
-  );
-});

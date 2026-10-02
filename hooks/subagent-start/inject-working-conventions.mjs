@@ -1,10 +1,10 @@
 // SubagentStart: give subagents the core working conventions. Output styles
-// reach only the main conversation, so subagents get this short version.
+// reach only the main conversation, so subagents get this short version. The
+// hooks module runs it in `agent.spawn`, so a resume (no spawn) gets no copy.
 
 import { definition, reserve } from "../lib/_agents.mjs";
 import { k, subagentContextTokens } from "../lib/_budget.mjs";
-import { option, stateDir } from "../lib/_core.mjs";
-import { pathFor } from "../lib/_path.mjs";
+import { option } from "../lib/_core.mjs";
 
 const GUIDANCE = `<working_conventions source="dotclaude">
 - Claims in your brief are hypotheses. Check them in the code or with a run. Check an unsure API, flag, or version in the installed source or its docs.
@@ -41,29 +41,8 @@ const context = (agentType) =>
 // Opus 5.5 0 times, mostly scratch files.
 const SONNET = `<scope_note source="dotclaude">Apply each instruction in your brief to everything it covers, not only the first match or file. Name in your report anything you left out and why. Write only in the files and directories that your brief names. Put scratch files in the system temp folder and delete them before you report, because files outside the brief make the review larger. Report defects outside your brief, and do not fix them. Before you report a code change as done, run a check that exercises it: the project's tests, type-checker, or build, or the changed command. A syntax-only check, or a check command that did not start, is not a check. If no real check can run, name the check you did not run and why.</scope_note>`;
 
-/**
- * True on the first start of this agent in this session. `SendMessage` resumes
- * fire `SubagentStart` again (#80489), and the resumed agent already has the
- * text in its context. `io.fs.create` is atomic across agents that start at
- * the same time.
- */
-async function firstStart(io, data) {
-  if (!data.session_id || !data.agent_id) return true;
-  const safe = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");
-  const marker = pathFor(io.platform).join(
-    stateDir(io),
-    `${safe(data.session_id)}.${safe(data.agent_id)}.started`,
-  );
-  try {
-    return await io.fs.create(marker, "");
-  } catch {
-    return true;
-  }
-}
-
 export default async function (io, data) {
   if (!option(io.env, "agent_guidance")) return;
-  if (!(await firstStart(io, data))) return;
   const agentType = String(data.agent_type ?? "");
   const type = agentType.replace(/^dotclaude:/, "");
   const parts = OWN_PROMPT.has(type) ? [] : [GUIDANCE];

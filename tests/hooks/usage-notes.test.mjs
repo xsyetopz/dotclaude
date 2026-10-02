@@ -10,11 +10,7 @@ import {
   k,
 } from "../../hooks/lib/_budget.mjs";
 import { nodeIo } from "../../hooks/lib/_io-node.mjs";
-import {
-  compactions,
-  mainContextTokens,
-  readUsage,
-} from "../../hooks/lib/_usage.mjs";
+import { compactions, readUsage } from "../../hooks/lib/_usage.mjs";
 import { isolatedHook as hook, tmp } from "../support/hooks.mjs";
 
 /** A config dir whose cached usage was fetched `ageMs` ago. */
@@ -216,13 +212,17 @@ test("the context note waits for the allowed compactions", () => {
   ).toContain(`after ${COMPACTIONS_BEFORE_HANDOFF} compactions`);
 });
 
-test("mainContextTokens reads the last main response, or a later compaction", () => {
+test("mainContextTokens reads the last main response, or a later compaction", async () => {
+  const mainContextTokens = (file) =>
+    nodeIo({ transcript_path: file }).session.mainContextTokens();
   expect(
-    mainContextTokens(transcript(response(5, 20_000), response(10, 90_000))),
+    await mainContextTokens(
+      transcript(response(5, 20_000), response(10, 90_000)),
+    ),
   ).toBe(91_010);
   // A sidechain entry is not the main context.
   expect(
-    mainContextTokens(
+    await mainContextTokens(
       transcript(
         response(10, 90_000),
         response(10, 5_000, { isSidechain: true }),
@@ -239,10 +239,10 @@ test("mainContextTokens reads the last main response, or a later compaction", ()
       postTokens: 19_815,
     },
   });
-  expect(mainContextTokens(compacted)).toBe(19_815);
-  expect(mainContextTokens(path.join(tmp("dotclaude-none-"), "x.jsonl"))).toBe(
-    null,
-  );
+  expect(await mainContextTokens(compacted)).toBe(19_815);
+  expect(
+    await mainContextTokens(path.join(tmp("dotclaude-none-"), "x.jsonl")),
+  ).toBe(null);
 });
 
 test("a context note tells Claude its context size past the note bound", () => {

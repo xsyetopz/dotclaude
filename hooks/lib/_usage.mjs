@@ -2,13 +2,11 @@
 // Claude Code caches in ~/.claude.json (`cachedUsageUtilization`). Claude Code
 // writes it whenever it fetches usage and treats it as stale after an hour;
 // dotclaude uses the same limit. No token is read and nothing is fetched.
-// Also the main conversation's context size and compactions, from its
-// transcript, for the status line.
+// Also the main conversation's compactions, from its transcript, for the
+// status line.
 
 import { compactionCount } from "./_io-node.mjs";
 import { readConfig } from "./_plans.mjs";
-import { tail } from "./_transcript.mjs";
-import { mainContextFromText } from "./_transcript-parse.mjs";
 
 const MAX_AGE_MS = 60 * 60 * 1000;
 
@@ -50,16 +48,6 @@ export async function readUsage(io, now = Date.now()) {
       out.fable = pct(limit.percent);
   }
   return out.session === null && out.weekly === null ? null : out;
-}
-
-/**
- * The main conversation's context in tokens: the input of its last response,
- * or the size after a later compaction. Null when the last 1 MB of the
- * transcript has neither.
- */
-export function mainContextTokens(transcriptPath) {
-  const text = transcriptPath ? tail(transcriptPath, 1_000_000) : null;
-  return text ? mainContextFromText(text) : null;
 }
 
 /**
