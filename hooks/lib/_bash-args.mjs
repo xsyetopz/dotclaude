@@ -1,7 +1,5 @@
 // Argument helpers shared by the Bash guard rules.
 
-import { execFileSync } from "node:child_process";
-
 // --- helpers ----------------------------------------------------------------
 
 export function isFlagCluster(arg) {
@@ -60,19 +58,6 @@ export async function git(io, cwd, args) {
       maxBytes: GIT_MAX_BYTES,
     });
     return r.exitCode === 0 ? r.stdout : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-// Sync twin of `git()`. Slices s14, s15, and s18 remove it.
-export function gitSync(cwd, args) {
-  try {
-    return execFileSync("git", ["-C", cwd, ...args], {
-      encoding: "utf8",
-      timeout: 3000,
-      stdio: ["ignore", "pipe", "ignore"],
-    });
   } catch {
     return undefined;
   }
