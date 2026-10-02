@@ -27,8 +27,9 @@ test("hooks/lib imports only itself, and event hooks only hooks/lib", () => {
       );
       const action =
         rel === "register.mjs" &&
-        /^\.\/[a-z-]+\/[a-z-]+\.mjs$/.test(spec) &&
-        !spec.startsWith("./lib/");
+        /^\.\/(pre-tool-use|post-tool-use|subagent-start)\/[a-z-]+\.mjs$/.test(
+          spec,
+        );
       if (action) continue;
       if (!target.startsWith(`lib${path.sep}`)) bad.push(`${rel} -> ${spec}`);
       else if (!inLib && !spec.startsWith(libSpec))

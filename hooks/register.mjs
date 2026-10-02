@@ -263,7 +263,7 @@ async function classicInput($, e) {
     if (!RESERVED.has(key)) toolInput[key] = value;
   const data = {
     hook_event_name: "PreToolUse",
-    session_id: await $.session.id(),
+    session_id: await $.session.id().catch(() => ""),
     tool_name: e.tool,
     tool_input: toolInput,
     tool_use_id: e.tool_use_id,
@@ -309,9 +309,10 @@ async function runActions($, options, event, data) {
 
 /**
  * Register the hooks of dotclaude. `tool.call` runs the PreToolUse actions
- * before the call and the PostToolUse actions after it. An "ask" or "allow"
- * stays in `verdicts` until `tool.check` of the same call gives it to the
- * engine, because `tool.check` runs inside the `next` of `tool.call`.
+ * before the call and the PostToolUse actions after it. An "ask" stays in
+ * `verdicts` until the call ends, because `tool.check` runs inside the `next`
+ * of `tool.call`. An "allow" is not kept, so the engine's rules decide, as
+ * they do for a classic hook's "allow".
  */
 export function register(on, options) {
   const verdicts = new Map();
@@ -324,11 +325,9 @@ export function register(on, options) {
     if (h.permissionDecision === "deny")
       return { deny: h.permissionDecisionReason ?? TAG };
     const id = e.tool_use_id;
-    const keep =
-      id !== undefined &&
-      (h.permissionDecision === "ask" || h.permissionDecision === "allow");
+    const keep = id !== undefined && h.permissionDecision === "ask";
     if (keep) {
-      const kept = { decision: h.permissionDecision };
+      const kept = { decision: "ask" };
       if (h.permissionDecisionReason !== undefined)
         kept.reason = h.permissionDecisionReason;
       verdicts.set(id, kept);
@@ -351,18 +350,19 @@ export function register(on, options) {
     const context = [...(r.context ?? []), ...notesOf(pre), ...notesOf(post)];
     const redacted = post?.hookSpecificOutput?.updatedToolOutput;
     // Core uses its own messages (`ref`, `text`) when they stay, so a
-    // redacted result is a new object without them.
+    // changed result is a new object without them.
     if (!r.isError && redacted !== undefined)
       return { result: redacted, context };
     if (context.length === (r.context?.length ?? 0)) return r;
+    if (!r.isError) return { result: r.result, context };
     return { ...r, context };
   });
 
-  on("tool.check", (_$, e, next) => {
+  // The engine's "deny" stays, so a rule of the user is not weakened.
+  on("tool.check", async (_$, e, next) => {
+    const verdict = await next(e);
     const kept =
       e.tool_use_id === undefined ? undefined : verdicts.get(e.tool_use_id);
-    if (!kept) return next(e);
-    verdicts.delete(e.tool_use_id);
-    return kept;
+    return kept && verdict?.decision !== "deny" ? kept : verdict;
   });
 }
