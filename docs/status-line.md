@@ -10,7 +10,7 @@ An example, with colors removed:
 
 ```text
 dotclaude/hooks +2 · ⊞ feature-x · ⎇ main ±3 ↑1 · #42
-Opus 5.5 high · 87k/117k ████░ ⇊1/4 · ◷ 40m 93% ✗2 tools · 5h 82% ▲12%→12:46
+Opus 5.5 high · 87k/117k ████░ ⇊1/4 · ◷ 40m 93% ✘2 tools · 5h 82% ▲12%→12:46pm ↻1:30pm
 ```
 
 Each part is short. A one-column glyph replaces a word where it saves space:
@@ -22,13 +22,16 @@ Each part is short. A one-column glyph replaces a word where it saves space:
 | `⊞` | worktree |
 | `◷` | warm prompt cache, with the minutes until it expires |
 | `◌` | cold prompt cache |
-| `✗` | cache misses, with the cause of the last miss |
+| `✘` | cache misses, with the cause of the last miss |
 | `▲` | limit deficit, with `→` the time the limit runs out |
 | `▼` | limit reserve |
 | `↻` | limit reset time |
 
 The line uses no emoji. Some terminals show an emoji in two columns and others
-in one, so the row width would be wrong.
+in one, so the row width would be wrong. The Claude Code docs give no rules
+for status line glyphs. Where Claude Code has a glyph for the same meaning,
+the line uses it: `✘` is its cross, `↻` and `◌` are in its figure set, and
+`█` is its bar.
 
 The first row shows where the session works:
 
@@ -48,9 +51,9 @@ The second row shows what the session uses:
 - the prompt cache: the minutes until it expires, its hit ratio, and its
   misses with the last cause, or the tokens that the next turn re-reads when
   it is cold on 100k or more
-- the 5-hour, weekly, and spend limits with their reset times from 75%, or
+- the 5-hour, weekly, and spend limits, each with the time it resets, or
   the session cost when you pay per token
-- the pace of the 5-hour and weekly limits: `▲12%→12:46` in yellow is a
+- the pace of the 5-hour and weekly limits: `▲12%→12:46pm` in yellow is a
   deficit, and `▼30%` in green is a reserve
 - the lines added and removed, and the session time
 
@@ -74,13 +77,22 @@ The second row shows what the session uses:
   the cache lifetime does not count, because nothing broke the cache. The
   expiry countdown shows it before the turn. A miss after a model
   switch does not count either, because a new model starts a new cache.
-- **Limits from 75%:** the same levels as the
-  [usage notes](hooks-usage.md#usage-notes-usage_notes). Below 75% a limit does not
-  change what you do, so it takes little space.
+- **Limit colors at 75% and 90%:** the same levels as the
+  [usage notes](hooks-usage.md#usage-notes-usage_notes).
+- **Reset times:** Claude Code sends each window with `resets_at` after the
+  first API response of a session. The time has the format of Claude Code's
+  `/usage`: `3pm` or `3:30pm` within a day, else the date, as in
+  `Oct 4 at 12pm`. Before the first response, the line reads the copy of
+  the `/usage` response that Claude Code keeps in `~/.claude.json`, the same
+  data that [CodexBar](https://github.com/steipete/CodexBar) gets from the
+  usage endpoint. The line does not read your token and sends no request.
+  Claude Code refreshes that copy only when it gets the usage, so a copy
+  older than one hour is not shown. A window whose reset time has passed is
+  not shown.
 - **Pace:** the percentage alone does not tell you if the limit comes before
   the reset. The pace compares usage with an even rate over the window, as
   [CodexBar](https://github.com/steipete/CodexBar) does. `▲12%` means usage
-  is 12 points ahead of that rate, and `→12:46` is the time at which the
+  is 12 points ahead of that rate, and `→12:46pm` is the time at which the
   current rate uses up the limit. A reserve (`▼30%`) tells you that you can
   spend more, for example on a review agent. In the first 3% of a window a
   few requests move the pace far, so it shows only after that. A spend limit

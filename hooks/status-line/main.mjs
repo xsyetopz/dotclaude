@@ -5,6 +5,7 @@
 import { readInput } from "../lib/_common.mjs";
 import { loopProgress } from "../lib/_loop.mjs";
 import { gitState, renderMain } from "../lib/_status-line.mjs";
+import { readUsage } from "../lib/_usage.mjs";
 
 try {
   const data = readInput();
@@ -16,6 +17,11 @@ try {
       columns: columns - 4,
       git: gitState(dir),
       loop: loopProgress(root),
+      // Read Claude Code's cached `/usage` copy only while a window is missing.
+      usage:
+        data.rate_limits?.five_hour && data.rate_limits?.seven_day
+          ? null
+          : readUsage(),
     }),
   );
 } catch {

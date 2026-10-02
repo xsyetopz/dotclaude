@@ -6,7 +6,7 @@
 //
 // Each part is short and starts with a one-column glyph where a word would
 // cost more columns: `⇊` compactions, `⎇` branch, `⊞` worktree, `◷` warm cache, `◌` cold
-// cache, `✗` cache misses, `▲` limit deficit, `▼` limit reserve, `↻` limit
+// cache, `✘` cache misses, `▲` limit deficit, `▼` limit reserve, `↻` limit
 // reset. A space follows a glyph that labels a name or a time (`⎇`, `⊞`,
 // `◷`, `◌`), so the glyph and the text do not run together. No emoji,
 // because an emoji takes two columns in some terminals and one in others,
@@ -105,12 +105,26 @@ export function mainContextPart(tokens, count) {
   return text;
 }
 
-const clock = (sec, now) => {
+/**
+ * A time in Claude Code's own `/usage` format: "3pm" or "3:30pm" within a
+ * day, else "Oct 5, 3pm", with the year when it differs from now.
+ */
+export function clock(sec, now = Date.now()) {
   const d = new Date(sec * 1000);
-  const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  if (sec * 1000 - now < 20 * 3600_000) return hm;
-  return d.toLocaleDateString("en-US", { weekday: "short" });
-};
+  const opts = {
+    hour: "numeric",
+    minute: d.getMinutes() === 0 ? undefined : "2-digit",
+    hour12: true,
+  };
+  let text;
+  if (sec * 1000 - now > 24 * 3600_000) {
+    opts.month = "short";
+    opts.day = "numeric";
+    if (d.getFullYear() !== new Date(now).getFullYear()) opts.year = "numeric";
+    text = d.toLocaleString("en-US", opts);
+  } else text = d.toLocaleTimeString("en-US", opts);
+  return text.replace(/[ \u202f]([AP]M)/i, (_, m) => m.toLowerCase());
+}
 
 /** Time left, rounded up to whole minutes: "4m", "1h5m". */
 const countdown = (ms) => {
@@ -151,7 +165,7 @@ export function cachePart(cache, now = Date.now()) {
       cause && !cause.startsWith("ttl_expired")
         ? ` ${cause.replace(/_changed$/, "")}`
         : "";
-    ratio += ` ${C.yellow(`✗${misses}${shown}`)}`;
+    ratio += ` ${C.yellow(`✘${misses}${shown}`)}`;
   }
   if (cache.warm && cache.expires_at && cache.expires_at * 1000 > now)
     return `${C.green(`◷ ${countdown(cache.expires_at * 1000 - now)}`)}${ratio}`;
@@ -172,12 +186,12 @@ function windowGone(window, now, span) {
 }
 
 /**
- * One usage window: "5h 23%", with its reset time once it passes a level.
- * With the window length in seconds, it also shows the pace, as CodexBar
- * does: "▲12%→12:46" is a deficit (usage runs 12 points ahead of an even
- * rate, and at that rate the limit runs out at 12:46), and "▼30%" is a
- * reserve. Early in a window the pace is noise, so it shows only after 3%
- * of the window is gone.
+ * One usage window: "5h 23% ↻3pm", with the time it resets, as Claude Code's
+ * `/usage` shows it. With the window length in seconds, it also shows the
+ * pace, as CodexBar does: "▲12%→12:46pm" is a deficit (usage runs 12 points
+ * ahead of an even rate, and at that rate the limit runs out at 12:46pm),
+ * and "▼30%" is a reserve. Early in a window the pace is noise, so it shows
+ * only after 3% of the window is gone.
  */
 export function limitPart(label, window, now = Date.now(), span = 0) {
   if (!Number.isFinite(window?.used_percentage)) return null;
@@ -194,10 +208,28 @@ export function limitPart(label, window, now = Date.now(), span = 0) {
     else if (delta < 0) pace = ` ${C.green(`▼${-delta}%`)}`;
   }
   const reset =
-    pct >= USAGE_LEVELS[0] && window.resets_at
+    Number(window.resets_at) * 1000 > now
       ? C.dim(` ↻${clock(window.resets_at, now)}`)
       : "";
   return `${C.dim(label)} ${byLevel(pct, `${pct}%`)}${pace}${reset}`;
+}
+
+/**
+ * The usage windows from Claude Code's status JSON. Claude Code sends them
+ * only after the first API response of a session, so until then each missing
+ * window comes from `usage`, the copy of the `/usage` response that Claude
+ * Code keeps (`readUsage`). A window whose reset time has passed is gone.
+ */
+export function limitsWithFallback(limits, usage, now = Date.now()) {
+  const window = (pct, resetsAt) =>
+    Number.isFinite(pct) && resetsAt > now
+      ? { used_percentage: pct, resets_at: resetsAt / 1000 }
+      : undefined;
+  const out = { ...limits };
+  out.five_hour ??= window(usage?.session, usage?.sessionResetsAt);
+  out.seven_day ??= window(usage?.weekly, usage?.weeklyResetsAt);
+  for (const key of Object.keys(out)) if (!out[key]) delete out[key];
+  return Object.keys(out).length ? out : null;
 }
 
 /** Branch, dirty count, and ahead/behind from one `git status` call. */
@@ -300,8 +332,9 @@ function pack(groups, columns) {
  */
 export function renderMain(
   data,
-  { columns = 120, now = Date.now(), git, loop } = {},
+  { columns = 120, now = Date.now(), git, loop, cached } = {},
 ) {
+  const limits = limitsWithFallback(data.rate_limits, cached, now);
   const dir = data.workspace?.current_dir || data.cwd || "";
   const place = [];
   const usage = [];
@@ -343,12 +376,12 @@ export function renderMain(
       window?.used_percentage >= USAGE_LEVELS[0] ? 9 : priority,
       limitPart(label, window, now, span),
     );
-  limit("5h", data.rate_limits?.five_hour, 5, 5 * 3600);
-  limit("7d", data.rate_limits?.seven_day, 4, 7 * 86_400);
+  limit("5h", limits?.five_hour, 5, 5 * 3600);
+  limit("7d", limits?.seven_day, 4, 7 * 86_400);
   // A spend limit has no fixed window, so it has no pace.
-  limit("spend", data.rate_limits?.spend_limit, 4);
+  limit("spend", limits?.spend_limit, 4);
   // Subscribers see limits. Others pay per token, so they see the estimate.
-  if (!data.rate_limits && typeof data.cost?.total_cost_usd === "number")
+  if (!limits && typeof data.cost?.total_cost_usd === "number")
     add(usage, 3, C.dim(`$${data.cost.total_cost_usd.toFixed(2)}`));
   add(usage, 2, linesPart(data.cost));
   if (data.cost?.total_duration_ms > 0)

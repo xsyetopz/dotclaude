@@ -151,7 +151,7 @@ test("the cache part counts only misses that idle time did not cause", () => {
     last_miss_cause: { causes: ["ttl_expired_5m"] },
     miss_causes: { tools_changed: 1, ttl_expired_5m: 2, ttl_expired_1h: 1 },
   };
-  expect(plain(cachePart(mixed, NOW))).toBe("◷ 40m 97% ✗1");
+  expect(plain(cachePart(mixed, NOW))).toBe("◷ 40m 97% ✘1");
   // A model switch starts a new cache, so its rebuild is expected. Claude
   // Code already keeps the first call and compactions out of `misses`.
   const model = {
@@ -166,20 +166,30 @@ test("the cache part counts only misses that idle time did not cause", () => {
     misses: 3,
     miss_causes: { model_changed: 2, effort_changed: 1, tools_changed: 1 },
   };
-  expect(plain(cachePart(both, NOW))).toBe("◷ 40m 97% ✗1");
+  expect(plain(cachePart(both, NOW))).toBe("◷ 40m 97% ✘1");
 });
 
-test("a usage limit shows its reset only from the first usage level", () => {
+test("a usage limit shows its reset time in Claude Code's `/usage` format", () => {
   const reset = sec(NOW + 90 * 60_000);
   expect(
     plain(limitPart("5h", { used_percentage: 40, resets_at: reset }, NOW)),
-  ).toBe("5h 40%");
+  ).toBe("5h 40% ↻1:30pm");
   const high = limitPart(
     "5h",
     { used_percentage: 91.2, resets_at: reset },
     NOW,
   );
-  expect(plain(high)).toBe("5h 91% ↻13:30");
+  expect(plain(high)).toBe("5h 91% ↻1:30pm");
+  // A whole hour has no minutes. Past a day, the date shows, and the year
+  // when it differs.
+  const hour = { used_percentage: 5, resets_at: sec(NOW + 3 * 3600_000) };
+  expect(plain(limitPart("5h", hour, NOW))).toBe("5h 5% ↻3pm");
+  const week = { used_percentage: 5, resets_at: sec(NOW + 6 * 86_400_000) };
+  expect(plain(limitPart("7d", week, NOW))).toBe("7d 5% ↻Oct 4 at 12pm");
+  const next = sec(Date.parse("2027-01-02T09:15:00"));
+  expect(
+    plain(limitPart("7d", { used_percentage: 5, resets_at: next }, NOW)),
+  ).toBe("7d 5% ↻Jan 2, 2027 at 9:15am");
   expect(high).toContain(`${RED}91%`);
   expect(limitPart("7d", undefined, NOW)).toBe(null);
 });
@@ -195,33 +205,39 @@ test("a usage limit shows its pace as a deficit or a reserve", () => {
     FIVE_H,
   );
   // A deficit: 82% used in 210 minutes runs out 46 minutes from now, at
-  // 12:46, before the reset at 13:30.
-  expect(plain(ahead)).toBe("5h 82% ▲12%→12:46 ↻13:30");
-  expect(ahead).toContain(`${YELLOW}▲12%→12:46`);
+  // 12:46pm, before the reset at 1:30pm.
+  expect(plain(ahead)).toBe("5h 82% ▲12%→12:46pm ↻1:30pm");
+  expect(ahead).toContain(`${YELLOW}▲12%→12:46pm`);
   // A reserve: 40% used when 70% of the window is gone.
   const behind = { used_percentage: 40, resets_at: reset };
   const reserve = limitPart("5h", behind, NOW, FIVE_H);
-  expect(plain(reserve)).toBe("5h 40% ▼30%");
+  expect(plain(reserve)).toBe("5h 40% ▼30% ↻1:30pm");
   expect(reserve).toContain(`${GREEN}▼30%`);
   const even = { used_percentage: 70, resets_at: reset };
-  expect(plain(limitPart("5h", even, NOW, FIVE_H))).toBe("5h 70%");
+  expect(plain(limitPart("5h", even, NOW, FIVE_H))).toBe("5h 70% ↻1:30pm");
   const full = { used_percentage: 100, resets_at: reset };
-  expect(plain(limitPart("5h", full, NOW, FIVE_H))).toBe("5h 100% ▲30% ↻13:30");
-  // 6 days of 7 left: 14% of the week is gone. 30% in one day runs out 2.3 days from Monday noon.
+  expect(plain(limitPart("5h", full, NOW, FIVE_H))).toBe(
+    "5h 100% ▲30% ↻1:30pm",
+  );
+  // 6 days of 7 left: 14% of the week is gone. 30% in one day runs out 56
+  // hours from Monday noon.
   const week = { used_percentage: 30, resets_at: sec(NOW + 6 * 86_400_000) };
-  expect(plain(limitPart("7d", week, NOW, 7 * 86_400))).toBe("7d 30% ▲16%→Wed");
+  expect(plain(limitPart("7d", week, NOW, 7 * 86_400))).toBe(
+    "7d 30% ▲16%→Sep 30 at 8pm ↻Oct 4 at 12pm",
+  );
   expect(plain(limitPart("5h", { used_percentage: 60 }, NOW, FIVE_H))).toBe(
     "5h 60%",
   );
   // Before 3% of the window is gone, the pace is noise: 10% of 5 hours
   // used after 6 minutes.
   const early = { used_percentage: 10, resets_at: sec(NOW + 294 * 60_000) };
-  expect(plain(limitPart("5h", early, NOW, FIVE_H))).toBe("5h 10%");
-  // A reset that is past or outside the window gives no pace.
+  expect(plain(limitPart("5h", early, NOW, FIVE_H))).toBe("5h 10% ↻4:54pm");
+  // A reset that is past or outside the window gives no pace. A past reset
+  // shows no time.
   const past = { used_percentage: 60, resets_at: sec(NOW - 60_000) };
   expect(plain(limitPart("5h", past, NOW, FIVE_H))).toBe("5h 60%");
   const far = { used_percentage: 60, resets_at: sec(NOW + 6 * 3600_000) };
-  expect(plain(limitPart("5h", far, NOW, FIVE_H))).toBe("5h 60%");
+  expect(plain(limitPart("5h", far, NOW, FIVE_H))).toBe("5h 60% ↻6pm");
   for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, "82"])
     expect(
       limitPart("5h", { used_percentage: bad, resets_at: reset }, NOW, FIVE_H),
@@ -262,6 +278,34 @@ test("the main line shows the place on one row and the usage on the next, with c
   expect(plain(api)).toContain("$3.21");
 });
 
+test("before the first API response, the limits come from Claude Code's cached `/usage` copy", () => {
+  const cached = {
+    session: 12,
+    weekly: 47.6,
+    sessionResetsAt: NOW + 3 * 3600_000,
+    weeklyResetsAt: NOW - 60_000,
+  };
+  const line = renderMain(
+    { ...DATA, rate_limits: undefined },
+    { columns: 200, now: NOW, cached },
+  );
+  // The weekly window has reset, so its cached percentage is gone.
+  expect(plain(line)).toContain("5h 12% ▼28% ↻3pm");
+  expect(plain(line)).not.toContain("7d");
+  expect(plain(line)).not.toContain("$3.21");
+  // Claude Code's own windows win over the cached copy.
+  const live = renderMain(DATA, { columns: 200, now: NOW, cached });
+  expect(plain(live)).toContain("5h 23% · 7d 41%");
+  expect(
+    plain(
+      renderMain(
+        { ...DATA, rate_limits: undefined },
+        { columns: 200, now: NOW, cached: null },
+      ),
+    ),
+  ).toContain("$3.21");
+});
+
 const FULL = {
   ...DATA,
   workspace: {
@@ -295,7 +339,7 @@ test("the main line shows the session facts that advanced users check", () => {
   const text = plain(renderMain(FULL, { columns: 400, now: NOW, git: GIT }));
   expect(text.split("\n")).toEqual([
     "dotclaude/hooks +2 · ⊞ feature-x · ⎇ main ±3 ↑1 · #42 · @reviewer · NORMAL · status line rows",
-    "Opus 5.5 medium · 87k/117k ████░ · ◷ 40m 93% ✗2 tools · 5h 23% · 7d 41% · spend 63% · +156 -23 · 1h12m",
+    "Opus 5.5 medium · 87k/117k ████░ · ◷ 40m 93% ✘2 tools · 5h 23% · 7d 41% · spend 63% · +156 -23 · 1h12m",
   ]);
 });
 

@@ -10,6 +10,16 @@ steps after each update.
 
 ## [Unreleased]
 
+### Changed
+
+- The status line shows the reset time of each usage limit at all levels,
+  not only from 75%. Reset and pace times use the format of Claude Code's
+  `/usage`: `3pm`, `3:30pm`, or `Oct 4 at 12pm`. Before the first API
+  response of a session, the 5-hour and weekly limits come from the
+  `/usage` copy that Claude Code keeps in `~/.claude.json`, when it is less
+  than one hour old.
+- The cache miss glyph is `✘`, Claude Code's own cross, not `✗`.
+
 ## [0.17.1] - 2026-10-02
 
 ### Breaking
