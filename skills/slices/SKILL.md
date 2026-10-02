@@ -51,6 +51,7 @@ When all slices are `merged`, run the full oracle and the project's lint or buil
 </procedure>
 
 <brief>
+
 Give each `implementer` this brief, and fill in the parts in angle brackets:
 
 ```text
@@ -63,6 +64,7 @@ Oracle: <command>. It must pass. You cannot change the files that match <globs>.
 Run each command from your worktree root, as a plain command. Claude Code refuses a command in a worktree agent when it cannot show that the command stays in the worktree: `bash -c`, `eval`, a shell variable or a brace expansion in an argument, or a `git` command inside a larger command.
 Report: what changed, the oracle result, and anything left open.
 ```
+
 </brief>
 
 <task>

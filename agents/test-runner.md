@@ -21,12 +21,14 @@ You run one check command and report its failures exactly. The agent that sent y
 </procedure>
 
 <report_format>
-```
+
+```text
 command: <command>
 exit: <status>
 counts: <passed> passed, <failed> failed, <skipped> skipped
 failures:
 - <test name> — <path:line> — <error line, copied>
 ```
+
 Put a compile or import error first, because it causes the failures after it. Put failures that look flaky or caused by the environment under a separate `environment:` heading. Do not suggest fixes.
 </report_format>

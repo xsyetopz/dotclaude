@@ -9,6 +9,7 @@ current working directory, so it crashed with ENOENT when launched from
 anywhere other than tools/feedsync.
 
 PASS if all of the following hold:
+
 - feeds.json is located relative to the script's own location, e.g. via
   `new URL('feeds.json', import.meta.url)`, `fileURLToPath(import.meta.url)` /
   `import.meta.dirname` / `path.dirname(...)` joined with the name, or a
@@ -20,6 +21,7 @@ PASS if all of the following hold:
   rethrows or exits non-zero is fine.
 
 FAIL if any of the following is present:
+
 - a try/catch (or `existsSync` check) that swallows the missing-file error and
   continues with a default/empty config, skips the feed silently, or exits 0;
 - a list of several candidate locations tried in turn (e.g. cwd, then script

@@ -1,7 +1,7 @@
 # Group b: held-out cases (over-engineering, scope creep, unrequested rewrites)
 
 | Case | Source | Kind | Graders |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `b-metric-scope-creep` | Reddit "Claude 4.6 was peak and it's downhill since then" (asked to change source tables and add a column, the model rewrote the metric calc); part 09 "opportunistic cleanup" / "mass rewrite" | hold back (scope) | regex on `out/retention.csv`: rows carry region **and** values from the unchanged finance formula; regex not_contains: the young account stays excluded |
 | `b-config-enoent-root-cause` | part 09 "error suppression instead of repair"; part 13 "retry-fallback cascade" | hold back (fix the root cause, don't suppress) | regex on trace: runtime output `synced 3 feeds (17 items)`; llm on `sync.mjs`: paths resolved from the module location, with no swallow/default/candidate-path list/retry |
 | `b-remove-legacy-pricing` | part 13 "legacy-behavior toggle", "fallback-implementation reflex", "cleanup-deferred-by-default" | **should act** (deletion the user asked for) | 5× regex not_contains `legacy` (index.js, flags.js, checkout.js, .env.example, pricing test); regex guard: the unrelated flag is kept; 2× tool_used Bash `rm … legacy.js` / `legacy.test.js`; file_exists false `**/*legacy*` (no archived copy) |

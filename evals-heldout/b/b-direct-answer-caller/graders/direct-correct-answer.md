@@ -5,6 +5,7 @@ focus: last_message
 
 The user asked whether anything in src/ still calls `formatLegacyDate`
 (ignoring its own tests). Ground truth for this repository:
+
 - `src/export/csv.js` calls it (`dates.formatLegacyDate(o.placedAt)` inside
   `toCsv`). This is a real call.
 - Inside `src/util/dates.js`, `formatLegacyDateTime` calls `formatLegacyDate`
@@ -18,6 +19,7 @@ PASS if the reply clearly answers yes (it is still called) and identifies
 formatLegacyDateTime in addition is fine.
 
 FAIL if any of the following:
+
 - it says nothing calls it, or that it is safe to delete as-is;
 - it names `src/report/pdf.js`, `CHANGELOG.md` or the tests as places that
   call it;

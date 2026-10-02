@@ -5,6 +5,7 @@ argument-hint: "[repository and what to contribute, for example: owner/repo bug 
 ---
 
 <procedure>
+
 1. Find the AI policy. Read these files in the target repository, if they exist: `AI_POLICY.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CODE_OF_CONDUCT.md`, the pull request template, and the issue templates. Use `gh api repos/<owner>/<repo>/contents/<path>` or the web page. Also check the organization's `.github` repository. dotclaude's Bash guard reads a catalog of projects that forbid AI contributions and denies contribution commands to them.
 
 2. Decide from the policy:
