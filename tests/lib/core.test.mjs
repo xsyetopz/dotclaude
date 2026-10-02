@@ -74,13 +74,22 @@ test("pruneState removes only old files, through io.fs", async () => {
       kind: "file",
       mtimeMs: now - 29 * day,
     },
+    "/tmp/dotclaude/sessions/edge.json": {
+      kind: "file",
+      mtimeMs: now - 30 * day,
+    },
+    "/tmp/dotclaude/sessions/gone.json": null,
     "/tmp/dotclaude/sessions/sub": { kind: "dir", mtimeMs: 0 },
   };
   const removed = [];
   const fsIo = {
     list: async () =>
       Object.keys(files).map((file) => ({ name: path.posix.basename(file) })),
-    stat: async (file) => files[file],
+    stat: async (file) => {
+      // Another session removed this file after the list.
+      if (files[file] === null) throw new Error("ENOENT");
+      return files[file];
+    },
     remove: async (file) => {
       removed.push(file);
     },
@@ -104,6 +113,9 @@ test("projectRoot prefers CLAUDE_PROJECT_DIR, then data.cwd, then io.cwd", () =>
   );
   expect(projectRoot(io(), { cwd: "/repo/./sub/.." })).toBe("/repo");
   expect(projectRoot(io(), {})).toBe("/work");
+  const win = io({ platform: "win32", cwd: "C:\\work" });
+  expect(projectRoot(win, { cwd: "D:\\x\\..\\y" })).toBe("D:\\y");
+  expect(projectRoot(win, { cwd: "rel" })).toBe("C:\\work\\rel");
 });
 
 test("preToolOutput builds the PreToolUse decision", () => {

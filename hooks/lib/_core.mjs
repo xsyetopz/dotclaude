@@ -46,7 +46,7 @@ export function stateDir(io) {
 // default, and dotclaude's per-session state is useless without them.
 const STATE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Delete state files not modified in 30 days; returns how many went. */
+/** Delete state files not modified in 30 days. Returns how many went. */
 export async function pruneState(io, now = Date.now()) {
   const path = pathFor(io.platform);
   const dir = stateDir(io);

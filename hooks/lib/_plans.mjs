@@ -127,7 +127,7 @@ export function fableAccess(plan, account = null) {
  * the plan cannot run it. `note` explains the removal for deny messages.
  */
 export function planAllowlist(env = process.env) {
-  const list = optionList(process.env, "model_allowed", DEFAULT_ALLOWED);
+  const list = optionList(env, "model_allowed", DEFAULT_ALLOWED);
   const { plan, account } = currentPlan(env);
   if (fableAccess(plan, account) !== "unavailable") return { list, note: "" };
   return {
