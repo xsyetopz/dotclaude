@@ -10,7 +10,7 @@
 // statically. The action table is in `lib/_actions.mjs`.
 
 import { ACTIONS, MATCH_FIELD, matches, merge } from "./lib/_actions.mjs";
-import { TAG, tagOutput } from "./lib/_core.mjs";
+import { option, TAG, tagOutput } from "./lib/_core.mjs";
 import {
   agentContextFile,
   bytesOfBase64,
@@ -32,6 +32,7 @@ import {
   tmpOf,
   turnsOf,
 } from "./lib/_io-mod.mjs";
+import { agentStarted } from "./lib/_ledger.mjs";
 import excludeSessionFiles from "./post-tool-use/exclude-session-files.mjs";
 import loadNestedInstructions from "./post-tool-use/load-nested-instructions.mjs";
 import noteContextSize from "./post-tool-use/note-context-size.mjs";
@@ -348,26 +349,43 @@ async function runActions($, options, event, data, only) {
 }
 
 /**
- * Keep the context tokens of the first and latest steps of the subagent
- * `agentId`, for `io.session.agentContext`. The first value of an existing
- * file stays. The state folder does not change in a session, so `places`
- * keeps one io for each session, and a step does not make a new io.
+ * The session ID and the io of the current session, or null when the
+ * session has no ID. The state folder does not change in a session, so
+ * `places` keeps one io for each session, and a step does not make a new io.
  */
-async function noteAgentContext($, options, places, agentId, usage) {
-  const tokens = contextTokensOf(usage);
-  if (tokens === null) return;
+async function placeOf($, options, places) {
   const sessionId = await $.session.id();
-  if (!sessionId) return;
+  if (!sessionId) return null;
   if (!places.has(sessionId)) {
     const io = modIo($, options, {});
     io.catch(() => places.delete(sessionId));
     places.set(sessionId, io);
   }
-  const file = agentContextFile(
-    await places.get(sessionId),
-    sessionId,
-    agentId,
-  );
+  return { sessionId, io: await places.get(sessionId) };
+}
+
+/**
+ * Mark the subagent `agentId` as running again. The engine gives no
+ * subagent transcript, so the marker time is the only activity time of the
+ * agent. A resumed agent gets no `agent.spawn`, so its next step marks it.
+ */
+async function markRunning($, options, places, agentId) {
+  const place = await placeOf($, options, places);
+  if (place && option(place.io.env, "agent_guidance"))
+    await agentStarted(place.io, place.sessionId, agentId);
+}
+
+/**
+ * Keep the context tokens of the first and latest steps of the subagent
+ * `agentId`, for `io.session.agentContext`. The first value of an existing
+ * file stays.
+ */
+async function noteAgentContext($, options, places, agentId, usage) {
+  const tokens = contextTokensOf(usage);
+  if (tokens === null) return;
+  const place = await placeOf($, options, places);
+  if (!place) return;
+  const file = agentContextFile(place.io, place.sessionId, agentId);
   const fs = modFs($);
   const before = contextOf(await fs.read(file).catch(() => ""));
   await fs.write(
@@ -478,6 +496,12 @@ export function register(on, options) {
   on("turn.step", async function* ($, e, next) {
     if (!e.agentId)
       effort = typeof e.effort === "string" ? e.effort : undefined;
+    else if (typeof e.agentId === "string")
+      try {
+        await markRunning($, options, places, e.agentId);
+      } catch {
+        // The agent then counts as running only until its marker is idle.
+      }
     const r = yield* next(e);
     if (typeof e.agentId === "string" && e.agentId)
       try {

@@ -1,7 +1,8 @@
 // SubagentStart hook: mark the subagent as running, so that
 // `pre-tool-use/prefer-dotclaude-agents.mjs` can deny an `Agent` call past
-// `MAX_CONCURRENT_AGENTS`. A resume starts the same agent again and rewrites
-// its marker.
+// `MAX_CONCURRENT_AGENTS`. The hooks module runs it after `agent.spawn`, and
+// each `turn.step` of the agent rewrites its marker (`hooks/register.mjs`),
+// so a long or resumed agent stays counted.
 
 import { option } from "../lib/_core.mjs";
 import { agentStarted } from "../lib/_ledger.mjs";

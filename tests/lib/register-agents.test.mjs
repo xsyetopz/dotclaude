@@ -119,6 +119,30 @@ test("turn.step keeps the first and the latest context tokens of a subagent", as
   expect(await (await factsOf($, "a2")).agentContext()).toBe(null);
 });
 
+test("each subagent step marks the agent as running before the step", async () => {
+  // The engine gives no subagent transcript, so the marker time is the only
+  // activity time. A resumed agent gets no `agent.spawn`, so its first step
+  // marks it again.
+  const on = registered();
+  const $ = fake();
+  const result = { answer: "", toolUses: [], usage: usage(1, 1, 1) };
+  const seen = [];
+  const next = async function* () {
+    seen.push(runningMarkers($).length);
+    yield* [];
+    return result;
+  };
+  await drain(on["turn.step"]($, { agentId: "a1" }, next));
+  expect(seen).toEqual([1]);
+  expect(runningMarkers($)).toHaveLength(1);
+  expect(runningMarkers($)[0]).toEndWith("/s1.a1.running");
+  // With `agent_guidance` off, no step marks an agent.
+  const off = registered({ agent_guidance: false });
+  const $off = fake();
+  await drain(off["turn.step"]($off, { agentId: "a1" }, stepOf([], result)));
+  expect(runningMarkers($off)).toEqual([]);
+});
+
 test("turn.step on the main thread keeps nothing, and a failed write does not throw", async () => {
   const on = registered();
   const $ = fake();
