@@ -36,7 +36,9 @@
  * @property {(path: string) => Promise<string>} read UTF-8 text. Rejects
  *   when the file is missing or larger than 4 MiB.
  * @property {(path: string, bytes: number) => Promise<Uint8Array>} head The
- *   first `bytes` bytes, fewer for a short file. Rejects when missing.
+ *   first `bytes` bytes, fewer for a short file. Rejects when missing. The
+ *   hooks-module io reads the whole file, so it also rejects a file larger
+ *   than 4 MiB.
  * @property {(path: string, text: string) => Promise<void>} write Replaces
  *   the whole file and creates its folders. The Node io writes a temp file
  *   and renames it, so a reader never sees half a file.
@@ -46,7 +48,8 @@
  *   Writes a new file and resolves true, or resolves false when the path
  *   exists. Atomic in the Node io only.
  * @property {(path: string) => Promise<void>} remove Deletes a file. No error
- *   when it is missing.
+ *   when it is missing. The engine has no delete, so the hooks-module io
+ *   writes `""` to the file in its place.
  * @property {(path: string) => Promise<boolean>} exists
  * @property {(path: string, options?: { resolve?: boolean }) => Promise<IoStat>}
  *   stat Rejects when missing.
@@ -110,7 +113,9 @@
  * @property {"posix" | "win32"} platform The path flavor of the host.
  * @property {Record<string, string | undefined>} env The host environment.
  *   The hooks module fills it from a fixed list of names and from the
- *   plugin options as `CLAUDE_PLUGIN_OPTION_<KEY>`.
+ *   plugin options as `CLAUDE_PLUGIN_OPTION_<KEY>`. It makes
+ *   `CLAUDE_PROJECT_DIR` and `CLAUDE_PLUGIN_DATA` as Claude Code makes them
+ *   for a command hook, because the engine environment does not have them.
  * @property {string} home The user's home folder.
  * @property {string} tmp The host's temp folder.
  * @property {string} cwd The session's working directory.
@@ -126,6 +131,10 @@
  *   when the command cannot start, passes the timeout (30 s by default), or
  *   writes more than `maxBytes` to stdout and stderr together (64 MiB by
  *   default). Then it stops the command, with SIGKILL after 1 s if needed.
+ *   In the hooks-module io, the timeout is 10 minutes at most, stdin is
+ *   empty by default, and the command runs to its end before the
+ *   `maxBytes` check. That io also rejects when the engine cuts stdout or
+ *   stderr at its stream limit of 4 MiB.
  * @property {IoSession} session Facts about the running session.
  */
 
