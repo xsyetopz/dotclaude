@@ -22,11 +22,13 @@ function editedPath(io, data) {
   if (data.hook_event_name === "PostToolUseFailure") return undefined;
   const input = data.tool_input ?? {};
   const file = input.file_path || input.notebook_path || "";
+  if (!file) return undefined;
+  // A relative `file` is from the hook's folder, as `path.resolve` did.
   const rel = path
-    .relative(projectRoot(io, data), file)
+    .relative(projectRoot(io, data), path.resolve(io.cwd, file))
     .split(path.sep)
     .join("/");
-  if (!file || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
+  if (rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
   return rel;
 }
 

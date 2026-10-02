@@ -35,10 +35,12 @@ async function entryFor(io, abs) {
   let dir = abs;
   let base = "";
   try {
-    if ((await io.fs.stat(abs)).kind !== "directory") {
+    const { kind } = await io.fs.stat(abs);
+    // A dangling link is `other` here, and the old `statSync` threw for it.
+    if (kind === "file") {
       dir = path.dirname(abs);
       base = path.basename(abs);
-    }
+    } else if (kind !== "dir") return undefined;
   } catch {
     return undefined;
   }

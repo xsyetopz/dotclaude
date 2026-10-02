@@ -9,7 +9,7 @@ export default async function (io, data) {
   if (!option(io.env, "usage_notes")) return;
   // A subagent's tool call: the note is about the main context.
   if (data.agent_id) return;
-  const note = contextNote(data, true);
+  const note = await contextNote(io, data, true);
   if (!note) return;
   return {
     hookSpecificOutput: {
