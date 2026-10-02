@@ -18,6 +18,7 @@ import {
   upstreamStale,
 } from "../../hooks/lib/_ai-policies.mjs";
 import { check } from "../../hooks/lib/_bash-rules.mjs";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 import { hostsUser } from "../../hooks/lib/_rules-contrib.mjs";
 
 function repo(remotes) {
@@ -35,19 +36,18 @@ const ctxFor = (root) => ({
   cwd: root,
   allowedModels: ["claude-opus-5-5"],
   ghUser: "me",
+  io: nodeIo(),
 });
 
-function level(command, ctx) {
-  const findings = check(command, ctx);
+async function level(command, ctx) {
+  const findings = await check(command, ctx);
   for (const l of ["deny", "ask", "warn"])
     if (findings.some(([found]) => found === l)) return l;
   return "pass";
 }
 
-const reasons = (command, ctx) =>
-  check(command, ctx)
-    .map(([, r]) => r)
-    .join(" ");
+const reasons = async (command, ctx) =>
+  (await check(command, ctx)).map(([, r]) => r).join(" ");
 
 describe("catalog", () => {
   test("parses the upstream table into entries with repository keys", () => {
@@ -223,69 +223,77 @@ describe("contribution guard", () => {
     "gh pr review 4 --approve",
     "gh discussion create --category General --title x --body y",
     "gh discussion comment 7 --body hi",
-  ])("denies %s in a project that forbids AI contributions", (command) => {
-    expect(level(command, ctxFor(forbidden))).toBe("deny");
-    expect(reasons(command, ctxFor(forbidden))).toContain("Alacritty");
-  });
+  ])(
+    "denies %s in a project that forbids AI contributions",
+    async (command) => {
+      expect(await level(command, ctxFor(forbidden))).toBe("deny");
+      expect(await reasons(command, ctxFor(forbidden))).toContain("Alacritty");
+    },
+  );
 
   test.each([
     "gh issue create -R alacritty/alacritty --title x --body y",
     "gh pr comment https://github.com/alacritty/alacritty/pull/9 --body y",
     "gh api repos/alacritty/alacritty/issues -f title=x",
     "gh api -X POST repos/alacritty/alacritty/issues/3/comments",
-  ])("denies %s from any folder", (command) => {
-    expect(level(command, ctxFor(own))).toBe("deny");
+  ])("denies %s from any folder", async (command) => {
+    expect(await level(command, ctxFor(own))).toBe("deny");
   });
 
-  test("asks before a push or GitHub write to another owner", () => {
+  test("asks before a push or GitHub write to another owner", async () => {
     for (const command of [
       "git push origin main",
       "git push",
       "gh pr create --fill",
     ]) {
-      expect(level(command, ctxFor(foreign))).toBe("ask");
-      expect(reasons(command, ctxFor(foreign))).toContain("someone/tool");
+      expect(await level(command, ctxFor(foreign))).toBe("ask");
+      expect(await reasons(command, ctxFor(foreign))).toContain("someone/tool");
     }
   });
 
-  test("asks before a GraphQL mutation that posts, whose target is unknown", () => {
+  test("asks before a GraphQL mutation that posts, whose target is unknown", async () => {
     const command =
       "gh api graphql -F id=D_1 -f query='mutation($id: ID!) { addDiscussionComment(input: {discussionId: $id, body: hi}) { comment { id } } }'";
-    expect(level(command, ctxFor(own))).toBe("ask");
-    expect(reasons(command, ctxFor(own))).toContain("addDiscussionComment");
+    expect(await level(command, ctxFor(own))).toBe("ask");
+    expect(await reasons(command, ctxFor(own))).toContain(
+      "addDiscussionComment",
+    );
     expect(
-      reasons(
+      await reasons(
         "gh api graphql -f query='query { viewer { login } }'",
         ctxFor(own),
       ),
     ).not.toContain("contributions made with AI");
   });
 
-  test("a local commit to another owner's clone passes", () => {
-    expect(level('git commit -m "x"', ctxFor(foreign))).toBe("pass");
+  test("a local commit to another owner's clone passes", async () => {
+    expect(await level('git commit -m "x"', ctxFor(foreign))).toBe("pass");
   });
 
-  test("the user's own repository passes", () => {
-    expect(level("git push origin main", ctxFor(own))).toBe("pass");
-    expect(level('git commit -m "x"', ctxFor(own))).toBe("pass");
-    expect(reasons("gh pr create --fill", ctxFor(own))).not.toContain(
+  test("the user's own repository passes", async () => {
+    expect(await level("git push origin main", ctxFor(own))).toBe("pass");
+    expect(await level('git commit -m "x"', ctxFor(own))).toBe("pass");
+    expect(await reasons("gh pr create --fill", ctxFor(own))).not.toContain(
       "do not own",
     );
   });
 
-  test("reads do not count as contributions", () => {
-    expect(level("gh pr view 4", ctxFor(forbidden))).toBe("pass");
-    expect(level("git log -1", ctxFor(forbidden))).toBe("pass");
+  test("reads do not count as contributions", async () => {
+    expect(await level("gh pr view 4", ctxFor(forbidden))).toBe("pass");
+    expect(await level("git log -1", ctxFor(forbidden))).toBe("pass");
     expect(
-      level("gh api repos/alacritty/alacritty/issues", ctxFor(forbidden)),
+      await level("gh api repos/alacritty/alacritty/issues", ctxFor(forbidden)),
     ).toBe("pass");
   });
 
-  test("with no gh login, only the catalog applies", () => {
+  test("with no gh login, only the catalog applies", async () => {
     const ctx = { ...ctxFor(foreign), ghUser: "" };
-    expect(level("git push origin main", ctx)).toBe("pass");
+    expect(await level("git push origin main", ctx)).toBe("pass");
     expect(
-      level("git push upstream main", { ...ctxFor(forbidden), ghUser: "" }),
+      await level("git push upstream main", {
+        ...ctxFor(forbidden),
+        ghUser: "",
+      }),
     ).toBe("deny");
   });
 });

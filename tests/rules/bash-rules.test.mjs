@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { check } from "../../hooks/lib/_bash-rules.mjs";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 
 // A session with the dotclaude profile maps `sonnet` to Opus 5.5 through
 // ANTHROPIC_DEFAULT_SONNET_MODEL, which would change what these aliases resolve to.
@@ -29,10 +30,11 @@ const ctx = {
   root,
   cwd: root,
   allowedModels: ["claude-opus-5-5", "claude-fable-5-1"],
+  io: nodeIo(),
 };
 
-function level(command, c = ctx) {
-  const findings = check(command, c);
+async function level(command, c = ctx) {
+  const findings = await check(command, c);
   for (const l of ["deny", "ask", "warn"])
     if (findings.some(([found]) => found === l)) return l;
   return "pass";
@@ -245,36 +247,48 @@ const PASS = [
 ];
 
 for (const command of DENY) {
-  test(`deny: ${command}`, () =>
-    expect(level(command), JSON.stringify(check(command, ctx))).toBe("deny"));
+  test(`deny: ${command}`, async () =>
+    expect(
+      await level(command),
+      JSON.stringify(await check(command, ctx)),
+    ).toBe("deny"));
 }
 for (const command of ASK) {
-  test(`ask: ${command}`, () =>
-    expect(level(command), JSON.stringify(check(command, ctx))).toBe("ask"));
+  test(`ask: ${command}`, async () =>
+    expect(
+      await level(command),
+      JSON.stringify(await check(command, ctx)),
+    ).toBe("ask"));
 }
 for (const command of WARN) {
-  test(`warn: ${command}`, () =>
-    expect(level(command), JSON.stringify(check(command, ctx))).toBe("warn"));
+  test(`warn: ${command}`, async () =>
+    expect(
+      await level(command),
+      JSON.stringify(await check(command, ctx)),
+    ).toBe("warn"));
 }
 for (const command of PASS) {
-  test(`pass: ${command}`, () =>
-    expect(level(command), JSON.stringify(check(command, ctx))).toBe("pass"));
+  test(`pass: ${command}`, async () =>
+    expect(
+      await level(command),
+      JSON.stringify(await check(command, ctx)),
+    ).toBe("pass"));
 }
 
-test("unparseable command falls back to a raw scan", () => {
-  expect(level("rm -rf / 'unterminated")).toBe("ask");
-  expect(level("echo 'unterminated")).toBe("pass");
+test("unparseable command falls back to a raw scan", async () => {
+  expect(await level("rm -rf / 'unterminated")).toBe("ask");
+  expect(await level("echo 'unterminated")).toBe("pass");
 });
 
-test("commit hygiene flags .DS_Store and a lockfile without its manifest", () => {
+test("commit hygiene flags .DS_Store and a lockfile without its manifest", async () => {
   const repo = makeRepo();
   fs.writeFileSync(path.join(repo, ".DS_Store"), "\0");
   fs.writeFileSync(path.join(repo, "package-lock.json"), "{}");
   execFileSync("git", ["-C", repo, "add", ".DS_Store", "package-lock.json"]);
-  const commit = () =>
-    check("git commit -m wip", { ...ctx, root: repo, cwd: repo });
+  const commit = async () =>
+    await check("git commit -m wip", { ...ctx, root: repo, cwd: repo });
   // One finding names the noise file, a separate one names the lockfile.
-  const findings = commit();
+  const findings = await commit();
   expect(findings.map(([level]) => level)).toStrictEqual(["ask", "ask"]);
   expect(findings.filter(([, r]) => r.includes("`.DS_Store`"))).toHaveLength(1);
   expect(
@@ -283,11 +297,11 @@ test("commit hygiene flags .DS_Store and a lockfile without its manifest", () =>
   // Staging the manifest clears the lockfile finding only.
   fs.writeFileSync(path.join(repo, "package.json"), "{}");
   execFileSync("git", ["-C", repo, "add", "package.json"]);
-  const withManifest = commit();
+  const withManifest = await commit();
   expect(withManifest).toHaveLength(1);
   expect(withManifest[0][1]).toContain("`.DS_Store`");
   expect(
-    check("git commit -m wip", {
+    await check("git commit -m wip", {
       ...ctx,
       root: repo,
       cwd: repo,
@@ -300,7 +314,7 @@ test("commit hygiene flags .DS_Store and a lockfile without its manifest", () =>
 // escape and takes `C:/` paths.
 const sh = (p) => p.split(path.sep).join("/");
 
-test("git worktree remove --force asks only when the worktree has changes", () => {
+test("git worktree remove --force asks only when the worktree has changes", async () => {
   const repo = makeRepo();
   execFileSync("git", [
     "-C",
@@ -314,50 +328,59 @@ test("git worktree remove --force asks only when the worktree has changes", () =
     "init",
   ]);
   const cmd = `git worktree remove --force ${sh(repo)}`;
-  expect(level(cmd)).toBe("pass");
+  expect(await level(cmd)).toBe("pass");
   fs.writeFileSync(path.join(repo, "scratch.txt"), "unsaved\n");
-  expect(level(cmd)).toBe("ask");
+  expect(await level(cmd)).toBe("ask");
 });
 
-test("model lock off lets fast-mode settings through", () => {
+test("model lock off lets fast-mode settings through", async () => {
   expect(
-    level("claude -p --settings '{\"fastMode\": true}' hi", {
+    await level("claude -p --settings '{\"fastMode\": true}' hi", {
       ...ctx,
       modelLock: false,
     }),
   ).toBe("pass");
 });
 
-test("git commit with a Claude co-author trailer is denied when settings turn it off", () => {
+test("git commit with a Claude co-author trailer is denied when settings turn it off", async () => {
   const off = { ...ctx, claudeTrailerOff: true, commitHygiene: false };
   const heredoc =
     "git commit -m \"$(cat <<'EOF'\nfix: x\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nEOF\n)\"";
-  expect(level(heredoc, off)).toBe("deny");
+  expect(await level(heredoc, off)).toBe("deny");
   expect(
-    level(
+    await level(
       'git commit -m "fix" -m "co-authored-by: Claude <noreply@anthropic.com>"',
       off,
     ),
   ).toBe("deny");
   // A human co-author, another command, or trailers allowed by settings pass.
   expect(
-    level('git commit -m "fix" -m "Co-Authored-By: Ann <ann@x.org>"', off),
+    await level(
+      'git commit -m "fix" -m "Co-Authored-By: Ann <ann@x.org>"',
+      off,
+    ),
   ).toBe("pass");
-  expect(level('echo "Co-Authored-By: Claude" > notes.txt', off)).toBe("pass");
+  expect(await level('echo "Co-Authored-By: Claude" > notes.txt', off)).toBe(
+    "pass",
+  );
   expect(
-    level(heredoc, { ...ctx, claudeTrailerOff: false, commitHygiene: false }),
+    await level(heredoc, {
+      ...ctx,
+      claudeTrailerOff: false,
+      commitHygiene: false,
+    }),
   ).toBe("pass");
 });
 
-test("`cd ~/x && rm -r src` resolves under HOME, not the project", () => {
+test("`cd ~/x && rm -r src` resolves under HOME, not the project", async () => {
   const home = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-home-")),
   );
   const saved = process.env.HOME;
   process.env.HOME = home;
   try {
-    expect(level("rm -r src")).toBe("warn");
-    expect(level("cd ~/x && rm -r src")).toBe("pass");
+    expect(await level("rm -r src")).toBe("warn");
+    expect(await level("cd ~/x && rm -r src")).toBe("pass");
   } finally {
     process.env.HOME = saved;
   }
@@ -398,8 +421,11 @@ describe("Bash writes get the Edit rules of their target path", () => {
     ["echo hi > notes.txt", "pass"],
   ];
   for (const [command, want] of cases)
-    test(`${want}: ${command.split("\n")[0]}`, () =>
-      expect(level(command, c), JSON.stringify(check(command, c))).toBe(want));
+    test(`${want}: ${command.split("\n")[0]}`, async () =>
+      expect(
+        await level(command, c),
+        JSON.stringify(await check(command, c)),
+      ).toBe(want));
 });
 
 describe("a foreground command that does not end is denied", () => {
@@ -412,13 +438,13 @@ describe("a foreground command that does not end is denied", () => {
     "/opt/ghidra/support/analyzeHeadless /tmp/p proj -import a.out",
   ];
   for (const command of endless) {
-    test(`deny: ${command}`, () => {
-      const findings = check(command, ctx);
-      expect(level(command), JSON.stringify(findings)).toBe("deny");
+    test(`deny: ${command}`, async () => {
+      const findings = await check(command, ctx);
+      expect(await level(command), JSON.stringify(findings)).toBe("deny");
       expect(findings[0][1]).toContain("`run_in_background: true`");
     });
-    test(`pass in the background: ${command}`, () =>
-      expect(level(command, { ...ctx, background: true })).toBe("pass"));
+    test(`pass in the background: ${command}`, async () =>
+      expect(await level(command, { ...ctx, background: true })).toBe("pass"));
   }
   for (const command of [
     "npm run build",
@@ -428,7 +454,8 @@ describe("a foreground command that does not end is denied", () => {
     "npm run dev &",
     "timeout 30 npm run dev",
   ])
-    test(`pass: ${command}`, () => expect(level(command)).toBe("pass"));
+    test(`pass: ${command}`, async () =>
+      expect(await level(command)).toBe("pass"));
 });
 
 // A follow in the background outlives the line it waits for, and even the
@@ -445,9 +472,9 @@ describe("a file follow is denied in both modes unless it is bounded", () => {
     "sleep 1 & tail -f app.log",
   ])
     for (const background of [false, true])
-      test(`deny (background ${background}): ${command}`, () => {
-        const findings = check(command, { ...ctx, background });
-        expect(level(command, { ...ctx, background })).toBe("deny");
+      test(`deny (background ${background}): ${command}`, async () => {
+        const findings = await check(command, { ...ctx, background });
+        expect(await level(command, { ...ctx, background })).toBe("deny");
         expect(findings[0][1]).toContain("until grep -q");
         expect(findings[0][1]).toContain("`Monitor`");
       });
@@ -457,8 +484,8 @@ describe("a file follow is denied in both modes unless it is bounded", () => {
     "tail -n 50 app.log",
     "inotifywait src",
   ])
-    test(`pass in the background: ${command}`, () =>
-      expect(level(command, { ...ctx, background: true })).toBe("pass"));
+    test(`pass in the background: ${command}`, async () =>
+      expect(await level(command, { ...ctx, background: true })).toBe("pass"));
 });
 
 // A session ran two `codex exec … &` jobs with `run_in_background: true`.
@@ -477,9 +504,9 @@ describe("a background command that reads stdin needs its own stdin", () => {
     "bash -s",
     "sleep 5; cat > out.txt",
   ])
-    test(`deny in the background: ${command}`, () => {
-      const findings = check(command, { ...ctx, background: true });
-      expect(level(command, { ...ctx, background: true })).toBe("deny");
+    test(`deny in the background: ${command}`, async () => {
+      const findings = await check(command, { ...ctx, background: true });
+      expect(await level(command, { ...ctx, background: true })).toBe("deny");
       expect(findings[0][1]).toContain("`</dev/null`");
     });
   for (const command of [
@@ -501,17 +528,20 @@ describe("a background command that reads stdin needs its own stdin", () => {
     "claude -p 'fix it'",
     "git log | cat",
   ])
-    test(`pass in the background: ${command}`, () =>
-      expect(level(command, { ...ctx, background: true })).toBe("pass"));
-  test("pass in the foreground", () =>
-    expect(level("codex exec 'fix it'", ctx)).toBe("pass"));
-  test("a redirect of another descriptor does not count", () =>
+    test(`pass in the background: ${command}`, async () =>
+      expect(await level(command, { ...ctx, background: true })).toBe("pass"));
+  test("pass in the foreground", async () =>
+    expect(await level("codex exec 'fix it'", ctx)).toBe("pass"));
+  test("a redirect of another descriptor does not count", async () =>
     expect(
-      level("codex exec 'fix it' 3</dev/null", { ...ctx, background: true }),
+      await level("codex exec 'fix it' 3</dev/null", {
+        ...ctx,
+        background: true,
+      }),
     ).toBe("deny"));
 });
 
-test("`git add` of an ELF, Mach-O, or PE file warns, and text files pass", () => {
+test("`git add` of an ELF, Mach-O, or PE file warns, and text files pass", async () => {
   const repo = makeRepo();
   const c = { ...ctx, root: repo, cwd: repo };
   const write = (name, bytes) =>
@@ -530,19 +560,19 @@ test("`git add` of an ELF, Mach-O, or PE file warns, and text files pass", () =>
   write("tool.exe", pe);
   fs.writeFileSync(path.join(repo, "notes.txt"), "MZ is a text line\n");
   for (const file of ["tool.elf", "tool.macho", "fat.macho", "tool.exe"])
-    expect(level(`git add ${file}`, c), file).toBe("warn");
-  const [, reason] = check("git add src/app.py tool.elf", c).find(
+    expect(await level(`git add ${file}`, c), file).toBe("warn");
+  const [, reason] = (await check("git add src/app.py tool.elf", c)).find(
     ([l]) => l === "warn",
   );
   expect(reason).toContain("`tool.elf`");
-  expect(level("git -C src add ../tool.exe", c), "git -C").toBe("warn");
-  expect(level("git add Main.class", c)).toBe("pass");
-  expect(level("git add notes.txt", c)).toBe("pass");
-  expect(level("git add -p", c)).toBe("pass");
-  expect(level("git add missing.bin", c)).toBe("pass");
+  expect(await level("git -C src add ../tool.exe", c), "git -C").toBe("warn");
+  expect(await level("git add Main.class", c)).toBe("pass");
+  expect(await level("git add notes.txt", c)).toBe("pass");
+  expect(await level("git add -p", c)).toBe("pass");
+  expect(await level("git add missing.bin", c)).toBe("pass");
 });
 
-test("claude runs outside EFFORT_LEVELS are denied", () => {
+test("claude runs outside EFFORT_LEVELS are denied", async () => {
   const c = {
     ...ctx,
     allowedModels: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5"],
@@ -552,7 +582,7 @@ test("claude runs outside EFFORT_LEVELS are denied", () => {
     "CLAUDE_CODE_EFFORT_LEVEL=max claude --model sonnet -p hi",
     "claude --model opus --effort max -p hi",
   ])
-    expect(level(command, c), command).toBe("deny");
+    expect(await level(command, c), command).toBe("deny");
   for (const command of [
     "claude --model sonnet --effort medium -p hi",
     "claude --model sonnet --effort high -p hi",
@@ -560,5 +590,5 @@ test("claude runs outside EFFORT_LEVELS are denied", () => {
     "claude --model haiku --effort high -p hi",
     "claude --effort high -p hi",
   ])
-    expect(level(command, c), command).not.toBe("deny");
+    expect(await level(command, c), command).not.toBe("deny");
 });

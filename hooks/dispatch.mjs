@@ -17,7 +17,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs";
 import path from "node:path";
-import { readInput, TAG } from "./lib/_common.mjs";
+import { emit, readInput, TAG } from "./lib/_common.mjs";
+import { nodeIo } from "./lib/_io-node.mjs";
 
 const TOOL_EDITS = "Edit|Write|MultiEdit|NotebookEdit";
 
@@ -202,15 +203,24 @@ async function main() {
   const runs = [];
   for (const [index, action] of select(process.argv.slice(2), data).entries()) {
     const count = mode.bodies.length;
+    let mod;
     try {
-      await import(path.join(import.meta.dirname, action));
+      mod = await import(path.join(import.meta.dirname, action));
     } catch (err) {
       fail(action, err);
       continue;
     }
-    // Each action module registers one body when it is imported.
-    if (mode.bodies.length === count) continue;
-    const body = mode.bodies.at(-1);
+    // A ported action exports `default (io, data)` and returns its output
+    // (hooks/lib/_io.mjs). A classic action registers one body through
+    // `run()` when it is imported.
+    let body;
+    if (typeof mod.default === "function")
+      body = async (input) => {
+        const out = await mod.default(nodeIo(input), input);
+        if (out) emit(out);
+      };
+    else if (mode.bodies.length > count) body = mode.bodies.at(-1);
+    else continue;
     runs.push(
       current
         .run(index, async () => body(structuredClone(data)))

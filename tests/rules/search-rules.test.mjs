@@ -7,6 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { check } from "../../hooks/lib/_bash-rules.mjs";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 
 // A native path as a command writes it. Git Bash on Windows reads `\` as an
 // escape and takes `C:/` paths.
@@ -52,10 +53,15 @@ function makeRepo() {
 
 const root = makeRepo();
 const outside = tempDir();
-const ctx = { root, cwd: root, allowedModels: ["claude-opus-5-5"] };
+const ctx = {
+  root,
+  cwd: root,
+  allowedModels: ["claude-opus-5-5"],
+  io: nodeIo(),
+};
 
-function level(command, c = ctx) {
-  const findings = check(command, c);
+async function level(command, c = ctx) {
+  const findings = await check(command, c);
   for (const l of ["deny", "ask", "warn"])
     if (findings.some(([found]) => found === l)) return l;
   return "pass";
@@ -132,46 +138,52 @@ const PASS = [
 ];
 
 for (const command of DENY) {
-  test(`deny: ${command}`, () =>
-    expect(level(command), JSON.stringify(check(command, ctx))).toBe("deny"));
+  test(`deny: ${command}`, async () =>
+    expect(
+      await level(command),
+      JSON.stringify(await check(command, ctx)),
+    ).toBe("deny"));
 }
 for (const command of PASS) {
-  test(`pass: ${command}`, () =>
-    expect(level(command), JSON.stringify(check(command, ctx))).toBe("pass"));
+  test(`pass: ${command}`, async () =>
+    expect(
+      await level(command),
+      JSON.stringify(await check(command, ctx)),
+    ).toBe("pass"));
 }
 
-test("the reason names the ignored directories and the alternatives", () => {
-  const [[, reason]] = check("grep -r needle .", ctx);
+test("the reason names the ignored directories and the alternatives", async () => {
+  const [[, reason]] = await check("grep -r needle .", ctx);
   expect(reason).toContain("`.build/`");
   expect(reason).toContain("`web/node_modules/`");
   expect(reason).toContain("`rg`");
 });
 
-test("a directory outside any git repository passes", () => {
+test("a directory outside any git repository passes", async () => {
   const plain = tempDir();
   fs.mkdirSync(path.join(plain, "build"));
-  expect(level("grep -r needle .", { ...ctx, root: plain, cwd: plain })).toBe(
-    "pass",
-  );
+  expect(
+    await level("grep -r needle .", { ...ctx, root: plain, cwd: plain }),
+  ).toBe("pass");
 });
 
-test("a `cd ~/...` hint resolves against HOME, not the project", () => {
+test("a `cd ~/...` hint resolves against HOME, not the project", async () => {
   const saved = process.env.HOME;
   process.env.HOME = outside;
   fs.mkdirSync(path.join(outside, "logs"), { recursive: true });
   try {
-    expect(level("cd ~/logs && find . -name '*.jsonl'")).toBe("pass");
-    expect(level("cd ~ && find . -name '*.jsonl'")).toBe("pass");
+    expect(await level("cd ~/logs && find . -name '*.jsonl'")).toBe("pass");
+    expect(await level("cd ~ && find . -name '*.jsonl'")).toBe("pass");
   } finally {
     process.env.HOME = saved;
   }
 });
 
-test("a `cd $DIR` hint leaves the base unknown", () => {
-  expect(level("cd $DIR && find . -name '*.swift'")).toBe("pass");
+test("a `cd $DIR` hint leaves the base unknown", async () => {
+  expect(await level("cd $DIR && find . -name '*.swift'")).toBe("pass");
 });
 
-test("an explicit ignore bypass over ignored notes passes, over build output it is denied", () => {
+test("an explicit ignore bypass over ignored notes passes, over build output it is denied", async () => {
   const notes = tempDir();
   execFileSync("git", ["init", "-q", notes]);
   fs.writeFileSync(path.join(notes, ".gitignore"), "docs/external/\ndist/\n");
@@ -186,7 +198,7 @@ test("an explicit ignore bypass over ignored notes passes, over build output it 
     "fd -I -e md . docs",
     "git grep --no-index Task docs",
   ])
-    expect(level(command, c)).toBe("pass");
-  expect(level('rg -n -uu "Task" .', c)).toBe("deny");
-  expect(level("grep -rn Task docs", c)).toBe("deny");
+    expect(await level(command, c)).toBe("pass");
+  expect(await level('rg -n -uu "Task" .', c)).toBe("deny");
+  expect(await level("grep -rn Task docs", c)).toBe("deny");
 });
