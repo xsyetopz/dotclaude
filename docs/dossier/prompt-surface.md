@@ -115,3 +115,12 @@ ENABLE_TOOL_SEARCH=true ANTHROPIC_BASE_URL=http://127.0.0.1:18771 \
 `script` gives the CLI a terminal, so it runs interactively. To measure print
 mode, remove `script` and add `-p`. The request bodies contain the user's
 `CLAUDE.md`, so this file reports only structure and sizes.
+
+### Count The Injected Text
+
+`scripts/count-tokens.mjs` counts the tokens of the output style, the
+SessionStart Fable note, the subagent conventions, and each agent prompt. It
+is opt-in, because it calls the API. Run
+`ANTHROPIC_API_KEY=... bun scripts/count-tokens.mjs`, and add `--json` for
+JSON. Each count is for the text alone, with the count of a one-word message
+taken off. Without the key, the script exits with code 1.

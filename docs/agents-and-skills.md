@@ -63,6 +63,7 @@ from an agent that it stops at its turn limit. See
 | `contribute` | checks a project's AI policy, verifies the claim, and drafts an issue, pull request, discussion, or comment for you to send | A contribution speaks for you. See [Contributions](contributions.md). |
 | `handoff` | writes a note that a fresh session can continue from | A handoff and `/clear` cost less than `/compact` on a large or cold context. |
 | `explain` | answers "why did you do that?" from these pages | The reason for each dotclaude behavior is in these pages. |
+| `polish` | edits a doc, message, or README section that you name, in place, and lists the kinds of change | A light edit keeps your meaning, voice, structure, terms, and facts. Only you start it, because Claude has no reason to edit a file that you did not name. |
 | `drive-web-browser`, `recognize-captcha` | browser automation with agent-browser or CloakBrowser, offline CAPTCHA OCR, in the optional `dotclaude-browser` plugin | The working rules require a browser check of UI changes. Research and tests meet sites with bot checks. CloakBrowser prevents CAPTCHAs, and the offline OCR is a fallback that needs no paid service. A separate plugin keeps the skills and their session note out of sessions that use no browser. |
 
 You name the skills with a leading `/`. You can put `/dotclaude:<skill>`

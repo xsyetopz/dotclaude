@@ -57,3 +57,11 @@ test("a wrong path is reported", () => {
     "skills/setup/profiles/nope.json",
   ]);
 });
+
+test("polish and setup run only when the user names them", () => {
+  for (const name of ["polish", "setup"]) {
+    const text = fs.readFileSync(path.join(SKILLS, name, "SKILL.md"), "utf8");
+    const front = text.split("\n---\n")[0];
+    expect(front, name).toMatch(/^disable-model-invocation: true$/m);
+  }
+});
