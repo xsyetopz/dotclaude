@@ -5,13 +5,11 @@
 // gets a deny. A push or GitHub write to another owner's repository gets an
 // ask, so the user approves each contribution that an agent makes as them.
 
-import { execFileSync } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { forbids, lookup, remoteKey, updateNotice } from "./_ai-policies.mjs";
-import { gitSync, positional } from "./_bash-args.mjs";
+import { git, positional } from "./_bash-args.mjs";
+import { pathFor } from "./_path.mjs";
 import { gitCwd, gitSplit } from "./_rules-git.mjs";
+import { parseYaml } from "./_yaml.mjs";
 
 // gh writes that add content under the user's name to a project.
 const CONTRIBUTES = {
@@ -25,14 +23,18 @@ const GRAPHQL_WRITE =
   /\b(create(Discussion|Issue|PullRequest)|add(Discussion|PullRequestReview)?Comment|addPullRequestReview|update(Discussion|Issue|PullRequest)(Comment)?)\b/;
 const API_WRITE =
   /^\/?repos\/([^/]+)\/([^/]+)\/(pulls|issues|comments|git|contents|merges)\b/;
+// The old `execFileSync` of `gh` stopped at 1 MiB of output and after 2 s.
+const GH_MAX_BYTES = 1024 * 1024;
+const GH_TIMEOUT_MS = 2000;
 
 /** gh's config directory, found as gh finds it. */
-function ghConfigDir(env) {
+function ghConfigDir(io, env) {
+  const path = pathFor(io.platform);
   if (env.GH_CONFIG_DIR) return env.GH_CONFIG_DIR;
   if (env.XDG_CONFIG_HOME) return path.join(env.XDG_CONFIG_HOME, "gh");
-  if (process.platform === "win32" && env.AppData)
+  if (io.platform === "win32" && env.AppData)
     return path.join(env.AppData, "GitHub CLI");
-  return path.join(os.homedir(), ".config", "gh");
+  return path.join(io.home, ".config", "gh");
 }
 
 /**
@@ -40,11 +42,10 @@ function ghConfigDir(env) {
  * undefined when the file cannot be read or parsed. gh keeps the login there
  * also when the token is in the system keyring.
  */
-export function hostsUser(env = process.env) {
+export async function hostsUser(io, env = io.env) {
   try {
-    const hosts = Bun.YAML.parse(
-      fs.readFileSync(path.join(ghConfigDir(env), "hosts.yml"), "utf8"),
-    );
+    const file = pathFor(io.platform).join(ghConfigDir(io, env), "hosts.yml");
+    const hosts = parseYaml(await io.fs.read(file));
     const user = hosts?.["github.com"]?.user;
     return typeof user === "string" ? user.trim().toLowerCase() : "";
   } catch {
@@ -52,34 +53,27 @@ export function hostsUser(env = process.env) {
   }
 }
 
-let login;
 /** The gh login for github.com, read from the local config (no network). */
-function ghUser(ctx) {
+async function ghUser(ctx) {
   if (ctx.ghUser !== undefined) return ctx.ghUser;
-  // Reading `hosts.yml` costs under 1 ms. Starting `gh` costs about 50 ms.
-  login ??= hostsUser();
-  if (login === undefined) {
-    try {
-      login = execFileSync(
-        "gh",
-        ["config", "get", "user", "-h", "github.com"],
-        {
-          encoding: "utf8",
-          timeout: 2000,
-          stdio: ["ignore", "pipe", "ignore"],
-        },
-      )
-        .trim()
-        .toLowerCase();
-    } catch {
-      login = "";
-    }
+  // Reading `hosts.yml` costs under 1 ms, so nothing is cached. A cache would
+  // outlive the io of one call, and it would keep a failed answer.
+  const fromHosts = await hostsUser(ctx.io);
+  if (fromHosts !== undefined) return fromHosts;
+  // Starting `gh` costs about 50 ms. It runs only when the file gives no answer.
+  try {
+    const r = await ctx.io.run(
+      ["gh", "config", "get", "user", "-h", "github.com"],
+      { timeoutMs: GH_TIMEOUT_MS, maxBytes: GH_MAX_BYTES },
+    );
+    return r.exitCode === 0 ? r.stdout.trim().toLowerCase() : "";
+  } catch {
+    return "";
   }
-  return login;
 }
 
-function remotes(cwd) {
-  const out = gitSync(cwd, ["remote", "-v"]) ?? "";
+async function remotes(io, cwd) {
+  const out = (await git(io, cwd, ["remote", "-v"])) ?? "";
   const byName = new Map();
   for (const line of out.split("\n")) {
     const [name, url] = line.split(/\s+/);
@@ -106,7 +100,7 @@ function flagValue(args, short, long) {
 }
 
 /** What the command contributes, and to which repository keys. */
-function contributionOf(cmd, ctx) {
+async function contributionOf(cmd, ctx) {
   if (cmd.name === "gh") {
     const pos = positional(cmd.args);
     if (pos[0] === "api" && pos[1] === "graphql") {
@@ -144,14 +138,16 @@ function contributionOf(cmd, ctx) {
     // gh picks the base repository among the remotes, so each one counts.
     const keys = named.length
       ? named
-      : [...remotes(ctx.cwd).values()].map(remoteKey).filter(Boolean);
+      : [...(await remotes(ctx.io, ctx.cwd)).values()]
+          .map(remoteKey)
+          .filter(Boolean);
     return { label, outward: true, keys };
   }
   if (cmd.name !== "git") return undefined;
   const { globals, sub, rest } = gitSplit(cmd.args);
   if (sub !== "commit" && sub !== "push") return undefined;
   const cwd = gitCwd(globals, ctx);
-  const all = remotes(cwd);
+  const all = await remotes(ctx.io, cwd);
   if (sub === "commit")
     return {
       label: "`git commit`",
@@ -161,13 +157,15 @@ function contributionOf(cmd, ctx) {
   const target = positional(rest)[0];
   let url = target ? (all.get(target) ?? target) : undefined;
   if (!url) {
-    const branch = gitSync(cwd, ["branch", "--show-current"])?.trim();
+    const branch = (
+      await git(ctx.io, cwd, ["branch", "--show-current"])
+    )?.trim();
     const name =
       (branch &&
         (
-          gitSync(cwd, ["config", `branch.${branch}.pushRemote`]) ??
-          gitSync(cwd, ["config", "remote.pushDefault"]) ??
-          gitSync(cwd, ["config", `branch.${branch}.remote`])
+          (await git(ctx.io, cwd, ["config", `branch.${branch}.pushRemote`])) ??
+          (await git(ctx.io, cwd, ["config", "remote.pushDefault"])) ??
+          (await git(ctx.io, cwd, ["config", `branch.${branch}.remote`]))
         )?.trim()) ||
       "origin";
     url = all.get(name);
@@ -177,8 +175,8 @@ function contributionOf(cmd, ctx) {
 }
 
 /** @returns {import("./_bash-rules.mjs").Finding[]} */
-export function contribution(cmd, ctx) {
-  const act = contributionOf(cmd, ctx);
+export async function contribution(cmd, ctx) {
+  const act = await contributionOf(cmd, ctx);
   if (act?.unknown)
     return [
       [
@@ -188,31 +186,31 @@ export function contribution(cmd, ctx) {
     ];
   if (!act?.keys.length) return [];
   for (const key of act.keys) {
-    const entry = lookup(key);
+    const entry = await lookup(ctx.io, key);
     if (entry && forbids(entry))
       return [
         [
           "deny",
-          `the project \`${entry.project}\` does not accept contributions made with AI (policy: ${entry.policy}). ${act.label} would contribute to it for the user. Stop all work that contributes to this project: commits, pushes, pull requests, issues, discussions, reviews, and comments. Tell the user about the policy.${updateNotice()}`,
+          `the project \`${entry.project}\` does not accept contributions made with AI (policy: ${entry.policy}). ${act.label} would contribute to it for the user. Stop all work that contributes to this project: commits, pushes, pull requests, issues, discussions, reviews, and comments. Tell the user about the policy.${await updateNotice(ctx.io)}`,
         ],
       ];
   }
   if (!act.outward) return [];
-  const user = ghUser(ctx);
+  const user = await ghUser(ctx);
   const foreign = act.keys.filter((key) => {
     const [host, owner] = key.split("/");
     return host === "github.com" && user && owner !== user;
   });
   if (!foreign.length) return [];
   const key = foreign[0];
-  const entry = lookup(key);
+  const entry = await lookup(ctx.io, key);
   const listed = entry
     ? ` The AI policy list says for \`${entry.project}\`: AI allowed "${entry.allowed}", disclosure required "${entry.disclosure}", human in the loop "${entry.human}" (${entry.policy}).`
     : " The AI policy list has no entry for it, so its AI policy is possibly unwritten.";
   return [
     [
       "ask",
-      `${act.label} contributes to \`${key.replace(/^github\.com\//, "")}\`, a repository that you do not own. Before you approve, make sure that the project accepts contributions made with AI (see its \`AI_POLICY.md\`, \`CONTRIBUTING.md\`, \`AGENTS.md\`, or pull request template).${listed}${updateNotice()}`,
+      `${act.label} contributes to \`${key.replace(/^github\.com\//, "")}\`, a repository that you do not own. Before you approve, make sure that the project accepts contributions made with AI (see its \`AI_POLICY.md\`, \`CONTRIBUTING.md\`, \`AGENTS.md\`, or pull request template).${listed}${await updateNotice(ctx.io)}`,
     ],
   ];
 }

@@ -7,11 +7,7 @@
 // a day, and never when `DOTCLAUDE_OFFLINE` is set (the tests set it). The
 // guard reads only the stored hash.
 
-import { execFileSync } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { pathFor } from "./_path.mjs";
 import { sha1 } from "./_sha1.mjs";
 
 export const UPSTREAM = {
@@ -20,24 +16,24 @@ export const UPSTREAM = {
   branch: "main",
 };
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SHIPPED = path.join(HERE, "_ai-policies.json");
-export const UPDATE_SCRIPT = path.resolve(
-  HERE,
-  "..",
-  "..",
-  "scripts",
-  "update-ai-policies.mjs",
-);
 const CHECK_EVERY_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_S = 3;
+// The old `execFileSync` stopped at 1 MiB of output, so the fetch does the same.
+const FETCH_MAX_BYTES = 1024 * 1024;
 
-export function dataDir() {
-  return process.env.CLAUDE_PLUGIN_DATA || path.join(os.tmpdir(), "dotclaude");
+export function dataDir(io) {
+  return (
+    io.env.CLAUDE_PLUGIN_DATA || pathFor(io.platform).join(io.tmp, "dotclaude")
+  );
 }
 
-export const userCatalogPath = () => path.join(dataDir(), "ai-policies.json");
-const checkPath = () => path.join(dataDir(), "ai-policies-upstream.json");
+export const userCatalogPath = (io) =>
+  pathFor(io.platform).join(dataDir(io), "ai-policies.json");
+const checkPath = (io) =>
+  pathFor(io.platform).join(dataDir(io), "ai-policies-upstream.json");
+// The plugin ships the catalog snapshot next to this file.
+const shippedPath = (io) =>
+  pathFor(io.platform).join(io.pluginRoot, "hooks", "lib", "_ai-policies.json");
 
 // --- parsing ----------------------------------------------------------------
 
@@ -176,41 +172,44 @@ export function parseReadme(markdown) {
 
 // --- loading and matching ---------------------------------------------------
 
-let cached;
+// Catalogs that were read, by the file they came from. A call with other
+// paths (another `CLAUDE_PLUGIN_DATA` or plugin root) does not use them. The
+// empty fallback is never stored, so a failed read is tried again.
+const cached = new Map();
 
 /** The newest catalog: the updated copy in the data directory, else the shipped one. */
-export function loadCatalog() {
-  if (cached) return cached;
-  for (const file of [userCatalogPath(), SHIPPED]) {
+export async function loadCatalog(io) {
+  for (const file of [userCatalogPath(io), shippedPath(io)]) {
+    if (cached.has(file)) return cached.get(file);
     try {
-      const catalog = JSON.parse(fs.readFileSync(file, "utf8"));
+      const catalog = JSON.parse(await io.fs.read(file));
       if (Array.isArray(catalog.entries)) {
-        cached = { ...catalog, file };
-        return cached;
+        const found = { ...catalog, file };
+        cached.set(file, found);
+        return found;
       }
     } catch {
       // missing or damaged: try the next one
     }
   }
-  cached = { sha: null, entries: [], file: null };
-  return cached;
+  return { sha: null, entries: [], file: null };
 }
 
 export function resetCatalogCache() {
-  cached = undefined;
+  cached.clear();
 }
 
 /** True when the entry forbids AI contributions ("No", "No*"). */
 export const forbids = (entry) => /^no\b/i.test(entry.allowed);
 
 /** Catalog entry for a repository key: an exact match, else its owner. */
-export function lookup(key) {
+export async function lookup(io, key) {
   if (!key) return undefined;
   const owner = key.split("/").slice(0, 2).join("/");
-  const { entries } = loadCatalog();
+  const { entries } = await loadCatalog(io);
   return (
-    entries.find((e) => e.keys.includes(key)) ??
-    entries.find((e) => e.keys.includes(owner))
+    entries.find((e) => Array.isArray(e?.keys) && e.keys.includes(key)) ??
+    entries.find((e) => Array.isArray(e?.keys) && e.keys.includes(owner))
   );
 }
 
@@ -229,31 +228,27 @@ export function blobSha(text) {
 }
 
 // The raw file host has no API rate limit, so the hash is computed locally.
-function fetchUpstreamSha() {
-  const text = execFileSync(
-    "curl",
-    ["-fsSL", "--max-time", String(FETCH_TIMEOUT_S), RAW_URL],
-    {
-      encoding: "utf8",
-      timeout: (FETCH_TIMEOUT_S + 1) * 1000,
-      stdio: ["ignore", "pipe", "ignore"],
-    },
+async function fetchUpstreamSha(io) {
+  const r = await io.run(
+    ["curl", "-fsSL", "--max-time", String(FETCH_TIMEOUT_S), RAW_URL],
+    { timeoutMs: (FETCH_TIMEOUT_S + 1) * 1000, maxBytes: FETCH_MAX_BYTES },
   );
-  return text.includes("|") ? blobSha(text) : undefined;
+  if (r.exitCode !== 0) throw new Error(`curl exited with ${r.exitCode}`);
+  return r.stdout.includes("|") ? blobSha(r.stdout) : undefined;
 }
 
-function readState() {
+async function readState(io) {
   try {
-    return JSON.parse(fs.readFileSync(checkPath(), "utf8"));
+    return JSON.parse(await io.fs.read(checkPath(io)));
   } catch {
     return {}; // never checked
   }
 }
 
 /** True when the upstream hash is older than a day and the check is on. */
-export function upstreamStale(now = Date.now()) {
-  if (process.env.DOTCLAUDE_OFFLINE) return false;
-  return !(now - (readState().checked ?? 0) < CHECK_EVERY_MS);
+export async function upstreamStale(io, now = Date.now()) {
+  if (io.env.DOTCLAUDE_OFFLINE) return false;
+  return !(now - ((await readState(io)).checked ?? 0) < CHECK_EVERY_MS);
 }
 
 /**
@@ -261,18 +256,21 @@ export function upstreamStale(now = Date.now()) {
  * offline. The SessionStart hook runs this in a detached process, so a slow
  * network never holds a tool call.
  */
-export function refreshUpstream(now = Date.now(), fetchSha = fetchUpstreamSha) {
-  if (!upstreamStale(now)) return;
+export async function refreshUpstream(
+  io,
+  now = Date.now(),
+  fetchSha = () => fetchUpstreamSha(io),
+) {
+  if (!(await upstreamStale(io, now))) return;
   let sha;
   try {
-    sha = fetchSha();
+    sha = await fetchSha();
   } catch {
     // offline or rate limited: keep the last answer until the next day
   }
-  const state = { checked: now, sha: sha ?? readState().sha ?? null };
+  const state = { checked: now, sha: sha ?? (await readState(io)).sha ?? null };
   try {
-    fs.mkdirSync(dataDir(), { recursive: true });
-    fs.writeFileSync(checkPath(), JSON.stringify(state));
+    await io.fs.write(checkPath(io), JSON.stringify(state));
   } catch {
     // a read-only data directory only repeats the check
   }
@@ -282,15 +280,20 @@ export function refreshUpstream(now = Date.now(), fetchSha = fetchUpstreamSha) {
  * The stored upstream README hash when it differs from the catalog in use,
  * else undefined. Reads only the file that `refreshUpstream` writes.
  */
-export function upstreamChange() {
-  if (process.env.DOTCLAUDE_OFFLINE) return undefined;
-  const { sha } = readState();
-  const current = loadCatalog().sha;
+export async function upstreamChange(io) {
+  if (io.env.DOTCLAUDE_OFFLINE) return undefined;
+  const { sha } = await readState(io);
+  const current = (await loadCatalog(io)).sha;
   return sha && current && sha !== current ? sha : undefined;
 }
 
 /** A sentence for the user when the upstream catalog changed, else "". */
-export function updateNotice() {
-  if (!upstreamChange()) return "";
-  return ` The upstream AI policy list changed after this catalog was made. To update the catalog, run \`bun ${UPDATE_SCRIPT}\`.`;
+export async function updateNotice(io) {
+  if (!(await upstreamChange(io))) return "";
+  const script = pathFor(io.platform).join(
+    io.pluginRoot,
+    "scripts",
+    "update-ai-policies.mjs",
+  );
+  return ` The upstream AI policy list changed after this catalog was made. To update the catalog, run \`bun ${script}\`.`;
 }
