@@ -10,6 +10,8 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-02
+
 ### Breaking
 
 - dotclaude is a mod. The hooks module `hooks/register.mjs` runs the
@@ -391,4 +393,4 @@ steps after each update.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.17.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.18.0...HEAD
