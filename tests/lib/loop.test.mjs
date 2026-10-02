@@ -80,22 +80,27 @@ test("the oracle is set for a subagent with protected globs only", async () => {
   expect(await oracleFor(io, { agent_id: "a1" }, "/p")).toEqual({
     root: "/p",
     globs: ["tests/**"],
+    platform: io.platform,
   });
   expect(await oracleFor(io, { agent_id: "a1" }, "/q")).toBeUndefined();
 });
 
 test("protectedMatch is pure and maps a worktree path to the root", () => {
   const globs = ["tests/**", "*.lock", "src/{a,b}.mjs"];
-  expect(protectedMatch("/p/tests/a/b.mjs", "/p", globs)).toBe("tests/**");
+  expect(protectedMatch("/p/tests/a/b.mjs", "/p", globs, "posix")).toBe(
+    "tests/**",
+  );
   expect(
-    protectedMatch("/p/.claude/worktrees/w1/tests/a.mjs", "/p", globs),
+    protectedMatch("/p/.claude/worktrees/w1/tests/a.mjs", "/p", globs, "posix"),
   ).toBe("tests/**");
-  expect(protectedMatch("/p/x.lock", "/p", globs)).toBe("*.lock");
-  expect(protectedMatch("/p/src/b.mjs", "/p", globs)).toBe("src/{a,b}.mjs");
-  expect(protectedMatch("/p/src/c.mjs", "/p", globs)).toBeNull();
-  expect(protectedMatch("/other/tests/a.mjs", "/p", globs)).toBeNull();
-  expect(protectedMatch("/p/tests/a.mjs", "/p", [])).toBeNull();
-  expect(protectedMatch("C:\\p\\tests\\a.mjs", "C:\\p", globs)).toBe(
+  expect(protectedMatch("/p/x.lock", "/p", globs, "posix")).toBe("*.lock");
+  expect(protectedMatch("/p/src/b.mjs", "/p", globs, "posix")).toBe(
+    "src/{a,b}.mjs",
+  );
+  expect(protectedMatch("/p/src/c.mjs", "/p", globs, "posix")).toBeNull();
+  expect(protectedMatch("/other/tests/a.mjs", "/p", globs, "posix")).toBeNull();
+  expect(protectedMatch("/p/tests/a.mjs", "/p", [], "posix")).toBeNull();
+  expect(protectedMatch("C:\\p\\tests\\a.mjs", "C:\\p", globs, "win32")).toBe(
     "tests/**",
   );
 });

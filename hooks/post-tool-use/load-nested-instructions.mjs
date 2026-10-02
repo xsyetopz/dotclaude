@@ -44,8 +44,10 @@ run(async (data) => {
   }
   const skip = new Set(added);
   // A subagent's context does not hold what the main transcript loaded.
-  // The hooks-module io always resolves null, so there each file is added
-  // again on each read. A null is an empty set.
+  // The hooks-module io always resolves null. A null is an empty set. The
+  // state file above stops a repeat in the same session, so each file is
+  // added once at most. A file that Claude Code loaded through `Read` can
+  // repeat once. This is safe, because a skip would drop instructions.
   if (!data.agent_id)
     for (const p of (await io.session.loadedNested()) ?? []) skip.add(p);
   const fresh = [...wanted].filter((f) => !skip.has(f));

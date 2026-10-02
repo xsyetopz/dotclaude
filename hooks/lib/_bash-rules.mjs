@@ -287,13 +287,14 @@ function oracleRemovals(cmd, ctx) {
   } else if (!["rm", "unlink", "mv"].includes(sub)) return [];
   let operands = args.filter((a) => a && !a.startsWith("-"));
   if (sub === "mv") operands = operands.slice(0, -1);
-  const { root, globs } = ctx.oracle;
+  const { root, globs, platform } = ctx.oracle;
   const out = [];
   for (const target of operands) {
     if (/\$|__SUBST__/.test(target)) continue;
     const file = path.resolve(base, expandHome(target, process.env.HOME));
     const glob =
-      protectedMatch(file, root, globs) ?? protectedUnder(file, root, globs);
+      protectedMatch(file, root, globs, platform) ??
+      protectedUnder(file, root, globs, platform);
     if (glob)
       out.push([
         "deny",

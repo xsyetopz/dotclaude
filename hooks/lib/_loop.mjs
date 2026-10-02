@@ -13,7 +13,7 @@
 import fs from "node:fs";
 import nodePath from "node:path";
 import { globMatch } from "./_glob.mjs";
-import { pathFor, posix, win32 } from "./_path.mjs";
+import { pathFor } from "./_path.mjs";
 
 const WORKTREE = /^(.*?)[\\/]\.claude[\\/]worktrees[\\/][^\\/]+(?:[\\/](.*))?$/;
 
@@ -96,11 +96,9 @@ function projectPath(path, file, root, allowRoot = false) {
 }
 
 /** The first protected glob that `file` matches, or null. */
-export function protectedMatch(file, root, globs) {
+export function protectedMatch(file, root, globs, platform) {
   if (!globs.length) return null;
-  // The root is absolute, so its form tells the path flavor.
-  const path = /^(?:[A-Za-z]:|[\\/]{2})/.test(root) ? win32 : posix;
-  const rel = projectPath(path, file, root);
+  const rel = projectPath(pathFor(platform), file, root);
   if (!rel) return null;
   return globs.find((g) => globMatch(g, rel)) ?? null;
 }
@@ -110,10 +108,11 @@ export function protectedMatch(file, root, globs) {
  * or null. A removal of the directory removes that file too. It is sync
  * because the rule engine is sync, and slice s12 ports it to the io seam.
  */
-export function protectedUnder(dir, root, globs) {
+export function protectedUnder(dir, root, globs, platform) {
   if (!globs.length) return null;
-  const abs = nodePath.resolve(root, dir);
-  const rel = projectPath(nodePath, abs, root, true);
+  const path = pathFor(platform);
+  const abs = path.resolve(root, dir);
+  const rel = projectPath(path, abs, root, true);
   if (rel === null) return null;
   try {
     if (!fs.statSync(abs).isDirectory()) return null;
@@ -136,7 +135,7 @@ export function protectedUnder(dir, root, globs) {
 export async function oracleFor(io, data, root) {
   if (!data.agent_id) return undefined;
   const globs = await protectedGlobs(io, root);
-  return globs.length ? { root, globs } : undefined;
+  return globs.length ? { root, globs, platform: io.platform } : undefined;
 }
 
 export const PROTECTED_REASON = (glob) =>
