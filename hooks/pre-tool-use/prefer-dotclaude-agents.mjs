@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 // PreToolUse(Agent): refuse `general-purpose`, and run every other subagent
 // in the foreground.
 //
@@ -28,9 +27,7 @@ import {
   MAX_CONCURRENT_AGENTS,
   RUNNING_AGENT_IDLE_MINUTES,
 } from "../lib/_budget.mjs";
-import { emit, preToolDecision, run } from "../lib/_common.mjs";
-import { option } from "../lib/_core.mjs";
-import { nodeIo } from "../lib/_io-node.mjs";
+import { option, preToolOutput } from "../lib/_core.mjs";
 import { runningAgents } from "../lib/_ledger.mjs";
 import { logVerdict } from "../lib/_verdicts.mjs";
 
@@ -41,21 +38,18 @@ const OFF = new Set(["0", "false", "no", "off"]);
 const AGENTS =
   "Use the `dotclaude:` agent whose description fits the job. Write a plan yourself, in plan mode.";
 
-run(async (data) => {
-  if (!option(process.env, "agent_guidance")) return;
+export default async function (io, data) {
+  if (!option(io.env, "agent_guidance")) return;
   const input = data.tool_input ?? {};
   const forksOff = OFF.has(
-    String(process.env.CLAUDE_CODE_FORK_SUBAGENT ?? "").toLowerCase(),
+    String(io.env.CLAUDE_CODE_FORK_SUBAGENT ?? "").toLowerCase(),
   );
   const type = input.subagent_type;
-  if (type === "general-purpose" || (!type && forksOff)) {
-    preToolDecision(
+  if (type === "general-purpose" || (!type && forksOff))
+    return preToolOutput(
       "deny",
       `\`general-purpose\` has no turn limit and every tool. ${AGENTS}`,
     );
-    return;
-  }
-  const io = nodeIo(data);
   const running = data.session_id
     ? await runningAgents(
         io,
@@ -66,16 +60,15 @@ run(async (data) => {
   if (running >= MAX_CONCURRENT_AGENTS) {
     const reason = `${running} subagents run now, and the limit is ${MAX_CONCURRENT_AGENTS} at once. Claude Code refuses a start past the limit. Wait until one agent reports, with \`Monitor\` if it runs in the background. Then send the next agents as a new wave.`;
     await logVerdict(io, data, "deny", reason);
-    preToolDecision("deny", reason);
-    return;
+    return preToolOutput("deny", reason);
   }
   if (input.run_in_background === false) return;
-  emit({
+  return {
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       // No reason: the user would see it on every spawn.
       permissionDecision: "allow",
       updatedInput: { ...input, run_in_background: false },
     },
-  });
-});
+  };
+}

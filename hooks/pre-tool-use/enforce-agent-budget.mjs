@@ -1,5 +1,3 @@
-#!/usr/bin/env bun
-
 // PreToolUse (all tools) in subagents: refuse tool calls once the agent's
 // context passes dotclaude's budget for its type (any agent type), or once only a
 // few turns of a dotclaude agent's `maxTurns` remain, so the next action is a
@@ -9,8 +7,6 @@
 // turn limit, and asking agents to report early did not work: every capped
 // run after 0.5.0 added that request was still calling tools when it stopped.
 
-import fs from "node:fs";
-import path from "node:path";
 import { definition, reserve } from "../lib/_agents.mjs";
 import { isUnder } from "../lib/_bash-args.mjs";
 import {
@@ -19,9 +15,8 @@ import {
   SUBAGENT_WRAP_UP_TOKENS,
   subagentContextTokens,
 } from "../lib/_budget.mjs";
-import { emit, preToolDecision, run } from "../lib/_common.mjs";
-import { option, stateDir } from "../lib/_core.mjs";
-import { nodeIo } from "../lib/_io-node.mjs";
+import { option, preToolOutput, stateDir } from "../lib/_core.mjs";
+import { pathFor } from "../lib/_path.mjs";
 import { isTempChild, shellResolve } from "../lib/_rules-filesystem.mjs";
 import { parse } from "../lib/_shell.mjs";
 
@@ -36,10 +31,11 @@ function deletesTempOnly(io, data) {
   if (data.tool_name !== "Bash") return false;
   const { commands, unparsed } = parse(String(data.tool_input?.command ?? ""));
   if (unparsed.length || !commands.length) return false;
+  const path = pathFor(io.platform);
   // An empty or relative `cwd` would make `resolve` throw. Root it at `io.cwd`.
   const cwd = path.resolve(io.cwd, data.cwd || io.cwd);
   // A project can itself sit in a temp folder. Its files are not scratch.
-  const project = path.resolve(process.env.CLAUDE_PROJECT_DIR || cwd);
+  const project = path.resolve(io.cwd, io.env.CLAUDE_PROJECT_DIR || cwd);
   return commands.every((cmd) => {
     if (cmd.name !== "rm" || cmd.cwdHint) return false;
     const paths = cmd.args.filter((a) => !a.startsWith("-"));
@@ -59,23 +55,22 @@ function deletesTempOnly(io, data) {
 }
 
 /** True the first time this agent passes `mark`. */
-function firstTime(data, mark) {
+async function firstTime(io, data, mark) {
+  const path = pathFor(io.platform);
   const file = path.join(
-    stateDir(nodeIo()),
+    stateDir(io),
     `${data.session_id}.${String(data.agent_id).replace(/[^\w-]/g, "_")}.${mark}`,
   );
-  if (fs.existsSync(file)) return false;
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, "");
+  if (await io.fs.exists(file)) return false;
+  await io.fs.write(file, "");
   return true;
 }
 
-run(async (data) => {
-  if (!option(process.env, "usage_agent_bounds")) return;
+export default async function (io, data) {
+  if (!option(io.env, "usage_agent_bounds")) return;
   // The report tool must stay open, or the agent could not deliver it.
   if (data.tool_name === "SubagentHandback") return;
   if (!data.agent_id) return;
-  const io = nodeIo(data);
   const { session } = io;
   const context = await session.agentContext();
   if (context) {
@@ -85,32 +80,29 @@ run(async (data) => {
       context.first + SUBAGENT_CONTEXT_GROWTH,
     );
     if (context.last >= cap && deletesTempOnly(io, data)) return;
-    if (context.last >= cap) {
-      preToolDecision(
+    if (context.last >= cap)
+      return preToolOutput(
         "deny",
         `context budget: this agent's context is ${k(context.last)} tokens, past dotclaude's ${k(cap)} limit, and each further turn re-reads all of it. ${REPORT}`,
       );
-      return;
-    }
     if (
       context.last >= cap - SUBAGENT_WRAP_UP_TOKENS &&
-      firstTime(data, "wrap-up")
+      (await firstTime(io, data, "wrap-up"))
     ) {
-      emit({
+      return {
         hookSpecificOutput: {
           hookEventName: "PreToolUse",
           additionalContext: `This agent's context is ${k(context.last)} tokens. At ${k(cap)}, dotclaude refuses further tool calls, because each turn re-reads the whole context. Finish the current item, delete your scratch files, and then report. Do not start a new item. Put the items that are not done in the report as a handoff for a fresh agent.`,
         },
-      });
-      return;
+      };
     }
   }
   const limit = (await definition(io, String(data.agent_type ?? "")))?.maxTurns;
   if (!limit) return;
   const used = await session.agentTurns();
   if (used === null || used < limit - reserve(limit)) return;
-  preToolDecision(
+  return preToolOutput(
     "deny",
     `turn budget: ${used} of ${limit} turns used. ${REPORT}`,
   );
-});
+}
