@@ -6,7 +6,8 @@
 // the plugin needs. With secret redaction on, it says when betterleaks is
 // missing.
 
-import { emit, option, run } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { option } from "../lib/_core.mjs";
 import { profileStamp, STAMP_KEY } from "../lib/_profile.mjs";
 import { scannerInstalled } from "../lib/_secrets.mjs";
 import {
@@ -22,11 +23,14 @@ run(() => {
   const env = process.env;
   // Settings env reaches hooks from every scope, so the stamp counts wherever
   // the profile was applied.
-  if (option("model_lock") && !env[STAMP_KEY]) {
+  if (option(process.env, "model_lock") && !env[STAMP_KEY]) {
     notices.push(
       "the settings profile is not applied yet. Run `/dotclaude:setup` to apply it.",
     );
-  } else if (option("model_lock") && env[STAMP_KEY] !== profileStamp()) {
+  } else if (
+    option(process.env, "model_lock") &&
+    env[STAMP_KEY] !== profileStamp()
+  ) {
     notices.push(
       "your settings profile is out of date: this version of the plugin changed it. Run `/dotclaude:setup` to update it.",
     );
@@ -47,7 +51,7 @@ run(() => {
       `its hooks need Bun ${MIN_BUN} or later, and ${Bun.version} is on PATH. Run \`bun upgrade\`.`,
     );
   }
-  if (option("guard_secrets") && !scannerInstalled()) {
+  if (option(process.env, "guard_secrets") && !scannerInstalled()) {
     notices.push(
       "secret redaction is on, but betterleaks is not on PATH, so tool output reaches Claude unscanned. Run `brew install betterleaks`, or turn off the guard_secrets option.",
     );

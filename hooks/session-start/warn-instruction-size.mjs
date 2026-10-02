@@ -22,7 +22,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { LIMITS, lineCount, severity, tokens } from "../lib/_budget.mjs";
-import { emit, projectRoot, run, TAG } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { projectRoot, TAG } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 
 const CLAUDE_NAMES = ["CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md"];
 const AGENTS_NAMES = ["AGENTS.md", ".claude/AGENTS.md"];
@@ -130,7 +132,7 @@ run((data) => {
       return p;
     }
   };
-  const root = real(projectRoot(data));
+  const root = real(projectRoot(nodeIo(data), data));
   const cwd = real(data.cwd || root);
   const config = process.env.CLAUDE_CONFIG_DIR || path.join(home, ".claude");
   const slashes = (p) => p.split(path.sep).join("/");

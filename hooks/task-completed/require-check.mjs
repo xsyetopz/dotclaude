@@ -1,13 +1,15 @@
 #!/usr/bin/env bun
+
 // TaskCompleted hook: send Claude back once when it marks a task completed
 // after code edits with no later check run. It reads the same ledger as the
 // stop gate. Exit code 2 keeps the task open and gives stderr to Claude.
 
-import { exitBlocking, option, run, TAG } from "../lib/_common.mjs";
+import { exitBlocking, run } from "../lib/_common.mjs";
+import { option, TAG } from "../lib/_core.mjs";
 import { load, save } from "../lib/_ledger.mjs";
 
 run((data) => {
-  if (!option("gate_verify")) return;
+  if (!option(process.env, "gate_verify")) return;
   if (!data.session_id) return;
   const agentId = data.agent_id ?? null;
   const state = load(data.session_id, agentId);

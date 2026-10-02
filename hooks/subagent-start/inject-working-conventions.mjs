@@ -6,7 +6,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { definition, reserve } from "../lib/_agents.mjs";
 import { k, subagentContextTokens } from "../lib/_budget.mjs";
-import { emit, option, run, stateDir } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { option, stateDir } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 
 const GUIDANCE = `<working_conventions source="dotclaude">
 - Claims in your brief are hypotheses. Check them in the code or with a run. Check an unsure API, flag, or version in the installed source or its docs.
@@ -25,7 +27,7 @@ const OWN_PROMPT = new Set(["reviewer"]);
 // An agent cut off at its turn limit delivers no report, so it is told the
 // limit, and enforce-agent-budget refuses tool calls near it.
 function budget(limit) {
-  const cutoff = option("usage_agent_bounds")
+  const cutoff = option(process.env, "usage_agent_bounds")
     ? `With ${reserve(limit)} left, tool calls are refused and your next action must be your report. Plan to finish before then`
     : `When about ${reserve(limit)} remain, stop and write your report`;
   return `<turn_budget source="dotclaude">You have at most ${limit} turns. ${cutoff}. If work remains, make the report a handoff, because a fresh agent will continue from it, not you. Include what is done and how you verified it, and the files you changed. Include anything half-edited, and what is left in order.</turn_budget>`;
@@ -53,10 +55,11 @@ function firstStart(data) {
   if (!data.session_id || !data.agent_id) return true;
   const safe = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");
   const marker = path.join(
-    stateDir(),
+    stateDir(nodeIo()),
     `${safe(data.session_id)}.${safe(data.agent_id)}.started`,
   );
   try {
+    fs.mkdirSync(path.dirname(marker), { recursive: true });
     fs.writeFileSync(marker, "", { flag: "wx" });
     return true;
   } catch (err) {
@@ -65,14 +68,14 @@ function firstStart(data) {
 }
 
 run((data) => {
-  if (!option("agent_guidance")) return;
+  if (!option(process.env, "agent_guidance")) return;
   if (!firstStart(data)) return;
   const agentType = String(data.agent_type ?? "");
   const type = agentType.replace(/^dotclaude:/, "");
   const parts = OWN_PROMPT.has(type) ? [] : [GUIDANCE];
   const def = definition(agentType);
   if (def?.maxTurns) parts.push(budget(def.maxTurns));
-  if (option("usage_agent_bounds")) parts.push(context(agentType));
+  if (option(process.env, "usage_agent_bounds")) parts.push(context(agentType));
   if (/sonnet/.test(def?.model ?? "")) parts.push(SONNET);
   if (!parts.length) return;
   emit({

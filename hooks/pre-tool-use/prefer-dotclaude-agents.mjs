@@ -28,7 +28,8 @@ import {
   MAX_CONCURRENT_AGENTS,
   RUNNING_AGENT_IDLE_MINUTES,
 } from "../lib/_budget.mjs";
-import { emit, option, preToolDecision, run } from "../lib/_common.mjs";
+import { emit, preToolDecision, run } from "../lib/_common.mjs";
+import { option } from "../lib/_core.mjs";
 import { runningAgents } from "../lib/_ledger.mjs";
 import { logVerdict } from "../lib/_verdicts.mjs";
 
@@ -40,7 +41,7 @@ const AGENTS =
   "Use the `dotclaude:` agent whose description fits the job. Write a plan yourself, in plan mode.";
 
 run((data) => {
-  if (!option("agent_guidance")) return;
+  if (!option(process.env, "agent_guidance")) return;
   const input = data.tool_input ?? {};
   const forksOff = OFF.has(
     String(process.env.CLAUDE_CODE_FORK_SUBAGENT ?? "").toLowerCase(),

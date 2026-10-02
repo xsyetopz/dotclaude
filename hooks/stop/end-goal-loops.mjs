@@ -12,7 +12,8 @@
 // mark setting or meeting a goal, not a check.
 
 import fs from "node:fs";
-import { emit, option, run } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { option } from "../lib/_core.mjs";
 
 const TAIL_BYTES = 400_000;
 const LIMIT = 2;
@@ -71,7 +72,7 @@ export function idleGoalBlocks(lines) {
 }
 
 run((data) => {
-  if (!option("gate_goal_stall") || !data.stop_hook_active) return;
+  if (!option(process.env, "gate_goal_stall") || !data.stop_hook_active) return;
   const blocks = idleGoalBlocks(tail(data.transcript_path ?? ""));
   if (blocks < LIMIT) return;
   emit({

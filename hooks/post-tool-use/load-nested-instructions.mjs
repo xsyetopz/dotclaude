@@ -6,7 +6,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { emit, option, projectRoot, run, stateDir } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { option, projectRoot, stateDir } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import {
   contextFor,
   instructionFiles,
@@ -18,16 +20,16 @@ function stateFile(data) {
   const safe = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");
   const agent = data.agent_id ? `.${safe(data.agent_id)}` : "";
   return path.join(
-    stateDir(),
+    stateDir(nodeIo()),
     `${safe(data.session_id || "unknown")}${agent}.nested-instructions.json`,
   );
 }
 
 run((data) => {
-  if (!option("context_nested_instructions")) return;
+  if (!option(process.env, "context_nested_instructions")) return;
   const command = data.tool_input?.command;
   if (typeof command !== "string") return;
-  const root = projectRoot(data);
+  const root = projectRoot(nodeIo(data), data);
   const cwd = data.cwd ? path.resolve(data.cwd) : root;
   const wanted = new Set();
   for (const p of readPaths(command, cwd, root))
@@ -49,6 +51,7 @@ run((data) => {
   if (!fresh.length) return;
   const text = contextFor(fresh, root);
   if (!text) return;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify([...added, ...fresh]));
   emit({
     hookSpecificOutput: {

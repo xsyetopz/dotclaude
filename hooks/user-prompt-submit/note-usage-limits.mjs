@@ -9,7 +9,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { USAGE_LEVELS } from "../lib/_budget.mjs";
-import { emit, option, run, stateDir, userTyped } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { option, stateDir, userTyped } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { contextNote, readUsage } from "../lib/_usage.mjs";
 
 const LEVELS = [...USAGE_LEVELS].reverse();
@@ -32,7 +34,7 @@ function usageNote(data) {
     /[^A-Za-z0-9_-]/g,
     "_",
   );
-  const file = path.join(stateDir(), `${safe}.usage-level`);
+  const file = path.join(stateDir(nodeIo()), `${safe}.usage-level`);
   let told = 0;
   try {
     told = Number(fs.readFileSync(file, "utf8")) || 0;
@@ -40,6 +42,7 @@ function usageNote(data) {
     told = 0;
   }
   if (worst <= told) return null;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, String(worst));
   const parts = [
     limit("session", usage.session, usage.sessionResetsAt),
@@ -55,7 +58,7 @@ function usageNote(data) {
 }
 
 run((data) => {
-  if (!option("usage_notes")) return;
+  if (!option(process.env, "usage_notes")) return;
   if (!userTyped(data.prompt)) return;
   const notes = [usageNote(data), contextNote(data)].filter(Boolean);
   if (!notes.length) return;

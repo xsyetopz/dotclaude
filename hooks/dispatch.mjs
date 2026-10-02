@@ -17,7 +17,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs";
 import path from "node:path";
-import { emit, readInput, TAG } from "./lib/_common.mjs";
+import { emit, readInput } from "./lib/_common.mjs";
+import { TAG } from "./lib/_core.mjs";
 import { nodeIo } from "./lib/_io-node.mjs";
 
 const TOOL_EDITS = "Edit|Write|MultiEdit|NotebookEdit";

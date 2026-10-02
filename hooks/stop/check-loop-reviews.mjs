@@ -7,30 +7,31 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import {
-  option,
-  projectRoot,
-  run,
-  stateDir,
-  stopFeedback,
-} from "../lib/_common.mjs";
+import { run, stopFeedback } from "../lib/_common.mjs";
+import { option, projectRoot, stateDir } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { loopSlices } from "../lib/_loop.mjs";
 import { waitsForUser } from "../lib/_transcript.mjs";
 
 run((data) => {
-  if (!option("gate_tasks") || data.stop_hook_active || data.agent_id) return;
+  if (
+    !option(process.env, "gate_tasks") ||
+    data.stop_hook_active ||
+    data.agent_id
+  )
+    return;
   if (
     (data.background_tasks ?? []).some(
       (t) => t.type === "shell" || t.type === "subagent",
     )
   )
     return;
-  const open = loopSlices(projectRoot(data)).filter(
+  const open = loopSlices(projectRoot(nodeIo(data), data)).filter(
     (s) => s.status === "implemented",
   );
   if (!open.length || waitsForUser(data.transcript_path)) return;
   const file = path.join(
-    stateDir(),
+    stateDir(nodeIo()),
     `${String(data.session_id).replace(/[^A-Za-z0-9_-]/g, "_")}.loop-reviews`,
   );
   const key = open.map((s) => String(s.id)).join(",");
@@ -39,6 +40,7 @@ run((data) => {
   } catch {
     // No block yet this session.
   }
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, key);
   const list = open.map((s) => `- \`${s.id}\``).join("\n");
   stopFeedback(

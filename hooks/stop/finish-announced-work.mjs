@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 // Stop hook: send Claude back once when the last paragraph of its reply
 // announces the next step ("Next I'll ...") or asks permission for work
 // ("Should I ...?", "Want me to ...?") instead of doing it. In the audited
@@ -8,7 +9,8 @@
 // `ExitPlanMode` call, and when the paragraph names a public or hard-to-reverse step, because
 // those wait for the user.
 
-import { option, run, stopFeedback } from "../lib/_common.mjs";
+import { run, stopFeedback } from "../lib/_common.mjs";
+import { option } from "../lib/_core.mjs";
 import { waitsForUser } from "../lib/_transcript.mjs";
 import { logVerdict } from "../lib/_verdicts.mjs";
 
@@ -37,7 +39,7 @@ function lastParagraph(message) {
 }
 
 run((data) => {
-  if (!option("gate_verify") || data.stop_hook_active) return;
+  if (!option(process.env, "gate_verify") || data.stop_hook_active) return;
   const paragraph = lastParagraph(data.last_assistant_message ?? "");
   if (!ANNOUNCES.some((re) => re.test(paragraph)) || WAITS.test(paragraph))
     return;

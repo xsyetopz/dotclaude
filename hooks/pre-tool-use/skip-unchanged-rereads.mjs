@@ -9,7 +9,9 @@
 // content.
 
 import path from "node:path";
-import { option, preToolDecision, projectRoot, run } from "../lib/_common.mjs";
+import { preToolDecision, run } from "../lib/_common.mjs";
+import { option, projectRoot } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { fullReads, load, readStamp } from "../lib/_ledger.mjs";
 import { logVerdict } from "../lib/_verdicts.mjs";
 
@@ -17,14 +19,17 @@ import { logVerdict } from "../lib/_verdicts.mjs";
 function targets(data) {
   const input = data.tool_input ?? {};
   if (data.tool_name === "Bash")
-    return fullReads(input.command, data.cwd || projectRoot(data));
+    return fullReads(
+      input.command,
+      data.cwd || projectRoot(nodeIo(data), data),
+    );
   if (data.tool_name !== "Read" || !input.file_path) return [];
   if (input.offset || input.limit) return [];
-  return [path.resolve(projectRoot(data), input.file_path)];
+  return [path.resolve(projectRoot(nodeIo(data), data), input.file_path)];
 }
 
 run((data) => {
-  if (!option("guard_bash") || !data.session_id) return;
+  if (!option(process.env, "guard_bash") || !data.session_id) return;
   const files = targets(data);
   if (!files.length) return;
   const reads = load(data.session_id, data.agent_id).reads ?? {};

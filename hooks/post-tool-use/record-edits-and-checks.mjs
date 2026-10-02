@@ -4,7 +4,9 @@
 // nothing.
 
 import path from "node:path";
-import { option, projectRoot, run } from "../lib/_common.mjs";
+import { run } from "../lib/_common.mjs";
+import { option, projectRoot } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import {
   checkCommand,
   codeFile,
@@ -22,7 +24,10 @@ function editedPath(data) {
   if (data.hook_event_name === "PostToolUseFailure") return undefined;
   const input = data.tool_input ?? {};
   const file = input.file_path || input.notebook_path || "";
-  const rel = path.relative(projectRoot(data), file).split(path.sep).join("/");
+  const rel = path
+    .relative(projectRoot(nodeIo(data), data), file)
+    .split(path.sep)
+    .join("/");
   if (!file || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
   return rel;
 }
@@ -60,9 +65,9 @@ function recordEdited(state, rel) {
 run((data) => {
   approveAsk(data);
   if (
-    !option("gate_verify") &&
-    !option("context_compact_carryover") &&
-    !option("guard_bash")
+    !option(process.env, "gate_verify") &&
+    !option(process.env, "context_compact_carryover") &&
+    !option(process.env, "guard_bash")
   )
     return;
   const state = load(data.session_id, data.agent_id);
@@ -79,7 +84,7 @@ run((data) => {
         return;
       recordRead(
         state,
-        path.resolve(projectRoot(data), input.file_path),
+        path.resolve(projectRoot(nodeIo(data), data), input.file_path),
         "Read",
       );
       break;
@@ -91,7 +96,7 @@ run((data) => {
       const rel = editedPath(data);
       if (!rel) return;
       recordEdited(state, rel);
-      if (codeFile(rel, projectRoot(data)))
+      if (codeFile(rel, projectRoot(nodeIo(data), data)))
         state.lastEdit = { seq: state.seq, path: rel };
       break;
     }
@@ -101,16 +106,18 @@ run((data) => {
         data.hook_event_name === "PostToolUse" && typeof command === "string"
           ? shellWrites(
               command,
-              projectRoot(data),
-              data.cwd || projectRoot(data),
+              projectRoot(nodeIo(data), data),
+              data.cwd || projectRoot(nodeIo(data), data),
             )
           : [];
-      const code = written.find((rel) => codeFile(rel, projectRoot(data)));
+      const code = written.find((rel) =>
+        codeFile(rel, projectRoot(nodeIo(data), data)),
+      );
       if (code) state.lastEdit = { seq: state.seq, path: code };
       for (const rel of written) recordEdited(state, rel);
       const reads =
         data.hook_event_name === "PostToolUse"
-          ? fullReads(command, data.cwd || projectRoot(data))
+          ? fullReads(command, data.cwd || projectRoot(nodeIo(data), data))
           : [];
       for (const abs of reads) recordRead(state, abs, `\`${command.trim()}\``);
       const result = checkRun(data);

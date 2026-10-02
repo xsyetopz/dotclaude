@@ -7,7 +7,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { preToolDecision, stateDir, verdict } from "./_common.mjs";
+import { preToolDecision } from "./_common.mjs";
+import { stateDir, verdict } from "./_core.mjs";
+import { nodeIo } from "./_io-node.mjs";
 
 const TARGET_MAX = 200;
 const LOG_MAX_BYTES = 1_000_000;
@@ -24,7 +26,7 @@ function target(data) {
 }
 
 export function logVerdict(data, level, reason, extra = {}) {
-  const file = path.join(path.dirname(stateDir()), "verdicts.jsonl");
+  const file = path.join(path.dirname(stateDir(nodeIo())), "verdicts.jsonl");
   try {
     if (fs.statSync(file).size > LOG_MAX_BYTES)
       fs.renameSync(file, file.replace(/\.jsonl$/, ".1.jsonl"));
@@ -41,12 +43,13 @@ export function logVerdict(data, level, reason, extra = {}) {
     target: clip(target(data)),
     ...extra,
   };
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.appendFileSync(file, `${JSON.stringify(entry)}\n`);
 }
 
 function memoryFile(sessionId) {
   const safe = String(sessionId).replace(/[^A-Za-z0-9_-]/g, "_");
-  return path.join(stateDir(), `asks-${safe}.json`);
+  return path.join(stateDir(nodeIo()), `asks-${safe}.json`);
 }
 
 function loadMemory(sessionId) {
@@ -64,6 +67,7 @@ function loadMemory(sessionId) {
 function saveMemory(sessionId, memory) {
   const file = memoryFile(sessionId);
   const tmp = `${file}.${process.pid}.tmp`;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(tmp, JSON.stringify(memory));
   fs.renameSync(tmp, file);
 }
@@ -73,7 +77,7 @@ function saveMemory(sessionId, memory) {
  * user already approved in this session for the same target and reason.
  */
 export function guardDecision(findings, data, label) {
-  const v = verdict(findings, data, label);
+  const v = verdict(findings, data, label, process.env);
   if (!v) return;
   const [decision, reason] = v;
   const sid = data.session_id;

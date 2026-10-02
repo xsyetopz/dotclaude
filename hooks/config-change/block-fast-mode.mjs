@@ -2,11 +2,12 @@
 // ConfigChange: block a user/project/local settings change that turns fast mode on.
 
 import fs from "node:fs";
-import { emit, option, run } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
+import { option } from "../lib/_core.mjs";
 
 run((data) => {
   if (
-    !option("model_lock") ||
+    !option(process.env, "model_lock") ||
     data.source === "policy_settings" ||
     data.source === "skills" ||
     !data.file_path

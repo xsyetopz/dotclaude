@@ -4,9 +4,10 @@ import { expect, test } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pruneState } from "../../hooks/lib/_common.mjs";
+import { pruneState } from "../../hooks/lib/_core.mjs";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 
-test("state files untouched for over 30 days are pruned; newer ones stay", () => {
+test("state files untouched for over 30 days are pruned; newer ones stay", async () => {
   process.env.CLAUDE_PLUGIN_DATA = fs.mkdtempSync(
     path.join(os.tmpdir(), "dotclaude-state-"),
   );
@@ -24,7 +25,7 @@ test("state files untouched for over 30 days are pruned; newer ones stay", () =>
     const at = new Date(now - ageDays * day);
     fs.utimesSync(file, at, at);
   }
-  expect(pruneState(now)).toBe(1);
+  expect(await pruneState(nodeIo(), now)).toBe(1);
   expect(fs.readdirSync(dir).sort()).toStrictEqual([
     "recent.json",
     "today.usage-level",
