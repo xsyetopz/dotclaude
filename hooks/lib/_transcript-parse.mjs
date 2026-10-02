@@ -7,6 +7,20 @@
 /** The longest last prompt that `io.session.lastPrompt()` gives. */
 export const LAST_PROMPT_CHARS = 4000;
 
+/**
+ * The entry of one transcript line, or null when the line is not a JSON
+ * object. A tail read cuts the first line, and a line can be `null` or a
+ * number.
+ */
+function entryOf(line) {
+  try {
+    const entry = JSON.parse(line);
+    return entry !== null && typeof entry === "object" ? entry : null;
+  } catch {
+    return null;
+  }
+}
+
 function isHuman(entry) {
   const kind = entry.origin?.kind;
   return kind === undefined ? !entry.isMeta : kind === "human";
@@ -52,12 +66,8 @@ export function promptsFromText(text, limit = 5, maxChars = 600) {
   ) {
     const line = lines[i];
     if (!line.trim()) continue;
-    let entry;
-    try {
-      entry = JSON.parse(line);
-    } catch {
-      continue;
-    }
+    const entry = entryOf(line);
+    if (!entry) continue;
     const prompt = promptOf(entry)?.trim();
     if (!prompt || prompt.startsWith("<") || prompt.startsWith("Caveat:"))
       continue;
@@ -94,18 +104,15 @@ export function turnsFromText(text) {
   for (let i = lines.length - 1; i >= 0; i -= 1) {
     const line = lines[i];
     if (!line) continue;
-    let entry;
-    try {
-      entry = JSON.parse(line);
-    } catch {
-      continue;
-    }
+    const entry = entryOf(line);
+    if (!entry) continue;
     if (entry.type === "assistant" && entry.message?.id)
       ids.add(entry.message.id);
     if (entry.type === "user") {
       const content = entry.message?.content;
       const toolResult =
-        Array.isArray(content) && content.some((b) => b.type === "tool_result");
+        Array.isArray(content) &&
+        content.some((b) => b?.type === "tool_result");
       // Wake-ups and SendMessage resumes are meta entries with an origin;
       // meta reminders without one do not restart the count.
       const kind = entry.origin?.kind;
@@ -131,12 +138,8 @@ export function contextFromText(text) {
   let last = null;
   for (const line of text.split("\n")) {
     if (!line.includes('"usage"')) continue;
-    let entry;
-    try {
-      entry = JSON.parse(line);
-    } catch {
-      continue;
-    }
+    const entry = entryOf(line);
+    if (!entry) continue;
     const u = entry.type === "assistant" ? entry.message?.usage : null;
     if (!u) continue;
     last = tokensOf(u);
@@ -155,12 +158,8 @@ export function mainContextFromText(text) {
     const line = lines[i];
     if (!line.includes('"usage"') && !line.includes('"compact_boundary"'))
       continue;
-    let entry;
-    try {
-      entry = JSON.parse(line);
-    } catch {
-      continue;
-    }
+    const entry = entryOf(line);
+    if (!entry) continue;
     if (entry.isSidechain) continue;
     if (entry.type === "system" && entry.subtype === "compact_boundary") {
       const after = Number(entry.compactMetadata?.postTokens);
@@ -177,12 +176,39 @@ export function nestedFromText(text) {
   const loaded = new Set();
   for (const line of text.split("\n")) {
     if (!line.includes('"nested_memory"')) continue;
-    try {
-      const att = JSON.parse(line).attachment;
-      if (att?.type === "nested_memory" && att.path) loaded.add(att.path);
-    } catch {
-      // A line cut at the start of the tail.
-    }
+    const att = entryOf(line)?.attachment;
+    if (att?.type === "nested_memory" && att.path) loaded.add(att.path);
   }
   return loaded;
+}
+
+/**
+ * Compactions recorded in the text. A quote inside a message is escaped in
+ * JSON, so the marker finds only a real `compact_boundary` entry.
+ */
+export function compactionsFromText(text) {
+  let count = 0;
+  for (const line of text.split("\n")) {
+    if (!line.includes('"subtype":"compact_boundary"')) continue;
+    const entry = entryOf(line);
+    if (entry?.type === "system" && entry.subtype === "compact_boundary")
+      count += 1;
+  }
+  return count;
+}
+
+/**
+ * True when a task notification in the main transcript shows that agent `id`
+ * stopped at its turn limit.
+ */
+export function stoppedAtLimitInText(text, id) {
+  const tag = `<task-id>${id}</task-id>`;
+  let at = text.indexOf(tag);
+  while (at !== -1) {
+    const end = text.indexOf("</task-notification>", at);
+    const note = text.slice(at, end === -1 ? at + 4000 : end);
+    if (/stopped at its \d+-turn limit/.test(note)) return true;
+    at = text.indexOf(tag, at + tag.length);
+  }
+  return false;
 }

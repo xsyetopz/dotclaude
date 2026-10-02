@@ -73,7 +73,7 @@ run(async (data) => {
   if (!option(process.env, "usage_agent_bounds")) return;
   // The report tool must stay open, or the agent could not deliver it.
   if (data.tool_name === "SubagentHandback") return;
-  if (!data.agent_id || !data.transcript_path || !data.session_id) return;
+  if (!data.agent_id) return;
   const { session } = nodeIo(data);
   const context = await session.agentContext();
   if (context) {

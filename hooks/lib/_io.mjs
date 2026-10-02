@@ -67,24 +67,39 @@
  *   reads them from the transcript files, the hooks module from the engine.
  *   The io gives facts, not transcript text, because the engine gives only
  *   parsed messages. When the host cannot tell, a fact resolves to its "do
- *   not know" value, and the caller treats that value as no finding. Thus
- *   the guards stay fail-open.
+ *   not know" value and does not reject. Each member below gives that value
+ *   and the side to which the caller errs with it.
  * @property {() => Promise<string>} lastPrompt The last prompt that the user
- *   typed, cut at 4000 characters. `""` when not known.
+ *   typed. A longer prompt is cut to 4000 characters plus the ` [...]`
+ *   suffix. `""` when not known. A guard that looks for consent in the
+ *   prompt then finds none and keeps its ask, which is the safe side.
  * @property {() => Promise<string>} agentTranscriptPath The transcript file
  *   of the subagent. `""` when the input is not from a subagent or the host
- *   has no transcript file.
+ *   has no transcript file. The caller then reads no file.
  * @property {() => Promise<number | null>} agentTurns The subagent's API
  *   calls since its latest prompt, resume, or wake-up. Claude Code counts
- *   `maxTurns` from there. Null when not known.
+ *   `maxTurns` from there. Null when not known. The turn budget then does
+ *   not deny, which is fail-open.
  * @property {() => Promise<{ first: number, last: number } | null>}
  *   agentContext The context tokens of the subagent's first and latest API
- *   calls. Null when not known.
- * @property {() => Promise<Set<string>>} loadedNested The paths of the
- *   nested memory files that Claude Code loaded. Empty when not known.
+ *   calls. Null when not known. The context budget then does not deny or
+ *   warn, which is fail-open.
+ * @property {() => Promise<Set<string> | null>} loadedNested The paths of the
+ *   nested memory files that Claude Code loaded. Null when not known. An
+ *   empty Set is a finding: no file loaded. The caller cannot treat null as
+ *   empty, because then it injects every file again.
  * @property {() => Promise<number | null>} mainContextTokens The context
  *   tokens of the main conversation: the input of its last response, or the
- *   size after a later compaction. Null when not known.
+ *   size after a later compaction. Null when not known. The context note
+ *   then does not show, which is fail-open.
+ * @property {() => Promise<number | null>} compactions The compactions of
+ *   the main conversation. Null when not known. The caller then gives no
+ *   note that depends on the count, which is fail-open. It does not treat
+ *   null as 0.
+ * @property {(agentId: string) => Promise<boolean | null>} agentStoppedAtLimit
+ *   True when a task notification shows that the agent `agentId` stopped at
+ *   its turn limit. Null when not known. The caller then sends the message
+ *   to the agent without a change, which is fail-open.
  */
 
 /**

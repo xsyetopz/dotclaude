@@ -2,16 +2,20 @@
 // the tests. No file of the guard closure imports this file.
 
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { stateDir } from "./_core.mjs";
 import { subagentTranscript, tail } from "./_transcript.mjs";
 import {
+  compactionsFromText,
   contextFromText,
   LAST_PROMPT_CHARS,
   mainContextFromText,
   nestedFromText,
   promptsFromText,
+  stoppedAtLimitInText,
   turnsFromText,
 } from "./_transcript-parse.mjs";
 
@@ -140,46 +144,142 @@ function run(argv, init = {}) {
 }
 
 /**
+ * Compactions recorded in a transcript, or null when it cannot be read.
+ *
+ * The status line calls this on each refresh, and a long transcript is tens
+ * of MB. A cache file keeps the count and the byte offset after the last
+ * complete line, so each call reads only the lines appended since. A
+ * different inode, a shorter file, or no newline before the offset means
+ * that the transcript was replaced, and the count starts again from 0.
+ */
+export function compactionCount(transcriptPath) {
+  let fd;
+  try {
+    fd = fs.openSync(transcriptPath, "r");
+  } catch {
+    return null;
+  }
+  try {
+    const stat = fs.fstatSync(fd);
+    const cacheFile = path.join(
+      stateDir(nodeIo()),
+      `compactions-${createHash("sha256").update(String(transcriptPath)).digest("hex").slice(0, 16)}.json`,
+    );
+    let { ino, offset, count } = { ino: stat.ino, offset: 0, count: 0 };
+    try {
+      const cached = JSON.parse(fs.readFileSync(cacheFile, "utf8"));
+      const before = Buffer.alloc(1);
+      if (
+        cached.ino === stat.ino &&
+        cached.offset > 0 &&
+        cached.offset <= stat.size &&
+        fs.readSync(fd, before, 0, 1, cached.offset - 1) === 1 &&
+        before[0] === 0x0a
+      )
+        ({ offset, count } = cached);
+    } catch {
+      // No cache yet, or another call is replacing it: count from 0.
+    }
+    if (stat.size === offset) return count;
+    const bytes = Buffer.alloc(stat.size - offset);
+    const read = fs.readSync(fd, bytes, 0, bytes.length, offset);
+    // Stop after the last complete line, so that a line that Claude Code is
+    // still writing is read whole next time.
+    const end = bytes.subarray(0, read).lastIndexOf(0x0a) + 1;
+    count += compactionsFromText(bytes.subarray(0, end).toString("utf8"));
+    if (end > 0) {
+      const tmp = `${cacheFile}.${process.pid}.tmp`;
+      try {
+        fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+        fs.writeFileSync(
+          tmp,
+          JSON.stringify({ ino, offset: offset + end, count }),
+        );
+        fs.renameSync(tmp, cacheFile);
+      } catch {
+        // The count is right. Only the next call reads more.
+        fs.rmSync(tmp, { force: true });
+      }
+    }
+    return count;
+  } catch {
+    return null;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+/**
+ * A session fact that resolves `unknown` when it throws, for example on a
+ * hook input with fields of an unexpected type.
+ */
+const known =
+  (unknown, fact) =>
+  async (...args) => {
+    try {
+      return await fact(...args);
+    } catch {
+      return unknown;
+    }
+  };
+
+const readText = (file) => {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return null;
+  }
+};
+
+/**
  * The session facts for one hook input, from the transcript files. The main
- * transcript can be tens of MB, so the facts about it read only its end.
+ * transcript can be tens of MB, so most facts about it read only its end.
  * @returns {import("./_io.mjs").IoSession}
  */
 function nodeSession(data) {
-  const transcript = data.transcript_path ?? "";
+  const transcript =
+    typeof data.transcript_path === "string" ? data.transcript_path : "";
   const agentPath = () =>
     transcript && data.session_id && data.agent_id
       ? subagentTranscript(transcript, data.session_id, data.agent_id)
       : "";
   const agentText = () => {
     const file = agentPath();
-    if (!file) return null;
-    try {
-      return fs.readFileSync(file, "utf8");
-    } catch {
-      return null;
-    }
+    return file ? readText(file) : null;
   };
+  const mainTail = (bytes) => (transcript ? tail(transcript, bytes) : null);
   return {
-    lastPrompt: async () =>
-      promptsFromText(tail(transcript) ?? "", 1, LAST_PROMPT_CHARS).at(-1) ??
+    lastPrompt: known(
       "",
-    agentTranscriptPath: async () => agentPath(),
-    agentTurns: async () => {
+      () =>
+        promptsFromText(mainTail() ?? "", 1, LAST_PROMPT_CHARS).at(-1) ?? "",
+    ),
+    agentTranscriptPath: known("", agentPath),
+    agentTurns: known(null, () => {
       const text = agentText();
       return text === null ? null : turnsFromText(text);
-    },
-    agentContext: async () => {
+    }),
+    agentContext: known(null, () => {
       const text = agentText();
       return text === null ? null : contextFromText(text);
-    },
-    loadedNested: async () => {
-      const text = transcript ? tail(transcript) : null;
-      return text ? nestedFromText(text) : new Set();
-    },
-    mainContextTokens: async () => {
-      const text = transcript ? tail(transcript, 1_000_000) : null;
+    }),
+    loadedNested: known(null, () => {
+      const text = mainTail();
+      return text === null ? null : nestedFromText(text);
+    }),
+    mainContextTokens: known(null, () => {
+      const text = mainTail(1_000_000);
       return text ? mainContextFromText(text) : null;
-    },
+    }),
+    compactions: known(null, () =>
+      transcript ? compactionCount(transcript) : null,
+    ),
+    agentStoppedAtLimit: known(null, (id) => {
+      // A task notification can be anywhere in the transcript, so this fact
+      // reads all of it.
+      const text = transcript ? readText(transcript) : null;
+      return text === null ? null : stoppedAtLimitInText(text, String(id));
+    }),
   };
 }
 
