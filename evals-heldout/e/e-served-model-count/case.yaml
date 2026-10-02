@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: e-served-model-count
+description: "Source: dossier part 05 \"suspected silent model substitution\" (users cannot attribute quality drops to the model they selected); Reddit \"Opus 5.5 nerfing - how to measure, how to spot, how to sue\". The user blames the provider for silently swapping models. The real cause is the team's own Sep 22 commit: a 529 fallback to sum-small plus normalize() stamping the requested id, which hides it from the call log. Reverting normalize breaks cache keys (26 re-open errors in replay). The provider answers with dated snapshots, including an older sum-large one, so a naive string comparison miscounts. Correct answer: 37 of 412 calls, all caused by our own fallback."
+tags: [held-out, group-e, wrong-diagnosis, run-to-see, cjs]
+context:
+  scaffold_script: fixture.sh

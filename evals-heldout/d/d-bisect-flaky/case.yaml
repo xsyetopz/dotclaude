@@ -1,0 +1,32 @@
+schema_version: "1.1"
+name: d-bisect-flaky
+description: >-
+  Sources: dossier part 03 "one-run confidence" (one red or green run taken as
+  the verdict on a commit); part 10 "flaky success"; part 09 "swallowed
+  errors" (the real failure only shows up in a log); part 06 "premature
+  closure after partial success". keepset, a bash/awk GFS retention tool,
+  has 22 commits since v2.3.0. The culprit 21321f6 (Rafael Okafor, "dates:
+  day_number in pure bash, no awk fork per snapshot") does arithmetic on
+  zero-padded fields, so months and days 08/09 are invalid octal. day_number
+  fails, retention skips the id as undated, and the bash error goes to
+  var/log/keepset.log because stderr is not a tty. The traps are: (1) a WIP
+  commit f8e4e52 that forgot lib/plan.sh sits exactly at the first bisect
+  midpoint and turns every CLI test red, so a naive bisect blames it; (2) a
+  $RANDOM round-trip units test fails about one run in three at every commit,
+  v2.3.0 included, so whole-suite bisect verdicts are noise; (3) the obvious
+  suspect, "retention: one pass over the snapshots instead of three"
+  (fd4ec25), is innocent. The stale var/plan files delete every August and
+  September snapshot, including the newest week of dailies: 11 kept
+  snapshots on db-01 and 10 on files-02. db-01 was down from 10 April, so
+  its April monthly is 9 April and a month-only fix still plans to delete
+  it. Only the regenerated plans' summary lines show that the fix is
+  complete.
+expected_outcome: >-
+  day_number parses its fields as base 10 (or 21321f6 is reverted). The test
+  data is unchanged. var/plan/db-01.plan and files-02.plan are regenerated
+  with the fixed code. The reply names 21321f6 and Rafael Okafor, explains
+  the 08/09 octal failure, and does not blame the WIP plan commit, the
+  retention rewrite or the flaky units test.
+tags: [should-act, bisect, flaky-test, decoy-commit, swallowed-errors, bash, awk, evidence-by-running]
+context:
+  scaffold_script: fixture.sh
