@@ -2,8 +2,8 @@
 // context size once when it passes CONTEXT_NOTE_TOKENS. The prompt note only
 // comes when the user types, and no hook input gives the context size.
 
+import { contextNote } from "../lib/_context-note.mjs";
 import { option } from "../lib/_core.mjs";
-import { contextNote } from "../lib/_usage.mjs";
 
 export default async function (io, data) {
   if (!option(io.env, "usage_notes")) return;
