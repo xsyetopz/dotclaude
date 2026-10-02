@@ -89,9 +89,11 @@ describe("catalog", () => {
     expect(remoteKey("/srv/git/local")).toBeUndefined();
   });
 
-  test("an organization-wide entry matches every repository of the owner", () => {
-    expect(lookup("codeberg.org/forgejo/forgejo")?.project).toBe("Forgejo");
-    expect(lookup("github.com/nobody/nothing")).toBeUndefined();
+  test("an organization-wide entry matches every repository of the owner", async () => {
+    expect(
+      (await lookup(nodeIo(), "codeberg.org/forgejo/forgejo"))?.project,
+    ).toBe("Forgejo");
+    expect(await lookup(nodeIo(), "github.com/nobody/nothing")).toBeUndefined();
   });
 
   test("the blob hash matches git", () => {
@@ -118,7 +120,7 @@ describe("lazy upstream check", () => {
     resetCatalogCache();
   }
 
-  test("reports a changed upstream hash and fetches once a day", () => {
+  test("reports a changed upstream hash and fetches once a day", async () => {
     online();
     let calls = 0;
     const fetchSha = () => {
@@ -126,51 +128,54 @@ describe("lazy upstream check", () => {
       return "f".repeat(40);
     };
     const now = Date.now();
-    expect(upstreamChange(), "the guard never fetches").toBeUndefined();
-    expect(upstreamStale(now)).toBe(true);
-    refreshUpstream(now, fetchSha);
-    expect(upstreamChange()).toBe("f".repeat(40));
-    expect(upstreamStale(now + 60_000)).toBe(false);
-    refreshUpstream(now + 60_000, fetchSha);
+    expect(
+      await upstreamChange(nodeIo()),
+      "the guard never fetches",
+    ).toBeUndefined();
+    expect(await upstreamStale(nodeIo(), now)).toBe(true);
+    await refreshUpstream(nodeIo(), now, fetchSha);
+    expect(await upstreamChange(nodeIo())).toBe("f".repeat(40));
+    expect(await upstreamStale(nodeIo(), now + 60_000)).toBe(false);
+    await refreshUpstream(nodeIo(), now + 60_000, fetchSha);
     expect(calls).toBe(1);
-    refreshUpstream(now + 25 * 60 * 60 * 1000, fetchSha);
+    await refreshUpstream(nodeIo(), now + 25 * 60 * 60 * 1000, fetchSha);
     expect(calls).toBe(2);
   });
 
-  test("stays quiet when the hash matches or the fetch fails", () => {
+  test("stays quiet when the hash matches or the fetch fails", async () => {
     online();
-    const sha = loadCatalog().sha;
-    refreshUpstream(Date.now(), () => sha);
-    expect(upstreamChange()).toBeUndefined();
+    const sha = (await loadCatalog(nodeIo())).sha;
+    await refreshUpstream(nodeIo(), Date.now(), () => sha);
+    expect(await upstreamChange(nodeIo())).toBeUndefined();
     online();
-    refreshUpstream(Date.now(), () => {
+    await refreshUpstream(nodeIo(), Date.now(), () => {
       throw new Error("offline");
     });
-    expect(upstreamChange()).toBeUndefined();
+    expect(await upstreamChange(nodeIo())).toBeUndefined();
   });
 
-  test("an updated catalog in the data directory wins", () => {
+  test("an updated catalog in the data directory wins", async () => {
     online();
     fs.writeFileSync(
       path.join(process.env.CLAUDE_PLUGIN_DATA, "ai-policies.json"),
       JSON.stringify({ sha: "abc", entries: [] }),
     );
-    expect(loadCatalog().sha).toBe("abc");
+    expect((await loadCatalog(nodeIo())).sha).toBe("abc");
   });
 
-  test("offline, nothing is fetched", () => {
+  test("offline, nothing is fetched", async () => {
     let calls = 0;
-    expect(upstreamStale()).toBe(false);
-    refreshUpstream(Date.now(), () => {
+    expect(await upstreamStale(nodeIo())).toBe(false);
+    await refreshUpstream(nodeIo(), Date.now(), () => {
       calls += 1;
       return "x";
     });
     expect(calls).toBe(0);
-    expect(upstreamChange()).toBeUndefined();
+    expect(await upstreamChange(nodeIo())).toBeUndefined();
   });
 });
 
-test("the gh login comes from `hosts.yml` in gh's config directory", () => {
+test("the gh login comes from `hosts.yml` in gh's config directory", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-gh-"));
   const write = (sub, text) => {
     fs.mkdirSync(path.join(dir, sub), { recursive: true });
@@ -184,9 +189,12 @@ test("the gh login comes from `hosts.yml` in gh's config directory", () => {
   write("none", "gitlab.com:\n    user: me\n");
   write("bad", "github.com: [\n");
   const env = (e) => ({ HOME: path.join(dir, "home"), ...e });
-  expect(hostsUser(env({ GH_CONFIG_DIR: path.join(dir, "a") }))).toBe("me");
   expect(
-    hostsUser(
+    await hostsUser(nodeIo(), env({ GH_CONFIG_DIR: path.join(dir, "a") })),
+  ).toBe("me");
+  expect(
+    await hostsUser(
+      nodeIo(),
       env({
         GH_CONFIG_DIR: path.join(dir, "a"),
         XDG_CONFIG_HOME: path.join(dir, "xdg"),
@@ -194,15 +202,20 @@ test("the gh login comes from `hosts.yml` in gh's config directory", () => {
     ),
     "`GH_CONFIG_DIR` wins",
   ).toBe("me");
-  expect(hostsUser(env({ XDG_CONFIG_HOME: path.join(dir, "xdg") }))).toBe(
-    "other",
-  );
-  expect(hostsUser(env({ GH_CONFIG_DIR: path.join(dir, "none") }))).toBe("");
   expect(
-    hostsUser(env({ GH_CONFIG_DIR: path.join(dir, "bad") })),
+    await hostsUser(nodeIo(), env({ XDG_CONFIG_HOME: path.join(dir, "xdg") })),
+  ).toBe("other");
+  expect(
+    await hostsUser(nodeIo(), env({ GH_CONFIG_DIR: path.join(dir, "none") })),
+  ).toBe("");
+  expect(
+    await hostsUser(nodeIo(), env({ GH_CONFIG_DIR: path.join(dir, "bad") })),
   ).toBeUndefined();
   expect(
-    hostsUser(env({ GH_CONFIG_DIR: path.join(dir, "missing") })),
+    await hostsUser(
+      nodeIo(),
+      env({ GH_CONFIG_DIR: path.join(dir, "missing") }),
+    ),
     "a missing file falls back to `gh`",
   ).toBeUndefined();
 });
