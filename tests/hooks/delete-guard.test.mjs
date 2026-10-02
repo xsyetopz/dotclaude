@@ -80,3 +80,40 @@ test.each([
 ])("a delete that can reach user work asks: %s (%s)", (command) => {
   expect(decision(command)).toBe("ask");
 });
+
+// The temp folder that holds the project, as `/tmp` does on Linux, where
+// `os.tmpdir()` is `/tmp`. The test preload sets `TMPDIR` to a folder of its
+// own, which holds the project the same way.
+const holder = os.tmpdir().replace(/\/+$/, "");
+
+test.each([
+  [`find ${holder} -maxdepth 1 -name 'ojd-*' -exec rm -rf {} +`],
+  [`find ${holder} -maxdepth 1 -iname 'OJD-*' -delete`],
+])(
+  "a named delete beside the project in its temp folder runs: %s",
+  (command) => {
+    expect(decision(command)).toBe(null);
+  },
+);
+
+test.each([
+  [`find ${holder} -name 'ojd-*' -delete`, "no depth limit"],
+  [
+    `find ${holder} -maxdepth 2 -name 'ojd-*' -delete`,
+    "a depth past the entries",
+  ],
+  [
+    `find ${holder} -maxdepth 1 -name 'dotclaude-del*' -delete`,
+    "the project's name",
+  ],
+  [
+    `find ${holder} -maxdepth 1 -iname 'DOTCLAUDE-DEL*' -delete`,
+    "the project's name in another case",
+  ],
+  [`find ${holder} -maxdepth 1 -not -name 'ojd-*' -delete`, "a negated name"],
+])(
+  "a named delete that can reach the project in its temp folder asks: %s (%s)",
+  (command) => {
+    expect(decision(command)).toBe("ask");
+  },
+);

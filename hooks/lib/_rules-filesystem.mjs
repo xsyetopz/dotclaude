@@ -169,16 +169,38 @@ function ignoredInProject(p, ctx) {
 /**
  * True when a search root of `find` or `fd` keeps every match in a place
  * that holds no user work: a temp entry, a gitignored project path, or a
- * temp folder itself when a name filter selects the matches.
+ * temp folder itself when a name filter selects the matches. `filter` is
+ * undefined without a name filter, else `{ names, exact, depth }`: `exact`
+ * when the names are the whole selection, `depth` the `-maxdepth` value.
  */
-function safeRoot(root, cmd, ctx, named) {
+function safeRoot(root, cmd, ctx, filter) {
   const t = expandTempVar(root, ctx);
   if (tempHead(t, cmd, ctx)) return true;
   const p = resolveTarget(t, cmd, ctx);
   if (!p) return false;
   if (scratch(p, ctx)) return true;
-  if (named && tempPrefixes().includes(`${p}/`) && !overlapsProject(p, ctx))
-    return true;
+  if (filter && tempPrefixes().includes(`${p}/`)) {
+    if (!overlapsProject(p, ctx)) return true;
+    // A temp folder that holds the project, such as `/tmp` on Linux: with
+    // `-maxdepth 1`, only the project's own entry in the folder can reach
+    // project files, so no name may match that entry.
+    const entry = path
+      .relative(canonical(p), canonical(ctx.root))
+      .split(path.sep)[0];
+    if (
+      entry &&
+      !entry.startsWith("..") &&
+      filter.exact &&
+      filter.depth !== undefined &&
+      filter.depth <= 1 &&
+      !filter.names.some(({ pattern, fold }) =>
+        fold
+          ? new Bun.Glob(pattern.toLowerCase()).match(entry.toLowerCase())
+          : new Bun.Glob(pattern).match(entry),
+      )
+    )
+      return true;
+  }
   return ignoredInProject(p, ctx);
 }
 
@@ -305,9 +327,12 @@ const FOLLOW = new Set(["-L", "-H", "-follow", "--follow"]);
 
 export function find(cmd, ctx) {
   const args = cmd.args;
-  const names = args.flatMap((a, i) =>
-    ["-name", "-iname"].includes(a) && args[i + 1] ? [args[i + 1]] : [],
+  const filters = args.flatMap((a, i) =>
+    ["-name", "-iname"].includes(a) && args[i + 1]
+      ? [{ pattern: args[i + 1], fold: a === "-iname" }]
+      : [],
   );
+  const names = filters.map((f) => f.pattern);
   // Actions: -delete, or -exec/-execdir/-ok/-okdir with the argv up to ; or +.
   const actions = [];
   for (let i = 0; i < args.length; i += 1) {
@@ -338,12 +363,21 @@ export function find(cmd, ctx) {
   // Search roots come before the first option or expression.
   const end = args.findIndex((a) => /^[-(!]/.test(a));
   const roots = args.slice(0, end === -1 ? undefined : end);
+  const maxdepth = args[args.lastIndexOf("-maxdepth") + 1];
+  const filter = filters.length
+    ? {
+        names: filters,
+        exact: !args.some((a) => FIND_WIDENING.has(a)),
+        depth:
+          args.includes("-maxdepth") && /^\d+$/.test(maxdepth ?? "")
+            ? Number(maxdepth)
+            : undefined,
+      }
+    : undefined;
   if (
     matchOnly &&
     !args.some((a) => FOLLOW.has(a)) &&
-    (roots.length ? roots : ["."]).every((r) =>
-      safeRoot(r, cmd, ctx, names.length > 0),
-    )
+    (roots.length ? roots : ["."]).every((r) => safeRoot(r, cmd, ctx, filter))
   )
     return [];
   return args.includes("-delete")
@@ -409,7 +443,7 @@ export function fd(cmd, ctx) {
     matchOnly &&
     !before.some((a) => FOLLOW.has(a)) &&
     (roots.length ? roots : ["."]).every((r) =>
-      safeRoot(r, cmd, ctx, Boolean(pattern)),
+      safeRoot(r, cmd, ctx, pattern ? { names: [], exact: false } : undefined),
     )
   )
     return [];
