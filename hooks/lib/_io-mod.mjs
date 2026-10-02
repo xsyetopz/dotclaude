@@ -18,6 +18,7 @@
 //   `CLAUDE_PROJECT_DIR` and no `CLAUDE_PLUGIN_DATA`, because Claude Code
 //   sets them only for a command hook. The io makes them as Claude Code does.
 
+import { stateDir } from "./_core.mjs";
 import { pathFor } from "./_path.mjs";
 import {
   LAST_PROMPT_CHARS,
@@ -240,3 +241,53 @@ export function stoppedAtLimitOf(rows, id) {
   const text = rows.map((row) => row.text ?? "").join("\n");
   return stoppedAtLimitInText(text, String(id)) ? true : null;
 }
+
+/** An id as a part of a file name. */
+const safeId = (id) => String(id).replace(/[^\w-]/g, "_");
+
+/**
+ * The file that keeps the context tokens of the first and latest steps of
+ * one subagent. The engine gives no subagent transcript file, so the
+ * `turn.step` hook writes this file.
+ */
+export const agentContextFile = (io, sessionId, agentId) =>
+  pathFor(io.platform).join(
+    stateDir(io),
+    `${safeId(sessionId)}.${safeId(agentId)}.context.json`,
+  );
+
+/** The file that keeps the count of compactions of the main conversation. */
+export const compactionsFile = (io, sessionId) =>
+  pathFor(io.platform).join(stateDir(io), `${safeId(sessionId)}.compactions`);
+
+/** The `{ first, last }` of an agent context file, or null when it is bad. */
+export function contextOf(text) {
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const { first, last } = value ?? {};
+  return Number.isFinite(first) && Number.isFinite(last)
+    ? { first, last }
+    : null;
+}
+
+/** The count in a compactions file, or null when it is bad. */
+export function countOf(text) {
+  const trimmed = String(text).trim();
+  const n = Number(trimmed);
+  return trimmed && Number.isInteger(n) && n >= 0 ? n : null;
+}
+
+/**
+ * The context tokens of one step: input plus cache reads and writes, as
+ * `tokensOf` in `_transcript-parse.mjs`. Null without a usage.
+ */
+export const contextTokensOf = (usage) =>
+  usage && typeof usage === "object"
+    ? (usage.input_tokens ?? 0) +
+      (usage.cache_read_input_tokens ?? 0) +
+      (usage.cache_creation_input_tokens ?? 0)
+    : null;

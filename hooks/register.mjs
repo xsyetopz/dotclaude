@@ -12,7 +12,12 @@
 import { ACTIONS, MATCH_FIELD, matches, merge } from "./lib/_actions.mjs";
 import { TAG, tagOutput } from "./lib/_core.mjs";
 import {
+  agentContextFile,
   bytesOfBase64,
+  compactionsFile,
+  contextOf,
+  contextTokensOf,
+  countOf,
   entryOf,
   envOf,
   homeOf,
@@ -163,10 +168,13 @@ function modRun($) {
 /**
  * The session facts for one hook input, from `$.session`. The engine gives
  * parsed rows with no token usage, no attachments, and no transcript file,
- * so some facts are not known.
+ * so some facts are not known. The hooks of `register` keep the agent context
+ * and the compactions in state files, because the engine does not give them.
+ * `io` holds the platform and the environment of `modIo`, which give the
+ * state folder.
  * It gives the `IoSession` of `_io.mjs`.
  */
-function modSession($, data) {
+function modSession($, data, io) {
   const mainRows = async () => {
     const rows = await $.session.messages();
     return Array.isArray(rows) ? rows : null;
@@ -183,13 +191,20 @@ function modSession($, data) {
       // A refusal is `{ deny }`, not a list.
       return Array.isArray(rows) ? turnsOf(rows) : null;
     }),
-    agentContext: known(null, () => null),
+    agentContext: known(null, async () => {
+      if (!data.session_id || !data.agent_id) return null;
+      const file = agentContextFile(io, data.session_id, data.agent_id);
+      return contextOf(await $.fs.read(file));
+    }),
     loadedNested: known(null, () => null),
     mainContextTokens: known(null, async () => {
       const tokens = (await $.session.usage())?.context?.tokens;
       return typeof tokens === "number" ? tokens : null;
     }),
-    compactions: known(null, () => null),
+    compactions: known(null, async () => {
+      if (!data.session_id) return null;
+      return countOf(await $.fs.read(compactionsFile(io, data.session_id)));
+    }),
     agentStoppedAtLimit: known(null, async (id) => {
       const rows = await mainRows();
       return rows ? stoppedAtLimitOf(rows, id) : null;
@@ -230,7 +245,7 @@ export async function modIo($, options = {}, data = {}) {
     home,
   });
   if (dataDir) env.CLAUDE_PLUGIN_DATA = dataDir;
-  return {
+  const io = {
     platform,
     env,
     home,
@@ -239,8 +254,9 @@ export async function modIo($, options = {}, data = {}) {
     pluginRoot: root,
     fs: modFs($),
     run: modRun($),
-    session: modSession($, data),
   };
+  io.session = modSession($, data, io);
+  return io;
 }
 
 /** The keys of a `tool.call` input that are not arguments of the tool. */
@@ -279,14 +295,18 @@ async function classicInput($, e) {
 
 /**
  * Run the ported actions of `event` whose matcher fits `data`, at the same
- * time, and merge their tagged outputs in table order. It makes the io only
- * when an action runs. Each action fails open: an action that throws gives
- * no output, and the others still count.
+ * time, and merge their tagged outputs in table order. With `only`, it runs
+ * only that action. It makes the io only when an action runs. Each action
+ * fails open: an action that throws gives no output, and the others still
+ * count.
  */
-async function runActions($, options, event, data) {
+async function runActions($, options, event, data, only) {
   const field = MATCH_FIELD[event];
   const rows = (ACTIONS[event] ?? []).filter(
-    ([matcher, action]) => RUNS.has(action) && matches(matcher, data[field]),
+    ([matcher, action]) =>
+      RUNS.has(action) &&
+      (only === undefined || action === only) &&
+      matches(matcher, data[field]),
   );
   if (!rows.length) return undefined;
   const io = await modIo($, options, data);
@@ -308,11 +328,43 @@ async function runActions($, options, event, data) {
 }
 
 /**
+ * Keep the context tokens of the first and latest steps of the subagent
+ * `agentId`, for `io.session.agentContext`. The first value of an existing
+ * file stays.
+ */
+async function noteAgentContext($, options, agentId, usage) {
+  const tokens = contextTokensOf(usage);
+  if (tokens === null) return;
+  const sessionId = await $.session.id();
+  if (!sessionId) return;
+  const io = await modIo($, options, {
+    session_id: sessionId,
+    agent_id: agentId,
+  });
+  const before = await io.session.agentContext();
+  await io.fs.write(
+    agentContextFile(io, sessionId, agentId),
+    JSON.stringify({ first: before?.first ?? tokens, last: tokens }),
+  );
+}
+
+/** Add 1 to the compactions of the main conversation. */
+async function countCompaction($, options) {
+  const sessionId = await $.session.id();
+  if (!sessionId) return;
+  const io = await modIo($, options, { session_id: sessionId });
+  const count = (await io.session.compactions()) ?? 0;
+  await io.fs.write(compactionsFile(io, sessionId), String(count + 1));
+}
+
+/**
  * Register the hooks of dotclaude. `tool.call` runs the PreToolUse actions
  * before the call and the PostToolUse actions after it. An "ask" stays in
  * `verdicts` until the call ends, because `tool.check` runs inside the `next`
  * of `tool.call`. An "allow" is not kept, so the engine's rules decide, as
- * they do for a classic hook's "allow".
+ * they do for a classic hook's "allow". `agent.spawn` runs the SubagentStart
+ * actions. `turn.step` and `session.compact` keep the session facts that the
+ * engine does not give.
  */
 export function register(on, options) {
   const verdicts = new Map();
@@ -364,5 +416,63 @@ export function register(on, options) {
     const kept =
       e.tool_use_id === undefined ? undefined : verdicts.get(e.tool_use_id);
     return kept && verdict?.decision !== "deny" ? kept : verdict;
+  });
+
+  // The SubagentStart actions. The context goes before the prompt, because
+  // the engine gives no other way to add context to a subagent. The engine
+  // gives the agent id only after `next`, so the agent counts as running
+  // only after it starts.
+  on("agent.spawn", async ($, e, next) => {
+    const data = {
+      hook_event_name: "SubagentStart",
+      session_id: await $.session.id().catch(() => ""),
+      agent_type: e.subagentType,
+      prompt: e.prompt,
+    };
+    const start = await runActions(
+      $,
+      options,
+      "SubagentStart",
+      { ...data },
+      "subagent-start/inject-working-conventions.mjs",
+    );
+    const text = notesOf(start)[0];
+    const r = await next(text ? { ...e, prompt: `${text}\n\n${e.prompt}` } : e);
+    if (r && !("deny" in r) && r.agentId)
+      await runActions(
+        $,
+        options,
+        "SubagentStart",
+        { ...data, agent_id: r.agentId },
+        "subagent-start/count-running-agents.mjs",
+      );
+    return r;
+  });
+
+  // The engine gives no subagent transcript, so each step of a subagent
+  // keeps its context tokens. Each chunk passes unchanged, and a failure to
+  // keep the tokens does not stop the step.
+  on("turn.step", async function* ($, e, next) {
+    const r = yield* next(e);
+    if (typeof e.agentId === "string" && e.agentId)
+      try {
+        await noteAgentContext($, options, e.agentId, r?.usage);
+      } catch {
+        // The agent context is then not known, and its guard does not act.
+      }
+    return r;
+  });
+
+  // The engine gives no compact boundary in the main conversation, so this
+  // hook counts each compaction that it installs.
+  on("session.compact", async ($, e, next) => {
+    const r = await next(e);
+    if (r && r.skip === undefined && !e.agentId)
+      try {
+        await countCompaction($, options);
+      } catch {
+        // The count is then not known, and the context note counts 0.
+      }
+    return r;
   });
 }
