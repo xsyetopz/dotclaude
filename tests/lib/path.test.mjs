@@ -216,14 +216,28 @@ const WIN32_ABS = [
   "\\\\?\\C:\\a",
   "\\\\.\\C:\\a",
   "\\\\?\\UNC\\s\\h\\x",
+  // A UNC server that looks like a drive, and a share that is a prefix of
+  // another. They reach the `relative` branches for a root of two characters.
+  "\\\\s\\h",
+  "\\\\s\\ha",
+  "\\\\C:x\\y",
+  "\\\\C:\\x",
 ];
 
 const EXTS = ["", ".js", "js", ".txt", ".tar.gz", "b", ".b", "a.b", "x"];
 
-// `resolve` needs no current folder in Node when the first segment is a root
-// with a drive or a UNC share. "\x" and "d:a" depend on the cwd in Node.
-const needsNoCwd = (p) =>
-  /^([A-Za-z]:[\\/]|[\\/]{2}[^\\/]+[\\/]+[^\\/]+)/.test(p);
+// A small seeded generator. It uses all 32 bits, so the fuzz inputs repeat
+// rarely. "\x" and "d:a" depend on the cwd in Node, so the rooted fuzz inputs
+// always start with a drive or a UNC share.
+function mulberry32(seed) {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 const PLATFORMS = [
   ["posix", posix, nodePath.posix, POSIX_PATHS, POSIX_ABS],
@@ -350,16 +364,38 @@ for (const [name, ours, node, paths, abs] of PLATFORMS) {
         name === "posix"
           ? ["/", "/", "a", "b", ".", "..", ".x", "x.y", "", ":"]
           : ["\\", "/", "a", "b", ".", "..", ".x", "C:", "d:", "\\\\", ":"];
-      let seed = 12345;
-      const next = (n) => {
-        seed = (seed * 1103515245 + 12345) % 2147483648;
-        return seed % n;
-      };
+      // A rooted input gets a prefix that needs no current folder in Node,
+      // then a tail with "." and ".." segments, mixed separators, and case.
+      const prefixes =
+        name === "posix"
+          ? ["/", "/", "//"]
+          : [
+              "C:\\",
+              "c:/",
+              "D:\\",
+              "\\\\s\\h",
+              "\\\\S\\H\\",
+              "//s/h/",
+              "\\\\s\\ha",
+              "\\\\C:x\\y",
+              "\\\\C:\\x",
+              "\\\\?\\C:\\",
+              "\\\\.\\C:\\",
+            ];
+      const tails =
+        name === "posix"
+          ? ["/", "/", "a", "b", "A", ".", "..", "ab", "//"]
+          : ["\\", "/", "a", "A", "b", "B", ".", "..", "ab", "AB", "\\\\"];
+      const rand = mulberry32(12345);
+      const next = (n) => Math.floor(rand() * n);
+      const pick = (list) => list[next(list.length)];
       const make = () =>
-        Array.from(
-          { length: 1 + next(7) },
-          () => parts[next(parts.length)],
-        ).join("");
+        Array.from({ length: 1 + next(7) }, () => pick(parts)).join("");
+      const makeRooted = () =>
+        pick(prefixes) +
+        Array.from({ length: next(6) }, () => pick(tails)).join("");
+      const count = { relative: 0, resolve: 0, toNamespacedPath: 0 };
+      const seen = { relative: new Set(), resolve: new Set() };
       for (let i = 0; i < 3000; i++) {
         const p = make();
         const q = make();
@@ -384,26 +420,35 @@ for (const [name, ours, node, paths, abs] of PLATFORMS) {
             p,
             node.resolve(root, p),
           ]);
-        const free = (x) =>
-          name === "posix" ? x.startsWith("/") : needsNoCwd(x);
-        if (free(p) && free(q))
-          expect([p, q, ours.relative(p, q)]).toEqual([
-            p,
-            q,
-            node.relative(p, q),
-          ]);
-        if (free(p))
-          expect([p, ours.toNamespacedPath(p)]).toEqual([
-            p,
-            node.toNamespacedPath(p),
-          ]);
-        if (free(p) && (name === "posix" || !drive(q)))
-          expect([p, q, ours.resolve(p, q)]).toEqual([
-            p,
-            q,
-            node.resolve(p, q),
-          ]);
+        const rp = makeRooted();
+        const rq = makeRooted();
+        expect([rp, rq, ours.relative(rp, rq)]).toEqual([
+          rp,
+          rq,
+          node.relative(rp, rq),
+        ]);
+        count.relative++;
+        seen.relative.add(`${rp}\0${rq}`);
+        expect([rp, ours.toNamespacedPath(rp)]).toEqual([
+          rp,
+          node.toNamespacedPath(rp),
+        ]);
+        count.toNamespacedPath++;
+        // A second segment that is a drive-relative path needs the cwd.
+        const tail = name === "posix" || !drive(q) ? q : rq;
+        expect([rp, tail, ours.resolve(rp, tail)]).toEqual([
+          rp,
+          tail,
+          node.resolve(rp, tail),
+        ]);
+        count.resolve++;
+        seen.resolve.add(`${rp}\0${tail}`);
       }
+      expect(count.relative).toBeGreaterThanOrEqual(1000);
+      expect(count.resolve).toBeGreaterThanOrEqual(1000);
+      expect(count.toNamespacedPath).toBeGreaterThanOrEqual(1000);
+      expect(seen.relative.size).toBeGreaterThanOrEqual(1000);
+      expect(seen.resolve.size).toBeGreaterThanOrEqual(1000);
     });
   });
 }
@@ -420,4 +465,36 @@ test("win32 resolve of a drive-relative segment uses the drive root", () => {
   expect(win32.resolve("C:\\a", "D:x")).toBe("D:\\x");
   expect(win32.resolve("D:x", "C:\\a")).toBe("C:\\a");
   expect(win32.resolve("D:\\a", "D:x")).toBe("D:\\a\\x");
+});
+
+test("win32 resolve checks every segment, as Bun does", () => {
+  for (const args of [
+    [5, "C:\\a"],
+    [5, "y", "C:\\a"],
+    ["C:\\a", 5],
+    [null, "\\\\s\\h\\x"],
+  ])
+    expect(() => win32.resolve(...args)).toThrow(TypeError);
+  // On posix, resolve stops at the first absolute segment.
+  expect(posix.resolve(5, "/a")).toBe("/a");
+  expect(() => posix.resolve("/a", 5)).toThrow(TypeError);
+});
+
+test("win32 resolve of a rooted path without a drive keeps no drive", () => {
+  expect(win32.resolve("\\a")).toBe("\\a");
+  expect(win32.resolve("x", "/a/../b")).toBe("\\b");
+});
+
+test("win32 join of three leading separators matches node:path", () => {
+  for (const args of [
+    ["\\\\\\server", "x"],
+    ["\\\\\\", "\\\\\\x"],
+    ["///a", "b"],
+    ["\\\\", "\\a"],
+    ["\\\\a", "b"],
+  ])
+    expect([args, win32.join(...args)]).toEqual([
+      args,
+      nodePath.win32.join(...args),
+    ]);
 });

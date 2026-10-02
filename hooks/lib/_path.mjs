@@ -5,10 +5,13 @@
 // compares it with `node:path`.
 //
 // Two differences from Bun, both in `resolve`:
-// 1. There is no implicit current folder. If the segments do not make an
-//    absolute path, `resolve` throws an Error. Callers pass an absolute base,
-//    for example `path.resolve(io.cwd, x)`. `relative` and
-//    `toNamespacedPath` call `resolve`, so they need absolute input too.
+// 1. There is no implicit current folder. `resolve` throws an Error when no
+//    segment is a root. On posix, a root is a path that starts with `/`. On
+//    win32, a root is a drive, a UNC share, or a leading separator. A win32
+//    segment such as `\a` has a root but no drive, so `resolve("\\a")`
+//    gives `\a`, as Bun does on macOS. Callers pass an absolute base, for
+//    example `path.resolve(io.cwd, x)`. `relative` and `toNamespacedPath`
+//    call `resolve`, so they need rooted input too.
 // 2. On win32, `resolve` does not read the per-drive current folder from the
 //    environment. A drive-relative segment such as `D:x` with no absolute
 //    base on that drive resolves against the drive root `D:\`.
@@ -159,6 +162,8 @@ function make(platform) {
   }
 
   function resolve(...args) {
+    // Bun checks every segment on win32. On posix it stops at the first root.
+    if (win) for (let i = 0; i < args.length; i++) str(args[i], `paths[${i}]`);
     let device = "";
     let tail = "";
     let abs = false;
@@ -178,7 +183,7 @@ function make(platform) {
       } else {
         tail = `${p.slice(r.end)}${sep}${tail}`;
         abs = r.abs;
-        if (abs && (device || !win)) break;
+        if (abs && !win) break;
       }
     }
     if (!abs && !device)
@@ -227,7 +232,6 @@ function make(platform) {
         if (a[fromStart + i] === sep) lastCommonSep = i;
         else if (i === rootLen) lastCommonSep = win ? 3 : 0;
       }
-      if (win && lastCommonSep === -1) lastCommonSep = 0;
     }
     let out = "";
     for (i = fromStart + lastCommonSep + 1; i <= fromEnd; ++i)
@@ -266,10 +270,7 @@ function make(platform) {
           slashes = 1;
           if (isSep(first[1])) {
             slashes = 2;
-            if (first.length > 2) {
-              if (isSep(first[2])) slashes = 3;
-              else replace = false;
-            }
+            if (first.length > 2 && !isSep(first[2])) replace = false;
           }
         }
         if (replace) {
