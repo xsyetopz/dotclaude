@@ -53,24 +53,23 @@ export async function hostsUser(io, env = io.env) {
   }
 }
 
-let login;
 /** The gh login for github.com, read from the local config (no network). */
 async function ghUser(ctx) {
   if (ctx.ghUser !== undefined) return ctx.ghUser;
-  // Reading `hosts.yml` costs under 1 ms. Starting `gh` costs about 50 ms.
-  login ??= await hostsUser(ctx.io);
-  if (login === undefined) {
-    try {
-      const r = await ctx.io.run(
-        ["gh", "config", "get", "user", "-h", "github.com"],
-        { timeoutMs: GH_TIMEOUT_MS, maxBytes: GH_MAX_BYTES },
-      );
-      login = r.exitCode === 0 ? r.stdout.trim().toLowerCase() : "";
-    } catch {
-      login = "";
-    }
+  // Reading `hosts.yml` costs under 1 ms, so nothing is cached. A cache would
+  // outlive the io of one call, and it would keep a failed answer.
+  const fromHosts = await hostsUser(ctx.io);
+  if (fromHosts !== undefined) return fromHosts;
+  // Starting `gh` costs about 50 ms. It runs only when the file gives no answer.
+  try {
+    const r = await ctx.io.run(
+      ["gh", "config", "get", "user", "-h", "github.com"],
+      { timeoutMs: GH_TIMEOUT_MS, maxBytes: GH_MAX_BYTES },
+    );
+    return r.exitCode === 0 ? r.stdout.trim().toLowerCase() : "";
+  } catch {
+    return "";
   }
-  return login;
 }
 
 async function remotes(io, cwd) {

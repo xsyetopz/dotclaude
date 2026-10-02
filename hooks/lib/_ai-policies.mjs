@@ -172,28 +172,31 @@ export function parseReadme(markdown) {
 
 // --- loading and matching ---------------------------------------------------
 
-let cached;
+// Catalogs that were read, by the file they came from. A call with other
+// paths (another `CLAUDE_PLUGIN_DATA` or plugin root) does not use them. The
+// empty fallback is never stored, so a failed read is tried again.
+const cached = new Map();
 
 /** The newest catalog: the updated copy in the data directory, else the shipped one. */
 export async function loadCatalog(io) {
-  if (cached) return cached;
   for (const file of [userCatalogPath(io), shippedPath(io)]) {
+    if (cached.has(file)) return cached.get(file);
     try {
       const catalog = JSON.parse(await io.fs.read(file));
       if (Array.isArray(catalog.entries)) {
-        cached = { ...catalog, file };
-        return cached;
+        const found = { ...catalog, file };
+        cached.set(file, found);
+        return found;
       }
     } catch {
       // missing or damaged: try the next one
     }
   }
-  cached = { sha: null, entries: [], file: null };
-  return cached;
+  return { sha: null, entries: [], file: null };
 }
 
 export function resetCatalogCache() {
-  cached = undefined;
+  cached.clear();
 }
 
 /** True when the entry forbids AI contributions ("No", "No*"). */
@@ -205,8 +208,8 @@ export async function lookup(io, key) {
   const owner = key.split("/").slice(0, 2).join("/");
   const { entries } = await loadCatalog(io);
   return (
-    entries.find((e) => e.keys.includes(key)) ??
-    entries.find((e) => e.keys.includes(owner))
+    entries.find((e) => Array.isArray(e?.keys) && e.keys.includes(key)) ??
+    entries.find((e) => Array.isArray(e?.keys) && e.keys.includes(owner))
   );
 }
 
