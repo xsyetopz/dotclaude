@@ -1,5 +1,3 @@
-#!/usr/bin/env bun
-
 // PreToolUse(Agent): deny a subagent `model` outside the allowlist, and Fable
 // for any subagent. A fresh Fable context pays Claude Code's whole system
 // prompt at 2.5x Opus 5.5's rate before doing any work, and Fable spends the
@@ -12,9 +10,7 @@
 // so an agent from elsewhere is checked only when the call names a model.
 
 import { definition } from "../lib/_agents.mjs";
-import { preToolDecision, run } from "../lib/_common.mjs";
-import { option } from "../lib/_core.mjs";
-import { nodeIo } from "../lib/_io-node.mjs";
+import { option, preToolOutput } from "../lib/_core.mjs";
 import { allowed, canonical, effortLevels, family } from "../lib/_models.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 
@@ -46,31 +42,26 @@ function effortReason(model, data, def, env) {
   return `dotclaude supports \`${model}\` only at the effort levels ${list(levels)}. This agent would run at \`${effort}\`. ${source} ${next}`;
 }
 
-run(async (data) => {
-  const io = nodeIo(data);
+export default async function (io, data) {
   if (!option(io.env, "model_lock")) return;
   const input = data.tool_input ?? {};
   const model = typeof input.model === "string" ? input.model : "";
-  if (model && isFable(model, io.env)) {
-    preToolDecision(
+  if (model && isFable(model, io.env))
+    return preToolOutput(
       "deny",
       `dotclaude blocks Fable for subagents, because a fresh Fable context costs about 2.5x an Opus 5.5 context before any work. That cost comes from the same weekly limit. ${HINT}`,
     );
-    return;
-  }
   if (model) {
     const { list: models, note } = await planAllowlist(io);
-    if (!allowed(model, models, io.env)) {
-      preToolDecision(
+    if (!allowed(model, models, io.env))
+      return preToolOutput(
         "deny",
         `Subagent model \`${model}\` is outside the allowed models (${list(models)}).${note} ${HINT}`,
       );
-      return;
-    }
   }
   const def = await definition(io, String(input.subagent_type ?? ""));
   const target = model || (def?.model !== "inherit" ? def?.model : "") || "";
   if (!target) return;
   const reason = effortReason(target, data, def, io.env);
-  if (reason) preToolDecision("deny", reason);
-});
+  if (reason) return preToolOutput("deny", reason);
+}
