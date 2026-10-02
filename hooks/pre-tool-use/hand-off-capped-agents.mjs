@@ -15,25 +15,6 @@ import { nodeIo } from "../lib/_io-node.mjs";
 const REPORT_REQUEST =
   "You stopped at your turn limit, and a fresh agent will continue this work. Make no more tool calls. Reply now with your final report as a handoff. Include the goal, what you did, and how you verified it (commands and results). Include the files you changed and anything you left half-edited or uncommitted. Include the work that remains, in order, and anything the next agent must know.";
 
-/** True when the transcript shows agent `id` stopping at its turn limit. */
-function stoppedAtLimit(transcript, id) {
-  let text;
-  try {
-    text = fs.readFileSync(transcript, "utf8");
-  } catch {
-    return false;
-  }
-  const tag = `<task-id>${id}</task-id>`;
-  let at = text.indexOf(tag);
-  while (at !== -1) {
-    const end = text.indexOf("</task-notification>", at);
-    const note = text.slice(at, end === -1 ? at + 4000 : end);
-    if (/stopped at its \d+-turn limit/.test(note)) return true;
-    at = text.indexOf(tag, at + tag.length);
-  }
-  return false;
-}
-
 function statePath(sessionId) {
   const safe = String(sessionId || "unknown").replace(/[^A-Za-z0-9_-]/g, "_");
   return path.join(stateDir(nodeIo()), `${safe}.capped-agents.json`);
@@ -48,7 +29,7 @@ function readState(file) {
   }
 }
 
-run((data) => {
+run(async (data) => {
   if (!option(process.env, "usage_agent_bounds")) return;
   const input = data.tool_input ?? {};
   const to = typeof input.to === "string" ? input.to.trim() : "";
@@ -62,7 +43,7 @@ run((data) => {
     );
     return;
   }
-  if (!stoppedAtLimit(data.transcript_path ?? "", to)) return;
+  if (!(await nodeIo(data).session.agentStoppedAtLimit(to))) return;
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify([...reported, to]));
   emit({

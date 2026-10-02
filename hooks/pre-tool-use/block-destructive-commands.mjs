@@ -14,13 +14,12 @@ import { ASKS_TEST_REMOVAL } from "../lib/_edit-rules.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
 import { oracleFor } from "../lib/_loop.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
-import { recentPrompts } from "../lib/_transcript.mjs";
 import { guardDecision } from "../lib/_verdicts.mjs";
 
 const LOCK_ONLY = /fast mode|allowed models/;
 const REMOVES_ASSERTIONS = /assertion\(s\) from a test file/;
 
-run((data) => {
+run(async (data) => {
   const command = data.tool_input?.command;
   if (typeof command !== "string" || !command.trim()) return;
   const guard = option(process.env, "guard_bash");
@@ -43,9 +42,7 @@ run((data) => {
   // Read the transcript only when a Bash write removes assertions.
   if (
     findings.some(([, reason]) => REMOVES_ASSERTIONS.test(reason)) &&
-    ASKS_TEST_REMOVAL.test(
-      recentPrompts(data.transcript_path ?? "", 1, 4000).at(-1) ?? "",
-    )
+    ASKS_TEST_REMOVAL.test(await nodeIo(data).session.lastPrompt())
   )
     findings = findings.filter(
       ([, reason]) => !REMOVES_ASSERTIONS.test(reason),

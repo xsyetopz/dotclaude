@@ -11,12 +11,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import {
-  contextUsed,
-  definition,
-  reserve,
-  turnsUsed,
-} from "../lib/_agents.mjs";
+import { definition, reserve } from "../lib/_agents.mjs";
 import { isUnder } from "../lib/_bash-args.mjs";
 import {
   k,
@@ -29,7 +24,6 @@ import { option, stateDir } from "../lib/_core.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
 import { isTempChild, shellResolve } from "../lib/_rules-filesystem.mjs";
 import { parse } from "../lib/_shell.mjs";
-import { subagentTranscript } from "../lib/_transcript.mjs";
 
 const REPORT =
   "Make no more tool calls. Your next action is your report. Give the answer or result so far, what you changed, and what ran and its result. If work remains, add a handoff for a fresh agent: anything half-edited, and what is left in order.";
@@ -75,17 +69,13 @@ function firstTime(data, mark) {
   return true;
 }
 
-run((data) => {
+run(async (data) => {
   if (!option(process.env, "usage_agent_bounds")) return;
   // The report tool must stay open, or the agent could not deliver it.
   if (data.tool_name === "SubagentHandback") return;
-  if (!data.agent_id || !data.transcript_path || !data.session_id) return;
-  const transcript = subagentTranscript(
-    data.transcript_path,
-    data.session_id,
-    data.agent_id,
-  );
-  const context = contextUsed(transcript);
+  if (!data.agent_id) return;
+  const { session } = nodeIo(data);
+  const context = await session.agentContext();
   if (context) {
     // A fork starts with the parent's context, so it gets room to grow.
     const cap = Math.max(
@@ -115,7 +105,7 @@ run((data) => {
   }
   const limit = definition(String(data.agent_type ?? ""))?.maxTurns;
   if (!limit) return;
-  const used = turnsUsed(transcript);
+  const used = await session.agentTurns();
   if (used === null || used < limit - reserve(limit)) return;
   preToolDecision(
     "deny",

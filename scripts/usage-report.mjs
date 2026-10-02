@@ -27,7 +27,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { definition, reserve, turnsUsed } from "../hooks/lib/_agents.mjs";
+import { definition, reserve } from "../hooks/lib/_agents.mjs";
+import { turnsFromText } from "../hooks/lib/_transcript-parse.mjs";
 
 // $ per million tokens: input, output, cache read, 5m write, 1h write.
 const PRICES = {
@@ -192,7 +193,9 @@ export function report(root, since, verdictsFile = null) {
     if (limit)
       limited.push({
         type,
-        capped: turnsUsed(file) >= limit - reserve(limit),
+        capped:
+          turnsFromText(fs.readFileSync(file, "utf8")) >=
+          limit - reserve(limit),
         ...briefSize(file),
       });
     const seen = new Set();
