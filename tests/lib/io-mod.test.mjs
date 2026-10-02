@@ -5,7 +5,11 @@
 import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
-import { platformOf, pluginDataDir } from "../../hooks/lib/_io-mod.mjs";
+import {
+  platformOf,
+  pluginDataDir,
+  projectDirOf,
+} from "../../hooks/lib/_io-mod.mjs";
 import { modIo } from "../../hooks/register.mjs";
 
 const enc = new TextEncoder();
@@ -526,4 +530,23 @@ test("_io-mod.mjs does not touch $, which the validator follows only in register
     fs.readFileSync(path.join(hooksLib, "_io-mod.mjs"), "utf8"),
   );
   expect(code.includes("$.")).toBe(false);
+});
+
+test("projectDirOf gives the worktree of a subagent, and the root otherwise", () => {
+  const tree = "/p/.claude/worktrees/agent-a1";
+  expect(projectDirOf("posix", "/p", `${tree}/src`, "a1")).toBe(tree);
+  expect(projectDirOf("posix", "/p", tree, undefined)).toBe("/p");
+  expect(projectDirOf("posix", "/p", "/p/src", "a1")).toBe("/p");
+  // A `WorktreeCreate` hook can put the worktree outside the root.
+  expect(projectDirOf("posix", "/p", "/trees/w", "a1")).toBe("/trees/w");
+  // A `cd` after the first call does not move the project.
+  expect(projectDirOf("posix", "/p", "/tmp", "a1", "/trees/w")).toBe(
+    "/trees/w",
+  );
+  expect(projectDirOf("posix", "/p", "/tmp", "a1", `${tree}/src`)).toBe(tree);
+  expect(projectDirOf("posix", "/p", "/p/src", "a1", "/p")).toBe("/p");
+  expect(projectDirOf("posix", "/p", "/p/..x", "a1")).toBe("/p");
+  expect(
+    projectDirOf("win32", "C:\\p", "C:\\p\\.claude\\worktrees\\w\\src", "a1"),
+  ).toBe("C:\\p\\.claude\\worktrees\\w");
 });

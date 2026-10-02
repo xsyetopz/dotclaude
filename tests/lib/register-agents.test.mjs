@@ -37,9 +37,7 @@ test("agent.spawn puts the conventions before the prompt and marks the agent as 
   });
   expect(out).toEqual({ model: "m", agentId: "a1" });
   expect(calls).toHaveLength(1);
-  expect(calls[0].prompt).toStartWith(
-    '[dotclaude] <working_conventions source="dotclaude">',
-  );
+  expect(calls[0].prompt).toStartWith("[dotclaude] <working_conventions>");
   expect(calls[0].prompt).toEndWith("</context_budget>\n\nFix the bug.");
   expect(calls[0].subagentType).toBe("general-purpose");
   expect(runningMarkers($)).toHaveLength(1);
@@ -260,4 +258,54 @@ test("a main step gives its effort to the model lock of a later Agent call", asy
     on["turn.step"]($, { agentId: "a1", effort: "low" }, stepOf([], {})),
   );
   expect((await run()).called).toBe(false);
+});
+
+test("a subagent in a worktree records its edits below the worktree", async () => {
+  const on = registered();
+  const tree = "/work/.claude/worktrees/agent-a1";
+  const $ = fake({ cwd: tree, root: "/work" });
+  await on["tool.call"](
+    $,
+    {
+      tool: "Edit",
+      tool_use_id: "t1",
+      agentId: "a1",
+      file_path: `${tree}/src/a.js`,
+      old_string: "a",
+      new_string: "b",
+    },
+    async () => ({ result: "ok" }),
+  );
+  const io = await modIo($, {}, {});
+  const ledger = [...$.files.keys()].find((f) => f.endsWith("s1.a1.json"));
+  const state = JSON.parse($.files.get(ledger));
+  expect(io.cwd).toBe(tree);
+  expect(state.edited).toEqual(["src/a.js"]);
+  expect(state.lastEdit.path).toBe("src/a.js");
+});
+
+test("a subagent in a worktree outside the root keeps it as its project after a cd", async () => {
+  const on = registered();
+  const tree = "/trees/agent-b1";
+  const init = { cwd: tree, root: "/work" };
+  const $ = fake(init);
+  const edit = (file) =>
+    on["tool.call"](
+      $,
+      {
+        tool: "Edit",
+        tool_use_id: file,
+        agentId: "b1",
+        file_path: file,
+        old_string: "a",
+        new_string: "b",
+      },
+      async () => ({ result: "ok" }),
+    );
+  await edit(`${tree}/src/a.js`);
+  init.cwd = "/tmp";
+  await edit(`${tree}/src/b.js`);
+  const ledger = [...$.files.keys()].find((f) => f.endsWith("s1.b1.json"));
+  const state = JSON.parse($.files.get(ledger));
+  expect(state.edited).toEqual(["src/a.js", "src/b.js"]);
 });

@@ -59,3 +59,15 @@ test("a relative Bash cwd is resolved from the hook's folder", async () => {
     path.join(project, "sub", "f.txt"),
   ]);
 });
+
+test("two edits recorded at the same time both stay", async () => {
+  const { io } = setup();
+  await Promise.all([
+    record(io, edit("src/a.js")),
+    record(io, edit("src/b.js")),
+  ]);
+  expect([...(await load(io, "s1")).edited].sort()).toEqual([
+    "src/a.js",
+    "src/b.js",
+  ]);
+});

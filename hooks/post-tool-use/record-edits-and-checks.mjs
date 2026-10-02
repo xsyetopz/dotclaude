@@ -12,6 +12,7 @@ import {
   recordRead,
   save,
   shellWrites,
+  withLedger,
 } from "../lib/_ledger.mjs";
 import { pathFor } from "../lib/_path.mjs";
 import { approveAsk } from "../lib/_verdicts.mjs";
@@ -63,7 +64,6 @@ function recordEdited(state, rel) {
 }
 
 export default async function (io, data) {
-  const path = pathFor(io.platform);
   await approveAsk(io, data);
   if (
     !option(io.env, "gate_verify") &&
@@ -71,6 +71,11 @@ export default async function (io, data) {
     !option(io.env, "guard_bash")
   )
     return;
+  await withLedger(io, data.session_id, data.agent_id, () => record(io, data));
+}
+
+async function record(io, data) {
+  const path = pathFor(io.platform);
   const state = await load(io, data.session_id, data.agent_id);
   state.seq += 1;
   switch (data.tool_name) {

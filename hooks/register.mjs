@@ -25,6 +25,7 @@ import {
   lastPromptOf,
   platformOf,
   pluginDataDir,
+  projectDirOf,
   recentPromptsOf,
   runRequest,
   runResult,
@@ -226,6 +227,14 @@ function modSession($, data, io) {
 }
 
 /**
+ * The first cwd of each subagent that works in a worktree, by root and
+ * agent id. A `cd` in the subagent moves `$.session.cwd()` later, but the
+ * first cwd in the worktree stays its project. A cwd at the root records nothing, because
+ * an event can come before the subagent enters its worktree.
+ */
+const agentStarts = new Map();
+
+/**
  * The hooks-module io for one hook event. `options` holds the plugin options
  * that `register(on, options)` got. `data` is the hook input in the shape of
  * a classic hook's stdin JSON. It is async because the engine gives the
@@ -249,7 +258,19 @@ export async function modIo($, options = {}, data = {}) {
   // Claude Code sets these two names only for a command hook, so the
   // module makes them. Then the module and the command hooks share a state
   // folder.
-  if (typeof projectDir === "string") env.CLAUDE_PROJECT_DIR = projectDir;
+  const agentId = data.agent_id;
+  if (typeof projectDir === "string") {
+    const key = `${projectDir}\0${agentId}`;
+    const here = projectDirOf(platform, projectDir, cwd, agentId);
+    if (here !== projectDir && !agentStarts.has(key)) agentStarts.set(key, cwd);
+    env.CLAUDE_PROJECT_DIR = projectDirOf(
+      platform,
+      projectDir,
+      cwd,
+      agentId,
+      agentStarts.get(key) ?? cwd,
+    );
+  }
   const dataDir = pluginDataDir({
     platform,
     root,

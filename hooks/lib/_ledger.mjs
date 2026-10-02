@@ -90,6 +90,32 @@ export async function save(io, sessionId, agentId, state) {
   await io.fs.write(file(io, sessionId, agentId), JSON.stringify(state));
 }
 
+// The tail of the queue for each ledger file in this process.
+const queues = new Map();
+
+/**
+ * Run `fn` when no other `withLedger` call of this process holds the same
+ * ledger, and give its result. The hooks module runs the actions of parallel
+ * tool calls at the same time, and each one loads, changes, and saves the
+ * ledger, so without the queue one save replaces the other. The lock does
+ * not reach other processes. Do not call `withLedger` for the same ledger
+ * inside `fn`, because that call waits for `fn`.
+ */
+export async function withLedger(io, sessionId, agentId, fn) {
+  const key = file(io, sessionId, agentId);
+  const before = queues.get(key) ?? Promise.resolve();
+  let release;
+  const tail = before.then(() => new Promise((r) => (release = r)));
+  queues.set(key, tail);
+  await before;
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (queues.get(key) === tail) queues.delete(key);
+  }
+}
+
 // Commands that test, build, lint or type-check. Matched against each simple
 // command after wrappers are stripped.
 const CHECK = [

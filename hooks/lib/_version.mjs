@@ -6,7 +6,7 @@
  * oldest that it supports. The setup's `minimumVersion` keeps auto-update at
  * or above it.
  */
-export const CLAUDE_CODE = "2.1.287";
+export const CLAUDE_CODE = "2.1.288";
 
 /**
  * The running Claude Code version, such as "2.1.286", or null. The CLI puts

@@ -85,6 +85,27 @@ export function tmpOf(platform, env) {
 }
 
 /**
+ * The project folder of a hook input. In a subagent with `isolation:
+ * "worktree"`, `$.session.cwd()` gives the worktree, and `$.session.root()`
+ * gives the main checkout `root`. The subagent edits and tests the worktree,
+ * so the worktree is its project. `start` is the cwd of the first tool call
+ * of the subagent, before a `cd` can move it. The worktree is
+ * `<root>/.claude/worktrees/<name>`, or the folder outside `root` where a
+ * `WorktreeCreate` hook put it. Other inputs get `root`.
+ */
+export function projectDirOf(platform, root, cwd, agentId, start = cwd) {
+  if (!agentId || !start) return root;
+  const path = pathFor(platform);
+  const rel = path.relative(root, start);
+  if (rel === ".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel))
+    return start;
+  const tree = /^\.claude\/worktrees\/[^/]+/.exec(
+    rel.split(path.sep).join("/"),
+  )?.[0];
+  return tree ? path.join(root, tree) : root;
+}
+
+/**
  * The `CLAUDE_PLUGIN_DATA` folder that Claude Code gives the command hooks
  * of the plugin at `root`: `<plugins>/data/<id>`, with each character of the
  * id that is not a letter, a digit, `-`, or `_` changed to `-`.
