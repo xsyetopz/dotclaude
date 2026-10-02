@@ -4,7 +4,6 @@
 // or subagent: the hook skips files the transcript shows Claude Code loaded,
 // and files it added before.
 
-import fs from "node:fs";
 import path from "node:path";
 import { emit, run } from "../lib/_common.mjs";
 import { option, projectRoot, stateDir } from "../lib/_core.mjs";
@@ -12,47 +11,50 @@ import { nodeIo } from "../lib/_io-node.mjs";
 import {
   contextFor,
   instructionFiles,
-  loadedInTranscript,
   readPaths,
 } from "../lib/_nested-instructions.mjs";
 
-function stateFile(data) {
+function stateFile(io, data) {
   const safe = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");
   const agent = data.agent_id ? `.${safe(data.agent_id)}` : "";
   return path.join(
-    stateDir(nodeIo()),
+    stateDir(io),
     `${safe(data.session_id || "unknown")}${agent}.nested-instructions.json`,
   );
 }
 
-run((data) => {
+run(async (data) => {
+  const io = nodeIo(data);
   if (!option(process.env, "context_nested_instructions")) return;
   const command = data.tool_input?.command;
   if (typeof command !== "string") return;
-  const root = projectRoot(nodeIo(data), data);
+  const root = projectRoot(io, data);
   const cwd = data.cwd ? path.resolve(data.cwd) : root;
   const wanted = new Set();
-  for (const p of readPaths(command, cwd, root))
-    for (const f of instructionFiles(p, root)) wanted.add(f);
+  for (const p of await readPaths(io, command, cwd, root))
+    for (const f of await instructionFiles(io, p, root)) wanted.add(f);
   if (!wanted.size) return;
 
-  const file = stateFile(data);
+  const file = stateFile(io, data);
   let added = [];
   try {
-    added = JSON.parse(fs.readFileSync(file, "utf8"));
+    added = JSON.parse(await io.fs.read(file));
   } catch {
     added = [];
   }
   const skip = new Set(added);
   // A subagent's context does not hold what the main transcript loaded.
+  // The hooks-module io always resolves null. A null is an empty set. The
+  // state file above stops a repeat in the same session, so each file is
+  // added once at most. A file that Claude Code loaded through `Read` can
+  // repeat once. This is safe, because a skip would drop instructions.
   if (!data.agent_id)
-    for (const p of loadedInTranscript(data.transcript_path)) skip.add(p);
+    for (const p of (await io.session.loadedNested()) ?? []) skip.add(p);
   const fresh = [...wanted].filter((f) => !skip.has(f));
   if (!fresh.length) return;
-  const text = contextFor(fresh, root);
+  const text = await contextFor(io, fresh, root);
   if (!text) return;
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify([...added, ...fresh]));
+  await io.fs.write(file, JSON.stringify([...added, ...fresh]));
   emit({
     hookSpecificOutput: {
       hookEventName: "PostToolUse",

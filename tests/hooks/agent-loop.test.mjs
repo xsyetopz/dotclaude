@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { stripVTControlCharacters as plain } from "node:util";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 import { loopProgress, mainRoot } from "../../hooks/lib/_loop.mjs";
 import { renderMain } from "../../hooks/lib/_status-line.mjs";
 import { blocked, feedback, hook, session, tmp } from "../support/hooks.mjs";
@@ -64,10 +65,10 @@ const bashAs = (extra, command, cwd = root) =>
   );
 const agent = { agent_id: "a1", agent_type: "dotclaude:implementer" };
 
-test("a worktree path maps to the main project root", () => {
-  expect(mainRoot(worktree)).toBe(root);
-  expect(mainRoot(path.join(worktree, "src"))).toBe(root);
-  expect(mainRoot(root)).toBe(root);
+test("a worktree path maps to the main project root", async () => {
+  expect(await mainRoot(nodeIo(), worktree)).toBe(root);
+  expect(await mainRoot(nodeIo(), path.join(worktree, "src"))).toBe(root);
+  expect(await mainRoot(nodeIo(), root)).toBe(root);
 });
 
 test("a subagent cannot edit a protected oracle file", () => {
@@ -132,15 +133,15 @@ test("reviewed and failed slices let the stop through", () => {
   expect(stop(session())).toBeNull();
 });
 
-test("the status line shows merged slices of all slices", () => {
+test("the status line shows merged slices of all slices", async () => {
   slices(
     { id: "a", status: "merged" },
     { id: "b", status: "implemented" },
     { id: "c", status: "pending" },
   );
-  const loop = loopProgress(worktree);
+  const loop = await loopProgress(nodeIo(), worktree);
   expect(loop).toEqual({ done: 1, total: 3 });
   const line = plain(renderMain({ cwd: root }, { columns: 200, loop }));
   expect(line).toContain("loop 1/3");
-  expect(loopProgress(tmp("dotclaude-noloop-"))).toBeNull();
+  expect(await loopProgress(nodeIo(), tmp("dotclaude-noloop-"))).toBeNull();
 });

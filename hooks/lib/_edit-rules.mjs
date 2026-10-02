@@ -26,7 +26,8 @@ export function check(toolName, toolInput, ctx) {
     out.push(...settings(before, after, c));
   if (!c.editGuard) return out;
   const glob =
-    c.oracle && protectedMatch(filePath, c.oracle.root, c.oracle.globs);
+    c.oracle &&
+    protectedMatch(filePath, c.oracle.root, c.oracle.globs, c.oracle.platform);
   if (glob) out.push(["deny", PROTECTED_REASON(glob)]);
   if (TEST_PATH.test(posix)) out.push(...testWeakening(before, after));
   if (!c.bashWrite || fs.existsSync(filePath))

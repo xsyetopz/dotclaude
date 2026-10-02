@@ -23,7 +23,7 @@ run(async (data) => {
     env: io.env,
     editGuard,
     modelLock,
-    oracle: oracleFor(data, projectRoot(io, data)),
+    oracle: await oracleFor(io, data, projectRoot(io, data)),
   });
   // Read the transcript only when the edit removes assertions: parsing it
   // costs about 25 ms on a long session.

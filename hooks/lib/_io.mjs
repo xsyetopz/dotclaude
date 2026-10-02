@@ -86,8 +86,11 @@
  *   warn, which is fail-open.
  * @property {() => Promise<Set<string> | null>} loadedNested The paths of the
  *   nested memory files that Claude Code loaded. Null when not known. An
- *   empty Set is a finding: no file loaded. The caller cannot treat null as
- *   empty, because then it injects every file again.
+ *   empty Set is a finding: no file loaded. A caller that keeps its own
+ *   record of what it injected may treat null as empty. Then it injects each
+ *   file at most once, and a file that Claude Code loaded can repeat once. A
+ *   caller with no such record may not treat null as empty, because then it
+ *   injects every file again.
  * @property {() => Promise<number | null>} mainContextTokens The context
  *   tokens of the main conversation: the input of its last response, or the
  *   size after a later compaction. Null when not known. The context note

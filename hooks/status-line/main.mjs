@@ -17,7 +17,7 @@ try {
     renderMain(data, {
       columns: columns - 4,
       git: gitState(dir),
-      loop: loopProgress(root),
+      loop: await loopProgress(nodeIo(data), root),
       // Read Claude Code's cached `/usage` copy only while a window is missing.
       usage:
         data.rate_limits?.five_hour && data.rate_limits?.seven_day
