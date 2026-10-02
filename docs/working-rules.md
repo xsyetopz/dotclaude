@@ -53,7 +53,7 @@ can check a rule, a hook enforces it, and the prompt only explains it
 | The request is the deliverable. A question gets an assessment, and edits wait for a go-ahead unless a reproduced bug needs a fix. | You decide what changes in your code. In the 0.4.0 behavior evals, this rule moved the case `scope-follow-up` from 0 of 3 passes to 2 of 3. |
 | Make the minimal diff. No unrelated renames, reformatting, or dependency changes. | A small diff is one that you can review. Unrelated changes hide the real change. |
 | Build only what the task needs now. | Structure for a future need costs usage now and is often wrong later. |
-| Do not revert or claim changes that Claude did not make. Ask before deleting files that it did not create. | You and other sessions can edit the same files. Those changes can be work in progress. |
+| A change that Claude did not make is the user's. Do not revert or claim it. Ask before deleting files that Claude did not create. | You can edit the same files while Claude works. Your changes can be work in progress. |
 | Delete scratch scripts, clones, and large dumps before the end. | Nothing else deletes them. Builds in scratchpads can take gigabytes. |
 
 ## Actions And Git

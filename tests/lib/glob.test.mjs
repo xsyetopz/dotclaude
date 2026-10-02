@@ -143,8 +143,10 @@ test("globMatch holds known answers", () => {
 });
 
 // The io of the contract: a link has `kind: "other"` and `isLink: true`,
-// whatever it points to.
+// whatever it points to. The platform is the host's, so on Windows the paths
+// have `\`, as `fs.globSync` gives them.
 const io = {
+  platform: process.platform === "win32" ? "win32" : "posix",
   fs: {
     list: async (dir) => {
       const names = await fs.promises.readdir(dir);
@@ -171,6 +173,9 @@ const io = {
     },
   },
 };
+
+/** The paths with `/` as the separator, for the checks of literal paths. */
+const slashed = (paths) => paths.map((p) => p.replaceAll(path.sep, "/"));
 
 function tree() {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "glob-")));
@@ -283,27 +288,23 @@ test("globFiles gives absolute paths for an absolute pattern", async () => {
 test("globFiles with dot matches a leading dot, with onlyFiles skips folders", async () => {
   const root = tree();
   try {
-    const dotted = await globFiles(io, "*", { cwd: root, dot: true });
+    const dotted = slashed(await globFiles(io, "*", { cwd: root, dot: true }));
     expect(dotted).toContain(".d");
     expect(dotted).toContain(".r");
-    const files = await globFiles(io, "**", {
-      cwd: root,
-      dot: true,
-      onlyFiles: true,
-    });
+    const files = slashed(
+      await globFiles(io, "**", { cwd: root, dot: true, onlyFiles: true }),
+    );
     expect(files).toContain("a/.h/y.js");
     expect(files).toContain("top.js");
     expect(files).not.toContain("a");
     expect(files).not.toContain(".");
     // Bun.Glob#scan with `dot` finds the same files.
-    const scan = [
+    const scan = slashed([
       ...new Bun.Glob("**/*.js").scanSync({ cwd: root, dot: true }),
-    ];
-    const ours = await globFiles(io, "**/*.js", {
-      cwd: root,
-      dot: true,
-      onlyFiles: true,
-    });
+    ]);
+    const ours = slashed(
+      await globFiles(io, "**/*.js", { cwd: root, dot: true, onlyFiles: true }),
+    );
     expect(ours.filter((p) => !p.startsWith("lnk/")).sort()).toEqual(
       scan.filter((p) => !p.startsWith("lnk/")).sort(),
     );
@@ -497,10 +498,12 @@ test("globFiles uses the link flag and not the kind of a link", async () => {
     const link = list.find((e) => e.name === "lnk");
     expect(link).toMatchObject({ kind: "other", isLink: true });
     // A link to a folder is not a folder for a wildcard or for `**`.
-    expect(await globFiles(io, "*/", { cwd: root })).not.toContain("lnk");
-    expect(await globFiles(io, "**/x.js", { cwd: root })).not.toContain(
-      "lnk/x.js",
+    expect(slashed(await globFiles(io, "*/", { cwd: root }))).not.toContain(
+      "lnk",
     );
+    expect(
+      slashed(await globFiles(io, "**/x.js", { cwd: root })),
+    ).not.toContain("lnk/x.js");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

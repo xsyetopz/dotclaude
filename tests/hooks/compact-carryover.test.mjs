@@ -100,8 +100,11 @@ test("compaction carry-over restores prompts and last check", () => {
 test("the budget cut keeps the newest prompt whole and drops the oldest", () => {
   const sid = session();
   const transcript = path.join(data, `${sid}-long.jsonl`);
+  // The transcript path is in the note, so the room for the older prompts
+  // changes with the temp folder. Each older prompt is longer than that room
+  // for every temp folder, so the cut does not depend on the platform.
   const prompts = [1, 2, 3, 4, 5].map(
-    (n) => `Prompt ${n} ${"word ".repeat(n === 5 ? 180 : 150)}END ${n}`,
+    (n) => `Prompt ${n} ${"word ".repeat(n === 5 ? 180 : 250)}END ${n}`,
   );
   fs.writeFileSync(
     transcript,
@@ -141,8 +144,8 @@ test("the budget cut keeps the newest prompt whole and drops the oldest", () => 
   );
   expect(text).toContain(`\`${transcript}\``);
   expect(text).toMatch(/<other_changes>\nusers\.js\n<\/other_changes>/);
-  expect(text).toMatch(/so do not revert them/);
-  expect(text.endsWith("check the transcript or the diff.")).toBeTruthy();
+  expect(text).toMatch(/the user changed it\.\nKeep these changes/);
+  expect(text.endsWith("do not say that they are yours.")).toBeTruthy();
   expect(text.length <= 2600).toBeTruthy();
 });
 
@@ -189,7 +192,7 @@ test("long file lists keep the newest prompt and the instructions", () => {
   expect(quoted.length).toBeGreaterThanOrEqual(200);
   expect(text).toMatch(/, and \d+ more\.\n/);
   expect(text).toMatch(/, and \d+ more\n<\/other_changes>/);
-  expect(text).toMatch(/so do not revert them/);
+  expect(text).toMatch(/the user changed it\.\nKeep these changes/);
   expect(text).toMatch(/`bun test [^`]*…` passed\.$/);
   expect(text.length <= 2600).toBeTruthy();
 });

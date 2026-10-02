@@ -11,13 +11,17 @@ const enoent = (file) =>
  * the tests. `betterleaks` reports each secret in `init.secrets`, a string
  * with the rule `generic-api-key` or a `{ secret, rule }`, and each other
  * command exits with 1. `init.cwd` and `init.root` give the session folders.
+ * `init.pluginRoot` gives the plugin root, whose shape sets the platform.
  */
 export function fake(init = {}) {
   const files = new Map(Object.entries(init.files ?? {}));
   const env = { HOME: "/home/u", ...init.env };
   const $ = {
     files,
-    plugin: { name: "dotclaude", root: "/plugins/dotclaude" },
+    plugin: {
+      name: "dotclaude",
+      root: init.pluginRoot ?? "/plugins/dotclaude",
+    },
     env: { get: async (name) => env[name] },
     fs: {
       read: async (file) => {

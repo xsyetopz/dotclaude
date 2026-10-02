@@ -150,6 +150,16 @@ steps after each update.
 - When a subagent or a headless session gets a Stop note, the sentence that
   asks for the full report starts on a new line. Before, it came at the end
   of the last line of the note, such as after a closing tag.
+- The working rules and the compaction carry-over say that you made each change that no agent made.
+  Before, the carry-over said that another session could have made it,
+  and told Claude to check the transcript or the diff.
+- The tests pass on Linux and Windows.
+  The reset-time tests take the text between the date and the time from the ICU data of the runtime,
+  as Claude Code's `/usage` does, so `Oct 4, 12pm` is correct too.
+  The carry-over cut test does not depend on the length of the temp folder path.
+  The glob tests give `globFiles` the platform of the host.
+  The hooks module tests give the fake engine a plugin root with the shape of the host,
+  because a posix root with Windows folders made each guard action fail open.
 
 ## Older Releases
 

@@ -34,6 +34,13 @@ import { HOOKS } from "../support/hooks.mjs";
 
 const NOW = Date.parse("2026-09-28T12:00:00");
 const sec = (ms) => Math.floor(ms / 1000);
+// The ICU data of the runtime puts " at " or ", " between a date and a time,
+// as it does for Claude Code's `/usage`.
+const AT = new Date(NOW)
+  .toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric" })
+  .includes(" at ")
+  ? " at "
+  : ", ";
 const RED = "\x1b[31m";
 const YELLOW = "\x1b[33m";
 const GREEN = "\x1b[32m";
@@ -185,11 +192,11 @@ test("a usage limit shows its reset time in Claude Code's `/usage` format", () =
   const hour = { used_percentage: 5, resets_at: sec(NOW + 3 * 3600_000) };
   expect(plain(limitPart("5h", hour, NOW))).toBe("5h 5% ↻3pm");
   const week = { used_percentage: 5, resets_at: sec(NOW + 6 * 86_400_000) };
-  expect(plain(limitPart("7d", week, NOW))).toBe("7d 5% ↻Oct 4 at 12pm");
+  expect(plain(limitPart("7d", week, NOW))).toBe(`7d 5% ↻Oct 4${AT}12pm`);
   const next = sec(Date.parse("2027-01-02T09:15:00"));
   expect(
     plain(limitPart("7d", { used_percentage: 5, resets_at: next }, NOW)),
-  ).toBe("7d 5% ↻Jan 2, 2027 at 9:15am");
+  ).toBe(`7d 5% ↻Jan 2, 2027${AT}9:15am`);
   expect(high).toContain(`${RED}91%`);
   expect(limitPart("7d", undefined, NOW)).toBe(null);
 });
@@ -223,7 +230,7 @@ test("a usage limit shows its pace as a deficit or a reserve", () => {
   // hours from Monday noon.
   const week = { used_percentage: 30, resets_at: sec(NOW + 6 * 86_400_000) };
   expect(plain(limitPart("7d", week, NOW, 7 * 86_400))).toBe(
-    "7d 30% ▲16%→Sep 30 at 8pm ↻Oct 4 at 12pm",
+    `7d 30% ▲16%→Sep 30${AT}8pm ↻Oct 4${AT}12pm`,
   );
   expect(plain(limitPart("5h", { used_percentage: 60 }, NOW, FIVE_H))).toBe(
     "5h 60%",

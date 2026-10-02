@@ -107,7 +107,8 @@ export function mainContextPart(tokens, count) {
 
 /**
  * A time in Claude Code's own `/usage` format: "3pm" or "3:30pm" within a
- * day, else "Oct 5, 3pm", with the year when it differs from now.
+ * day, else "Oct 5 at 3pm", with the year when it differs from now. The ICU
+ * data of the runtime can put ", " in place of " at ", as for `/usage`.
  */
 export function clock(sec, now = Date.now()) {
   const d = new Date(sec * 1000);

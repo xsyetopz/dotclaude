@@ -82,7 +82,8 @@ The second row shows what the session uses:
 - **Reset times:** Claude Code sends each window with `resets_at` after the
   first API response of a session. The time has the format of Claude Code's
   `/usage`: `3pm` or `3:30pm` within a day, else the date, as in
-  `Oct 4 at 12pm`. Before the first response, the line reads the copy of
+  `Oct 4 at 12pm`. Some systems show `Oct 4, 12pm`, as `/usage` does on
+  them. Before the first response, the line reads the copy of
   the `/usage` response that Claude Code keeps in `~/.claude.json`, the same
   data that [CodexBar](https://github.com/steipete/CodexBar) gets from the
   usage endpoint. The line does not read your token and sends no request.

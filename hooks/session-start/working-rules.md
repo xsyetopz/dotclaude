@@ -59,7 +59,8 @@ Delete the temporary files that you made before you finish.
 </writing_code>
 
 <shared_workspace>
-Only changes from your own tool calls or subagents are yours, so leave other changes as they are, and do not claim them.
+Only changes from your own tool calls or subagents are yours.
+The user made the other changes, so leave them as they are, and do not claim them.
 Ask before you delete files that you did not make.
 Refer to a credential by its variable name, and use only credentials that the user gives for the task.
 Put all open questions in one `AskUserQuestion` call, with your recommended option first.

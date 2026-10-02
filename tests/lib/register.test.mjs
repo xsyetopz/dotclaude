@@ -21,6 +21,14 @@ import { fake, registered } from "./fake-engine.mjs";
 
 const hasScanner = Bun.which("betterleaks") !== null;
 
+// The cases give the fake `$` the folders of this host, so the fake plugin
+// root has the shape of this host too. The module gets its platform from the
+// shape of the plugin root, as in Claude Code.
+const PLUGIN_ROOT =
+  process.platform === "win32"
+    ? "C:\\plugins\\dotclaude"
+    : "/plugins/dotclaude";
+
 // The fake `$` has the agent definitions at the fake plugin root.
 const AGENTS = path.join(HOOKS, "..", "agents");
 const agentFiles = Object.fromEntries(
@@ -28,7 +36,7 @@ const agentFiles = Object.fromEntries(
     .readdirSync(AGENTS)
     .filter((f) => f.endsWith(".md"))
     .map((f) => [
-      `/plugins/dotclaude/agents/${f}`,
+      path.join(PLUGIN_ROOT, "agents", f),
       fs.readFileSync(path.join(AGENTS, f), "utf8"),
     ]),
 );
@@ -82,6 +90,7 @@ function moduleOf(c) {
   const on = registered(options);
   const $ = fake({
     env,
+    pluginRoot: PLUGIN_ROOT,
     cwd: repo,
     files: agentFiles,
     secrets: c.secrets,

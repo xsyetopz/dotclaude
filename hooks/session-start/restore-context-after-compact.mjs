@@ -125,7 +125,7 @@ run(async (data) => {
     );
   if (theirs.length)
     parts.push(
-      `<other_changes>\n${list(theirs)}\n</other_changes>\nThe tools of this session did not record edits to these uncommitted files.\nThey can be the work of the user or of another session, so do not revert them.\nThey can also be changes from formatters or codemods that this session ran.\nBefore you say whether they are your changes, check the transcript or the diff.`,
+      `<other_changes>\n${list(theirs)}\n</other_changes>\nThe tools of this session did not record edits to these uncommitted files.\nIf a formatter or codemod that this session ran did not change a file, the user changed it.\nKeep these changes, and do not say that they are yours.`,
     );
   if (state.lastCheck) {
     const c = state.lastCheck;
