@@ -16,7 +16,7 @@ run(async (data) => {
   if (target && !allowed(target, list, io.env)) {
     emit({
       decision: "block",
-      reason: `the model lock allows only these models: ${list.join(", ")}.${note}`,
+      reason: `The model lock allows only these models: ${list.join(", ")}.${note}`,
     });
   }
 });

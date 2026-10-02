@@ -20,7 +20,7 @@ export default async function (io, data) {
     hookSpecificOutput: {
       hookEventName: "PostToolUse",
       updatedToolOutput: value,
-      additionalContext: `This hook redacted ${count} secret${count === 1 ? "" : "s"} (${rules}) from this tool output. Do not try to recover the values. Refer to each secret by its variable or file name.`,
+      additionalContext: `This hook redacted ${count} secret${count === 1 ? "" : "s"} (${rules}) from this output to keep them private. Do not look for them. Refer to each by its variable or file name.`,
     },
   };
 }

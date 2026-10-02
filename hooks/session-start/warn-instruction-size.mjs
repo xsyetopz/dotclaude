@@ -245,7 +245,7 @@ run((data) => {
   for (const { from, to } of deep)
     say(
       "fail",
-      `${label(from)} imports ${label(to)} more than ${LIMITS.importHops.fail} \`@\` hops from its CLAUDE.md, so Claude Code does not load it.`,
+      `${label(from)} imports ${label(to)} more than ${LIMITS.importHops.fail} \`@\` hops from its \`CLAUDE.md\`, so Claude Code does not load it.`,
     );
 
   const long = entries
@@ -263,7 +263,7 @@ run((data) => {
   if (long.length > MAX_LISTED)
     say(
       "warn",
-      `${long.length - MAX_LISTED} more instruction files pass the line target.`,
+      `${long.length - MAX_LISTED} more instruction files are over the line target.`,
     );
 
   const startup = entries
@@ -312,7 +312,7 @@ run((data) => {
     if (!fs.existsSync(f) || reached.has(real(f))) continue;
     say(
       "warn",
-      `${label(f)} is not read, because a CLAUDE.md loads in its place. Add \`@AGENTS.md\` to that CLAUDE.md, or symlink one to the other.`,
+      `Claude Code does not read ${label(f)}, because a \`CLAUDE.md\` loads in its place. Add \`@AGENTS.md\` to that \`CLAUDE.md\`, or symlink one to the other.`,
     );
   }
 

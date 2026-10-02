@@ -212,7 +212,7 @@ test("session start flags an AGENTS.md hidden by a CLAUDE.md and deep imports", 
   // Two tiny files: the only finding is the AGENTS.md that CLAUDE.md hides.
   const hidden = start().systemMessage.split("\n");
   expect(hidden).toHaveLength(1);
-  expect(hidden[0]).toContain("⚠ `AGENTS.md`");
+  expect(hidden[0]).toContain("⚠ Claude Code does not read `AGENTS.md`");
   write("CLAUDE.md", "@AGENTS.md\n");
   expect(start()).toBe(null);
 

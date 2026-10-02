@@ -28,7 +28,7 @@ test("a last paragraph that announces or offers requested work blocks", () => {
   for (const message of ANNOUNCED) {
     const out = stop(`Report line.\n\n${message}`);
     expect(blocked(out), message).toBe("Stop");
-    expect(feedback(out)).toContain("do that work now");
+    expect(feedback(out)).toContain("do it now, and then report");
   }
 });
 
@@ -112,9 +112,11 @@ test("a headless session or a subagent is told to end with the full report", () 
     expect(run({ CLAUDE_CODE_ENTRYPOINT: entry })).toContain(
       "only your last message",
     );
+  // The added sentence starts on its own line, also after a note that ends
+  // with a list or a closing tag.
   expect(
     run({ CLAUDE_CODE_ENTRYPOINT: "cli" }, { hook_event_name: "SubagentStop" }),
-  ).toContain("only your last message");
+  ).toMatch(/\nThe caller gets only your last message/);
   expect(run({ CLAUDE_CODE_ENTRYPOINT: "cli" })).not.toContain(
     "only your last message",
   );

@@ -9,7 +9,7 @@ import { option, preToolOutput, stateDir } from "../lib/_core.mjs";
 import { pathFor } from "../lib/_path.mjs";
 
 const REPORT_REQUEST =
-  "You stopped at your turn limit, and a fresh agent will continue this work. Make no more tool calls. Reply now with your final report as a handoff. Include the goal, what you did, and how you verified it (commands and results). Include the files you changed and anything you left half-edited or uncommitted. Include the work that remains, in order, and anything the next agent must know.";
+  "You stopped at your turn limit, and a fresh agent will continue this work. Make no more tool calls. Reply now with your final report as a handoff. Include the goal, what you did, and how you verified it (commands and results). Include the files you changed and anything you left half-edited or uncommitted. Include the work that remains, in order, and anything that the next agent needs to know.";
 
 function statePath(io, sessionId) {
   const safe = String(sessionId || "unknown").replace(/[^A-Za-z0-9_-]/g, "_");
@@ -35,7 +35,7 @@ export default async function (io, data) {
   if (reported.includes(to))
     return preToolOutput(
       "deny",
-      `Agent \`${to}\` stopped at its turn limit, and dotclaude already asked it for its handoff report. Resuming it re-reads its whole context on every turn. Start a fresh agent of the same type instead, briefed from that report (goal, what is done, the files, what remains). If the report never arrived, read the agent's output file named in its task notification.`,
+      `Agent \`${to}\` stopped at its turn limit, and dotclaude already asked it for its handoff report. A resumed agent reads its whole context again on every turn. Start a fresh agent of the same type instead, briefed from that report (goal, what is done, the files, what remains). If the report never arrived, read the agent's output file named in its task notification.`,
     );
   if (!(await io.session.agentStoppedAtLimit(to))) return;
   await io.fs.write(file, JSON.stringify([...reported, to]));

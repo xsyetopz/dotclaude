@@ -92,7 +92,7 @@ export default async (io, data) => {
   return {
     hookSpecificOutput: {
       hookEventName: "PostToolUseFailure",
-      additionalContext: `\`old_string\` matches no text in \`${name}\`. The closest text is at ${range}:\n\n${shown}\n\nCopy \`old_string\` exactly from these lines, without the line numbers, and run the edit again.`,
+      additionalContext: `<closest_text>\n${shown}\n</closest_text>\n\`old_string\` matches no text in \`${name}\`.\nThe closest text is at ${range}.\nEdit again with this text as \`old_string\`, without line numbers.`,
     },
   };
 };

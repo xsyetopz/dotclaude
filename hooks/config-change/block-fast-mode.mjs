@@ -26,7 +26,7 @@ run((data) => {
   if (settings?.fastMode === true || fastEnvOff) {
     emit({
       decision: "block",
-      reason: "the model lock keeps fast mode off",
+      reason: "The model lock keeps fast mode off",
     });
   }
 });

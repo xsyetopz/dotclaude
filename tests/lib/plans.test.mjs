@@ -150,7 +150,7 @@ test("planNote describes Fable per plan and one Pro-sized handoff bound for ever
       .filter((l) => l.includes("Fable"))
       .join("\n");
   const max = await note(MAX_20X);
-  expect(max).toStartWith('<claude_plan source="dotclaude">');
+  expect(max).toStartWith("<claude_plan>");
   expect(max).toContain("Claude Max 20x");
   expect(max).toContain("50%");
   // A plan set in the option reads differently from a detected one.
@@ -240,7 +240,7 @@ test("session start carries the plan note, once per new session", () => {
       { CLAUDE_CONFIG_DIR: configDir(MAX_20X) },
     );
   expect(start("startup").hookSpecificOutput.additionalContext).toMatch(
-    /<claude_plan source="dotclaude">/,
+    /<claude_plan>/,
   );
   expect(start("resume")).toBe(null);
 });

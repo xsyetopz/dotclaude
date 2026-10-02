@@ -43,9 +43,9 @@ async function usageNote(io, data) {
   const asOf = new Date(usage.fetchedAtMs).toISOString().slice(11, 16);
   const advice =
     worst >= 90
-      ? "Little usage is left. Finish the current step. Start no new fan-out. Tell the user before you start any large piece of work. If the remaining work does not fit before the limit, write a handoff note with the `handoff` skill, and tell the user the reset time."
-      : "Make the remaining usage last. Prefer the Sonnet 5.5 agents for well-specified work. Keep briefs and fan-out small. Do not switch to Fable. Before the context grows large, write a handoff note with the `handoff` skill, and ask the user to run `/clear`.";
-  return `<usage_limits source="dotclaude">Claude usage as of ${asOf} UTC: ${parts.join(", ")}. ${advice}</usage_limits>`;
+      ? "Little usage is left.\nFinish the current step.\nStart no new fan-out.\nTell the user before you start any large piece of work.\nIf the remaining work does not fit before the limit, write a handoff note with the `handoff` skill, and tell the user the reset time."
+      : "Make the remaining usage last.\nPrefer the Sonnet 5.5 agents for well-specified work.\nKeep briefs and fan-out small.\nDo not switch to Fable.\nBefore the context grows large, write a handoff note with the `handoff` skill, and ask the user to run `/clear`.";
+  return `<usage_limits>\nClaude usage as of ${asOf} UTC: ${parts.join(", ")}.\n${advice}\n</usage_limits>`;
 }
 
 export default async (io, data) => {

@@ -103,7 +103,7 @@ export async function attributionNote(io, model, projectDir) {
       `End each pull request body with a blank line, then these lines exactly:\n${pr}`,
     );
   if (!lines.length) return null;
-  return `<git_attribution source="dotclaude">\n${lines.join("\n")}\n</git_attribution>`;
+  return `<git_attribution>\n${lines.join("\n")}\n</git_attribution>`;
 }
 
 // Claude Code 2.1.286 names `verify` and `simplify` only when they load from a
@@ -141,5 +141,5 @@ export async function preCommitNote(io, projectDir) {
     names.length <= 2
       ? names.join(" and ")
       : `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
-  return `<git_pre_commit source="dotclaude">\nRun ${list} right before each \`git commit\`, so that the checks run on the change that you commit. Do not run ${names.length === 1 ? "it" : "them"} before a commit that changes only docs or tests.\n</git_pre_commit>`;
+  return `<git_pre_commit>\nRun ${list} right before each \`git commit\`, so that the checks run on the change that you commit.\nDo not run ${names.length === 1 ? "it" : "them"} before a commit that changes only docs or tests.\n</git_pre_commit>`;
 }

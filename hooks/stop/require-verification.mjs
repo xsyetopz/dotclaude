@@ -56,8 +56,8 @@ run(async (data) => {
   ) {
     state.blockedEdit = lastEdit.seq;
     reason = lastCheck
-      ? `Code changed after the last check (last edit: \`${lastEdit.path}\`, last check: \`${lastCheck.command}\`). Run a check that covers it, or say that the change is unverified.`
-      : `Code changed (last edit: \`${lastEdit.path}\`), and no check ran. Run a check that covers it, or say that the change is unverified.`;
+      ? `Code changed after the last check (last edit: \`${lastEdit.path}\`, last check: \`${lastCheck.command}\`). Run a check that covers it, or say that it is not verified.`
+      : `Code changed (last edit: \`${lastEdit.path}\`), and no check ran. Run a check that covers it, or say that it is not verified.`;
   } else if (
     lastCheck &&
     lastCheck.ok === false &&
@@ -67,7 +67,7 @@ run(async (data) => {
     !ADMITS_GAP.test(message)
   ) {
     state.blockedCheck = lastCheck.seq;
-    reason = `The last check (\`${lastCheck.command}\`) failed${lastCheck.code ? ` with exit code ${lastCheck.code}` : ""}, but the reply says it passes. Fix it, or report it as failing.`;
+    reason = `The last check (\`${lastCheck.command}\`) failed${lastCheck.code ? ` (exit ${lastCheck.code})` : ""}, but the reply says it passes. Fix it, or report it as failing.`;
   }
 
   if (!reason) return;
@@ -75,6 +75,6 @@ run(async (data) => {
   // The reply written after this becomes the final report, so it has to
   // carry the whole outcome, not only the new check result.
   reason +=
-    " Then write the full report again, because your next reply replaces this one.";
+    " Then give the full report again, because your next reply replaces this one.";
   stopFeedback(data, reason);
 });

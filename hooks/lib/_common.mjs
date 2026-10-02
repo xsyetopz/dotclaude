@@ -40,14 +40,16 @@ export function emit(obj) {
 export function stopFeedback(data, text) {
   const subagent = data.hook_event_name === "SubagentStop";
   // `claude -p` and the Agent SDK return only the last message, and so does a
-  // subagent. A short reply to this note would replace the report.
+  // subagent. A short reply to this note would replace the report. The
+  // sentence starts on a new line, because a note can end with a list or a
+  // closing tag.
   const lastOnly =
     subagent || /^sdk-/.test(process.env.CLAUDE_CODE_ENTRYPOINT ?? "");
   emit({
     hookSpecificOutput: {
       hookEventName: subagent ? "SubagentStop" : "Stop",
       additionalContext: lastOnly
-        ? `${text} The caller gets only your last message, so make that message the full report, without the part that this note is about.`
+        ? `${text}\nThe caller gets only your last message, so make that message the full report, without the part that this note is about.`
         : text,
     },
   });

@@ -40,7 +40,7 @@ export default async function (io, data) {
     const now = await readStamp(io, abs);
     if (!seen || !now) return;
     if (seen.size !== now.size || seen.mtimeMs !== now.mtimeMs) return;
-    earlier.push(`${path.basename(abs)} (by ${seen.how})`);
+    earlier.push(`\`${path.basename(abs)}\` (by ${seen.how})`);
   }
   const reason = `You already read ${earlier.join(", ")} in full, and the file did not change since. Use that earlier output, because a second copy adds the same text to the context again. If you need only part of the file, use \`Read\` with \`offset\` and \`limit\`.`;
   await logVerdict(io, data, "deny", reason);

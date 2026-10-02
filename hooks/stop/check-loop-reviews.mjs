@@ -47,12 +47,15 @@ run(async (data) => {
   stopFeedback(
     data,
     [
-      "These agent-loop slices in `.dotclaude/loop/slices.jsonl` have the status `implemented`, but no review:",
+      "<unreviewed_slices>",
       list,
-      "For each slice, do one of these:",
-      "- Give its diff to `reviewer` with the `diff` lens, then set its status to `reviewed`.",
-      "- The slice failed or you dropped it: set its status to `failed`, and give the reason in one line.",
-      "This check does not stop you again for the same slices.",
+      "</unreviewed_slices>",
+      "These `.dotclaude/loop/slices.jsonl` slices are `implemented` with no review.",
+      "For each slice, do one:",
+      "- Give its diff to `reviewer` with the `diff` lens for a fresh view.",
+      "  Then set its status to `reviewed`.",
+      "- If it failed or you dropped it, set its status to `failed` with a one-line reason.",
+      "This check stops you once for these slices.",
     ].join("\n"),
   );
 });

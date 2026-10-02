@@ -63,12 +63,12 @@ run((data) => {
     meta.head && `at \`${meta.head}\``,
   ].filter(Boolean);
   const others = older.length
-    ? ` ${older.length} older open ${older.length === 1 ? "note is" : "notes are"} also in \`${DIR}/\`.`
+    ? `\n${older.length} older open ${older.length === 1 ? "note is" : "notes are"} also in \`${DIR}/\`.`
     : "";
   emit({
     hookSpecificOutput: {
       hookEventName: "SessionStart",
-      additionalContext: `<handoff source="dotclaude">An earlier session left a handoff note at \`${DIR}/${name}\`${facts.length ? ` (${facts.join(", ")})` : ""}.${others} When the user asks to continue earlier work, read the note first. Then compare it with \`git status\` and \`git log --oneline -5\` before you act, because commits and edits after the note make parts of it stale. Where they differ, the repository is correct. When the work in the note is complete, set its \`status\` to \`done\`.</handoff>`,
+      additionalContext: `<handoff>\nAn earlier session left a handoff note at \`${DIR}/${name}\`${facts.length ? ` (${facts.join(", ")})` : ""}.${others}\nWhen the user asks to continue earlier work, read the note first.\nThen compare it with \`git status\` and \`git log --oneline -5\` before you act, because commits and edits after the note make parts of it stale.\nWhere they differ, the repository is correct.\nWhen the work in the note is complete, set its \`status\` to \`done\`.\n</handoff>`,
     },
   });
 });

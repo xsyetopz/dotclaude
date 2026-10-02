@@ -51,13 +51,16 @@ run((data) => {
   stopFeedback(
     data,
     [
-      "The task list has open tasks:",
+      "<open_tasks>",
       list,
-      "The user reads the task list as the state of the work, so each status must match the work. For each open task, do one of these:",
-      "- The work is done: set its status to `completed` with `TaskUpdate`.",
-      "- You or the user dropped the task: set its status to `deleted` with `TaskUpdate`.",
-      "- The work is not done: keep the task open, and give the reason in one line.",
-      "This check does not stop you again for these tasks. Add only the task changes to your reply.",
+      "</open_tasks>",
+      "The user reads the task list as the state of the work, so make each status match the work.",
+      "For each open task, do one of these:",
+      "- If the work is done, set its status to `completed` with `TaskUpdate`.",
+      "- If you or the user dropped it, set its status to `deleted` with `TaskUpdate`.",
+      "- If the work is not done, keep the task open, and give the reason in one line.",
+      "This check does not stop you again for these tasks.",
+      "Add only the task changes to your reply.",
     ].join("\n"),
   );
 });

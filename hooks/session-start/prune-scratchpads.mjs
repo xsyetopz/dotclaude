@@ -32,7 +32,7 @@ function cli(args) {
   console.log(`${stale.length} entries under ${root} idle for ${days}+ days.`);
   if (!args.includes("--apply")) {
     console.log(
-      "Dry run: nothing was deleted. Re-run with --apply to delete them.",
+      "Dry run: this run deleted nothing. To delete these entries, run again with `--apply`.",
     );
     return;
   }

@@ -168,7 +168,7 @@ test("a later deny of the same kind is one short line, per agent", () => {
   expect(first).toContain("Your next action is your report");
   const second = run(turns, a);
   expect(second).toContain("turn budget: 76 of 80 turns used");
-  expect(second).toContain("give your report now");
+  expect(second).toContain("Give your report now");
   expect(second.length).toBeLessThan(first.length / 2);
   // Another agent gets the full text on its first deny.
   expect(run(turns, b)).toBe(first);

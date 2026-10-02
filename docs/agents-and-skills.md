@@ -58,7 +58,7 @@ from an agent that it stops at its turn limit. See
 
 | Skill | Use | Why it is in dotclaude |
 | --- | --- | --- |
-| `/dotclaude:setup` | applies the [settings profile](settings-profile.md), removes the 0.16 shell function, and installs and configures CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, OpenSpec, and `dotclaude-browser` | A plugin cannot set permissions, environment variables, or models. Each integration cuts reads or protects the context. See below. |
+| `/dotclaude:setup` | applies the [settings profile](settings-profile.md), removes the 0.16 shell function, and installs and configures CodeGraph, tgrep, fast-compact, Betterleaks, semlf, Ghidra, OpenSpec, and `dotclaude-browser` | A plugin cannot set permissions, environment variables, or models. Each integration cuts reads or protects the context. See below. |
 | `slices` | runs a large change as slices: implementer, diff-only reviewer, fixer, frozen test oracle | Bun, GitHub Copilot, and pnpm v12 ported large code bases this way. [Hooks](hooks.md#agent-loop-oracle-guard_edit) enforce the oracle and the review. See the [agent loop](dossier/design.md#the-agent-loop). |
 | `contribute` | checks a project's AI policy, verifies the claim, and drafts an issue, pull request, discussion, or comment for you to send | A contribution speaks for you. See [Contributions](contributions.md). |
 | `handoff` | writes a note that a fresh session can continue from | A handoff and `/clear` cost less than `/compact` on a large or cold context. |
@@ -84,6 +84,8 @@ All are optional. dotclaude works without them.
   for work where lost facts cost more than usage ([evals](dossier/evals.md)).
 - **Betterleaks:** the scanner behind
   [secret redaction](hooks.md#secret-redaction-guard_secrets).
+- **semlf:** the checker behind the
+  [line-break check](hooks-context.md#line-breaks-context_line_breaks).
 - **Ghidra:** decompiles binaries for reverse engineering. The MCP server
   `pyghidra-mcp` goes into the one project that needs it, because it starts
   Ghidra's Java process in each session of that project. The `ghidra-bridge`

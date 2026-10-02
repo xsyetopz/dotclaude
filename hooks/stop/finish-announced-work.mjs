@@ -54,10 +54,10 @@ run(async (data) => {
   if (paragraph.includes("?") && WAITS.test(paragraph)) return;
   if (waitsForUser(data.transcript_path)) return;
   const reason =
-    "Your reply ends with a next step or an offer, not with finished work: " +
-    `"${paragraph.slice(0, 200)}". The user must answer before that work happens, which costs a turn. ` +
-    "If the step is part of the request or the approved plan, do that work now and then report. " +
-    "If only the user can decide it, or the user asked only a question, end the turn again with no change.";
+    "The last paragraph of your reply announces, offers, or defers work that is not done: " +
+    `"${paragraph.slice(0, 200)}". The user then sends one more message before that work starts, and each message costs a turn. ` +
+    "If the request or the approved plan includes this work, do it now, and then report. " +
+    "If only the user can make this decision, the work is outside the request, or the user asked only a question, end the turn again with no change.";
   await logVerdict(nodeIo(data), data, "block", reason);
   stopFeedback(data, reason);
 });

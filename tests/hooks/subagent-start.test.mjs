@@ -12,13 +12,11 @@ import {
 } from "../../hooks/lib/_budget.mjs";
 import { hook } from "../support/hooks.mjs";
 
-const CONVENTIONS = '<working_conventions source="dotclaude">';
+const CONVENTIONS = "<working_conventions>";
 
-/** The text of the `<tag source="dotclaude">` block, or undefined. */
+/** The text of the `<tag>` block, or undefined. */
 function block(text, tag) {
-  return text.match(
-    new RegExp(`<${tag} source="dotclaude">([\\s\\S]*?)</${tag}>`),
-  )?.[1];
+  return text.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`))?.[1];
 }
 
 /** The whole numbers a block states, in order. */
@@ -98,7 +96,7 @@ function conventionsIn(files) {
 /** The commands that the conventions line for the check names. */
 const testCommands = (conventions) =>
   [
-    ...(conventions.match(/^- After a code change.*$/m)?.[0] ?? "").matchAll(
+    ...(conventions.match(/^After a code change.*$/m)?.[0] ?? "").matchAll(
       /`([^`]+)`/g,
     ),
   ].map((m) => m[1]);
@@ -160,6 +158,6 @@ test("the conventions name the project test command from the project root", () =
   const none = conventionsIn({ "README.md": "Run `make`.\n" });
   expect(testCommands(none)).toEqual([]);
   expect(none).toContain(
-    "run a check that exercises it. Fix a failing test at its cause.",
+    "run a check that exercises it.\nFix a failing test at its cause.",
   );
 });
