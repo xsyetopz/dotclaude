@@ -310,7 +310,12 @@ async function runActions($, options, event, data, only) {
       matches(matcher, data[field]),
   );
   if (!rows.length) return undefined;
-  const io = await modIo($, options, data);
+  let io;
+  try {
+    io = await modIo($, options, data);
+  } catch {
+    return undefined;
+  }
   data.cwd = io.cwd;
   const outputs = await Promise.all(
     rows.map(async ([, action]) => {
@@ -331,20 +336,28 @@ async function runActions($, options, event, data, only) {
 /**
  * Keep the context tokens of the first and latest steps of the subagent
  * `agentId`, for `io.session.agentContext`. The first value of an existing
- * file stays.
+ * file stays. The state folder does not change in a session, so `places`
+ * keeps one io for each session, and a step does not make a new io.
  */
-async function noteAgentContext($, options, agentId, usage) {
+async function noteAgentContext($, options, places, agentId, usage) {
   const tokens = contextTokensOf(usage);
   if (tokens === null) return;
   const sessionId = await $.session.id();
   if (!sessionId) return;
-  const io = await modIo($, options, {
-    session_id: sessionId,
-    agent_id: agentId,
-  });
-  const before = await io.session.agentContext();
-  await io.fs.write(
-    agentContextFile(io, sessionId, agentId),
+  if (!places.has(sessionId)) {
+    const io = modIo($, options, {});
+    io.catch(() => places.delete(sessionId));
+    places.set(sessionId, io);
+  }
+  const file = agentContextFile(
+    await places.get(sessionId),
+    sessionId,
+    agentId,
+  );
+  const fs = modFs($);
+  const before = contextOf(await fs.read(file).catch(() => ""));
+  await fs.write(
+    file,
     JSON.stringify({ first: before?.first ?? tokens, last: tokens }),
   );
 }
@@ -360,6 +373,7 @@ async function noteAgentContext($, options, agentId, usage) {
  */
 export function register(on, options) {
   const verdicts = new Map();
+  const places = new Map();
 
   on("tool.call", async ($, e, next) => {
     const data = await classicInput($, e);
@@ -448,7 +462,7 @@ export function register(on, options) {
     const r = yield* next(e);
     if (typeof e.agentId === "string" && e.agentId)
       try {
-        await noteAgentContext($, options, e.agentId, r?.usage);
+        await noteAgentContext($, options, places, e.agentId, r?.usage);
       } catch {
         // The agent context is then not known, and its guard does not act.
       }

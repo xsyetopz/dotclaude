@@ -34,7 +34,7 @@ export async function contextNote(io, data, once = false) {
   }
   const told = await io.fs.exists(file);
   if (once && told) return null;
-  // The hooks module does not know the count, so it gives null.
+  // A count that is not known counts as no compaction.
   const count = (await io.session.compactions()) ?? 0;
   if (count < COMPACTIONS_BEFORE_HANDOFF) return null;
   if (told)

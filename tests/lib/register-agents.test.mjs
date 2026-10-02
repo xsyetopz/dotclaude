@@ -162,23 +162,48 @@ test("the module reads the count of compactions from its state file", async () =
   expect(await facts.compactions()).toBe(null);
 });
 
-test("the compact SessionStart hook keeps the count of the transcript", () => {
-  const boundary = JSON.stringify({
+/** Run the compact SessionStart hook on a transcript with `boundaries`. */
+function compactStart(data, boundaries, input = {}) {
+  const row = JSON.stringify({
     type: "system",
     subtype: "compact_boundary",
     isSidechain: false,
   });
   const transcript = path.join(tmp("dotclaude-transcript-"), "main.jsonl");
-  fs.writeFileSync(transcript, `${boundary}\n${boundary}\n`);
-  const data = tmp("dotclaude-data-");
+  fs.writeFileSync(transcript, `${row}\n`.repeat(boundaries));
   isolatedHook(
     "session-start/restore-context-after-compact.mjs",
-    { session_id: "s/1", source: "compact", transcript_path: transcript },
+    {
+      session_id: "s/1",
+      source: "compact",
+      transcript_path: transcript,
+      ...input,
+    },
     {
       CLAUDE_PLUGIN_DATA: data,
       CLAUDE_PLUGIN_OPTION_CONTEXT_COMPACT_CARRYOVER: "false",
     },
   );
+}
+
+test("the compact SessionStart hook keeps the count of compactions", () => {
+  const data = tmp("dotclaude-data-");
   const io = { platform: "posix", env: { CLAUDE_PLUGIN_DATA: data } };
-  expect(fs.readFileSync(compactionsFile(io, "s/1"), "utf8")).toBe("2");
+  const kept = () => fs.readFileSync(compactionsFile(io, "s/1"), "utf8");
+  // The transcript already has the new boundary.
+  compactStart(data, 2);
+  expect(kept()).toBe("2");
+  // The transcript does not have the new boundary yet.
+  compactStart(data, 2);
+  expect(kept()).toBe("3");
+  // A compaction without the hook leaves the transcript ahead.
+  compactStart(data, 6);
+  expect(kept()).toBe("6");
+});
+
+test("the SessionStart hook keeps no count for a subagent or another source", () => {
+  const data = tmp("dotclaude-data-");
+  compactStart(data, 2, { source: "resume" });
+  compactStart(data, 2, { agent_id: "a1", agent_type: "x" });
+  expect(fs.existsSync(path.join(data, "sessions"))).toBe(false);
 });

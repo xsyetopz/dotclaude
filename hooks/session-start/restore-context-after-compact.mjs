@@ -7,7 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { emit, run } from "../lib/_common.mjs";
 import { option, projectRoot } from "../lib/_core.mjs";
-import { compactionsFile } from "../lib/_io-mod.mjs";
+import { compactionsFile, countOf } from "../lib/_io-mod.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
 import { editedBySession, load } from "../lib/_ledger.mjs";
 import { isSubagent, recentPrompts } from "../lib/_transcript.mjs";
@@ -41,12 +41,21 @@ const list = (paths) =>
 
 /**
  * Keep the count of compactions for the hooks module, because the engine
- * gives the module no transcript and no compaction boundary.
+ * gives the module no transcript and no compaction boundary. Claude Code can
+ * run this hook before it writes the new boundary to the transcript, so the
+ * count is the larger of the kept count plus one and the transcript count.
+ * A failure keeps the old count, and the carry-over still runs.
  */
 async function keepCompactions(io, data) {
-  const count = await io.session.compactions();
-  if (count !== null && data.session_id)
-    await io.fs.write(compactionsFile(io, data.session_id), String(count));
+  if (!data.session_id) return;
+  const file = compactionsFile(io, data.session_id);
+  try {
+    const kept = countOf(await io.fs.read(file).catch(() => "")) ?? 0;
+    const seen = (await io.session.compactions()) ?? 0;
+    await io.fs.write(file, String(Math.max(kept + 1, seen)));
+  } catch {
+    // The module then reads the old count or no count.
+  }
 }
 
 run(async (data) => {
