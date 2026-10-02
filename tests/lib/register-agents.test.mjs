@@ -211,7 +211,12 @@ test("the SessionStart hook keeps no count for a subagent or another source", ()
 test("a main step gives its effort to the model lock of a later Agent call", async () => {
   const on = registered();
   const $ = fake();
-  const call = { tool: "Agent", tool_use_id: "t2", model: "sonnet", prompt: "x" };
+  const call = {
+    tool: "Agent",
+    tool_use_id: "t2",
+    model: "sonnet",
+    prompt: "x",
+  };
   const run = async () => {
     let called = false;
     const out = await on["tool.call"]($, call, async (e) => {

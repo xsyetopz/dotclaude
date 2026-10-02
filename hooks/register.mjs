@@ -476,7 +476,8 @@ export function register(on, options) {
   // keep the tokens does not stop the step. A step of the main thread keeps
   // its effort level, because a `tool.call` input does not give it.
   on("turn.step", async function* ($, e, next) {
-    if (!e.agentId) effort = typeof e.effort === "string" ? e.effort : undefined;
+    if (!e.agentId)
+      effort = typeof e.effort === "string" ? e.effort : undefined;
     const r = yield* next(e);
     if (typeof e.agentId === "string" && e.agentId)
       try {
