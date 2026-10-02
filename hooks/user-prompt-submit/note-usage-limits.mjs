@@ -10,9 +10,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { USAGE_LEVELS } from "../lib/_budget.mjs";
 import { emit, run } from "../lib/_common.mjs";
+import { contextNote } from "../lib/_context-note.mjs";
 import { option, stateDir, userTyped } from "../lib/_core.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
-import { contextNote, readUsage } from "../lib/_usage.mjs";
+import { readUsage } from "../lib/_usage.mjs";
 
 const LEVELS = [...USAGE_LEVELS].reverse();
 

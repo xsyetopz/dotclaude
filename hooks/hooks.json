@@ -1,5 +1,6 @@
 {
   "description": "dotclaude hooks: one dispatcher process per event, one file per action (see hooks/dispatch.mjs)",
+  "modules": ["./register.mjs"],
   "hooks": {
     "SessionStart": [
       {

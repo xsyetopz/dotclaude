@@ -1,7 +1,8 @@
 // Import direction: event hooks and the dispatcher in `hooks/` depend on
 // hooks/lib, never on each other, and hooks/lib depends on nothing outside
 // itself. Skill scripts may import hooks/lib, so the plan and profile logic
-// has one owner.
+// has one owner. The hooks module `hooks/register.mjs` cannot use `import()`,
+// so it alone also imports the event actions statically.
 
 import { expect, test } from "bun:test";
 import fs from "node:fs";
@@ -24,6 +25,11 @@ test("hooks/lib imports only itself, and event hooks only hooks/lib", () => {
         hooks,
         path.resolve(path.dirname(path.join(hooks, rel)), spec),
       );
+      const action =
+        rel === "register.mjs" &&
+        /^\.\/[a-z-]+\/[a-z-]+\.mjs$/.test(spec) &&
+        !spec.startsWith("./lib/");
+      if (action) continue;
       if (!target.startsWith(`lib${path.sep}`)) bad.push(`${rel} -> ${spec}`);
       else if (!inLib && !spec.startsWith(libSpec))
         bad.push(`${rel} -> ${spec}`);

@@ -6,9 +6,11 @@
 // each `$.env.get` call has its name as a literal. The pure helpers are in
 // `lib/_io-mod.mjs`.
 //
-// A later slice (s21) adds the `register` function and the `modules` entry
-// of `hooks.json`.
+// The module cannot use `import()`, so it imports each action that it runs
+// statically. The action table is in `lib/_actions.mjs`.
 
+import { ACTIONS, MATCH_FIELD, matches, merge } from "./lib/_actions.mjs";
+import { TAG, tagOutput } from "./lib/_core.mjs";
 import {
   bytesOfBase64,
   entryOf,
@@ -25,6 +27,38 @@ import {
   tmpOf,
   turnsOf,
 } from "./lib/_io-mod.mjs";
+import excludeSessionFiles from "./post-tool-use/exclude-session-files.mjs";
+import loadNestedInstructions from "./post-tool-use/load-nested-instructions.mjs";
+import noteContextSize from "./post-tool-use/note-context-size.mjs";
+import recordEditsAndChecks from "./post-tool-use/record-edits-and-checks.mjs";
+import redactSecrets from "./post-tool-use/redact-secrets.mjs";
+import blockDestructiveCommands from "./pre-tool-use/block-destructive-commands.mjs";
+import confirmRiskyEdits from "./pre-tool-use/confirm-risky-edits.mjs";
+import enforceAgentBudget from "./pre-tool-use/enforce-agent-budget.mjs";
+import handOffCappedAgents from "./pre-tool-use/hand-off-capped-agents.mjs";
+import preferDotclaudeAgents from "./pre-tool-use/prefer-dotclaude-agents.mjs";
+import restrictSubagentModels from "./pre-tool-use/restrict-subagent-models.mjs";
+import skipUnchangedRereads from "./pre-tool-use/skip-unchanged-rereads.mjs";
+import countRunningAgents from "./subagent-start/count-running-agents.mjs";
+import injectWorkingConventions from "./subagent-start/inject-working-conventions.mjs";
+
+/** The ported actions that the module runs, by their path in `ACTIONS`. */
+const RUNS = new Map([
+  ["pre-tool-use/block-destructive-commands.mjs", blockDestructiveCommands],
+  ["pre-tool-use/skip-unchanged-rereads.mjs", skipUnchangedRereads],
+  ["pre-tool-use/confirm-risky-edits.mjs", confirmRiskyEdits],
+  ["pre-tool-use/restrict-subagent-models.mjs", restrictSubagentModels],
+  ["pre-tool-use/prefer-dotclaude-agents.mjs", preferDotclaudeAgents],
+  ["pre-tool-use/hand-off-capped-agents.mjs", handOffCappedAgents],
+  ["pre-tool-use/enforce-agent-budget.mjs", enforceAgentBudget],
+  ["post-tool-use/record-edits-and-checks.mjs", recordEditsAndChecks],
+  ["post-tool-use/load-nested-instructions.mjs", loadNestedInstructions],
+  ["post-tool-use/note-context-size.mjs", noteContextSize],
+  ["post-tool-use/exclude-session-files.mjs", excludeSessionFiles],
+  ["post-tool-use/redact-secrets.mjs", redactSecrets],
+  ["subagent-start/inject-working-conventions.mjs", injectWorkingConventions],
+  ["subagent-start/count-running-agents.mjs", countRunningAgents],
+]);
 
 /**
  * The environment names that the guard closure reads, by name. A name that
@@ -207,4 +241,128 @@ export async function modIo($, options = {}, data = {}) {
     run: modRun($),
     session: modSession($, data),
   };
+}
+
+/** The keys of a `tool.call` input that are not arguments of the tool. */
+const RESERVED = new Set(["tool", "tool_use_id", "agentId", "consent"]);
+
+/** The `additionalContext` of a merged output, as context lines. */
+const notesOf = (out) => {
+  const text = out?.hookSpecificOutput?.additionalContext;
+  return typeof text === "string" && text ? [text] : [];
+};
+
+/**
+ * The classic PreToolUse input for one `tool.call` input. The engine gives
+ * no `agent_type`, so it comes from the agent list. On the main thread the
+ * input has no `agent_id` and no `agent_type`.
+ */
+async function classicInput($, e) {
+  const toolInput = {};
+  for (const [key, value] of Object.entries(e))
+    if (!RESERVED.has(key)) toolInput[key] = value;
+  const data = {
+    hook_event_name: "PreToolUse",
+    session_id: await $.session.id(),
+    tool_name: e.tool,
+    tool_input: toolInput,
+    tool_use_id: e.tool_use_id,
+  };
+  if (typeof e.agentId === "string" && e.agentId) {
+    data.agent_id = e.agentId;
+    const agents = await $.agent.list().catch(() => []);
+    const type = agents.find((agent) => agent.id === e.agentId)?.type;
+    if (type) data.agent_type = type;
+  }
+  return data;
+}
+
+/**
+ * Run the ported actions of `event` whose matcher fits `data`, at the same
+ * time, and merge their tagged outputs in table order. It makes the io only
+ * when an action runs. Each action fails open: an action that throws gives
+ * no output, and the others still count.
+ */
+async function runActions($, options, event, data) {
+  const field = MATCH_FIELD[event];
+  const rows = (ACTIONS[event] ?? []).filter(
+    ([matcher, action]) => RUNS.has(action) && matches(matcher, data[field]),
+  );
+  if (!rows.length) return undefined;
+  const io = await modIo($, options, data);
+  data.cwd = io.cwd;
+  const outputs = await Promise.all(
+    rows.map(async ([, action]) => {
+      try {
+        const out = await RUNS.get(action)(
+          io,
+          JSON.parse(JSON.stringify(data)),
+        );
+        return out ? tagOutput(out) : undefined;
+      } catch {
+        return undefined;
+      }
+    }),
+  );
+  return merge(outputs.filter(Boolean));
+}
+
+/**
+ * Register the hooks of dotclaude. `tool.call` runs the PreToolUse actions
+ * before the call and the PostToolUse actions after it. An "ask" or "allow"
+ * stays in `verdicts` until `tool.check` of the same call gives it to the
+ * engine, because `tool.check` runs inside the `next` of `tool.call`.
+ */
+export function register(on, options) {
+  const verdicts = new Map();
+
+  on("tool.call", async ($, e, next) => {
+    const data = await classicInput($, e);
+    const pre = await runActions($, options, "PreToolUse", data);
+    const h = pre?.hookSpecificOutput ?? {};
+    // A deny does not call `next`, so nothing below this hook runs.
+    if (h.permissionDecision === "deny")
+      return { deny: h.permissionDecisionReason ?? TAG };
+    const id = e.tool_use_id;
+    const keep =
+      id !== undefined &&
+      (h.permissionDecision === "ask" || h.permissionDecision === "allow");
+    if (keep) {
+      const kept = { decision: h.permissionDecision };
+      if (h.permissionDecisionReason !== undefined)
+        kept.reason = h.permissionDecisionReason;
+      verdicts.set(id, kept);
+    }
+    let r;
+    try {
+      r = await next(h.updatedInput ? { ...e, ...h.updatedInput } : e);
+    } finally {
+      if (keep) verdicts.delete(id);
+    }
+    if (!r || "deny" in r) return r;
+    const event = r.isError ? "PostToolUseFailure" : "PostToolUse";
+    const after = { ...data, hook_event_name: event };
+    if (r.isError)
+      after.error =
+        r.text ??
+        (typeof r.result === "string" ? r.result : JSON.stringify(r.result));
+    else after.tool_response = r.result;
+    const post = await runActions($, options, event, after);
+    const context = [...(r.context ?? []), ...notesOf(pre), ...notesOf(post)];
+    const redacted = post?.hookSpecificOutput?.updatedToolOutput;
+    // Core uses its own messages (`ref`, `text`) when they stay, so a
+    // redacted result is a new object without them.
+    if (!r.isError && redacted !== undefined)
+      return { result: redacted, context };
+    if (context.length === (r.context?.length ?? 0)) return r;
+    return { ...r, context };
+  });
+
+  on("tool.check", (_$, e, next) => {
+    const kept =
+      e.tool_use_id === undefined ? undefined : verdicts.get(e.tool_use_id);
+    if (!kept) return next(e);
+    verdicts.delete(e.tool_use_id);
+    return kept;
+  });
 }
