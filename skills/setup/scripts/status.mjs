@@ -7,7 +7,7 @@
 // names, never their env or headers), the project's .codegraph/ and .tgrep/
 // directories, whether the global git excludes file lists .tgrep/, and for
 // fast-compact whether the plugin is installed and which settings are
-// present (key names only, never values), the betterleaks version, and for
+// present (key names only, never values), the betterleaks and semlf versions, and for
 // Ghidra the versions of `uvx`, Python, and Java, `GHIDRA_INSTALL_DIR`, the
 // `ghidra` MCP entry, and the `ghidra-bridge` CLI. For dotclaude-browser it
 // reads whether the plugin, agent-browser, CloakBrowser, ddddocr, and the
@@ -210,6 +210,7 @@ console.log(
       },
       fast_compact: fastCompact(),
       betterleaks: { cli: version("betterleaks", "version") },
+      semlf: { cli: version("semlf") },
       ghidra: ghidra(servers),
       browser: browser(),
       openspec: openspec(),

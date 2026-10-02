@@ -121,6 +121,9 @@ const MANIFEST_KEYS = Object.keys(
   ).userConfig,
 );
 
+/** Manifest keys added after 0.16, so no 0.16 key renames to them. */
+const NEW_SINCE_016 = new Set(["context_line_breaks"]);
+
 /** A HOME whose user settings hold 0.16 option keys for dotclaude. */
 function homeWithOptions(options) {
   const home = tempHome();
@@ -166,7 +169,9 @@ test("--apply renames each 0.16 option key to a key the manifest declares and ke
   run("migrate.mjs", home, "--apply");
   const after = JSON.parse(fs.readFileSync(settings, "utf8"));
   const options = after.pluginConfigs["dotclaude@dotclaude"].options;
-  expect(Object.keys(options).sort()).toStrictEqual([...MANIFEST_KEYS].sort());
+  expect(Object.keys(options).sort()).toStrictEqual(
+    MANIFEST_KEYS.filter((key) => !NEW_SINCE_016.has(key)).sort(),
+  );
   expect(options.guard_bash).toBe(false);
   expect(options.usage_scratchpad_prune_days).toBe(7);
   expect(options.model_plan).toBe("max_20x");

@@ -35,6 +35,7 @@ import {
   turnsOf,
 } from "./lib/_io-mod.mjs";
 import { agentStarted } from "./lib/_ledger.mjs";
+import checkLineBreaks from "./post-tool-use/check-line-breaks.mjs";
 import excludeSessionFiles from "./post-tool-use/exclude-session-files.mjs";
 import loadNestedInstructions from "./post-tool-use/load-nested-instructions.mjs";
 import noteContextSize from "./post-tool-use/note-context-size.mjs";
@@ -66,6 +67,7 @@ const RUNS = new Map([
   ["post-tool-use/load-nested-instructions.mjs", loadNestedInstructions],
   ["post-tool-use/note-context-size.mjs", noteContextSize],
   ["post-tool-use/exclude-session-files.mjs", excludeSessionFiles],
+  ["post-tool-use/check-line-breaks.mjs", checkLineBreaks],
   ["post-tool-use/redact-secrets.mjs", redactSecrets],
   ["post-tool-use-failure/show-closest-lines.mjs", showClosestLines],
   ["subagent-start/inject-working-conventions.mjs", injectWorkingConventions],

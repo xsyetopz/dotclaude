@@ -35,6 +35,7 @@ export const ACTIONS = {
     [`Bash|Read|${TOOL_EDITS}`, "post-tool-use/record-edits-and-checks.mjs"],
     ["Bash", "post-tool-use/load-nested-instructions.mjs"],
     [`EnterWorktree|${TOOL_EDITS}`, "post-tool-use/exclude-session-files.mjs"],
+    [TOOL_EDITS, "post-tool-use/check-line-breaks.mjs"],
     ["*", "post-tool-use/redact-secrets.mjs"],
     ["*", "post-tool-use/note-context-size.mjs"],
   ],

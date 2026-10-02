@@ -47,6 +47,12 @@
       "description": "When an agent creates a handoff note in `.claude/handoffs/`, `.dotclaude/` loop state, `CLAUDE.local.md`, `.claude/settings.local.json`, or `.claude/worktrees/`, add the path to `.git/info/exclude`, so it stays out of commits.",
       "default": true
     },
+    "context_line_breaks": {
+      "type": "boolean",
+      "title": "Line-break check",
+      "description": "After an edit, tell Claude when the text that it wrote breaks lines at a column, not between sentences or clauses. Uses `semlf` when it is on PATH, and a built-in check otherwise.",
+      "default": true
+    },
     "context_nested_instructions": {
       "type": "boolean",
       "title": "Nested instructions",
