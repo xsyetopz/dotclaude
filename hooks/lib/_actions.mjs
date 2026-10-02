@@ -66,6 +66,10 @@ export const ACTIONS = {
   TaskCompleted: [["*", "task-completed/require-check.mjs"]],
 };
 
+// The events that the hooks module (`register.mjs`) runs. `hooks.json` has
+// no command hook for them, so each action runs once.
+export const MODULE_EVENTS = ["PreToolUse", "PostToolUse", "SubagentStart"];
+
 export const MATCH_FIELD = {
   PreToolUse: "tool_name",
   PostToolUse: "tool_name",

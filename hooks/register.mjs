@@ -397,14 +397,15 @@ export function register(on, options) {
       if (keep) verdicts.delete(id);
     }
     if (!r || "deny" in r) return r;
-    const event = r.isError ? "PostToolUseFailure" : "PostToolUse";
-    const after = { ...data, hook_event_name: event };
-    if (r.isError)
-      after.error =
-        r.text ??
-        (typeof r.result === "string" ? r.result : JSON.stringify(r.result));
-    else after.tool_response = r.result;
-    const post = await runActions($, options, event, after);
+    // The PostToolUseFailure actions stay command hooks, so a failed call
+    // runs no action here.
+    const post = r.isError
+      ? undefined
+      : await runActions($, options, "PostToolUse", {
+          ...data,
+          hook_event_name: "PostToolUse",
+          tool_response: r.result,
+        });
     const context = [...(r.context ?? []), ...notesOf(pre), ...notesOf(post)];
     const redacted = post?.hookSpecificOutput?.updatedToolOutput;
     // Core uses its own messages (`ref`, `text`) when they stay, so a

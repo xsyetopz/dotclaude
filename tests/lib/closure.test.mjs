@@ -61,11 +61,13 @@ test("register.mjs uses no Node, Bun, process, or dynamic import", () => {
   ).toEqual([]);
 });
 
-test("register.mjs runs each PreToolUse, PostToolUse, and SubagentStart action", async () => {
-  const { ACTIONS } = await import("../../hooks/lib/_actions.mjs");
+test("register.mjs runs each action of the module events", async () => {
+  const { ACTIONS, MODULE_EVENTS } = await import(
+    "../../hooks/lib/_actions.mjs"
+  );
   const source = fs.readFileSync(register, "utf8");
-  const missing = ["PreToolUse", "PostToolUse", "SubagentStart"]
-    .flatMap((event) => ACTIONS[event].map(([, action]) => action))
-    .filter((action) => !source.includes(`["${action}", `));
+  const missing = MODULE_EVENTS.flatMap((event) =>
+    ACTIONS[event].map(([, action]) => action),
+  ).filter((action) => !source.includes(`["${action}", `));
   expect(missing).toEqual([]);
 });

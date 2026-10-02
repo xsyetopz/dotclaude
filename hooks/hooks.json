@@ -1,5 +1,5 @@
 {
-  "description": "dotclaude hooks: one dispatcher process per event, one file per action (see hooks/dispatch.mjs)",
+  "description": "dotclaude hooks: register.mjs runs the tool and SubagentStart actions, and one dispatcher process runs each other event, one file per action (see hooks/dispatch.mjs)",
   "modules": ["./register.mjs"],
   "hooks": {
     "SessionStart": [
@@ -27,45 +27,6 @@
               "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
               "UserPromptSubmit"
             ],
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
-              "SubagentStart"
-            ],
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs", "PreToolUse"],
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs", "PostToolUse"],
             "timeout": 30
           }
         ]

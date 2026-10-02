@@ -1,16 +1,22 @@
-// hooks.json wiring: one dispatcher entry per event, and a dispatcher table
-// that names every action file once.
+// hooks.json wiring: one dispatcher entry per event that the hooks module
+// does not run, and a dispatcher table that names every action file once.
 
 import { expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import { ACTIONS } from "../../hooks/dispatch.mjs";
+import { MODULE_EVENTS } from "../../hooks/lib/_actions.mjs";
 import { HOOKS } from "../support/hooks.mjs";
 
 const cfg = JSON.parse(fs.readFileSync(path.join(HOOKS, "hooks.json"), "utf8"));
 
-test("hooks.json runs the dispatcher once per event in the table", () => {
-  expect(Object.keys(cfg.hooks).sort()).toEqual(Object.keys(ACTIONS).sort());
+test("hooks.json runs the dispatcher once per event that the module does not run", () => {
+  expect(cfg.modules).toEqual(["./register.mjs"]);
+  expect(Object.keys(cfg.hooks).sort()).toEqual(
+    Object.keys(ACTIONS)
+      .filter((event) => !MODULE_EVENTS.includes(event))
+      .sort(),
+  );
   for (const [event, entries] of Object.entries(cfg.hooks)) {
     expect(entries).toHaveLength(1);
     const [handler] = entries[0].hooks;
