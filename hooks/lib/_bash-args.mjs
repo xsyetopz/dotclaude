@@ -49,7 +49,18 @@ export function isUnder(child, parent, path) {
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }
 
-export function git(cwd, args) {
+/** The stdout of `git -C cwd ...args`, or undefined when git fails. */
+export async function git(io, cwd, args) {
+  try {
+    const r = await io.run(["git", "-C", cwd, ...args], { timeoutMs: 3000 });
+    return r.exitCode === 0 ? r.stdout : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Sync twin of `git()`. Slices s14, s15, and s18 remove it.
+export function gitSync(cwd, args) {
   try {
     return execFileSync("git", ["-C", cwd, ...args], {
       encoding: "utf8",

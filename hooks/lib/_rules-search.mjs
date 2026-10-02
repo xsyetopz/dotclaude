@@ -12,7 +12,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { git, isUnder } from "./_bash-args.mjs";
+import { gitSync, isUnder } from "./_bash-args.mjs";
 import { resolveTarget } from "./_rules-filesystem.mjs";
 
 // Walks this shallow list a few entries of an ignored directory at most.
@@ -425,10 +425,10 @@ function ignoredDirs(dir, ctx) {
   const rel = path.relative(ctx.root, scope) || ".";
   if (
     rel !== "." &&
-    git(ctx.root, ["check-ignore", "-q", "--", rel]) !== undefined
+    gitSync(ctx.root, ["check-ignore", "-q", "--", rel]) !== undefined
   )
     return [];
-  const out = git(ctx.root, [
+  const out = gitSync(ctx.root, [
     "ls-files",
     "-z",
     "--others",

@@ -1,9 +1,8 @@
 // Bash guard rules for git: history rewrites, discarded work, hook bypasses,
 // and the staged-file check on commit.
 
-import fs from "node:fs";
-import path from "node:path";
 import { git, hasFlag, positional } from "./_bash-args.mjs";
+import { pathFor, posix } from "./_path.mjs";
 
 // --- git --------------------------------------------------------------------
 
@@ -113,6 +112,7 @@ export function isGitCommit(cmd) {
 }
 
 export function gitCwd(globals, ctx) {
+  const path = pathFor(ctx.io.platform);
   let cwd = ctx.cwd;
   for (let i = 0; i < globals.length - 1; i += 1) {
     if (globals[i] === "-C") cwd = path.resolve(cwd, globals[i + 1]);
@@ -152,6 +152,7 @@ const RUNTIME_DIR = /[$`]|^~/;
 /** The folder git runs in, after an earlier `cd` and `-C`, or undefined. */
 function discardCwd(cmd, globals, ctx) {
   if (globals.some((g) => /^--(git-dir|work-tree)/.test(g))) return undefined;
+  const path = pathFor(ctx.io.platform);
   let cwd = ctx.cwd;
   if (cmd.cwdHint) {
     if (RUNTIME_DIR.test(cmd.cwdHint)) return undefined;
@@ -170,7 +171,7 @@ function discardCwd(cmd, globals, ctx) {
  * empty `paths` means the whole worktree. Untracked files count for named
  * paths, because a checkout from another commit can overwrite them.
  */
-function mayLoseWork(cmd, globals, ctx, paths) {
+async function mayLoseWork(cmd, globals, ctx, paths) {
   if (paths.some((p) => /[$`]|__SUBST__/.test(p))) return true;
   if (restoresEarlier(cmd, ctx)) return true;
   const cwd = discardCwd(cmd, globals, ctx);
@@ -178,7 +179,13 @@ function mayLoseWork(cmd, globals, ctx, paths) {
   const untracked = paths.length
     ? "--untracked-files=all"
     : "--untracked-files=no";
-  const status = git(cwd, ["status", "--porcelain", untracked, "--", ...paths]);
+  const status = await git(ctx.io, cwd, [
+    "status",
+    "--porcelain",
+    untracked,
+    "--",
+    ...paths,
+  ]);
   return status === undefined || status.trim() !== "";
 }
 
@@ -186,12 +193,13 @@ function mayLoseWork(cmd, globals, ctx, paths) {
  * True when a reset to `rev` overwrites a file that git does not track now:
  * a path that `rev` has and `HEAD` does not, which exists on disk.
  */
-function overwritesUntracked(cmd, globals, ctx, rev) {
+async function overwritesUntracked(cmd, globals, ctx, rev) {
   if (/[$`]|__SUBST__/.test(rev)) return true;
   const cwd = discardCwd(cmd, globals, ctx);
   if (!cwd) return true;
-  const top = git(cwd, ["rev-parse", "--show-toplevel"])?.trim();
-  const added = git(cwd, [
+  const { io } = ctx;
+  const top = (await git(io, cwd, ["rev-parse", "--show-toplevel"]))?.trim();
+  const added = await git(io, cwd, [
     "diff",
     "--name-only",
     "-z",
@@ -202,7 +210,10 @@ function overwritesUntracked(cmd, globals, ctx, rev) {
     "--",
   ]);
   if (!top || added === undefined) return true;
-  return added.split("\0").some((f) => f && fs.existsSync(path.join(top, f)));
+  const path = pathFor(io.platform);
+  for (const f of added.split("\0"))
+    if (f && (await io.fs.exists(path.join(top, f)))) return true;
+  return false;
 }
 
 /** Pathspecs after `--`, or the positionals after `skip` values. */
@@ -217,7 +228,9 @@ function pathspecs(args, valueFlags) {
   return out;
 }
 
-export function gitRule(cmd, ctx) {
+export async function gitRule(cmd, ctx) {
+  const { io } = ctx;
+  const path = pathFor(io.platform);
   const { globals, sub, rest: args } = gitSplit(cmd.args);
   const out = [];
   if (globals.join(" ").toLowerCase().includes("core.hookspath"))
@@ -252,9 +265,9 @@ export function gitRule(cmd, ctx) {
       if (!hasFlag(args, ["--hard", "--merge", "--keep"])) break;
       const end = args.indexOf("--");
       const rev = positional(end === -1 ? args : args.slice(0, end))[0];
-      if (mayLoseWork(cmd, globals, ctx, []))
+      if (await mayLoseWork(cmd, globals, ctx, []))
         out.push(["ask", "`git reset --hard` discards uncommitted changes"]);
-      else if (rev && overwritesUntracked(cmd, globals, ctx, rev))
+      else if (rev && (await overwritesUntracked(cmd, globals, ctx, rev)))
         out.push([
           "ask",
           `\`git reset --hard ${rev}\` overwrites files that git does not track`,
@@ -270,12 +283,12 @@ export function gitRule(cmd, ctx) {
         (args.includes("--") ||
           args.includes(".") ||
           hasFlag(args, ["--force"], "f")) &&
-        mayLoseWork(
+        (await mayLoseWork(
           cmd,
           globals,
           ctx,
           args.includes("--") ? args.slice(args.indexOf("--") + 1) : [],
-        )
+        ))
       ) {
         out.push([
           "ask",
@@ -287,7 +300,12 @@ export function gitRule(cmd, ctx) {
       if (
         (!hasFlag(args, ["--staged"], "S") ||
           hasFlag(args, ["--worktree"], "W")) &&
-        mayLoseWork(cmd, globals, ctx, pathspecs(args, ["-s", "--source"]))
+        (await mayLoseWork(
+          cmd,
+          globals,
+          ctx,
+          pathspecs(args, ["-s", "--source"]),
+        ))
       )
         out.push(["ask", "`git restore` discards uncommitted changes"]);
       break;
@@ -313,7 +331,9 @@ export function gitRule(cmd, ctx) {
       break;
     case "add": {
       const cwd = gitCwd(globals, ctx);
-      const binaries = pos.filter((f) => isExecutable(path.resolve(cwd, f)));
+      const binaries = [];
+      for (const f of pos)
+        if (await isExecutable(io, path.resolve(cwd, f))) binaries.push(f);
       if (binaries.length)
         out.push([
           "warn",
@@ -329,7 +349,7 @@ export function gitRule(cmd, ctx) {
       if (args[0] === "remove" && hasFlag(args, ["--force"], "f")) {
         const target = positional(args.slice(1))[0];
         const dirty = target
-          ? git(path.resolve(gitCwd(globals, ctx), target), [
+          ? await git(io, path.resolve(gitCwd(globals, ctx), target), [
               "status",
               "--porcelain",
             ])
@@ -377,7 +397,7 @@ export function gitRule(cmd, ctx) {
     }
   }
   if (sub === "commit" && ctx.commitHygiene)
-    out.push(...commitHygiene(args, gitCwd(globals, ctx)));
+    out.push(...(await commitHygiene(io, args, gitCwd(globals, ctx))));
   return out;
 }
 
@@ -385,29 +405,36 @@ export function gitRule(cmd, ctx) {
  * True when `file` starts with an ELF, Mach-O, or PE header. A fat Mach-O
  * shares its magic with a Java class file, so its architecture count must be
  * small. A PE file starts with `MZ`, and the offset at 0x3c points to
- * `PE\0\0`.
+ * `PE\0\0`. `io.fs.head` cannot read from an offset, so it reads up to the
+ * signature. A signature after 4 MiB does not count.
  */
-function isExecutable(file) {
-  let fd;
+const PE_MAX_OFFSET = 4 * 1024 * 1024;
+
+async function isExecutable(io, file) {
   try {
-    if (!fs.statSync(file).isFile()) return false;
-    fd = fs.openSync(file, "r");
-    const head = Buffer.alloc(64);
-    const n = fs.readSync(fd, head, 0, 64, 0);
+    if ((await io.fs.stat(file)).kind !== "file") return false;
+    const head = await io.fs.head(file, 64);
+    const n = head.length;
     if (n < 4) return false;
-    const magic = head.readUInt32BE(0);
+    const view = new DataView(head.buffer, head.byteOffset, n);
+    const magic = view.getUint32(0);
     if (magic === 0x7f454c46) return true;
     if ([0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe].includes(magic))
       return true;
-    if (magic === 0xcafebabe) return n >= 8 && head.readUInt32BE(4) < 45;
+    if (magic === 0xcafebabe) return n >= 8 && view.getUint32(4) < 45;
     if (head[0] !== 0x4d || head[1] !== 0x5a || n < 64) return false;
-    const sig = Buffer.alloc(4);
-    fs.readSync(fd, sig, 0, 4, head.readUInt32LE(0x3c));
-    return sig.equals(Buffer.from("PE\0\0", "latin1"));
+    const at = view.getUint32(0x3c, true);
+    if (at > PE_MAX_OFFSET) return false;
+    const pe = await io.fs.head(file, at + 4);
+    return (
+      pe.length === at + 4 &&
+      pe[at] === 0x50 &&
+      pe[at + 1] === 0x45 &&
+      pe[at + 2] === 0 &&
+      pe[at + 3] === 0
+    );
   } catch {
     return false;
-  } finally {
-    if (fd !== undefined) fs.closeSync(fd);
   }
 }
 
@@ -429,12 +456,14 @@ const LOCKS = {
   "Package.resolved": ["Package.swift"],
 };
 
-function commitHygiene(args, cwd) {
-  const staged = git(cwd, ["diff", "--cached", "--name-only"]);
+async function commitHygiene(io, args, cwd) {
+  const staged = await git(io, cwd, ["diff", "--cached", "--name-only"]);
   if (staged === undefined) return [];
   const files = new Set(staged.split("\n"));
   if (hasFlag(args, ["--all"], "a")) {
-    for (const f of (git(cwd, ["diff", "--name-only"]) ?? "").split("\n"))
+    for (const f of ((await git(io, cwd, ["diff", "--name-only"])) ?? "").split(
+      "\n",
+    ))
       files.add(f);
   }
   files.delete("");
@@ -452,9 +481,9 @@ function commitHygiene(args, cwd) {
     ]);
   }
   for (const file of files) {
-    const base = path.posix.basename(file);
+    const base = posix.basename(file);
     if (!Object.hasOwn(LOCKS, base)) continue;
-    const dir = path.posix.dirname(file);
+    const dir = posix.dirname(file);
     const wanted = LOCKS[base].map((m) => (dir === "." ? m : `${dir}/${m}`));
     if (!wanted.some((m) => files.has(m)))
       out.push(["ask", `the commit changes \`${file}\` without its manifest`]);

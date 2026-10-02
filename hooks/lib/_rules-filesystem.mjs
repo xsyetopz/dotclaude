@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { git, isFlagCluster, isUnder, targets } from "./_bash-args.mjs";
+import { gitSync, isFlagCluster, isUnder, targets } from "./_bash-args.mjs";
 import { program } from "./_shell.mjs";
 
 // --- filesystem -------------------------------------------------------------
@@ -186,7 +186,7 @@ function ignoredInProject(p, ctx) {
   // The second form matches folder-only patterns (`dist/`) for a folder
   // that does not exist yet.
   // git does not report a folder that holds a tracked file as ignored.
-  return Boolean(git(ctx.root, ["check-ignore", "--", p, `${p}/`])?.trim());
+  return Boolean(gitSync(ctx.root, ["check-ignore", "--", p, `${p}/`])?.trim());
 }
 
 /**
@@ -287,10 +287,10 @@ export function rm(cmd, ctx) {
     if (p === ctx.root || isUnder(ctx.root, p, path)) {
       out.push(["ask", `\`rm -r ${t}\` deletes the project root`]);
     } else if (isUnder(p, ctx.root, path)) {
-      if (git(ctx.root, ["ls-files", "--", p])?.trim())
+      if (gitSync(ctx.root, ["ls-files", "--", p])?.trim())
         out.push(["warn", `\`rm -r ${t}\` deletes git-tracked files`]);
       else if (
-        git(ctx.root, [
+        gitSync(ctx.root, [
           "ls-files",
           "--others",
           "--exclude-standard",

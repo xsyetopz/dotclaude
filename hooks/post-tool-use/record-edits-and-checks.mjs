@@ -98,7 +98,7 @@ run(async (data) => {
       const rel = editedPath(io, data);
       if (!rel) return;
       recordEdited(state, rel);
-      if (codeFile(rel, projectRoot(io, data)))
+      if (await codeFile(io, rel, projectRoot(io, data)))
         state.lastEdit = { seq: state.seq, path: rel };
       break;
     }
@@ -114,8 +114,11 @@ run(async (data) => {
               data.cwd || projectRoot(io, data),
             )
           : [];
-      const code = written.find((rel) => codeFile(rel, projectRoot(io, data)));
-      if (code) state.lastEdit = { seq: state.seq, path: code };
+      for (const rel of written) {
+        if (!(await codeFile(io, rel, projectRoot(io, data)))) continue;
+        if (rel) state.lastEdit = { seq: state.seq, path: rel };
+        break;
+      }
       for (const rel of written) recordEdited(state, rel);
       const reads =
         data.hook_event_name === "PostToolUse"

@@ -9,7 +9,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { git } from "../lib/_bash-args.mjs";
+import { gitSync } from "../lib/_bash-args.mjs";
 import { run } from "../lib/_common.mjs";
 import { option, projectRoot } from "../lib/_core.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
@@ -48,7 +48,7 @@ function entryFor(abs) {
   // git gives the folder's path below the top level, with `/`. A path
   // comparison with the top level fails where the two name one folder
   // differently: `/private/var` on macOS, `RUNNER~1` short names on Windows.
-  const out = git(dir, ["rev-parse", "--show-toplevel", "--show-prefix"]);
+  const out = gitSync(dir, ["rev-parse", "--show-toplevel", "--show-prefix"]);
   const [top, prefix] = (out ?? "").split("\n");
   if (!top) return undefined;
   const rel = `${prefix}${base}`.replace(/\/$/, "");
@@ -62,8 +62,12 @@ function exclude(abs) {
   if (!found) return;
   const { top, rel, entry } = found;
   // `check-ignore -q` exits 0 (empty output) only for an ignored path.
-  if (git(top, ["check-ignore", "-q", "--", rel]) !== undefined) return;
-  const file = git(top, ["rev-parse", "--git-path", "info/exclude"])?.trim();
+  if (gitSync(top, ["check-ignore", "-q", "--", rel]) !== undefined) return;
+  const file = gitSync(top, [
+    "rev-parse",
+    "--git-path",
+    "info/exclude",
+  ])?.trim();
   if (!file) return;
   const target = path.resolve(top, file);
   fs.mkdirSync(path.dirname(target), { recursive: true });

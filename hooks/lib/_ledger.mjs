@@ -1,8 +1,6 @@
 // Per-session record of edits and check runs, used by the stop gate and the
 // compaction carry-over. Stored under CLAUDE_PLUGIN_DATA, never in the repo.
 
-// One import keeps this file out of the engine. `_bash-args.mjs` imports
-// `node:child_process` for `git()`, which `codeFile` uses. Slice s13 removes it.
 import { git } from "./_bash-args.mjs";
 import { expandHome, writeTargets } from "./_bash-writes.mjs";
 import { stateDir } from "./_core.mjs";
@@ -22,10 +20,10 @@ const DOT_CONFIG = /(^|\/)\./;
  * must cover. Docs, dotfile config, and gitignored files (scratch files,
  * build output) do not count.
  */
-export function codeFile(rel, root) {
+export async function codeFile(io, rel, root) {
   if (NON_CODE.test(rel) || DOT_CONFIG.test(rel)) return false;
   // `check-ignore -q` exits 0 only for an ignored path.
-  return git(root, ["check-ignore", "-q", "--", rel]) === undefined;
+  return (await git(io, root, ["check-ignore", "-q", "--", rel])) === undefined;
 }
 
 function file(io, sessionId, agentId) {

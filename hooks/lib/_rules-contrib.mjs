@@ -10,7 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { forbids, lookup, remoteKey, updateNotice } from "./_ai-policies.mjs";
-import { git, positional } from "./_bash-args.mjs";
+import { gitSync, positional } from "./_bash-args.mjs";
 import { gitCwd, gitSplit } from "./_rules-git.mjs";
 
 // gh writes that add content under the user's name to a project.
@@ -79,7 +79,7 @@ function ghUser(ctx) {
 }
 
 function remotes(cwd) {
-  const out = git(cwd, ["remote", "-v"]) ?? "";
+  const out = gitSync(cwd, ["remote", "-v"]) ?? "";
   const byName = new Map();
   for (const line of out.split("\n")) {
     const [name, url] = line.split(/\s+/);
@@ -161,13 +161,13 @@ function contributionOf(cmd, ctx) {
   const target = positional(rest)[0];
   let url = target ? (all.get(target) ?? target) : undefined;
   if (!url) {
-    const branch = git(cwd, ["branch", "--show-current"])?.trim();
+    const branch = gitSync(cwd, ["branch", "--show-current"])?.trim();
     const name =
       (branch &&
         (
-          git(cwd, ["config", `branch.${branch}.pushRemote`]) ??
-          git(cwd, ["config", "remote.pushDefault"]) ??
-          git(cwd, ["config", `branch.${branch}.remote`])
+          gitSync(cwd, ["config", `branch.${branch}.pushRemote`]) ??
+          gitSync(cwd, ["config", "remote.pushDefault"]) ??
+          gitSync(cwd, ["config", `branch.${branch}.remote`])
         )?.trim()) ||
       "origin";
     url = all.get(name);

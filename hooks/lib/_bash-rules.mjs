@@ -76,7 +76,7 @@ export async function check(command, ctx) {
 async function checkCommand(cmd, ctx) {
   const out = [];
   const handler = HANDLERS[cmd.name];
-  if (handler) out.push(...handler(cmd, ctx));
+  if (handler) out.push(...(await handler(cmd, ctx)));
   if (cmd.name === "gh" || cmd.name === "git")
     out.push(...contribution(cmd, ctx));
   if (readsStdinScript(cmd) && cmd.pipedFrom) {
