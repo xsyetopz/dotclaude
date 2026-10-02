@@ -1,7 +1,10 @@
 // Per-session record of edits and check runs, used by the stop gate and the
 // compaction carry-over. Stored under CLAUDE_PLUGIN_DATA, never in the repo.
 
-// Only `shellWrites` uses `node:path`, for `writeTargets`. Slice s12 removes it.
+// Three imports keep this file out of the engine. `shellWrites` uses
+// `node:path` for `writeTargets`. `_bash-args.mjs` imports `node:child_process`
+// for `git()`, which `codeFile` uses. `_bash-writes.mjs` imports `node:fs`.
+// Slices s12 and s13 remove them.
 import nodePath from "node:path";
 import { git } from "./_bash-args.mjs";
 import { expandHome, writeTargets } from "./_bash-writes.mjs";
@@ -156,9 +159,10 @@ export function outputShowsFailure(text) {
  * order, without duplicates. For inline interpreter code, the string-literal
  * path arguments of its write calls stand in for the targets. Relative targets
  * resolve against the directory an earlier `cd` in the command moved to.
- * `home` is the folder that `~` expands to.
+ * `home` is the folder that `~` expands to. `cwd` is `root` when it is not
+ * given.
  */
-export function shellWrites(command, root, cwd, home) {
+export function shellWrites(command, root, home, cwd = root) {
   const path = nodePath;
   const inProject = (target, base) => {
     if (!target || target.includes("$") || target.startsWith("/dev/"))

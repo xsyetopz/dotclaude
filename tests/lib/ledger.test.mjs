@@ -13,6 +13,7 @@ import {
   recordRead,
   runningAgents,
   save,
+  shellWrites,
 } from "../../hooks/lib/_ledger.mjs";
 
 const DIR = "/data/sessions";
@@ -131,4 +132,15 @@ test("agentStopped removes the marker", async () => {
   };
   await agentStopped(io, "s1", "a/1");
   expect(removed).toStrictEqual([`${DIR}/s1.a_1.running`]);
+});
+
+test("shellWrites expands `~` with `home` and resolves against `root` with no `cwd`", () => {
+  const command = "echo a > ~/proj/src/a.js && echo b > src/b.js";
+  expect(shellWrites(command, "/home/u/proj", "/home/u")).toStrictEqual([
+    "src/a.js",
+    "src/b.js",
+  ]);
+  expect(
+    shellWrites("echo c > c.js", "/home/u/proj", "/home/u", "/home/u/proj/src"),
+  ).toStrictEqual(["src/c.js"]);
 });

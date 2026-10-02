@@ -109,8 +109,8 @@ run(async (data) => {
           ? shellWrites(
               command,
               projectRoot(io, data),
-              data.cwd || projectRoot(io, data),
               io.home,
+              data.cwd || projectRoot(io, data),
             )
           : [];
       const code = written.find((rel) => codeFile(rel, projectRoot(io, data)));

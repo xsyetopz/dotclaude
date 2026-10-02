@@ -1,5 +1,6 @@
 // The verdict log and the ask memory reach the host only through `io.fs`.
-// The memory fs below has no `remove` and no rename, as the engine io.
+// The memory fs below has no `remove` and no rename, and it reads at most
+// 4 MiB and gives sizes in bytes, as the engine io.
 
 import { expect, test } from "bun:test";
 import fs from "node:fs";
@@ -12,6 +13,9 @@ import {
 
 const LOG = "/data/verdicts.jsonl";
 const OLD_LOG = "/data/verdicts.1.jsonl";
+
+const READ_MAX = 4 * 1024 * 1024;
+const bytes = (text) => new TextEncoder().encode(text).length;
 
 function memoryIo(files = {}) {
   const store = new Map(Object.entries(files));
@@ -26,6 +30,8 @@ function memoryIo(files = {}) {
     fs: {
       read: async (file) => {
         if (!store.has(file)) throw missing(file);
+        if (bytes(store.get(file)) > READ_MAX)
+          throw new Error(`${file}: larger than 4 MiB`);
         return store.get(file);
       },
       write: async (file, text) => {
@@ -37,7 +43,7 @@ function memoryIo(files = {}) {
       exists: async (file) => store.has(file),
       stat: async (file) => {
         if (!store.has(file)) throw missing(file);
-        return { kind: "file", size: store.get(file).length, mtimeMs: 0 };
+        return { kind: "file", size: bytes(store.get(file)), mtimeMs: 0 };
       },
       list: async () => [],
     },
@@ -81,6 +87,79 @@ test("logVerdict keeps a log at the size limit", async () => {
   await logVerdict(io, data, "deny", "r");
   expect(io.store.has(OLD_LOG)).toBe(false);
   expect(io.store.get(LOG).startsWith(atLimit)).toBe(true);
+});
+
+test("logVerdict does not rotate again after another caller rotated the log", async () => {
+  // The stat is from before the other caller emptied the main file.
+  const full = `${"x".repeat(1_000_001)}\n`;
+  const io = memoryIo({ [LOG]: "", [OLD_LOG]: full });
+  io.fs.stat = async () => ({ kind: "file", size: bytes(full), mtimeMs: 0 });
+  await logVerdict(io, data, "deny", "late caller");
+  expect(io.store.get(OLD_LOG)).toBe(full);
+  expect(JSON.parse(io.store.get(LOG)).reason).toBe("late caller");
+});
+
+test("logVerdict rotates a log by its size in bytes", async () => {
+  const full = "é".repeat(600_000);
+  const io = memoryIo({ [LOG]: full });
+  await logVerdict(io, data, "deny", "r");
+  expect(io.store.get(OLD_LOG)).toBe(full);
+  expect(io.store.get(LOG).trimEnd().split("\n")).toHaveLength(1);
+});
+
+test("logVerdict starts a log that is too large to read again", async () => {
+  const huge = "x".repeat(READ_MAX + 1);
+  const io = memoryIo({ [LOG]: huge, [OLD_LOG]: "older\n" });
+  await logVerdict(io, data, "deny", "after the cap");
+  expect(io.store.get(OLD_LOG)).toBe("older\n");
+  expect(JSON.parse(io.store.get(LOG)).reason).toBe("after the cap");
+});
+
+test("logVerdict resolves when the log cannot be written", async () => {
+  const io = memoryIo();
+  io.fs.append = async () => {
+    throw new Error("disk full");
+  };
+  await logVerdict(io, data, "deny", "r");
+  expect(io.store.has(LOG)).toBe(false);
+});
+
+test("guardDecision gives the decision when the log and the memory cannot be written", async () => {
+  const io = memoryIo();
+  const fail = async () => {
+    throw new Error("disk full");
+  };
+  io.fs.write = fail;
+  io.fs.append = fail;
+  const deny = await guardDecision(
+    io,
+    [["deny", "it deletes home"]],
+    data,
+    "command",
+  );
+  expect(deny.hookSpecificOutput.permissionDecision).toBe("deny");
+  const ask = await guardDecision(
+    io,
+    [["ask", "it rewrites history"]],
+    data,
+    "command",
+  );
+  expect(ask.hookSpecificOutput.permissionDecision).toBe("ask");
+});
+
+test("guardDecision keeps the ask memory small for a large Write", async () => {
+  const io = memoryIo();
+  const write = {
+    ...data,
+    tool_name: "Write",
+    tool_input: { file_path: "/work/a.js", content: "x".repeat(1_000_000) },
+  };
+  const ask = [["ask", "it overwrites a file"]];
+  expect(await guardDecision(io, ask, write, "edit")).not.toBe(null);
+  expect(bytes(io.store.get("/data/sessions/asks-s1.json"))).toBeLessThan(500);
+  await approveAsk(io, { ...write, hook_event_name: "PostToolUse" });
+  const again = { ...write, tool_use_id: "t2" };
+  expect(await guardDecision(io, ask, again, "edit")).toBe(null);
 });
 
 test("guardDecision returns the output, and an approved ask is not asked again", async () => {
@@ -137,5 +216,5 @@ test("_verdicts.mjs reaches no host API directly", () => {
   expect(source).not.toContain("Bun.");
   expect(
     [...source.matchAll(/from "([^"]+)"/g)].map((m) => m[1]),
-  ).toStrictEqual(["./_core.mjs", "./_path.mjs"]);
+  ).toStrictEqual(["./_core.mjs", "./_path.mjs", "./_sha1.mjs"]);
 });

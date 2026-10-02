@@ -7,6 +7,7 @@
 
 import { preToolOutput, stateDir, verdict } from "./_core.mjs";
 import { pathFor } from "./_path.mjs";
+import { sha1 } from "./_sha1.mjs";
 
 const TARGET_MAX = 200;
 const LOG_MAX_BYTES = 1_000_000;
@@ -22,31 +23,62 @@ function target(data) {
     .trim();
 }
 
+// The log and the ask memory are secondary. A failed write must not stop the
+// guard decision, so this function ignores the error.
+async function quietly(write) {
+  try {
+    await write();
+  } catch {
+    // the write failed
+  }
+}
+
+const byteSize = (text) => new TextEncoder().encode(text).length;
+
+async function rotate(io, file) {
+  let size = 0;
+  try {
+    size = (await io.fs.stat(file)).size;
+  } catch {
+    return; // no log yet
+  }
+  if (size <= LOG_MAX_BYTES) return;
+  // The engine io has no rename, so the rotation copies the log to the
+  // `.1.jsonl` file and then starts the main file again.
+  let text;
+  try {
+    text = await io.fs.read(file);
+  } catch {
+    // A log past the read limit cannot be copied. Start it again without a
+    // backup, or it never rotates.
+    if (await io.fs.exists(file)) await io.fs.write(file, "");
+    return;
+  }
+  // Another caller can rotate the log after the stat. Then the text is
+  // short, and a copy of it must not replace the backup.
+  if (byteSize(text) <= LOG_MAX_BYTES) return;
+  await io.fs.write(file.replace(/\.jsonl$/, ".1.jsonl"), text);
+  await io.fs.write(file, "");
+}
+
+/** Adds one verdict to the log. A failed write is ignored. */
 export async function logVerdict(io, data, level, reason, extra = {}) {
   const path = pathFor(io.platform);
   const file = path.join(path.dirname(stateDir(io)), "verdicts.jsonl");
-  try {
-    if ((await io.fs.stat(file)).size > LOG_MAX_BYTES) {
-      // The engine io has no rename, so the rotation copies the log to the
-      // `.1.jsonl` file and then starts the main file again.
-      const text = await io.fs.read(file);
-      await io.fs.write(file.replace(/\.jsonl$/, ".1.jsonl"), text);
-      await io.fs.write(file, "");
-    }
-  } catch {
-    // no log yet
-  }
-  const entry = {
-    time: new Date().toISOString(),
-    session: data.session_id ?? null,
-    agent: data.agent_id ?? null,
-    tool: data.tool_name ?? null,
-    level,
-    reason: clip(reason),
-    target: clip(target(data)),
-    ...extra,
-  };
-  await io.fs.append(file, `${JSON.stringify(entry)}\n`);
+  await quietly(async () => {
+    await rotate(io, file);
+    const entry = {
+      time: new Date().toISOString(),
+      session: data.session_id ?? null,
+      agent: data.agent_id ?? null,
+      tool: data.tool_name ?? null,
+      level,
+      reason: clip(reason),
+      target: clip(target(data)),
+      ...extra,
+    };
+    await io.fs.append(file, `${JSON.stringify(entry)}\n`);
+  });
 }
 
 function memoryFile(io, sessionId) {
@@ -81,12 +113,13 @@ export async function guardDecision(io, findings, data, label) {
   const [decision, reason] = v;
   const sid = data.session_id;
   // An edit is keyed on its whole input: one approved removal in a test file
-  // must not approve a different one in the same file.
+  // must not approve a different one in the same file. The memory keeps the
+  // SHA-1 of the key, because a `Write` input holds the whole file.
   const subject =
     data.tool_name === "Bash"
       ? target(data)
       : JSON.stringify(data.tool_input ?? {});
-  const key = `${data.tool_name ?? ""}\0${subject}\0${reason}`;
+  const key = sha1(`${data.tool_name ?? ""}\0${subject}\0${reason}`);
   if (decision === "ask" && sid) {
     const memory = await loadMemory(io, sid);
     if (memory.approved.includes(key)) {
@@ -97,7 +130,7 @@ export async function guardDecision(io, findings, data, label) {
       memory.pending[data.tool_use_id] = key;
       const ids = Object.keys(memory.pending);
       for (const id of ids.slice(0, -PENDING_MAX)) delete memory.pending[id];
-      await saveMemory(io, sid, memory);
+      await quietly(() => saveMemory(io, sid, memory));
     }
   }
   await logVerdict(io, data, decision, reason);
