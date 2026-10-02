@@ -1,10 +1,9 @@
 // Bash guard rules for filesystem deletes, disk writes, permission changes,
 // and printing secret files.
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { gitSync, isFlagCluster, isUnder, targets } from "./_bash-args.mjs";
+import { git, isFlagCluster, isUnder, targets } from "./_bash-args.mjs";
+import { globMatch } from "./_glob.mjs";
+import { pathFor, posix } from "./_path.mjs";
 import { program } from "./_shell.mjs";
 
 // --- filesystem -------------------------------------------------------------
@@ -74,28 +73,28 @@ function isRecursive(args) {
 const TEMP_VARS = ["TMPDIR", "CLAUDE_CODE_TMPDIR"];
 
 /** The path with `/` separators, so that it compares with the prefixes. */
-const slashes = (p) => p.split(path.sep).join("/");
+const slashes = (io, p) => p.split(pathFor(io.platform).sep).join("/");
 
 /**
- * Temp folder prefixes, each with a trailing slash. `os.tmpdir()` adds the
+ * Temp folder prefixes, each with a trailing slash. `io.tmp` adds the
  * Windows temp folder, which `TEMP` names.
  */
-function tempPrefixes() {
-  const dirs = [...TEMP_VARS.map((name) => process.env[name]), os.tmpdir()]
+function tempPrefixes(io) {
+  const dirs = [...TEMP_VARS.map((name) => io.env[name]), io.tmp]
     .filter(Boolean)
-    .map((dir) => slashes(dir).replace(/\/+$/, ""));
+    .map((dir) => slashes(io, dir).replace(/\/+$/, ""));
   return [...TEMP_PREFIXES, ...dirs.map((dir) => `${dir}/`)];
 }
 
-function isTemp(p) {
-  const s = `${slashes(p)}/`;
-  return tempPrefixes().some((prefix) => s.startsWith(prefix));
+function isTemp(io, p) {
+  const s = `${slashes(io, p)}/`;
+  return tempPrefixes(io).some((prefix) => s.startsWith(prefix));
 }
 
 /** A path strictly inside a temp folder, not the folder itself. */
-export function isTempChild(p) {
-  const s = slashes(p);
-  return tempPrefixes().some(
+export function isTempChild(io, p) {
+  const s = slashes(io, p);
+  return tempPrefixes(io).some(
     (prefix) => s.startsWith(prefix) && s.length > prefix.length,
   );
 }
@@ -106,41 +105,45 @@ export function isTempChild(p) {
  * is the drive `C:`. Other absolute paths keep their POSIX form, so the
  * POSIX temp prefixes apply to them.
  */
-export function shellResolve(base, p) {
-  if (process.platform !== "win32" || !p.startsWith("/"))
+export function shellResolve(io, base, p) {
+  const path = pathFor(io.platform);
+  if (io.platform !== "win32" || !p.startsWith("/"))
     return path.resolve(base, p);
-  if (/^\/tmp(\/|$)/.test(p)) return path.join(os.tmpdir(), p.slice(4));
+  if (/^\/tmp(\/|$)/.test(p)) return path.join(io.tmp, p.slice(4));
   const drive = /^\/([a-z])(\/|$)/i.exec(p);
   if (drive) return path.resolve(`${drive[1]}:\\`, p.slice(3));
-  return path.posix.resolve(p);
+  return posix.resolve(p);
 }
 
 /**
  * A temp entry that holds no project files. A project can itself live in a
  * temp folder, and its files keep the project rules.
  */
-function scratch(p, ctx) {
-  return isTempChild(p) && !overlapsProject(p, ctx);
+async function scratch(p, ctx) {
+  return isTempChild(ctx.io, p) && !(await overlapsProject(p, ctx));
 }
 
 /**
  * The path with symbolic links resolved in its longest existing part. On
  * macOS, `/var/folders` and `/tmp` are links into `/private`.
  */
-function canonical(p) {
+async function canonical(io, p) {
+  const path = pathFor(io.platform);
   for (let head = p; ; head = path.dirname(head)) {
-    try {
-      return path.join(fs.realpathSync(head), path.relative(head, p));
-    } catch {
-      if (head === path.dirname(head)) return p;
-    }
+    const real = await io.fs.stat(head, { resolve: true }).then(
+      (s) => s.realPath,
+      () => undefined,
+    );
+    if (real) return path.join(real, path.relative(head, p));
+    if (head === path.dirname(head)) return p;
   }
 }
 
 /** True when `p` is inside the project or holds it. */
-function overlapsProject(p, ctx) {
-  const a = canonical(p);
-  const root = canonical(ctx.root);
+async function overlapsProject(p, ctx) {
+  const path = pathFor(ctx.io.platform);
+  const a = await canonical(ctx.io, p);
+  const root = await canonical(ctx.io, ctx.root);
   return isUnder(a, root, path) || isUnder(root, a, path);
 }
 
@@ -157,7 +160,7 @@ function expandTempVar(target, ctx) {
   const rest = target.slice(m[0].length);
   // A glob or a parent segment can reach past one named entry.
   if (/[*?[]/.test(rest) || rest.split("/").includes("..")) return target;
-  const value = process.env[name]?.replace(/\/+$/, "");
+  const value = ctx.io.env[name]?.replace(/\/+$/, "");
   return value ? value + rest : target;
 }
 
@@ -166,27 +169,33 @@ function expandTempVar(target, ctx) {
  * shots/$n`) stays inside one named temp entry: the literal text before the
  * first `$` resolves to a path strictly inside a temp folder.
  */
-function tempHead(target, cmd, ctx) {
+async function tempHead(target, cmd, ctx) {
+  const path = pathFor(ctx.io.platform);
   const at = target.indexOf("$");
   if (at <= 0) return false;
   const head = target.slice(0, at);
   if (head.split("/").includes("..") || /[*?[~]/.test(head)) return false;
   const p = resolveTarget(head, cmd, ctx);
-  if (!p || !scratch(p, ctx)) return false;
+  if (!p || !(await scratch(p, ctx))) return false;
   if (head.endsWith("/")) return true;
   // The variable can complete the last name, for example `/tmp/pr$x` to the
   // project `/tmp/proj`.
-  const rel = path.relative(canonical(path.dirname(p)), canonical(ctx.root));
+  const rel = path.relative(
+    await canonical(ctx.io, path.dirname(p)),
+    await canonical(ctx.io, ctx.root),
+  );
   return !(rel && !rel.startsWith("..") && rel.startsWith(path.basename(p)));
 }
 
 /** True when `p` is inside the project and git ignores it. */
-function ignoredInProject(p, ctx) {
-  if (p === ctx.root || !isUnder(p, ctx.root, path)) return false;
+async function ignoredInProject(p, ctx) {
+  if (p === ctx.root || !isUnder(p, ctx.root, pathFor(ctx.io.platform)))
+    return false;
   // The second form matches folder-only patterns (`dist/`) for a folder
   // that does not exist yet.
   // git does not report a folder that holds a tracked file as ignored.
-  return Boolean(gitSync(ctx.root, ["check-ignore", "--", p, `${p}/`])?.trim());
+  const out = await git(ctx.io, ctx.root, ["check-ignore", "--", p, `${p}/`]);
+  return Boolean(out?.trim());
 }
 
 /**
@@ -196,19 +205,21 @@ function ignoredInProject(p, ctx) {
  * undefined without a name filter, else `{ names, exact, depth }`: `exact`
  * when the names are the whole selection, `depth` the `-maxdepth` value.
  */
-function safeRoot(root, cmd, ctx, filter) {
+async function safeRoot(root, cmd, ctx, filter) {
+  const { io } = ctx;
+  const path = pathFor(io.platform);
   const t = expandTempVar(root, ctx);
-  if (tempHead(t, cmd, ctx)) return true;
+  if (await tempHead(t, cmd, ctx)) return true;
   const p = resolveTarget(t, cmd, ctx);
   if (!p) return false;
-  if (scratch(p, ctx)) return true;
-  if (filter && tempPrefixes().includes(`${slashes(p)}/`)) {
-    if (!overlapsProject(p, ctx)) return true;
+  if (await scratch(p, ctx)) return true;
+  if (filter && tempPrefixes(io).includes(`${slashes(io, p)}/`)) {
+    if (!(await overlapsProject(p, ctx))) return true;
     // A temp folder that holds the project, such as `/tmp` on Linux: with
     // `-maxdepth 1`, only the project's own entry in the folder can reach
     // project files, so no name may match that entry.
     const entry = path
-      .relative(canonical(p), canonical(ctx.root))
+      .relative(await canonical(io, p), await canonical(io, ctx.root))
       .split(path.sep)[0];
     if (
       entry &&
@@ -218,13 +229,20 @@ function safeRoot(root, cmd, ctx, filter) {
       filter.depth <= 1 &&
       !filter.names.some(({ pattern, fold }) =>
         fold
-          ? new Bun.Glob(pattern.toLowerCase()).match(entry.toLowerCase())
-          : new Bun.Glob(pattern).match(entry),
+          ? globMatch(pattern.toLowerCase(), entry.toLowerCase())
+          : globMatch(pattern, entry),
       )
     )
       return true;
   }
   return ignoredInProject(p, ctx);
+}
+
+/** True when each search root is a `safeRoot`. No root means `.`. */
+async function safeRoots(roots, cmd, ctx, filter) {
+  for (const r of roots.length ? roots : ["."])
+    if (!(await safeRoot(r, cmd, ctx, filter))) return false;
+  return true;
 }
 
 export function resolveTarget(target, cmd, ctx) {
@@ -234,21 +252,24 @@ export function resolveTarget(target, cmd, ctx) {
     target.includes("__SUBST__")
   )
     return undefined;
+  const path = pathFor(ctx.io.platform);
   let base = ctx.cwd;
   if (cmd.cwdHint) {
     // `cd $DIR` makes the base unknown; guessing the project root misfires.
     if (cmd.cwdHint.includes("$")) return undefined;
-    const home = process.env.HOME;
+    const home = ctx.io.env.HOME;
     if (/^~(\/|$)/.test(cmd.cwdHint)) {
       if (!home) return undefined;
       base = path.join(home, cmd.cwdHint.slice(1));
     } else if (cmd.cwdHint.startsWith("~")) return undefined;
-    else base = shellResolve(ctx.cwd, cmd.cwdHint);
+    else base = shellResolve(ctx.io, ctx.cwd, cmd.cwdHint);
   }
-  return shellResolve(base, target);
+  return shellResolve(ctx.io, base, target);
 }
 
-export function rm(cmd, ctx) {
+export async function rm(cmd, ctx) {
+  const { io } = ctx;
+  const path = pathFor(io.platform);
   if (!isRecursive(cmd.args)) return [];
   const list = targets(cmd.args);
   if (!list.length)
@@ -267,9 +288,9 @@ export function rm(cmd, ctx) {
     }
     if (TEMP_CHILD.test(t) && !t.split("/").includes("..")) continue;
     const expanded = expandTempVar(t, ctx);
-    if (tempHead(expanded, cmd, ctx)) continue;
+    if (await tempHead(expanded, cmd, ctx)) continue;
     const known = resolveTarget(expanded, cmd, ctx);
-    if (known && scratch(known, ctx)) continue;
+    if (known && (await scratch(known, ctx))) continue;
     if (
       BROAD.has(t) ||
       t.includes("__SUBST__") ||
@@ -287,22 +308,24 @@ export function rm(cmd, ctx) {
     if (p === ctx.root || isUnder(ctx.root, p, path)) {
       out.push(["ask", `\`rm -r ${t}\` deletes the project root`]);
     } else if (isUnder(p, ctx.root, path)) {
-      if (gitSync(ctx.root, ["ls-files", "--", p])?.trim())
+      if ((await git(io, ctx.root, ["ls-files", "--", p]))?.trim())
         out.push(["warn", `\`rm -r ${t}\` deletes git-tracked files`]);
       else if (
-        gitSync(ctx.root, [
-          "ls-files",
-          "--others",
-          "--exclude-standard",
-          "--",
-          p,
-        ])?.trim()
+        (
+          await git(io, ctx.root, [
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "--",
+            p,
+          ])
+        )?.trim()
       )
         out.push([
           "warn",
           `\`rm -r ${t}\` deletes files that git does not track, and git cannot restore them`,
         ]);
-    } else if (!isTemp(p)) {
+    } else if (!isTemp(io, p)) {
       out.push([
         "ask",
         `\`rm -r ${t}\` deletes outside the project (\`${p}\`)`,
@@ -348,7 +371,7 @@ function deletesMatchOnly(argv) {
 // Options that make `find` or `fd` follow symbolic links out of the root.
 const FOLLOW = new Set(["-L", "-H", "-follow", "--follow"]);
 
-export function find(cmd, ctx) {
+export async function find(cmd, ctx) {
   const args = cmd.args;
   const filters = args.flatMap((a, i) =>
     ["-name", "-iname"].includes(a) && args[i + 1]
@@ -400,7 +423,7 @@ export function find(cmd, ctx) {
   if (
     matchOnly &&
     !args.some((a) => FOLLOW.has(a)) &&
-    (roots.length ? roots : ["."]).every((r) => safeRoot(r, cmd, ctx, filter))
+    (await safeRoots(roots, cmd, ctx, filter))
   )
     return [];
   return args.includes("-delete")
@@ -426,7 +449,7 @@ const FD_VALUE_FLAGS = new Set([
   "--color",
 ]);
 
-export function fd(cmd, ctx) {
+export async function fd(cmd, ctx) {
   const execAt = cmd.args.findIndex((a) =>
     ["-x", "--exec", "-X", "--exec-batch"].includes(a),
   );
@@ -465,9 +488,12 @@ export function fd(cmd, ctx) {
   if (
     matchOnly &&
     !before.some((a) => FOLLOW.has(a)) &&
-    (roots.length ? roots : ["."]).every((r) =>
-      safeRoot(r, cmd, ctx, pattern ? { names: [], exact: false } : undefined),
-    )
+    (await safeRoots(
+      roots,
+      cmd,
+      ctx,
+      pattern ? { names: [], exact: false } : undefined,
+    ))
   )
     return [];
   return [["warn", "`fd --exec rm` deletes every match"]];
@@ -486,10 +512,15 @@ export function disk(cmd) {
       return /^(erase|partition|zero|secureerase)/i.test(cmd.args[0] ?? "")
         ? [["ask", `\`diskutil ${cmd.args[0]}\` erases a disk`]]
         : [];
-    default:
-      return cmd.name.startsWith("mkfs")
-        ? [["ask", `\`${cmd.name}\` formats a device`]]
-        : [];
+    default: {
+      // `program` splits a name at `\`, so the name of `"mkfs\x"` is `x`.
+      // The last `/` part of the raw first word keeps `mkfs`.
+      const raw = cmd.argv?.[0] ?? "";
+      const name = [cmd.name, raw.slice(raw.lastIndexOf("/") + 1)].find((n) =>
+        n.startsWith("mkfs"),
+      );
+      return name ? [["ask", `\`${name}\` formats a device`]] : [];
+    }
   }
 }
 

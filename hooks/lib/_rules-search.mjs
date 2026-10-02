@@ -10,9 +10,9 @@
 // shallow walks, and walks whose ignored directories are all small caches
 // (`__pycache__`, `xcuserdata`) pass.
 
-import fs from "node:fs";
-import path from "node:path";
-import { gitSync, isUnder } from "./_bash-args.mjs";
+import { git, isUnder } from "./_bash-args.mjs";
+import { globFiles } from "./_glob.mjs";
+import { pathFor } from "./_path.mjs";
 import { resolveTarget } from "./_rules-filesystem.mjs";
 
 // Walks this shallow list a few entries of an ignored directory at most.
@@ -221,7 +221,7 @@ const FD_LONG = [
   "--exec-batch",
 ];
 
-function fdWalk(cmd) {
+function fdWalk(cmd, path) {
   // Everything after -x/-X is the command fd runs, not fd's own arguments.
   const execAt = cmd.args.findIndex((a) =>
     ["-x", "--exec", "-X", "--exec-batch"].includes(a),
@@ -416,7 +416,8 @@ const WALKERS = {
 };
 
 /** Gitignored directories (relative to the repo root) under `dir`. */
-function ignoredDirs(dir, ctx) {
+async function ignoredDirs(dir, ctx) {
+  const path = pathFor(ctx.io.platform);
   // Under the project: ask about that directory. Above it: the whole project.
   let scope;
   if (isUnder(dir, ctx.root, path)) scope = dir;
@@ -425,10 +426,11 @@ function ignoredDirs(dir, ctx) {
   const rel = path.relative(ctx.root, scope) || ".";
   if (
     rel !== "." &&
-    gitSync(ctx.root, ["check-ignore", "-q", "--", rel]) !== undefined
+    (await git(ctx.io, ctx.root, ["check-ignore", "-q", "--", rel])) !==
+      undefined
   )
     return [];
-  const out = gitSync(ctx.root, [
+  const out = await git(ctx.io, ctx.root, [
     "ls-files",
     "-z",
     "--others",
@@ -446,33 +448,32 @@ function ignoredDirs(dir, ctx) {
 }
 
 /** True when `dir` holds at least SMALL_DIR_ENTRIES entries at any depth. */
-function large(dir) {
+async function large(io, dir) {
+  const path = pathFor(io.platform);
   let seen = 0;
   const stack = [dir];
   while (stack.length) {
-    let entries;
-    try {
-      entries = fs.readdirSync(stack.pop(), { withFileTypes: true });
-    } catch {
-      continue;
-    }
+    const parent = stack.pop();
+    const entries = await io.fs.list(parent).catch(() => []);
     for (const e of entries) {
       if (++seen >= SMALL_DIR_ENTRIES) return true;
-      if (e.isDirectory()) stack.push(path.join(e.parentPath, e.name));
+      if (e.kind === "dir") stack.push(path.join(parent, e.name));
     }
   }
   return false;
 }
 
-function excluded(dir, excludes) {
+function excluded(dir, excludes, path) {
   return excludes.some(
     (e) => e === dir || e === path.basename(dir) || dir.endsWith(`/${e}`),
   );
 }
 
-export function ignoredWalk(cmd, ctx) {
+export async function ignoredWalk(cmd, ctx) {
+  const { io } = ctx;
+  const path = pathFor(io.platform);
   const walker = Object.hasOwn(WALKERS, cmd.name) ? WALKERS[cmd.name] : null;
-  const walk = walker?.(cmd);
+  const walk = walker?.(cmd, path);
   if (!walk) return [];
   if (walk.depth !== undefined && walk.depth <= SHALLOW) return [];
   const roots = walk.roots.length ? walk.roots : ["."];
@@ -481,29 +482,31 @@ export function ignoredWalk(cmd, ctx) {
     const target = resolveTarget(root, cmd, ctx);
     if (!target) continue;
     if (!/[*?[]/.test(root)) {
-      for (const d of ignoredDirs(target, ctx))
-        if (!excluded(d, walk.excludes)) hits.add(d);
+      for (const d of await ignoredDirs(target, ctx))
+        if (!excluded(d, walk.excludes, path)) hits.add(d);
       continue;
     }
     // The shell expands a glob before the walk starts, so walk its matches.
     // A match is not a deliberate target, so an ignored match is a hit too.
     // A glob that matches nothing stays literal and names no directory.
-    const matches = fs.globSync(target);
+    const matches = await globFiles(io, target, { cwd: io.cwd });
     // git gives the ignored folders with `/`.
     const top = matches.map((m) =>
       path.relative(ctx.root, m).split(path.sep).join("/"),
     );
-    for (const d of ignoredDirs(ctx.root, ctx))
-      if (top.includes(d) && !excluded(d, walk.excludes)) hits.add(d);
+    for (const d of await ignoredDirs(ctx.root, ctx))
+      if (top.includes(d) && !excluded(d, walk.excludes, path)) hits.add(d);
     for (const dir of matches)
-      for (const d of ignoredDirs(dir, ctx))
-        if (!excluded(d, walk.excludes)) hits.add(d);
+      for (const d of await ignoredDirs(dir, ctx))
+        if (!excluded(d, walk.excludes, path)) hits.add(d);
   }
-  const list = [...hits].filter(
-    (d) =>
+  const list = [];
+  for (const d of hits)
+    if (
       (!walk.bypass || d.split("/").some((part) => BUILD_NAME.test(part))) &&
-      large(path.join(ctx.root, d)),
-  );
+      (await large(io, path.join(ctx.root, d)))
+    )
+      list.push(d);
   if (!list.length) return [];
   const shown = list
     .slice(0, 3)

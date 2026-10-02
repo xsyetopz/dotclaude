@@ -42,15 +42,19 @@ describe("expandHome", () => {
 
 describe("commandBase", () => {
   test("resolves a cd hint against cwd and home", () => {
-    expect(commandBase({}, "/w", "/h")).toBe("/w");
-    expect(commandBase({ cwdHint: "sub" }, "/w", "/h")).toBe("/w/sub");
-    expect(commandBase({ cwdHint: "~/p" }, "/w", "/h")).toBe("/h/p");
-    expect(commandBase({ cwdHint: "/abs" }, "/w", undefined)).toBe("/abs");
+    expect(commandBase({}, "/w", "/h", posix)).toBe("/w");
+    expect(commandBase({ cwdHint: "sub" }, "/w", "/h", posix)).toBe("/w/sub");
+    expect(commandBase({ cwdHint: "~/p" }, "/w", "/h", posix)).toBe("/h/p");
+    expect(commandBase({ cwdHint: "/abs" }, "/w", undefined, posix)).toBe(
+      "/abs",
+    );
   });
   test("is unknown for an unresolvable hint", () => {
-    expect(commandBase({ cwdHint: "$D" }, "/w", "/h")).toBeUndefined();
-    expect(commandBase({ cwdHint: "~/p" }, "/w", undefined)).toBeUndefined();
-    expect(commandBase({ cwdHint: "~/p" }, "/w", "")).toBeUndefined();
-    expect(commandBase({ cwdHint: "~u/p" }, "/w", "/h")).toBeUndefined();
+    expect(commandBase({ cwdHint: "$D" }, "/w", "/h", posix)).toBeUndefined();
+    expect(
+      commandBase({ cwdHint: "~/p" }, "/w", undefined, posix),
+    ).toBeUndefined();
+    expect(commandBase({ cwdHint: "~/p" }, "/w", "", posix)).toBeUndefined();
+    expect(commandBase({ cwdHint: "~u/p" }, "/w", "/h", posix)).toBeUndefined();
   });
 });

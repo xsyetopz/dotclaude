@@ -100,7 +100,7 @@ async function checkCommand(cmd, ctx) {
   if (ctx.editGuard) out.push(...(await fileWrites(cmd, ctx)));
   if (ctx.editGuard && ctx.oracle)
     out.push(...(await oracleRemovals(cmd, ctx)));
-  out.push(...ignoredWalk(cmd, ctx));
+  out.push(...(await ignoredWalk(cmd, ctx)));
   if (ctx.modelLock) out.push(...modelEnv(cmd, ctx));
   return out;
 }

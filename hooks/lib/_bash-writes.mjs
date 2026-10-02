@@ -4,7 +4,6 @@
 // sends them through the Edit rules.
 
 import { positional } from "./_bash-args.mjs";
-import { posix } from "./_path.mjs";
 
 const IN_PLACE = /^(sed|gsed|perl)$/;
 const INTERPRETER = /^(python[0-9.]*|node|bun|deno|ruby|perl)$/;
@@ -51,7 +50,7 @@ export const expandHome = (p, home) => p.replace(/^~(?=\/|$)/, home ?? "~");
  * that is unknown (`cd $DIR`, or `~` without `home`). `path` is the path module
  * of the caller.
  */
-export function commandBase(cmd, cwd, home, path = posix) {
+export function commandBase(cmd, cwd, home, path) {
   const hint = cmd.cwdHint;
   if (!hint) return cwd;
   if (hint.includes("$")) return undefined;

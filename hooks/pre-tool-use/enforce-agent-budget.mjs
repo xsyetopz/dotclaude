@@ -32,7 +32,7 @@ const REPORT =
  * A Bash command that only deletes named paths inside a temp folder: the
  * agent's scratch cleanup, which its brief asks for before the report.
  */
-function deletesTempOnly(data) {
+function deletesTempOnly(io, data) {
   if (data.tool_name !== "Bash") return false;
   const { commands, unparsed } = parse(String(data.tool_input?.command ?? ""));
   if (unparsed.length || !commands.length) return false;
@@ -45,11 +45,11 @@ function deletesTempOnly(data) {
     return (
       paths.length > 0 &&
       paths.every((p) => {
-        const abs = shellResolve(cwd, p);
+        const abs = shellResolve(io, cwd, p);
         return (
           !/[$~*?[]|__SUBST__/.test(p) &&
           !p.split("/").includes("..") &&
-          isTempChild(abs) &&
+          isTempChild(io, abs) &&
           !isUnder(abs, project, path)
         );
       })
@@ -83,7 +83,7 @@ run(async (data) => {
       subagentContextTokens(data.agent_type),
       context.first + SUBAGENT_CONTEXT_GROWTH,
     );
-    if (context.last >= cap && deletesTempOnly(data)) return;
+    if (context.last >= cap && deletesTempOnly(io, data)) return;
     if (context.last >= cap) {
       preToolDecision(
         "deny",
