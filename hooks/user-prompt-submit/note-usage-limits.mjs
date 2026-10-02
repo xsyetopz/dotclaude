@@ -60,7 +60,8 @@ async function usageNote(io, data) {
 run(async (data) => {
   if (!option(process.env, "usage_notes")) return;
   if (!userTyped(data.prompt)) return;
-  const notes = [await usageNote(nodeIo(data), data), contextNote(data)].filter(
+  const io = nodeIo(data);
+  const notes = [await usageNote(io, data), await contextNote(io, data)].filter(
     Boolean,
   );
   if (!notes.length) return;
