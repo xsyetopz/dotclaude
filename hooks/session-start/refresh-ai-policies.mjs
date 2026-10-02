@@ -11,11 +11,16 @@ import { fileURLToPath } from "node:url";
 import { refreshUpstream, upstreamStale } from "../lib/_ai-policies.mjs";
 import { run } from "../lib/_common.mjs";
 import { option } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 
-if (process.argv.includes("--refresh")) refreshUpstream();
+if (process.argv.includes("--refresh")) await refreshUpstream(nodeIo());
 else
-  run(() => {
-    if (!option(process.env, "guard_bash") || !upstreamStale()) return;
+  run(async (data) => {
+    if (
+      !option(process.env, "guard_bash") ||
+      !(await upstreamStale(nodeIo(data)))
+    )
+      return;
     spawn(process.execPath, [fileURLToPath(import.meta.url), "--refresh"], {
       detached: true,
       stdio: "ignore",

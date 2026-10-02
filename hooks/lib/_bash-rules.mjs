@@ -78,7 +78,7 @@ async function checkCommand(cmd, ctx) {
   const handler = HANDLERS[cmd.name];
   if (handler) out.push(...(await handler(cmd, ctx)));
   if (cmd.name === "gh" || cmd.name === "git")
-    out.push(...contribution(cmd, ctx));
+    out.push(...(await contribution(cmd, ctx)));
   if (readsStdinScript(cmd) && cmd.pipedFrom) {
     const producer = program(cmd.pipedFrom[0]);
     if (isDecoder(producer, cmd.pipedFrom.slice(1))) {
