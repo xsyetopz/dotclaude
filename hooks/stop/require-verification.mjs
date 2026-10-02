@@ -8,6 +8,7 @@
 
 import { run, stopFeedback } from "../lib/_common.mjs";
 import { option } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { load, save } from "../lib/_ledger.mjs";
 
 const CLAIMS_PASS =
@@ -30,7 +31,7 @@ function ownWords(message) {
     .join("\n");
 }
 
-run((data) => {
+run(async (data) => {
   if (!option(process.env, "gate_verify") || data.stop_hook_active) return;
   if (
     (data.background_tasks ?? []).some(
@@ -41,7 +42,8 @@ run((data) => {
   // SubagentStop checks the subagent's own ledger (edits it made, checks it ran).
   const agentId =
     data.hook_event_name === "SubagentStop" ? data.agent_id : null;
-  const state = load(data.session_id, agentId);
+  const io = nodeIo(data);
+  const state = await load(io, data.session_id, agentId);
   const message = data.last_assistant_message ?? "";
   const { lastEdit, lastCheck } = state;
   let reason;
@@ -69,7 +71,7 @@ run((data) => {
   }
 
   if (!reason) return;
-  save(data.session_id, agentId, state);
+  await save(io, data.session_id, agentId, state);
   // The reply written after this becomes the final report, so it has to
   // carry the whole outcome, not only the new check result.
   reason +=

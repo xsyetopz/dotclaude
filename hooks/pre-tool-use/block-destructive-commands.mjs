@@ -8,7 +8,7 @@
 import path from "node:path";
 import { claudeTrailerOff } from "../lib/_attribution.mjs";
 import { check } from "../lib/_bash-rules.mjs";
-import { run } from "../lib/_common.mjs";
+import { emit, run } from "../lib/_common.mjs";
 import { option, projectRoot } from "../lib/_core.mjs";
 import { ASKS_TEST_REMOVAL } from "../lib/_edit-rules.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
@@ -49,5 +49,6 @@ run(async (data) => {
     findings = findings.filter(
       ([, reason]) => !REMOVES_ASSERTIONS.test(reason),
     );
-  guardDecision(findings, data, "command");
+  const out = await guardDecision(io, findings, data, "command");
+  if (out) emit(out);
 });

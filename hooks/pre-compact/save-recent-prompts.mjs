@@ -7,14 +7,16 @@
 
 import { run } from "../lib/_common.mjs";
 import { option } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { load, save } from "../lib/_ledger.mjs";
 import { isSubagent, recentPrompts } from "../lib/_transcript.mjs";
 
-run((data) => {
+run(async (data) => {
   const sub = isSubagent(data);
   // With no `agent_id`, the subagent's ledger is unknown. Leave all state.
   if (sub && !data.agent_id) return;
-  const state = load(data.session_id, data.agent_id ?? null);
+  const io = nodeIo(data);
+  const state = await load(io, data.session_id, data.agent_id ?? null);
   const hadReads = Boolean(state.reads);
   delete state.reads;
   const prompts =
@@ -25,5 +27,5 @@ run((data) => {
       : [];
   if (prompts.length) state.prompts = prompts;
   if (prompts.length || hadReads)
-    save(data.session_id, data.agent_id ?? null, state);
+    await save(io, data.session_id, data.agent_id ?? null, state);
 });

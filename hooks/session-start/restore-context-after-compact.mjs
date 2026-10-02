@@ -38,14 +38,15 @@ const list = (paths) =>
     ? `${paths.slice(0, 15).join(", ")}, and ${paths.length - 15} more`
     : paths.join(", ");
 
-run((data) => {
+run(async (data) => {
   if (
     data.source !== "compact" ||
     !option(process.env, "context_compact_carryover") ||
     isSubagent(data)
   )
     return;
-  const state = load(data.session_id, null);
+  const io = nodeIo(data);
+  const state = await load(io, data.session_id, null);
   const prompts = state.prompts?.length
     ? state.prompts
     : recentPrompts(data.transcript_path ?? "");
@@ -57,8 +58,8 @@ run((data) => {
   }
   // Split uncommitted changes by who made them: the transcript before
   // compaction was the only record, and git diff mixes everyone's edits.
-  const mine = editedBySession(data.session_id);
-  const changed = changedPaths(projectRoot(nodeIo(data), data));
+  const mine = await editedBySession(io, data.session_id);
+  const changed = changedPaths(projectRoot(io, data));
   const ours = changed.filter((p) => mine.has(p));
   const theirs = changed.filter((p) => !mine.has(p));
   if (ours.length)

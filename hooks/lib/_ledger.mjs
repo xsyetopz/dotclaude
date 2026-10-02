@@ -1,14 +1,16 @@
 // Per-session record of edits and check runs, used by the stop gate and the
 // compaction carry-over. Stored under CLAUDE_PLUGIN_DATA, never in the repo.
 
-import fs from "node:fs";
-import path from "node:path";
+// Three imports keep this file out of the engine. `shellWrites` uses
+// `node:path` for `writeTargets`. `_bash-args.mjs` imports `node:child_process`
+// for `git()`, which `codeFile` uses. `_bash-writes.mjs` imports `node:fs`.
+// Slices s12 and s13 remove them.
+import nodePath from "node:path";
 import { git } from "./_bash-args.mjs";
 import { expandHome, writeTargets } from "./_bash-writes.mjs";
 import { stateDir } from "./_core.mjs";
-import { nodeIo } from "./_io-node.mjs";
+import { pathFor } from "./_path.mjs";
 import { parse } from "./_shell.mjs";
-import { subagentTranscript } from "./_transcript.mjs";
 
 /** Files that are not code: editing them alone needs no test run. */
 export const NON_CODE =
@@ -29,15 +31,15 @@ export function codeFile(rel, root) {
   return git(root, ["check-ignore", "-q", "--", rel]) === undefined;
 }
 
-function file(sessionId, agentId) {
+function file(io, sessionId, agentId) {
   const safe = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");
-  return path.join(
-    stateDir(nodeIo()),
+  return pathFor(io.platform).join(
+    stateDir(io),
     `${safe(sessionId || "unknown")}${agentId ? `.${safe(agentId)}` : ""}.json`,
   );
 }
 
-export function load(sessionId, agentId) {
+export async function load(io, sessionId, agentId) {
   try {
     return {
       seq: 0,
@@ -46,7 +48,7 @@ export function load(sessionId, agentId) {
       blockedEdit: null,
       blockedCheck: null,
       prompts: [],
-      ...JSON.parse(fs.readFileSync(file(sessionId, agentId), "utf8")),
+      ...JSON.parse(await io.fs.read(file(io, sessionId, agentId))),
     };
   } catch {
     return {
@@ -61,14 +63,15 @@ export function load(sessionId, agentId) {
 }
 
 /** Paths edited by a session and all of its subagents. */
-export function editedBySession(sessionId) {
-  const prefix = file(sessionId, null).replace(/\.json$/, "");
+export async function editedBySession(io, sessionId) {
+  const path = pathFor(io.platform);
+  const prefix = file(io, sessionId, null).replace(/\.json$/, "");
   const dir = path.dirname(prefix);
   const base = path.basename(prefix);
   const out = new Set();
   let names = [];
   try {
-    names = fs.readdirSync(dir);
+    names = (await io.fs.list(dir)).map((e) => e.name);
   } catch {
     return out;
   }
@@ -79,7 +82,7 @@ export function editedBySession(sessionId) {
     )
       continue;
     try {
-      const state = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
+      const state = JSON.parse(await io.fs.read(path.join(dir, name)));
       for (const p of state.edited ?? []) out.add(p);
     } catch {
       // a ledger being rewritten; skip it
@@ -88,12 +91,8 @@ export function editedBySession(sessionId) {
   return out;
 }
 
-export function save(sessionId, agentId, state) {
-  const target = file(sessionId, agentId);
-  const tmp = `${target}.${process.pid}.tmp`;
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.writeFileSync(tmp, JSON.stringify(state));
-  fs.renameSync(tmp, target);
+export async function save(io, sessionId, agentId, state) {
+  await io.fs.write(file(io, sessionId, agentId), JSON.stringify(state));
 }
 
 // Commands that test, build, lint or type-check. Matched against each simple
@@ -160,12 +159,15 @@ export function outputShowsFailure(text) {
  * order, without duplicates. For inline interpreter code, the string-literal
  * path arguments of its write calls stand in for the targets. Relative targets
  * resolve against the directory an earlier `cd` in the command moved to.
+ * `home` is the folder that `~` expands to. `cwd` is `root` when it is not
+ * given.
  */
-export function shellWrites(command, root, cwd = root) {
+export function shellWrites(command, root, home, cwd = root) {
+  const path = nodePath;
   const inProject = (target, base) => {
     if (!target || target.includes("$") || target.startsWith("/dev/"))
       return undefined;
-    const abs = path.resolve(base, expandHome(target, process.env.HOME));
+    const abs = path.resolve(base, expandHome(target, home));
     const rel = path.relative(root, abs).split(path.sep).join("/");
     if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
     if (NON_CODE.test(rel) || rel.startsWith(".claude/")) return undefined;
@@ -182,10 +184,10 @@ export function shellWrites(command, root, cwd = root) {
     // An unresolvable `cd $DIR` leaves the base at cwd, as the bash guard does.
     const base =
       cmd.cwdHint && !cmd.cwdHint.includes("$")
-        ? path.resolve(cwd, expandHome(cmd.cwdHint, process.env.HOME))
+        ? path.resolve(cwd, expandHome(cmd.cwdHint, home))
         : cwd;
     // Scratch files outside the project, such as in /tmp, are not edits.
-    for (const { target } of writeTargets(cmd, base, process.env.HOME, path)) {
+    for (const { target } of writeTargets(cmd, base, home, path)) {
       const rel = inProject(target, base);
       if (rel) out.add(rel);
     }
@@ -199,30 +201,34 @@ const CAT =
   /^\s*cat((?:\s+(?:'[^'\n]*'|"[^"$`\\\n]*"|[^\s'"|;&<>$`()\\*?[\]{}]+))+)\s*$/;
 const MAX_READS = 500;
 
-/** Absolute paths that a plain `cat` command reads in full, or []. */
-export function fullReads(command, cwd) {
+/**
+ * Absolute paths that a plain `cat` command reads in full, or []. `home` is
+ * the folder that `~` expands to, and `platform` is the path flavor.
+ */
+export function fullReads(command, cwd, home, platform) {
+  const path = pathFor(platform);
   const m = CAT.exec(command ?? "");
   if (!m) return [];
   const words = m[1].match(/'[^']*'|"[^"]*"|\S+/g) ?? [];
   return words
     .map((w) => w.replace(/^(['"])(.*)\1$/, "$2"))
     .filter((w) => !w.startsWith("-"))
-    .map((w) => path.resolve(cwd, expandHome(w, process.env.HOME)));
+    .map((w) => path.resolve(cwd, expandHome(w, home)));
 }
 
 /** Size and mtime of a file, or null when it cannot be read. */
-export function readStamp(abs) {
+export async function readStamp(io, abs) {
   try {
-    const st = fs.statSync(abs);
-    return st.isFile() ? { size: st.size, mtimeMs: st.mtimeMs } : null;
+    const st = await io.fs.stat(abs);
+    return st.kind === "file" ? { size: st.size, mtimeMs: st.mtimeMs } : null;
   } catch {
     return null;
   }
 }
 
 /** Record a full read of `abs` by `how` (the command or tool) in `state`. */
-export function recordRead(state, abs, how) {
-  const stamp = readStamp(abs);
+export async function recordRead(io, state, abs, how) {
+  const stamp = await readStamp(io, abs);
   if (!stamp) return;
   const reads = state.reads ?? {};
   delete reads[abs];
@@ -239,38 +245,37 @@ const RUNNING = ".running";
 const safeId = (s) => String(s).replace(/[^A-Za-z0-9_-]/g, "_");
 
 /** Record a started subagent, with the transcript that shows its activity. */
-export function agentStarted(sessionId, agentId, transcriptPath) {
+export async function agentStarted(io, sessionId, agentId) {
   // The transcript layout is not documented, so a missing file falls back
   // to the marker's own time.
-  const transcript = transcriptPath
-    ? subagentTranscript(transcriptPath, sessionId, agentId)
-    : "";
-  const dir = stateDir(nodeIo());
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(
-    path.join(dir, `${safeId(sessionId)}.${safeId(agentId)}${RUNNING}`),
+  const transcript = await io.session.agentTranscriptPath();
+  await io.fs.write(
+    pathFor(io.platform).join(
+      stateDir(io),
+      `${safeId(sessionId)}.${safeId(agentId)}${RUNNING}`,
+    ),
     transcript,
   );
 }
 
-export function agentStopped(sessionId, agentId) {
-  fs.rmSync(
-    path.join(
-      stateDir(nodeIo()),
+export async function agentStopped(io, sessionId, agentId) {
+  await io.fs.remove(
+    pathFor(io.platform).join(
+      stateDir(io),
       `${safeId(sessionId)}.${safeId(agentId)}${RUNNING}`,
     ),
-    { force: true },
   );
 }
 
 /** Subagents of a session that started, did not stop, and are not idle. */
-export function runningAgents(sessionId, idleMs, now = Date.now()) {
-  const dir = stateDir(nodeIo());
+export async function runningAgents(io, sessionId, idleMs, now = Date.now()) {
+  const path = pathFor(io.platform);
+  const dir = stateDir(io);
   const prefix = `${safeId(sessionId)}.`;
   let count = 0;
   let names;
   try {
-    names = fs.readdirSync(dir);
+    names = (await io.fs.list(dir)).map((e) => e.name);
   } catch {
     // No folder, so no agent started.
     return 0;
@@ -279,10 +284,10 @@ export function runningAgents(sessionId, idleMs, now = Date.now()) {
     if (!name.startsWith(prefix) || !name.endsWith(RUNNING)) continue;
     try {
       const marker = path.join(dir, name);
-      let last = fs.statSync(marker).mtimeMs;
-      const transcript = fs.readFileSync(marker, "utf8");
-      if (transcript && fs.existsSync(transcript))
-        last = Math.max(last, fs.statSync(transcript).mtimeMs);
+      let last = (await io.fs.stat(marker)).mtimeMs;
+      const transcript = await io.fs.read(marker);
+      if (transcript && (await io.fs.exists(transcript)))
+        last = Math.max(last, (await io.fs.stat(transcript)).mtimeMs);
       if (now - last < idleMs) count += 1;
     } catch {
       // The agent stopped while this loop ran.

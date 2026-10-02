@@ -20,12 +20,12 @@ import {
 import { approveAsk } from "../lib/_verdicts.mjs";
 
 /** Project-relative path an edit tool wrote, or null. */
-function editedPath(data) {
+function editedPath(io, data) {
   if (data.hook_event_name === "PostToolUseFailure") return undefined;
   const input = data.tool_input ?? {};
   const file = input.file_path || input.notebook_path || "";
   const rel = path
-    .relative(projectRoot(nodeIo(data), data), file)
+    .relative(projectRoot(io, data), file)
     .split(path.sep)
     .join("/");
   if (!file || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
@@ -62,15 +62,16 @@ function recordEdited(state, rel) {
   state.edited = list.slice(-300);
 }
 
-run((data) => {
-  approveAsk(data);
+run(async (data) => {
+  const io = nodeIo(data);
+  await approveAsk(io, data);
   if (
     !option(process.env, "gate_verify") &&
     !option(process.env, "context_compact_carryover") &&
     !option(process.env, "guard_bash")
   )
     return;
-  const state = load(data.session_id, data.agent_id);
+  const state = await load(io, data.session_id, data.agent_id);
   state.seq += 1;
   switch (data.tool_name) {
     case "Read": {
@@ -82,9 +83,10 @@ run((data) => {
         input.limit
       )
         return;
-      recordRead(
+      await recordRead(
+        io,
         state,
-        path.resolve(projectRoot(nodeIo(data), data), input.file_path),
+        path.resolve(projectRoot(io, data), input.file_path),
         "Read",
       );
       break;
@@ -93,10 +95,10 @@ run((data) => {
     case "Write":
     case "MultiEdit":
     case "NotebookEdit": {
-      const rel = editedPath(data);
+      const rel = editedPath(io, data);
       if (!rel) return;
       recordEdited(state, rel);
-      if (codeFile(rel, projectRoot(nodeIo(data), data)))
+      if (codeFile(rel, projectRoot(io, data)))
         state.lastEdit = { seq: state.seq, path: rel };
       break;
     }
@@ -106,20 +108,25 @@ run((data) => {
         data.hook_event_name === "PostToolUse" && typeof command === "string"
           ? shellWrites(
               command,
-              projectRoot(nodeIo(data), data),
-              data.cwd || projectRoot(nodeIo(data), data),
+              projectRoot(io, data),
+              io.home,
+              data.cwd || projectRoot(io, data),
             )
           : [];
-      const code = written.find((rel) =>
-        codeFile(rel, projectRoot(nodeIo(data), data)),
-      );
+      const code = written.find((rel) => codeFile(rel, projectRoot(io, data)));
       if (code) state.lastEdit = { seq: state.seq, path: code };
       for (const rel of written) recordEdited(state, rel);
       const reads =
         data.hook_event_name === "PostToolUse"
-          ? fullReads(command, data.cwd || projectRoot(nodeIo(data), data))
+          ? fullReads(
+              command,
+              data.cwd || projectRoot(io, data),
+              io.home,
+              io.platform,
+            )
           : [];
-      for (const abs of reads) recordRead(state, abs, `\`${command.trim()}\``);
+      for (const abs of reads)
+        await recordRead(io, state, abs, `\`${command.trim()}\``);
       const result = checkRun(data);
       // A check in the same command runs after its writes (`... > f && make`).
       if (result) {
@@ -132,5 +139,5 @@ run((data) => {
     default:
       return;
   }
-  save(data.session_id, data.agent_id, state);
+  await save(io, data.session_id, data.agent_id, state);
 });
