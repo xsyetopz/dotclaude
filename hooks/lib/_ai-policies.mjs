@@ -12,6 +12,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { sha1 } from "./_sha1.mjs";
 
 export const UPSTREAM = {
   repo: "melissawm/open-source-ai-contribution-policies",
@@ -219,13 +220,12 @@ export const RAW_URL = `https://raw.githubusercontent.com/${UPSTREAM.repo}/${UPS
 
 /** The git blob hash of `text`, the same value GitHub reports as `sha`. */
 export function blobSha(text) {
-  const body = Buffer.from(text, "utf8");
-  // `Bun.CryptoHasher`, not `node:crypto`: loading `node:crypto` costs about
-  // 8 ms per hook run.
-  return new Bun.CryptoHasher("sha1")
-    .update(`blob ${body.length}\0`)
-    .update(body)
-    .digest("hex");
+  const body = new TextEncoder().encode(text);
+  const head = new TextEncoder().encode(`blob ${body.length}\0`);
+  const blob = new Uint8Array(head.length + body.length);
+  blob.set(head);
+  blob.set(body, head.length);
+  return sha1(blob);
 }
 
 // The raw file host has no API rate limit, so the hash is computed locally.

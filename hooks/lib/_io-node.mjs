@@ -110,6 +110,9 @@ async function create(file, text) {
   }
 }
 
+const RUN_MAX_BYTES = 64 * 1024 * 1024;
+const KILL_GRACE_MS = 1000;
+
 function run(argv, init = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(argv[0], argv.slice(1), {
@@ -118,21 +121,41 @@ function run(argv, init = {}) {
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
     });
+    const maxBytes = init.maxBytes ?? RUN_MAX_BYTES;
     const out = [];
     const err = [];
-    const timer = setTimeout(() => {
-      child.kill();
-      reject(new Error(`${argv[0]}: timed out`));
-    }, init.timeoutMs ?? 30_000);
-    child.stdout.on("data", (d) => out.push(d));
-    child.stderr.on("data", (d) => err.push(d));
-    child.on("error", (e) => {
+    let bytes = 0;
+    let settled = false;
+    let killTimer;
+    const settle = (fn, value) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
-      reject(e);
+      fn(value);
+    };
+    // Stops the child. A child that ignores SIGTERM gets SIGKILL after a
+    // short grace time, so it cannot keep the hook process alive.
+    const stop = (reason) => {
+      settle(reject, new Error(`${argv[0]}: ${reason}`));
+      child.kill();
+      killTimer = setTimeout(() => child.kill("SIGKILL"), KILL_GRACE_MS);
+    };
+    const timer = setTimeout(() => stop("timed out"), init.timeoutMs ?? 30_000);
+    const collect = (chunks) => (d) => {
+      if (settled) return;
+      bytes += d.length;
+      if (bytes > maxBytes) stop(`output passed ${maxBytes} bytes`);
+      else chunks.push(d);
+    };
+    child.stdout.on("data", collect(out));
+    child.stderr.on("data", collect(err));
+    child.on("error", (e) => {
+      clearTimeout(killTimer);
+      settle(reject, e);
     });
     child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({
+      clearTimeout(killTimer);
+      settle(resolve, {
         exitCode: code ?? 1,
         stdout: Buffer.concat(out).toString("utf8"),
         stderr: Buffer.concat(err).toString("utf8"),

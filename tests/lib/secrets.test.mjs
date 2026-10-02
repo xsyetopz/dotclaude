@@ -2,6 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 import { redact, scan, strings } from "../../hooks/lib/_secrets.mjs";
 
 const find = (rule, secret) => ({ rule, secret });
@@ -79,7 +80,7 @@ test.skipIf(!posix)(
     fakeScanner(
       `printf '[{"RuleID":"r","Secret":"%s"},{"Secret":""}]' "$(cat)"`,
     );
-    expect(await scan("héllo ✓")).toStrictEqual([
+    expect(await scan(nodeIo(), "héllo ✓")).toStrictEqual([
       { rule: "r", secret: "héllo ✓" },
     ]);
   },
@@ -89,11 +90,11 @@ test.skipIf(!posix)(
   "scan gives null when the scanner fails or prints no report",
   async () => {
     fakeScanner("cat >/dev/null; echo '[]'; exit 1");
-    expect(await scan("x")).toBeNull();
+    expect(await scan(nodeIo(), "x")).toBeNull();
     fakeScanner("cat >/dev/null; echo 'not json'");
-    expect(await scan("x")).toBeNull();
+    expect(await scan(nodeIo(), "x")).toBeNull();
     fakeScanner("cat >/dev/null; kill -TERM $$");
-    expect(await scan("x")).toBeNull();
+    expect(await scan(nodeIo(), "x")).toBeNull();
   },
 );
 
@@ -101,7 +102,7 @@ test.skipIf(!posix)(
   "scan skips empty text and treats empty output as no findings",
   async () => {
     fakeScanner("cat >/dev/null");
-    expect(await scan("")).toBeNull();
-    expect(await scan("x")).toStrictEqual([]);
+    expect(await scan(nodeIo(), "")).toBeNull();
+    expect(await scan(nodeIo(), "x")).toStrictEqual([]);
   },
 );

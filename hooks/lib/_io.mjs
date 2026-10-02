@@ -113,9 +113,12 @@
  * @property {string} cwd The session's working directory.
  * @property {IoFs} fs
  * @property {(argv: string[], init?: { cwd?: string, stdin?: string,
- *   timeoutMs?: number, env?: Record<string, string> }) => Promise<IoRunResult>}
+ *   timeoutMs?: number, maxBytes?: number, env?: Record<string, string> }) =>
+ *   Promise<IoRunResult>}
  *   run Runs a command with no shell. Resolves for every exit code. Rejects
- *   when the command cannot start or passes the timeout (30 s by default).
+ *   when the command cannot start, passes the timeout (30 s by default), or
+ *   writes more than `maxBytes` to stdout and stderr together (64 MiB by
+ *   default). Then it stops the command, with SIGKILL after 1 s if needed.
  * @property {IoSession} session Facts about the running session.
  */
 
