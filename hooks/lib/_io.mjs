@@ -111,6 +111,10 @@
  * @property {string} home The user's home folder.
  * @property {string} tmp The host's temp folder.
  * @property {string} cwd The session's working directory.
+ * @property {string} pluginRoot The plugin's root folder. It holds `agents/`.
+ *   The Node io takes it from the place of its own file, and not from
+ *   `CLAUDE_PLUGIN_ROOT`, which can name another install. The hooks module
+ *   gives `$.plugin.root`.
  * @property {IoFs} fs
  * @property {(argv: string[], init?: { cwd?: string, stdin?: string,
  *   timeoutMs?: number, maxBytes?: number, env?: Record<string, string> }) =>

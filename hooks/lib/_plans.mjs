@@ -8,12 +8,10 @@
 // Only these plan fields are read; tokens live in the keychain and are never
 // touched.
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { AUTO_COMPACT_TOKENS, k } from "./_budget.mjs";
 import { optionList } from "./_core.mjs";
 import { canonical, DEFAULT_ALLOWED } from "./_models.mjs";
+import { pathFor } from "./_path.mjs";
 
 export const PLANS = [
   "pro",
@@ -45,11 +43,14 @@ const TYPES = {
 const ON = new Set(["1", "true", "yes", "on"]);
 
 /** Claude Code's global config, ~/.claude.json, or null. */
-export function readConfig(env = process.env) {
-  const dir = env.CLAUDE_CONFIG_DIR || os.homedir();
+export async function readConfig(io) {
+  const dir = io.env.CLAUDE_CONFIG_DIR || io.home;
   try {
+    const file = pathFor(io.platform).join(dir, ".claude.json");
+    // `fs.read` rejects a file over 4 MiB. This file grows with history.
+    const { size } = await io.fs.stat(file);
     const data = JSON.parse(
-      fs.readFileSync(path.join(dir, ".claude.json"), "utf8"),
+      new TextDecoder().decode(await io.fs.head(file, size)),
     );
     return data && typeof data === "object" ? data : null;
   } catch {
@@ -57,13 +58,13 @@ export function readConfig(env = process.env) {
   }
 }
 
-export function readAccount(env = process.env) {
-  const a = readConfig(env)?.oauthAccount;
+export async function readAccount(io) {
+  const a = (await readConfig(io))?.oauthAccount;
   return a && typeof a === "object" ? a : null;
 }
 
 /** The plan an account and environment imply, or null when unknown. */
-export function detectPlan(account, env = process.env) {
+export function detectPlan(account, env) {
   const provider = [
     "CLAUDE_CODE_USE_BEDROCK",
     "CLAUDE_CODE_USE_VERTEX",
@@ -90,13 +91,13 @@ export function detectPlan(account, env = process.env) {
 }
 
 /** The configured plan, or the detected one for `auto`. */
-export function currentPlan(env = process.env, account = undefined) {
-  const set = String(env.CLAUDE_PLUGIN_OPTION_MODEL_PLAN ?? "")
+export async function currentPlan(io, account = undefined) {
+  const set = String(io.env.CLAUDE_PLUGIN_OPTION_MODEL_PLAN ?? "")
     .trim()
     .toLowerCase();
   if (PLANS.includes(set)) return { plan: set, detected: false };
-  const acc = account === undefined ? readAccount(env) : account;
-  return { plan: detectPlan(acc, env), detected: true, account: acc };
+  const acc = account === undefined ? await readAccount(io) : account;
+  return { plan: detectPlan(acc, io.env), detected: true, account: acc };
 }
 
 /**
@@ -126,9 +127,9 @@ export function fableAccess(plan, account = null) {
  * The model allowlist for the current plan: `model_allowed`, minus Fable when
  * the plan cannot run it. `note` explains the removal for deny messages.
  */
-export function planAllowlist(env = process.env) {
-  const list = optionList(env, "model_allowed", DEFAULT_ALLOWED);
-  const { plan, account } = currentPlan(env);
+export async function planAllowlist(io) {
+  const list = optionList(io.env, "model_allowed", DEFAULT_ALLOWED);
+  const { plan, account } = await currentPlan(io);
   if (fableAccess(plan, account) !== "unavailable") return { list, note: "" };
   return {
     list: list.filter((m) => !/fable/.test(canonical(m))),
@@ -137,8 +138,8 @@ export function planAllowlist(env = process.env) {
 }
 
 /** Session-start note for the plan, or null when there is nothing to say. */
-export function planNote(env = process.env) {
-  const { plan, detected, account } = currentPlan(env);
+export async function planNote(io) {
+  const { plan, detected, account } = await currentPlan(io);
   if (!plan) return null;
   const lines = [
     `Claude plan: ${LABELS[plan]} (${detected ? "detected" : "set in dotclaude's `model_plan` option"}).`,

@@ -3,6 +3,7 @@
 // stdin and prints rows that wrap at $COLUMNS. See hooks/lib/_status-line.mjs.
 
 import { readInput } from "../lib/_common.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { loopProgress } from "../lib/_loop.mjs";
 import { gitState, renderMain } from "../lib/_status-line.mjs";
 import { readUsage } from "../lib/_usage.mjs";
@@ -21,7 +22,7 @@ try {
       usage:
         data.rate_limits?.five_hour && data.rate_limits?.seven_day
           ? null
-          : readUsage(),
+          : await readUsage(nodeIo(data)),
     }),
   );
 } catch {

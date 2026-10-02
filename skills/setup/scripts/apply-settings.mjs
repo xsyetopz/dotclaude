@@ -16,6 +16,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { nodeIo } from "../../../hooks/lib/_io-node.mjs";
 import { currentPlan, fableAccess } from "../../../hooks/lib/_plans.mjs";
 import {
   OPTIONAL,
@@ -136,7 +137,7 @@ if (!isObject(profile)) {
 profile.env = { ...profile.env, [STAMP_KEY]: profileStamp(profilePath) };
 // A plan that runs Fable only on usage credits, with extra usage off, cannot
 // use it, so the model list leaves it out there.
-const { plan, account } = currentPlan();
+const { plan, account } = await currentPlan(nodeIo());
 if (
   fableAccess(plan, account) === "unavailable" &&
   Array.isArray(profile.availableModels)

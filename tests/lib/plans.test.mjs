@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { AUTO_COMPACT_TOKENS, k, LIMITS } from "../../hooks/lib/_budget.mjs";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 import {
   currentPlan,
   detectPlan,
@@ -13,7 +14,11 @@ import {
   PLANS,
   planAllowlist,
   planNote,
+  readAccount,
 } from "../../hooks/lib/_plans.mjs";
+
+/** The Node io over a test environment. */
+const ioWith = (env) => ({ ...nodeIo(), env });
 
 const HOOKS = path.resolve(import.meta.dirname, "../../hooks");
 
@@ -80,15 +85,28 @@ test("the model_plan picker offers auto and each plan that the hooks read", () =
   ]);
 });
 
-test("the model_plan option overrides detection; junk values fall back to it", () => {
+test("the model_plan option overrides detection; junk values fall back to it", async () => {
   expect(
-    currentPlan({ CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "max_5x" }, PRO),
+    await currentPlan(
+      ioWith({ CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "max_5x" }),
+      PRO,
+    ),
   ).toStrictEqual({ plan: "max_5x", detected: false });
   expect(
-    currentPlan({ CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "auto" }, PRO).plan,
+    (
+      await currentPlan(
+        ioWith({ CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "auto" }),
+        PRO,
+      )
+    ).plan,
   ).toBe("pro");
   expect(
-    currentPlan({ CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "ultra" }, PRO).plan,
+    (
+      await currentPlan(
+        ioWith({ CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "ultra" }),
+        PRO,
+      )
+    ).plan,
   ).toBe("pro");
 });
 
@@ -104,69 +122,80 @@ test("fableAccess matches the plans Anthropic includes Fable in", () => {
   expect(fableAccess(null)).toBe(null);
 });
 
-test("planAllowlist drops Fable only where the plan cannot run it", () => {
-  const pro = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(PRO) });
+test("planAllowlist drops Fable only where the plan cannot run it", async () => {
+  const pro = await planAllowlist(
+    ioWith({ CLAUDE_CONFIG_DIR: configDir(PRO) }),
+  );
   expect(!pro.list.some((m) => /fable/.test(m))).toBeTruthy();
   expect(pro.list.includes("claude-sonnet-5-5")).toBeTruthy();
   // The note names the plan that caused the removal.
   expect(pro.note).toContain("Claude Pro");
-  const max = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(MAX_20X) });
+  const max = await planAllowlist(
+    ioWith({ CLAUDE_CONFIG_DIR: configDir(MAX_20X) }),
+  );
   expect(max.list.includes("claude-fable-5-1")).toBeTruthy();
   expect(max.note).toBe("");
-  const unknown = planAllowlist({ CLAUDE_CONFIG_DIR: configDir(null) });
+  const unknown = await planAllowlist(
+    ioWith({ CLAUDE_CONFIG_DIR: configDir(null) }),
+  );
   expect(unknown.list.includes("claude-fable-5-1")).toBeTruthy();
 });
 
-test("planNote describes Fable per plan and one Pro-sized handoff bound for every plan", () => {
+test("planNote describes Fable per plan and one Pro-sized handoff bound for every plan", async () => {
   const note = (account, env = {}) =>
-    planNote({ CLAUDE_CONFIG_DIR: configDir(account), ...env });
+    planNote(ioWith({ CLAUDE_CONFIG_DIR: configDir(account), ...env }));
   const fableLine = (text) =>
     text
       .split("\n")
       .filter((l) => l.includes("Fable"))
       .join("\n");
-  const max = note(MAX_20X);
+  const max = await note(MAX_20X);
   expect(max).toStartWith('<claude_plan source="dotclaude">');
   expect(max).toContain("Claude Max 20x");
   expect(max).toContain("50%");
   // A plan set in the option reads differently from a detected one.
-  const setMax = note(null, { CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "max_20x" });
+  const setMax = await note(null, {
+    CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "max_20x",
+  });
   expect(setMax).toContain("Claude Max 20x");
   expect(setMax).not.toBe(max);
-  const pro = note(PRO);
+  const pro = await note(PRO);
   expect(pro).toContain("Claude Pro");
-  const credits = note({ ...PRO, hasExtraUsageEnabled: true });
-  const enterprise = note({ organizationType: "claude_enterprise" });
+  const credits = await note({ ...PRO, hasExtraUsageEnabled: true });
+  const enterprise = await note({ organizationType: "claude_enterprise" });
   // Included, unavailable, and credits each get their own Fable line;
   // Enterprise gets none.
   const lines = [max, pro, credits].map(fableLine);
   for (const line of lines) expect(line).toBeTruthy();
   expect(new Set(lines).size).toBe(3);
   expect(fableLine(enterprise)).toBe("");
-  const api = note(null, { CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "api" });
+  const api = await note(null, { CLAUDE_PLUGIN_OPTION_MODEL_PLAN: "api" });
   // The note loads at every session start, so it holds the facts only. The
   // handoff rule is in the output style.
   for (const text of [max, pro, credits, enterprise, api]) {
     expect(text).toContain(`at about ${k(AUTO_COMPACT_TOKENS)} tokens`);
     expect(text.length).toBeLessThanOrEqual(LIMITS.sessionNoteChars.fail);
   }
-  expect(planNote({ CLAUDE_CONFIG_DIR: configDir(null) })).toBe(null);
+  expect(await planNote(ioWith({ CLAUDE_CONFIG_DIR: configDir(null) }))).toBe(
+    null,
+  );
 });
 
-test("planNote names the organization budget for Team and Enterprise seats only", () => {
-  const note = (account) => planNote({ CLAUDE_CONFIG_DIR: configDir(account) });
+test("planNote names the organization budget for Team and Enterprise seats only", async () => {
+  const note = (account) =>
+    planNote(ioWith({ CLAUDE_CONFIG_DIR: configDir(account) }));
   const budget = (text) =>
     text.split("\n").filter((l) => l.includes("organization budget"));
   for (const account of [
     { organizationType: "claude_team" },
     { organizationType: "claude_enterprise" },
   ]) {
-    const text = note(account);
+    const text = await note(account);
     expect(budget(text).length).toBe(1);
     expect(text.length).toBeLessThanOrEqual(LIMITS.sessionNoteChars.fail);
   }
   for (const account of [MAX_20X, PRO])
-    expect(budget(note(account))).toStrictEqual([]);
+    expect(budget(await note(account))).toStrictEqual([]);
 });
 
 function hook(script, input, env) {
@@ -214,4 +243,18 @@ test("session start carries the plan note, once per new session", () => {
     /<claude_plan source="dotclaude">/,
   );
   expect(start("resume")).toBe(null);
+});
+
+test("readConfig reads a ~/.claude.json over 4 MiB", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-big-"));
+  fs.writeFileSync(
+    path.join(dir, ".claude.json"),
+    JSON.stringify({
+      history: "x".repeat(5 * 1024 * 1024),
+      oauthAccount: PRO,
+    }),
+  );
+  const account = await readAccount(ioWith({ CLAUDE_CONFIG_DIR: dir }));
+  fs.rmSync(dir, { recursive: true, force: true });
+  expect(account).toEqual(PRO);
 });

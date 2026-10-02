@@ -14,22 +14,24 @@ import { planNote } from "../lib/_plans.mjs";
 
 run(async (data) => {
   const parts = [];
+  const io = nodeIo(data);
   // A resumed or forked transcript already holds the note from its first
   // session, and a model restored on resume reaches PostModelSwitch.
   const continued = data.source === "resume" || data.source === "fork";
   if (!continued && isFable(data.model)) parts.push(FABLE);
-  if (data.source === "startup") await pruneState(nodeIo(data));
+  if (data.source === "startup") await pruneState(io);
   if (!continued) {
-    const plan = planNote();
+    const plan = await planNote(io);
     if (plan) parts.push(plan);
     if (option(process.env, "git_attribution")) {
-      const attribution = attributionNote(
+      const attribution = await attributionNote(
+        io,
         data.model,
-        projectRoot(nodeIo(data), data),
+        projectRoot(io, data),
       );
       if (attribution) parts.push(attribution);
     }
-    const preCommit = preCommitNote(projectRoot(nodeIo(data), data));
+    const preCommit = await preCommitNote(io, projectRoot(io, data));
     if (preCommit) parts.push(preCommit);
   }
   if (!parts.length) return;

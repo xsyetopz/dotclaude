@@ -74,7 +74,8 @@ run(async (data) => {
   // The report tool must stay open, or the agent could not deliver it.
   if (data.tool_name === "SubagentHandback") return;
   if (!data.agent_id) return;
-  const { session } = nodeIo(data);
+  const io = nodeIo(data);
+  const { session } = io;
   const context = await session.agentContext();
   if (context) {
     // A fork starts with the parent's context, so it gets room to grow.
@@ -103,7 +104,7 @@ run(async (data) => {
       return;
     }
   }
-  const limit = definition(String(data.agent_type ?? ""))?.maxTurns;
+  const limit = (await definition(io, String(data.agent_type ?? "")))?.maxTurns;
   if (!limit) return;
   const used = await session.agentTurns();
   if (used === null || used < limit - reserve(limit)) return;

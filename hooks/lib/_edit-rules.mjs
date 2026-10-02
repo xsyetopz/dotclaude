@@ -12,7 +12,7 @@ import { allowed } from "./_models.mjs";
  * settings files for those, and a new file there is build output, not an edit.
  * `oracle` holds the agent loop's protected globs and the project root, set
  * only for a subagent.
- * @typedef {{allowedModels: string[], editGuard?: boolean, modelLock?: boolean, bashWrite?: boolean, oracle?: {root: string, globs: string[]}}} Context
+ * @typedef {{allowedModels: string[], env?: Record<string, string | undefined>, editGuard?: boolean, modelLock?: boolean, bashWrite?: boolean, oracle?: {root: string, globs: string[]}}} Context
  */
 
 export function check(toolName, toolInput, ctx) {
@@ -246,7 +246,10 @@ function settings(before, after, ctx) {
     if (fastOn || fastEnv) out.push(["deny", FAST_DENY]);
     for (const key of ["model", "advisorModel"]) {
       const value = parsed?.[key];
-      if (typeof value === "string" && !allowed(value, ctx.allowedModels))
+      if (
+        typeof value === "string" &&
+        !allowed(value, ctx.allowedModels, ctx.env)
+      )
         out.push([
           "deny",
           `\`${key}: ${value}\` is outside the allowed models`,

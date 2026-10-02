@@ -67,13 +67,14 @@ function firstStart(data) {
   }
 }
 
-run((data) => {
+run(async (data) => {
+  const io = nodeIo(data);
   if (!option(process.env, "agent_guidance")) return;
   if (!firstStart(data)) return;
   const agentType = String(data.agent_type ?? "");
   const type = agentType.replace(/^dotclaude:/, "");
   const parts = OWN_PROMPT.has(type) ? [] : [GUIDANCE];
-  const def = definition(agentType);
+  const def = await definition(io, agentType);
   if (def?.maxTurns) parts.push(budget(def.maxTurns));
   if (option(process.env, "usage_agent_bounds")) parts.push(context(agentType));
   if (/sonnet/.test(def?.model ?? "")) parts.push(SONNET);

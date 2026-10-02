@@ -318,6 +318,7 @@ export function nodeIo(data = {}) {
     home: os.homedir(),
     tmp: os.tmpdir(),
     cwd: process.cwd(),
+    pluginRoot: path.join(import.meta.dir, "..", ".."),
     fs: {
       read,
       head,
