@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 // PreToolUse hook for Bash and Read: deny a full read of a file that the same
 // agent already read in full and that did not change since. Claude Code skips
 // an unchanged `Read` after a `Read` itself, so this covers a plain `cat`, a
@@ -8,20 +7,19 @@
 // (`pre-compact/save-recent-prompts.mjs`), because the summary drops the
 // content.
 
-import path from "node:path";
-import { preToolDecision, run } from "../lib/_common.mjs";
-import { option, projectRoot } from "../lib/_core.mjs";
-import { nodeIo } from "../lib/_io-node.mjs";
+import { option, preToolOutput, projectRoot } from "../lib/_core.mjs";
 import { fullReads, load, readStamp } from "../lib/_ledger.mjs";
+import { pathFor } from "../lib/_path.mjs";
 import { logVerdict } from "../lib/_verdicts.mjs";
 
 /** Absolute paths that this call reads in full, or []. */
 function targets(io, data) {
+  const path = pathFor(io.platform);
   const input = data.tool_input ?? {};
   if (data.tool_name === "Bash")
     return fullReads(
       input.command,
-      data.cwd || projectRoot(io, data),
+      path.resolve(io.cwd, data.cwd || projectRoot(io, data)),
       io.home,
       io.platform,
     );
@@ -30,9 +28,9 @@ function targets(io, data) {
   return [path.resolve(projectRoot(io, data), input.file_path)];
 }
 
-run(async (data) => {
-  if (!option(process.env, "guard_bash") || !data.session_id) return;
-  const io = nodeIo(data);
+export default async function (io, data) {
+  if (!option(io.env, "guard_bash") || !data.session_id) return;
+  const path = pathFor(io.platform);
   const files = targets(io, data);
   if (!files.length) return;
   const reads = (await load(io, data.session_id, data.agent_id)).reads ?? {};
@@ -46,5 +44,5 @@ run(async (data) => {
   }
   const reason = `You already read ${earlier.join(", ")} in full, and the file did not change since. Use that earlier output, because a second copy adds the same text to the context again. If you need only part of the file, use \`Read\` with \`offset\` and \`limit\`.`;
   await logVerdict(io, data, "deny", reason);
-  preToolDecision("deny", reason);
-});
+  return preToolOutput("deny", reason);
+}
