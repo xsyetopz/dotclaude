@@ -8,7 +8,7 @@
 // code 1 and a one-line message without it. The count for each text is the
 // count of a message that holds the text, minus the count of a one-word
 // message alone, so it leaves out the fixed request overhead. Only static
-// texts are counted: the output style, the Fable note, the subagent
+// texts are counted: each output style, the Fable note, the subagent
 // conventions and Sonnet scope note, and each agent prompt. The notes that
 // depend on the account or the project (plan, attribution) are not.
 
@@ -32,7 +32,18 @@ const body = (text) => text.replace(/^---\n[\s\S]*?\n---\n/, "").trim();
 export function sources(root = ROOT) {
   const read = (rel) => body(fs.readFileSync(path.join(root, rel), "utf8"));
   const items = [
-    { name: "output style", text: read("output-styles/dotclaude.md") },
+    {
+      name: "SessionStart: working rules",
+      text: read("hooks/session-start/working-rules.md"),
+    },
+    ...fs
+      .readdirSync(path.join(root, "output-styles"))
+      .filter((file) => file.endsWith(".md"))
+      .sort()
+      .map((file) => ({
+        name: `output style: ${file.slice(0, -3)}`,
+        text: read(`output-styles/${file}`),
+      })),
     { name: "SessionStart: Fable note", text: FABLE },
     {
       name: "SubagentStart: conventions",

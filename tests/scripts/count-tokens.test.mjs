@@ -64,10 +64,11 @@ test("an API error stops the table with its status", async () => {
   );
 });
 
-test("the sources hold the output style, the hook texts, and every agent", () => {
+test("the sources hold the working rules, each output style, the hook texts, and every agent", () => {
   const items = sources();
   const names = items.map((s) => s.name);
-  expect(names).toContain("output style");
+  expect(names).toContain("SessionStart: working rules");
+  expect(names).toContain("output style: learning");
   expect(names).toContain("SubagentStart: conventions");
   expect(names).toContain("agent: reviewer");
   for (const s of items) expect(s.text.length, s.name).toBeGreaterThan(50);

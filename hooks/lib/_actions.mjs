@@ -66,6 +66,16 @@ export const ACTIONS = {
   TaskCompleted: [["*", "task-completed/require-check.mjs"]],
 };
 
+// Actions with their own hooks.json command, outside the dispatcher table.
+// Claude Code keeps at most about 10,000 bytes of the output of one command
+// in the context, so the working rules do not share the merged output of
+// their event (docs/dossier/prompt-surface.md).
+export const OWN_COMMANDS = {
+  SessionStart: [
+    ["startup|clear|compact", "session-start/add-working-rules.mjs"],
+  ],
+};
+
 // The events that the hooks module (`register.mjs`) runs. `hooks.json` has
 // no command hook for them, so each action runs once.
 export const MODULE_EVENTS = [

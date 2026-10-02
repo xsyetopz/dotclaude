@@ -22,13 +22,18 @@ import {
 const root = path.join(import.meta.dir, "..", "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
-const STYLE = "output-styles/dotclaude.md";
+const STYLES = fs
+  .readdirSync(path.join(root, "output-styles"))
+  .filter((f) => f.endsWith(".md"))
+  .map((f) => `output-styles/${f}`);
+const RULES = "hooks/session-start/working-rules.md";
 
 // Each file that quotes a bound names it as a whole word, so a changed
 // constant fails here until the file follows. The sentences around the
 // numbers are free to change.
 const QUOTED = {
-  [STYLE]: [AUTO_COMPACT_TOKENS, SUBAGENT_CONTEXT_TOKENS],
+  // The rules quote no bound: the plan note gives the compaction size.
+  [RULES]: [],
   "skills/setup/SKILL.md": [
     MAIN_CONTEXT_TOKENS,
     AUTO_COMPACT_TOKENS,
@@ -49,7 +54,7 @@ const BOUNDS = new Set(
 );
 const words = (n) => new RegExp(`(?<![\\w.])${n}(?![\\w.])`);
 
-test("the output style, skill, and option text quote the budget's token bounds", () => {
+test("the working rules, skill, and option text quote the budget's token bounds", () => {
   for (const [file, bounds] of Object.entries(QUOTED)) {
     const text = read(file);
     for (const n of bounds) expect(text, file).toMatch(words(k(n)));
@@ -58,11 +63,11 @@ test("the output style, skill, and option text quote the budget's token bounds",
   }
 });
 
-test("the output style quotes the compactions before a handoff", () => {
+test("the working rules quote the compactions before a handoff", () => {
   const number = ["zero", "one", "two", "three", "four"][
     COMPACTIONS_BEFORE_HANDOFF
   ];
-  expect(read(STYLE)).toContain(`first ${number} compactions`);
+  expect(read(RULES)).toContain(`first ${number} compactions`);
 });
 
 test("the skill quotes the usage levels", () => {
@@ -102,13 +107,12 @@ function within(file, value, limit, unit) {
   expect(level, `${file}: ${value} ${unit}`).not.toBe("fail");
 }
 
-test("the output style and agent bodies stay inside LIMITS", () => {
-  within(
-    "output style",
-    tokens(body(read(STYLE))),
-    LIMITS.outputStyleTokens,
-    "tokens",
-  );
+test("the working rules, output styles, and agent bodies stay inside LIMITS", () => {
+  const rules = Buffer.byteLength(read(RULES));
+  within(RULES, rules, LIMITS.workingRulesBytes, "bytes");
+  expect(STYLES).toHaveLength(4);
+  for (const f of STYLES)
+    within(f, tokens(body(read(f))), LIMITS.outputStyleTokens, "tokens");
   for (const f of agents)
     within(f, tokens(body(read(f))), LIMITS.agentBodyTokens, "tokens");
 });

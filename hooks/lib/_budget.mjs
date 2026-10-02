@@ -131,9 +131,15 @@ export const RUNNING_AGENT_IDLE_MINUTES = 10;
  *   without `paths:`).
  * - instructionFileBytes: Claude Code skips a larger file.
  * - importHops: Claude Code follows at most four `@path` hops.
- * - outputStyleTokens: the output style loads into every main turn. In 0.17.0
- *   it carries the rules that the 0.16 replacement system prompt held: 2.3k
- *   tokens against 4.3k plus 0.6k for the 0.16 prompt and style.
+ * - workingRulesBytes: the working rules that a SessionStart hook adds to
+ *   every main session. Claude Code keeps at most about 10,000 bytes of the
+ *   output of one hook command in the context, and puts a larger output in
+ *   a file (docs/dossier/prompt-surface.md). The rules are 7.0 KB, against
+ *   8.9 KB for the rules in the 0.18.0 Default style. The warn level leaves
+ *   about 0.5 KB for new rules. The fail level stays below 10,000 bytes,
+ *   with room for the `[dotclaude] ` prefix.
+ * - outputStyleTokens: a selected output style loads into every main turn.
+ *   A style holds only its reply-style rules, up to 0.4k tokens.
  * - sessionNoteChars: one note that a hook adds at every session or
  *   subagent start. In one week of 0.16 sessions, the subagent conventions
  *   (3.3k characters) were injected 746 times.
@@ -144,7 +150,8 @@ export const LIMITS = {
   startupInstructionTokens: { warn: 3000, fail: 5000 },
   instructionFileBytes: { fail: 4 * 1024 * 1024 },
   importHops: { fail: 4 },
-  outputStyleTokens: { warn: 2300, fail: 2350 },
+  workingRulesBytes: { warn: 7500, fail: 9000 },
+  outputStyleTokens: { warn: 400, fail: 500 },
   agentBodyTokens: { warn: 2000, fail: 5000 },
   sessionNoteChars: { fail: 1000 },
 };

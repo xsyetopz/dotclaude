@@ -15,6 +15,21 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "--only",
+              "session-start/add-working-rules.mjs"
+            ],
+            "timeout": 30
+          }
+        ]
       }
     ],
     "Stop": [

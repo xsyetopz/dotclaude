@@ -1,20 +1,31 @@
 # Working Rules
 
-Part of the [dotclaude documentation](README.md). The output style
-(`output-styles/dotclaude.md`) sets how Claude works and reports when
-dotclaude is on. It holds the engineering, git, and report rules. It is always
-on while the plugin is on. To use a different style, disable the plugin, or
-copy the file to `~/.claude/output-styles/` without `force-for-plugin`.
+Part of the [dotclaude documentation](README.md).
+A SessionStart hook adds the working rules in `hooks/session-start/working-rules.md` to each session when dotclaude is on.
+They set how Claude works and reports, and they apply with every output style and with no style.
+The output styles in `output-styles/` change only the reply style.
+`/dotclaude:setup` selects one in `outputStyle`, and `/config` changes it.
 
-**Why an output style and not a replacement prompt:** the profile turns on
-Claude Code's lean prompt (`CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`), which
-already covers tools, safety, and Markdown output. The lean prompt has no
-coding instructions, and `keep-coding-instructions` does not add them
-(**binary**, 2.1.286). The flag keeps them only in the full prompt. So the
-style carries the rules that nothing else gives, in about 2.3k tokens. The
-0.16 replacement prompt and style took about 4.9k tokens and needed a shell
-function, because only a command-line flag replaces the system prompt. See
-[prompt surface](dossier/prompt-surface.md).
+| Style | Reply style |
+| --- | --- |
+| no style (Default) | the rules alone: one line before the work, then a report that starts with the outcome |
+| `dotclaude:Proactive` | continuous work: Claude starts at once, takes a reasonable default, and stops to ask only before risky actions |
+| `dotclaude:Concise` | short replies: the result first, no narration, and full detail on request |
+| `dotclaude:Explanatory` | insight blocks in the reply about the choices in the code, never in the files |
+| `dotclaude:Learning` | the user writes the small parts of the code that hold a design decision, at a `TODO(human)` marker |
+
+The variants follow the ideas of Claude Code's built-in styles of the same names, in dotclaude's own words.
+A style is not forced, because a forced plugin style overrides the user's `outputStyle`, and no variant could be selected.
+A selected style also gets Claude Code's per-turn reminder, which names the style (2.1.288).
+
+**Why a hook and not an output style:** the profile turns on Claude Code's lean prompt (`CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`), which already covers tools, safety, and Markdown output.
+The lean prompt has no coding instructions, and `keep-coding-instructions` does not add them (**binary**, 2.1.286).
+Hook context arrives in the same role-`system` message as a style, so the rules lose no position.
+In 0.17, each style file held a copy of the rules, because style files have no include.
+A hook sends one copy with every style, and the hook adds the rules again after each compaction.
+The rules are about 7 KB.
+The 0.16 replacement prompt and style took about 4.9k tokens and needed a shell function, because only a command-line flag replaces the system prompt.
+See [prompt surface](dossier/prompt-surface.md).
 
 **Why the rules give reasons and not banned phrases:** Claude routes around a
 banned phrase with a synonym. A rule that names the behavior and its reason
@@ -82,12 +93,12 @@ dotclaude writes every message that goes to Claude (hook output, deny reasons,
 skill and agent prompts) in ASD-STE100 Simplified Technical English. Each
 message gives the reason, says what to do, and uses no forceful words.
 
-Agent and skill prompts use one set of XML tags in one order: `<task>` for a
-skill, or a role paragraph for an agent, then `<context>`, `<inputs>`,
-`<constraints>`, `<procedure>`, the sections for the topic, `<report_format>`
-for an agent or `<output_format>` for a skill, and last `<example>`. A prompt
-leaves out the tags that it does not need. One order lets you find the same
-part in every prompt.
+The working rules, the styles, and the agent and skill prompts follow Anthropic's prompting guidance for Opus 5.5 and Sonnet 5.5, so one text works on both models.
+XML tags separate the parts of a prompt.
+Tag names are lowercase `snake_case`, have no attributes, and name the content or the behavior, for example `<scope_of_work>`, `<investigate_before_answering>`, and `<report_format>`.
+The same part has the same tag name in every prompt.
+Data, such as quoted messages or a list of files, comes first in its own tag, and the instructions follow it.
+Prompts use few Markdown headings, because the format of a prompt carries over to the replies.
 
 **Why:** one meaning for each word and short sentences leave less to
 misread. Sonnet 5 follows instructions literally, and Sonnet 5.5 keeps its
