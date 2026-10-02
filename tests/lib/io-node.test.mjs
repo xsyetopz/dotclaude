@@ -1,4 +1,7 @@
 import { expect, test } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 
 const io = nodeIo();
@@ -31,4 +34,17 @@ test("run stops a command that ignores SIGTERM", async () => {
     }),
   ).rejects.toThrow("timed out");
   expect(Date.now() - start).toBeLessThan(3000);
+});
+
+test("a failed write leaves no temporary file", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-write-"));
+  try {
+    // A folder with a file in it cannot be replaced, so the rename fails.
+    fs.mkdirSync(path.join(dir, "target"));
+    fs.writeFileSync(path.join(dir, "target", "x"), "");
+    await expect(io.fs.write(path.join(dir, "target"), "y")).rejects.toThrow();
+    expect(fs.readdirSync(dir)).toEqual(["target"]);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

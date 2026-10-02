@@ -79,8 +79,13 @@ let tmpCount = 0;
 async function write(file, text) {
   await fs.promises.mkdir(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.${tmpCount++}.tmp`;
-  await fs.promises.writeFile(tmp, text);
-  await fs.promises.rename(tmp, file);
+  try {
+    await fs.promises.writeFile(tmp, text);
+    await fs.promises.rename(tmp, file);
+  } catch (error) {
+    await fs.promises.rm(tmp, { force: true });
+    throw error;
+  }
 }
 
 async function append(file, text) {
