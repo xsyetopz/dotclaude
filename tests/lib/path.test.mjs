@@ -485,6 +485,12 @@ test("win32 resolve of a rooted path without a drive keeps no drive", () => {
   expect(win32.resolve("x", "/a/../b")).toBe("\\b");
 });
 
+test("win32 relative to a root without a drive has no trailing separator", () => {
+  expect(win32.relative("C:\\base", "/")).toBe("..\\..");
+  expect(win32.relative("C:\\base\\x", "\\")).toBe("..\\..\\..");
+  expect(win32.relative("C:\\base", "\\a")).toBe("\\a");
+});
+
 test("win32 join of three leading separators matches node:path", () => {
   for (const args of [
     ["\\\\\\server", "x"],

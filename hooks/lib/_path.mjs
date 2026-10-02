@@ -238,7 +238,11 @@ function make(platform) {
       if (i === fromEnd || a[i] === sep)
         out += out.length === 0 ? ".." : `${sep}..`;
     toStart += lastCommonSep;
-    if (out.length > 0) return `${out}${toOrig.slice(toStart, toEnd)}`;
+    if (out.length > 0) {
+      // A root without a drive leaves only its separator, as in Node.
+      const rest = toOrig.slice(toStart, toEnd);
+      return rest === sep ? out : `${out}${rest}`;
+    }
     if (toOrig[toStart] === sep) ++toStart;
     return toOrig.slice(toStart, toEnd);
   }
