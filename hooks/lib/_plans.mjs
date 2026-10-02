@@ -46,8 +46,11 @@ const ON = new Set(["1", "true", "yes", "on"]);
 export async function readConfig(io) {
   const dir = io.env.CLAUDE_CONFIG_DIR || io.home;
   try {
+    const file = pathFor(io.platform).join(dir, ".claude.json");
+    // `fs.read` rejects a file over 4 MiB. This file grows with history.
+    const { size } = await io.fs.stat(file);
     const data = JSON.parse(
-      await io.fs.read(pathFor(io.platform).join(dir, ".claude.json")),
+      new TextDecoder().decode(await io.fs.head(file, size)),
     );
     return data && typeof data === "object" ? data : null;
   } catch {

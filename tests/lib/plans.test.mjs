@@ -14,6 +14,7 @@ import {
   PLANS,
   planAllowlist,
   planNote,
+  readAccount,
 } from "../../hooks/lib/_plans.mjs";
 
 /** The Node io over a test environment. */
@@ -242,4 +243,18 @@ test("session start carries the plan note, once per new session", () => {
     /<claude_plan source="dotclaude">/,
   );
   expect(start("resume")).toBe(null);
+});
+
+test("readConfig reads a ~/.claude.json over 4 MiB", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-big-"));
+  fs.writeFileSync(
+    path.join(dir, ".claude.json"),
+    JSON.stringify({
+      history: "x".repeat(5 * 1024 * 1024),
+      oauthAccount: PRO,
+    }),
+  );
+  const account = await readAccount(ioWith({ CLAUDE_CONFIG_DIR: dir }));
+  fs.rmSync(dir, { recursive: true, force: true });
+  expect(account).toEqual(PRO);
 });
