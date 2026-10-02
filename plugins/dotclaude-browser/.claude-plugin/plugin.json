@@ -1,7 +1,7 @@
 {
   "name": "dotclaude-browser",
   "version": "0.18.0",
-  "description": "Browser automation with agent-browser or CloakBrowser, and offline text-CAPTCHA OCR with ddddocr-rs. An optional part of dotclaude.",
+  "description": "Drives a browser with agent-browser, or with CloakBrowser on sites with bot detection, and reads text CAPTCHAs with offline ddddocr-rs OCR.",
   "author": {
     "name": "xsyetopz"
   },

@@ -5,7 +5,7 @@ source labels.
 
 ## 10. Claude Mods
 
-Claude Code 2.1.287 can load a plugin "hooks module". Anthropic calls a plugin
+Claude Code 2.1.287 and later can load a plugin "hooks module". Anthropic calls a plugin
 with such a module a mod. dotclaude 0.18 runs most of its hooks in a module.
 [Hooks Module](../mods.md) gives the design. This section records the
 evidence.
@@ -96,8 +96,29 @@ These stay classic command hooks:
 - An action that throws is skipped, and its error is not logged.
 - The running marker is written after `next` of `agent.spawn`. Two spawns in
   one message can both pass the concurrency check.
-- `$.fs.write` is not atomic, and the ledger has no lock, so two actions that
-  write it at once can lose one write (**inference**).
+- `$.fs.write` is not atomic. It runs `mkdir` and then `writeFile`
+  (**measured**, 2.1.287 bundle). `$.fs` has no rename, so the module cannot
+  write a file atomically. The module actions that change the ledger now wait
+  in a queue for each ledger file (`withLedger` in `hooks/lib/_ledger.mjs`),
+  so parallel tool calls keep all of their writes. The queue does not reach a
+  command hook process, so such a process can read a ledger that is half
+  written.
+- In a subagent with `isolation: "worktree"`, `$.session.cwd()` gives
+  `<root>/.claude/worktrees/<name>`, and `$.session.root()` gives `<root>`
+  (**measured**). The module uses the worktree as the project of the
+  subagent. A `WorktreeCreate` hook can put the worktree outside `<root>`.
+  Then `$.session.cwd()` gives that folder (**measured**, 2.1.288), and the
+  module uses it as the project. The cwd follows a `cd`, so the module keeps
+  the first cwd of the subagent in a worktree as its project.
+- In 2.1.287, a mod `tool.call` hook that matches Bash, even one that only
+  calls `next(e)`, made each Bash call in an `isolation: "worktree"` subagent
+  fail with "The working-directory isolation context for this agent was
+  lost" (**measured**, 4 of 4 calls). The mod runs in a worker host, so the
+  tool runs outside the cwd store of the agent (**binary**, 2.1.287).
+  2.1.288 fixed it: "Fixed a plugin's `tool.call` hook making Bash fail and
+  file searches read the wrong folder in subagents that run in a worktree"
+  (**official**, release notes). On 2.1.288, 0 calls failed (**measured**).
+  dotclaude requires 2.1.288 for this reason.
 - The API can change in each release: "this surface may change between
   releases without notice" (**official**, d.ts header). Each dotclaude
   release names one Claude Code version.

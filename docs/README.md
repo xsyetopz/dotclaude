@@ -33,10 +33,12 @@ optimize for speed or for the volume of output.
 | --- | --- |
 | [Hooks](hooks.md) | each guard, gate, and note, the reason for it, and its option |
 | [Hooks Module](mods.md) | where each hook runs, and the built-ins that dotclaude replaces |
+| [Context Hooks](hooks-context.md) | nested instructions, session files, compaction carry-over, handoff pointer, and the line-break check |
 | [Usage Hooks](hooks-usage.md) | usage bounds, usage notes, model lock, and scratchpad pruning |
+| [Usage Habits](usage-habits.md) | habits that keep the context small and need no code |
 | [Models](models.md) | the model lock, fast mode, Fable, effort, and plan detection |
 | [Agents And Skills](agents-and-skills.md) | each agent's model and effort, and each skill |
-| [Working Rules](working-rules.md) | the output style rules, and the reason for each |
+| [Working Rules](working-rules.md) | the working rules and output styles, and the reason for each |
 | [Contributions](contributions.md) | the AI policy catalog, the contribution guard, and drafts for other projects |
 | [Settings Profile](settings-profile.md) | each setting that the profile writes, and the managed lock |
 | [Organizations](organizations.md) | managed rollout, skill permissions, budgets, and Windows limits |

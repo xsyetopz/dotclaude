@@ -3,8 +3,9 @@
 dotclaude is an opinionated Claude Code plugin for software engineering with
 Claude Opus 5.5. It optimizes for the most quality per unit of usage quota,
 not for speed or for the volume of output. Hooks enforce the rules that a
-program can check. An output style on top of Claude Code's lean system
-prompt sets the other working rules. Agents and skills do review, delegated
+program can check. A SessionStart hook adds the other working rules on top
+of Claude Code's lean system prompt, and an optional output style sets the
+reply style. Agents and skills do review, delegated
 work, and research.
 
 Each choice has a reason and evidence. [The documentation](docs/README.md)
@@ -39,7 +40,7 @@ them into a settings file that you choose. It shows the changes and makes a
 backup first. See [Settings Profile](docs/settings-profile.md).
 
 For the optional integrations (CodeGraph, tgrep, fast-compact, Betterleaks,
-Ghidra, and the browser plugin), run `/dotclaude:setup integrations`, for
+semlf, Ghidra, and the browser plugin), run `/dotclaude:setup integrations`, for
 example `/dotclaude:setup integrations codegraph`.
 
 Browser automation and CAPTCHA OCR are in a separate plugin, so sessions
@@ -49,7 +50,7 @@ without a browser do not load them:
 /plugin install dotclaude-browser@dotclaude
 ```
 
-Requirements: Claude Code 2.1.287 or later, [Bun](https://bun.sh) 1.4.2 or
+Requirements: Claude Code 2.1.288 or later, [Bun](https://bun.sh) 1.4.2 or
 later on `PATH`, and git.
 
 ## Update
@@ -60,7 +61,7 @@ claude plugin update dotclaude@dotclaude
 ```
 
 1. Restart Claude Code. A running session keeps the old hooks, agents, and
-   output style.
+   output styles.
 1. Read the new entry in [`CHANGELOG.md`](CHANGELOG.md). Before 1.0, a release
    can change or remove behavior without a compatibility layer.
 1. Run `/dotclaude:setup` again. It shows every change and
@@ -88,8 +89,9 @@ To try an unreleased checkout, run `claude --plugin-dir /path/to/dotclaude`.
   with open tasks, with an agent-loop slice that no reviewer read, or with a
   reply that only announces the next step. A task stays open once after a
   code edit that no check followed.
-- **Context** hooks load the `CLAUDE.md` of directories that Bash reads, and
-  restore your exact words after compaction.
+- **Context** hooks load the `CLAUDE.md` of directories that Bash reads,
+  restore your exact words after compaction, and tell Claude when the text
+  that it wrote breaks lines at a column, not between sentences.
 - **Usage** hooks bound subagent context and turns, cap agents at 5 at once,
   deny an unchanged re-read and a foreground server or watcher, lock the
   model list, and tell Claude when a usage limit is near.
@@ -117,9 +119,8 @@ Fast mode is off, and `max` effort is blocked.
 
 ### [Working Rules](docs/working-rules.md)
 
-The output style: reproduce before a fix, a minimal
-diff, a check before "done", commits only when you ask, few subagents, and
-reports that start with the outcome.
+A SessionStart hook adds the rules: reproduce before a fix, a minimal diff, a check before "done", commits only when you ask, few subagents, and reports that start with the outcome.
+Setup selects a reply style: Default (no style), Proactive, Concise, Explanatory, or Learning.
 
 ### [Agents And Skills](docs/agents-and-skills.md)
 
@@ -134,7 +135,7 @@ reports that start with the outcome.
 
 | Skill | Use |
 | --- | --- |
-| `/dotclaude:setup` | applies the settings profile, removes the 0.16 shell function, and installs CodeGraph, tgrep, fast-compact, Betterleaks, Ghidra, OpenSpec, and `dotclaude-browser` |
+| `/dotclaude:setup` | applies the settings profile, removes the 0.16 shell function, and installs CodeGraph, tgrep, fast-compact, Betterleaks, semlf, Ghidra, OpenSpec, and `dotclaude-browser` |
 | `slices` | runs a large change as slices with a diff-only reviewer and a frozen test oracle |
 | `handoff` | writes a note that a fresh session can continue from |
 | `contribute` | checks a project's AI policy and drafts an issue or pull request for you to send |
@@ -155,7 +156,7 @@ next row, so nothing is cut off.
 
 Compaction at 150k tokens, no background requests that re-read the context,
 5 subagents at once, read denies for `.env` files and credentials, auto
-memory off, the lean system prompt, and auto-update on the `stable` channel.
+memory off, the lean system prompt, and auto-update on.
 Each setting has its reason on the page.
 
 ## Development

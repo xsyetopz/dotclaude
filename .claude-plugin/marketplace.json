@@ -4,18 +4,18 @@
   "owner": {
     "name": "xsyetopz"
   },
-  "description": "The dotclaude plugin.",
+  "description": "Lists the dotclaude plugin and its optional browser plugin.",
   "plugins": [
     {
       "name": "dotclaude",
       "source": "./",
-      "description": "Guardrails, working conventions, and tiered task agents for Claude Code: destructive-command and test-weakening guards, a verify-before-stop gate, compaction carry-over, a fast-mode/model lock, and reviewer/worker/researcher agents.",
+      "description": "Adds guards against destructive commands and weakened tests, a check gate before Claude stops, carry-over across compaction, a model lock, working rules, and task agents.",
       "category": "productivity"
     },
     {
       "name": "dotclaude-browser",
       "source": "./plugins/dotclaude-browser",
-      "description": "Optional browser automation for dotclaude: agent-browser or CloakBrowser (antibot), and offline text-CAPTCHA OCR with ddddocr-rs.",
+      "description": "Drives a browser with agent-browser, or with CloakBrowser on sites with bot detection, and reads text CAPTCHAs with offline ddddocr-rs OCR.",
       "category": "productivity"
     }
   ]
