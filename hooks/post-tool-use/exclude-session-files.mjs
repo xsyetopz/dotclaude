@@ -32,18 +32,25 @@ const SESSION_FILES = [
 ];
 
 /** The exclude entry for `abs`, with the repo root, or undefined. */
-function entryFor(file) {
-  let abs;
+function entryFor(abs) {
+  let dir = abs;
+  let base = "";
   try {
-    // git prints the real path of the top level (`/private/var` on macOS).
-    abs = fs.realpathSync(file);
+    if (!fs.statSync(abs).isDirectory()) {
+      dir = path.dirname(abs);
+      base = path.basename(abs);
+    }
   } catch {
     return undefined;
   }
-  const top = git(path.dirname(abs), ["rev-parse", "--show-toplevel"])?.trim();
+  // git gives the folder's path below the top level, with `/`. A path
+  // comparison with the top level fails where the two name one folder
+  // differently: `/private/var` on macOS, `RUNNER~1` short names on Windows.
+  const out = git(dir, ["rev-parse", "--show-toplevel", "--show-prefix"]);
+  const [top, prefix] = (out ?? "").split("\n");
   if (!top) return undefined;
-  const rel = path.relative(top, abs).split(path.sep).join("/");
-  if (rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
+  const rel = `${prefix}${base}`.replace(/\/$/, "");
+  if (!rel) return undefined;
   const hit = SESSION_FILES.find(([test]) => test(rel));
   return hit && { top, rel, entry: hit[1](rel) };
 }

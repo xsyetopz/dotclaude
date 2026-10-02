@@ -22,7 +22,7 @@ function editedPath(data) {
   if (data.hook_event_name === "PostToolUseFailure") return undefined;
   const input = data.tool_input ?? {};
   const file = input.file_path || input.notebook_path || "";
-  const rel = path.relative(projectRoot(data), file);
+  const rel = path.relative(projectRoot(data), file).split(path.sep).join("/");
   if (!file || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
   return rel;
 }

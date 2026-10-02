@@ -8,6 +8,10 @@ import os from "node:os";
 import path from "node:path";
 import { check } from "../../hooks/lib/_bash-rules.mjs";
 
+// A native path as a command writes it. Git Bash on Windows reads `\` as an
+// escape and takes `C:/` paths.
+const sh = (p) => p.split(path.sep).join("/");
+
 function tempDir() {
   return fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-test-")),
@@ -72,7 +76,7 @@ const DENY = [
   "find . -name '*.swift'",
   "find . -type f -not -path './.build/*'",
   "find . -maxdepth 5 -name '*.o'",
-  `find ${path.dirname(root)} -name '*.swift'`,
+  `find ${sh(path.dirname(root))} -name '*.swift'`,
   "rg --no-ignore needle",
   "rg -uu needle .",
   "rg -u -e needle",

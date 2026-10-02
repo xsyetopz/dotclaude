@@ -265,8 +265,9 @@ test("the main line shows the place on one row and the usage on the next, with c
 const FULL = {
   ...DATA,
   workspace: {
-    current_dir: "/work/dotclaude/hooks",
-    project_dir: "/work/dotclaude",
+    // Native paths, as Claude Code sends them on each OS.
+    current_dir: path.join("/work", "dotclaude", "hooks"),
+    project_dir: path.join("/work", "dotclaude"),
     added_dirs: ["/work/skills", "/work/docs"],
     git_worktree: "feature-x",
   },

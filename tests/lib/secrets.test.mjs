@@ -57,7 +57,9 @@ test("strings lists every string in order", () => {
   ]);
 });
 
-// A fake `betterleaks` first on PATH, so `scan` runs a known script.
+// A fake `betterleaks` first on PATH, so `scan` runs a known script. Windows
+// cannot run an extensionless `#!/bin/sh` file, so these tests are POSIX only.
+const posix = process.platform !== "win32";
 const realPath = process.env.PATH;
 afterEach(() => {
   process.env.PATH = realPath;
@@ -70,25 +72,36 @@ const fakeScanner = (body) => {
   process.env.PATH = `${dir}${path.delimiter}${realPath}`;
 };
 
-test("scan gives stdin to the scanner and reads its JSON report", async () => {
-  // The report's secret is the whole stdin, so the text must arrive intact.
-  fakeScanner(`printf '[{"RuleID":"r","Secret":"%s"},{"Secret":""}]' "$(cat)"`);
-  expect(await scan("héllo ✓")).toStrictEqual([
-    { rule: "r", secret: "héllo ✓" },
-  ]);
-});
+test.skipIf(!posix)(
+  "scan gives stdin to the scanner and reads its JSON report",
+  async () => {
+    // The report's secret is the whole stdin, so the text must arrive intact.
+    fakeScanner(
+      `printf '[{"RuleID":"r","Secret":"%s"},{"Secret":""}]' "$(cat)"`,
+    );
+    expect(await scan("héllo ✓")).toStrictEqual([
+      { rule: "r", secret: "héllo ✓" },
+    ]);
+  },
+);
 
-test("scan gives null when the scanner fails or prints no report", async () => {
-  fakeScanner("cat >/dev/null; echo '[]'; exit 1");
-  expect(await scan("x")).toBeNull();
-  fakeScanner("cat >/dev/null; echo 'not json'");
-  expect(await scan("x")).toBeNull();
-  fakeScanner("cat >/dev/null; kill -TERM $$");
-  expect(await scan("x")).toBeNull();
-});
+test.skipIf(!posix)(
+  "scan gives null when the scanner fails or prints no report",
+  async () => {
+    fakeScanner("cat >/dev/null; echo '[]'; exit 1");
+    expect(await scan("x")).toBeNull();
+    fakeScanner("cat >/dev/null; echo 'not json'");
+    expect(await scan("x")).toBeNull();
+    fakeScanner("cat >/dev/null; kill -TERM $$");
+    expect(await scan("x")).toBeNull();
+  },
+);
 
-test("scan skips empty text and treats empty output as no findings", async () => {
-  fakeScanner("cat >/dev/null");
-  expect(await scan("")).toBeNull();
-  expect(await scan("x")).toStrictEqual([]);
-});
+test.skipIf(!posix)(
+  "scan skips empty text and treats empty output as no findings",
+  async () => {
+    fakeScanner("cat >/dev/null");
+    expect(await scan("")).toBeNull();
+    expect(await scan("x")).toStrictEqual([]);
+  },
+);

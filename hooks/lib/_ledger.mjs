@@ -164,7 +164,7 @@ export function shellWrites(command, root, cwd = root) {
     if (!target || target.includes("$") || target.startsWith("/dev/"))
       return undefined;
     const abs = path.resolve(base, expandHome(target));
-    const rel = path.relative(root, abs);
+    const rel = path.relative(root, abs).split(path.sep).join("/");
     if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
     if (NON_CODE.test(rel) || rel.startsWith(".claude/")) return undefined;
     return rel;

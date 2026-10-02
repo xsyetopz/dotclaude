@@ -489,7 +489,10 @@ export function ignoredWalk(cmd, ctx) {
     // A match is not a deliberate target, so an ignored match is a hit too.
     // A glob that matches nothing stays literal and names no directory.
     const matches = fs.globSync(target);
-    const top = matches.map((m) => path.relative(ctx.root, m));
+    // git gives the ignored folders with `/`.
+    const top = matches.map((m) =>
+      path.relative(ctx.root, m).split(path.sep).join("/"),
+    );
     for (const d of ignoredDirs(ctx.root, ctx))
       if (top.includes(d) && !excluded(d, walk.excludes)) hits.add(d);
     for (const dir of matches)

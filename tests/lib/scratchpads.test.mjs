@@ -42,15 +42,15 @@ test("idle sessions and loose entries are stale; recent ones and the current ses
   make(root, "-proj/busy-session/tasks/a.output", 0);
   make(root, "fresh-build/out.o", 0);
   const stale = staleEntries(root, 3, new Set(["current"]), now)
-    .map((p) => path.relative(root, p))
+    .map((p) => path.relative(root, p).split(path.sep).join("/"))
     .sort();
   expect(stale).toStrictEqual(["-proj/old-session", "loose-build"]);
 });
 
 test("the temp root follows CLAUDE_CODE_TMPDIR, else /tmp", () => {
   const uid = process.getuid?.() ?? 0;
-  expect(tempRoot({})).toBe(`/tmp/claude-${uid}`);
+  expect(tempRoot({})).toBe(path.join("/tmp", `claude-${uid}`));
   expect(tempRoot({ CLAUDE_CODE_TMPDIR: "/scratch" })).toBe(
-    `/scratch/claude-${uid}`,
+    path.join("/scratch", `claude-${uid}`),
   );
 });

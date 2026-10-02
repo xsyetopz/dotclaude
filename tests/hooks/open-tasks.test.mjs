@@ -26,13 +26,15 @@ const stop = (sid, extra = {}, env = {}) =>
   );
 
 test("the task list directory follows the list ID and the session", () => {
-  expect(taskListDir("s1", { CLAUDE_CONFIG_DIR: "/c" })).toBe("/c/tasks/s1");
+  expect(taskListDir("s1", { CLAUDE_CONFIG_DIR: "/c" })).toBe(
+    path.join("/c", "tasks", "s1"),
+  );
   expect(
     taskListDir("s1", {
       CLAUDE_CONFIG_DIR: "/c",
       CLAUDE_CODE_TASK_LIST_ID: "team a/b",
     }),
-  ).toBe("/c/tasks/team-a-b");
+  ).toBe(path.join("/c", "tasks", "team-a-b"));
 });
 
 test("open tasks are pending or in progress, in ID order", () => {

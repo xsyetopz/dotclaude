@@ -29,7 +29,7 @@ import {
   olderThan,
 } from "../../../hooks/lib/_version.mjs";
 
-const here = path.dirname(new URL(import.meta.url).pathname);
+const here = import.meta.dirname;
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
   const i = args.indexOf(name);

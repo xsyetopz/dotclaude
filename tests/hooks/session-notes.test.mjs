@@ -54,7 +54,9 @@ test("session start warns about incomplete setup", () => {
 test("session start says when secret redaction has no betterleaks", () => {
   // A PATH that holds bun and nothing else, so betterleaks is missing.
   const bin = tmp("dotclaude-bin-");
-  fs.symlinkSync(Bun.which("bun"), path.join(bin, "bun"));
+  // Keep the file name, so Windows finds `bun.exe` too.
+  const bun = Bun.which("bun");
+  fs.symlinkSync(bun, path.join(bin, path.basename(bun)));
   const start = (option) =>
     setupCheck({ PATH: bin, CLAUDE_PLUGIN_OPTION_GUARD_SECRETS: option });
   expect(start("true").systemMessage).toContain("`brew install betterleaks`");
@@ -121,7 +123,7 @@ function instructionProject() {
   const config = tmp("dotclaude-config-");
   execFileSync("git", ["init", "-q", project]);
   const write = (file, text) => {
-    const full = path.join(file.startsWith("/") ? "" : project, file);
+    const full = path.isAbsolute(file) ? file : path.join(project, file);
     fs.mkdirSync(path.dirname(full), { recursive: true });
     fs.writeFileSync(full, text);
   };

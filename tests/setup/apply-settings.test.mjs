@@ -296,7 +296,14 @@ test("an unknown --auto-update value stops before any write", () => {
       "maybe",
       "--apply",
     ],
-    { env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: "" } },
+    {
+      env: {
+        ...process.env,
+        HOME: home,
+        USERPROFILE: home,
+        CLAUDE_CONFIG_DIR: "",
+      },
+    },
   );
   expect(res.exitCode).toBe(2);
   expect(fs.readFileSync(file, "utf8")).toBe("{}");

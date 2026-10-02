@@ -31,7 +31,7 @@ import {
   run,
   stateDir,
 } from "../lib/_common.mjs";
-import { isTempChild } from "../lib/_rules-filesystem.mjs";
+import { isTempChild, shellResolve } from "../lib/_rules-filesystem.mjs";
 import { parse } from "../lib/_shell.mjs";
 import { subagentTranscript } from "../lib/_transcript.mjs";
 
@@ -55,7 +55,7 @@ function deletesTempOnly(data) {
     return (
       paths.length > 0 &&
       paths.every((p) => {
-        const abs = path.resolve(cwd, p);
+        const abs = shellResolve(cwd, p);
         return (
           !/[$~*?[]|__SUBST__/.test(p) &&
           !p.split("/").includes("..") &&

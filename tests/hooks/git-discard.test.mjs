@@ -38,6 +38,10 @@ execFileSync("git", ["-C", collide, "rm", "-q", "c.js"]);
 execFileSync("git", ["-C", collide, "commit", "-qm", "c4"]);
 fs.writeFileSync(path.join(collide, "c.js"), "untracked work\n");
 
+// A native path as a command writes it. Git Bash on Windows reads `\` as an
+// escape and takes `C:/` paths.
+const sh = (p) => p.split(path.sep).join("/");
+
 const decision = (command) =>
   hook(
     "pre-tool-use/block-destructive-commands.mjs",
@@ -55,11 +59,11 @@ test.each([
   ["git checkout HEAD~1 -- b.js"],
   ["git restore b.js"],
   ["git restore --source HEAD~1 b.js"],
-  [`cd ${clean} && git reset -q --hard HEAD~1`],
-  [`git -C ${clean} reset --hard`],
-  [`git -C ${clean} checkout .`],
-  [`git -C ${collide} reset --hard HEAD`],
-  [`git -C ${collide} reset --hard HEAD~3`],
+  [`cd ${sh(clean)} && git reset -q --hard HEAD~1`],
+  [`git -C ${sh(clean)} reset --hard`],
+  [`git -C ${sh(clean)} checkout .`],
+  [`git -C ${sh(collide)} reset --hard HEAD`],
+  [`git -C ${sh(collide)} reset --hard HEAD~3`],
 ])("a discard of clean paths runs: %s", (command) => {
   expect(decision(command)).toBe(null);
 });
@@ -74,12 +78,21 @@ test.each([
   ["git checkout -- $F", "a path only known at run time"],
   ["cd $W && git reset --hard", "a folder only known at run time"],
   [
-    `git -C ${clean} stash pop && git -C ${clean} reset --hard`,
+    `git -C ${sh(clean)} stash pop && git -C ${sh(clean)} reset --hard`,
     "changes that an earlier command restores",
   ],
-  [`cd ${clean} && patch -p1 < x.diff && git checkout .`, "a patch before it"],
-  [`git -C ${collide} reset --hard HEAD~1`, "an untracked file the commit has"],
-  [`git -C ${collide} reset --hard $REV`, "a commit only known at run time"],
+  [
+    `cd ${sh(clean)} && patch -p1 < x.diff && git checkout .`,
+    "a patch before it",
+  ],
+  [
+    `git -C ${sh(collide)} reset --hard HEAD~1`,
+    "an untracked file the commit has",
+  ],
+  [
+    `git -C ${sh(collide)} reset --hard $REV`,
+    "a commit only known at run time",
+  ],
 ])("a discard that can lose work asks: %s (%s)", (command) => {
   expect(decision(command)).toBe("ask");
 });

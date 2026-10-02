@@ -54,7 +54,7 @@ test("reader commands name existing paths inside the project only", () => {
 test("instruction files run from below the root down to the file's directory", () => {
   expect(
     instructionFiles(path.join(repo, "pkg/api/server.ts"), repo).map((f) =>
-      path.relative(repo, f),
+      path.relative(repo, f).split(path.sep).join("/"),
     ),
   ).toEqual([
     "pkg/CLAUDE.md",

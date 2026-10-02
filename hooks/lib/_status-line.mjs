@@ -249,7 +249,7 @@ function folderPart(workspace, dir) {
   const project = workspace?.project_dir;
   let name = path.basename(dir) || dir;
   if (project && dir !== project && dir.startsWith(project + path.sep))
-    name = `${path.basename(project)}/${path.relative(project, dir)}`;
+    name = `${path.basename(project)}/${path.relative(project, dir).split(path.sep).join("/")}`;
   let text = C.bold(C.blue(name));
   const added = workspace?.added_dirs?.length;
   if (added) text += C.dim(` +${added}`);

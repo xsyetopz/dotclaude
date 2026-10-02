@@ -133,12 +133,13 @@ run((data) => {
   const root = real(projectRoot(data));
   const cwd = real(data.cwd || root);
   const config = process.env.CLAUDE_CONFIG_DIR || path.join(home, ".claude");
+  const slashes = (p) => p.split(path.sep).join("/");
   const label = (file) =>
     `\`${
       file.startsWith(root + path.sep)
-        ? path.relative(root, file)
+        ? slashes(path.relative(root, file))
         : file.startsWith(home + path.sep)
-          ? `~${file.slice(home.length)}`
+          ? `~${slashes(file.slice(home.length))}`
           : file
     }\``;
 

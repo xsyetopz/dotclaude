@@ -25,7 +25,12 @@ test("status reports MCP servers and index state", () => {
     [path.join(SCRIPTS, "status.mjs"), "--project", project],
     {
       encoding: "utf8",
-      env: { ...process.env, HOME: home, PATH: path.dirname(process.execPath) },
+      env: {
+        ...process.env,
+        HOME: home,
+        USERPROFILE: home,
+        PATH: path.dirname(process.execPath),
+      },
     },
   );
   expect(res.status, res.stderr).toBe(0);
@@ -35,7 +40,11 @@ test("status reports MCP servers and index state", () => {
   expect(status.codegraph.indexed).toBe(true);
 });
 
-/** Run status.mjs with only the given stub programs on PATH. */
+/**
+ * Run status.mjs with only the given stub programs on PATH. Windows cannot run
+ * an extensionless `#!/bin/sh` stub, so the tests that use it are POSIX only.
+ */
+const posix = process.platform !== "win32";
 function ghidraStatus({ stubs = {}, env = {}, claude = {} } = {}) {
   const home = tempHome();
   const project = fs.realpathSync(
@@ -52,14 +61,19 @@ function ghidraStatus({ stubs = {}, env = {}, claude = {} } = {}) {
     [path.join(SCRIPTS, "status.mjs"), "--project", project],
     {
       encoding: "utf8",
-      env: { HOME: home, PATH: `${bin}:/bin:/usr/bin`, ...env },
+      env: {
+        HOME: home,
+        USERPROFILE: home,
+        PATH: `${bin}:/bin:/usr/bin`,
+        ...env,
+      },
     },
   );
   expect(res.status, res.stderr).toBe(0);
   return { ghidra: JSON.parse(res.stdout).ghidra };
 }
 
-test("status reports a complete Ghidra setup", () => {
+test.skipIf(!posix)("status reports a complete Ghidra setup", () => {
   const ghidra = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-ghidra-"));
   fs.mkdirSync(path.join(ghidra, "support"));
   fs.writeFileSync(path.join(ghidra, "support", "analyzeHeadless"), "");
@@ -83,24 +97,27 @@ test("status reports a complete Ghidra setup", () => {
   expect(status.bridge).toBeTruthy();
 });
 
-test("status reports a missing Ghidra setup and an old Python or Java", () => {
-  const { ghidra: missing } = ghidraStatus();
-  expect(missing.uvx).toBe(null);
-  expect(missing.install_dir).toBe(null);
-  expect(missing.headless).toBe(false);
-  expect(missing.mcp).toBe(null);
-  expect(missing.bridge).toBe(null);
-  const { ghidra: old } = ghidraStatus({
-    stubs: {
-      python3: "echo Python 3.9.6",
-      java: "echo 'openjdk version \"17.0.2\" 2022-01-18' >&2",
-    },
-    env: { GHIDRA_INSTALL_DIR: "/nonexistent/ghidra" },
-  });
-  expect(old.python).toStrictEqual({ version: "3.9.6", ok: false });
-  expect(old.java).toStrictEqual({ version: "17.0.2", ok: false });
-  expect(old.headless).toBe(false);
-});
+test.skipIf(!posix)(
+  "status reports a missing Ghidra setup and an old Python or Java",
+  () => {
+    const { ghidra: missing } = ghidraStatus();
+    expect(missing.uvx).toBe(null);
+    expect(missing.install_dir).toBe(null);
+    expect(missing.headless).toBe(false);
+    expect(missing.mcp).toBe(null);
+    expect(missing.bridge).toBe(null);
+    const { ghidra: old } = ghidraStatus({
+      stubs: {
+        python3: "echo Python 3.9.6",
+        java: "echo 'openjdk version \"17.0.2\" 2022-01-18' >&2",
+      },
+      env: { GHIDRA_INSTALL_DIR: "/nonexistent/ghidra" },
+    });
+    expect(old.python).toStrictEqual({ version: "3.9.6", ok: false });
+    expect(old.java).toStrictEqual({ version: "17.0.2", ok: false });
+    expect(old.headless).toBe(false);
+  },
+);
 
 test("status reports OpenSpec setup in the project", () => {
   const home = tempHome();
@@ -111,7 +128,7 @@ test("status reports OpenSpec setup in the project", () => {
   const status = () => {
     const res = spawnSync(process.execPath, [script, "--project", project], {
       encoding: "utf8",
-      env: { HOME: home, PATH: "/bin:/usr/bin" },
+      env: { HOME: home, USERPROFILE: home, PATH: "/bin:/usr/bin" },
     });
     expect(res.status, res.stderr).toBe(0);
     return JSON.parse(res.stdout).openspec;

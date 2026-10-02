@@ -109,21 +109,28 @@ test("a run whose workspace was not kept is reported, not scored", () => {
   expect(grade(result, tmp)).toEqual(["t1 with #2"]);
 });
 
-test("a sealed kept run is scored, and its seal is restored", () => {
-  // When the plugin wrote to `home/` or `tmp/`, the CLI moves them into
-  // `sealed/` with mode 000 and makes the kept folder read-only.
-  const { tmp, result } = suite();
-  const root = path.join(tmp, "a");
-  fs.mkdirSync(path.join(root, "sealed"));
-  fs.renameSync(path.join(root, "home"), path.join(root, "sealed", "home"));
-  fs.chmodSync(path.join(root, "sealed"), 0o000);
-  fs.chmodSync(root, 0o500);
-  expect(grade(result, tmp)).toEqual([]);
-  const good = result.cases[0].arms.with[0];
-  expect(good.graders.at(-1)).toMatchObject({ name: "oracle", passed: true });
-  expect(fs.statSync(path.join(root, "sealed")).mode & 0o777).toBe(0);
-  expect(fs.statSync(root).mode & 0o777).toBe(0o500);
-  // The test cleanup cannot remove a sealed folder.
-  fs.chmodSync(root, 0o700);
-  fs.chmodSync(path.join(root, "sealed"), 0o700);
-});
+// Windows `chmod` sets only the read-only bit, so it cannot make the mode 000
+// seal. Thus this test is POSIX only.
+const posix = process.platform !== "win32";
+
+test.skipIf(!posix)(
+  "a sealed kept run is scored, and its seal is restored",
+  () => {
+    // When the plugin wrote to `home/` or `tmp/`, the CLI moves them into
+    // `sealed/` with mode 000 and makes the kept folder read-only.
+    const { tmp, result } = suite();
+    const root = path.join(tmp, "a");
+    fs.mkdirSync(path.join(root, "sealed"));
+    fs.renameSync(path.join(root, "home"), path.join(root, "sealed", "home"));
+    fs.chmodSync(path.join(root, "sealed"), 0o000);
+    fs.chmodSync(root, 0o500);
+    expect(grade(result, tmp)).toEqual([]);
+    const good = result.cases[0].arms.with[0];
+    expect(good.graders.at(-1)).toMatchObject({ name: "oracle", passed: true });
+    expect(fs.statSync(path.join(root, "sealed")).mode & 0o777).toBe(0);
+    expect(fs.statSync(root).mode & 0o777).toBe(0o500);
+    // The test cleanup cannot remove a sealed folder.
+    fs.chmodSync(root, 0o700);
+    fs.chmodSync(path.join(root, "sealed"), 0o700);
+  },
+);

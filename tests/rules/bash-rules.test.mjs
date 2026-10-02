@@ -296,6 +296,10 @@ test("commit hygiene flags .DS_Store and a lockfile without its manifest", () =>
   ).toStrictEqual([]);
 });
 
+// A native path as a command writes it. Git Bash on Windows reads `\` as an
+// escape and takes `C:/` paths.
+const sh = (p) => p.split(path.sep).join("/");
+
 test("git worktree remove --force asks only when the worktree has changes", () => {
   const repo = makeRepo();
   execFileSync("git", [
@@ -309,7 +313,7 @@ test("git worktree remove --force asks only when the worktree has changes", () =
     "-qm",
     "init",
   ]);
-  const cmd = `git worktree remove --force ${repo}`;
+  const cmd = `git worktree remove --force ${sh(repo)}`;
   expect(level(cmd)).toBe("pass");
   fs.writeFileSync(path.join(repo, "scratch.txt"), "unsaved\n");
   expect(level(cmd)).toBe("ask");

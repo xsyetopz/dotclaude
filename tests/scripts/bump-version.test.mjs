@@ -117,5 +117,5 @@ test("a bump also rewrites each bundled plugin's manifest", () => {
   );
   const off = bump(root, "patch");
   expect(off.status).toBe(1);
-  expect(off.stderr).toMatch(/plugins\/extra\/.* 0\.1\.0/);
+  expect(off.stderr).toMatch(/plugins[/\\]extra[/\\].* 0\.1\.0/);
 });

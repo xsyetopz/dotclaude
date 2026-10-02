@@ -2,6 +2,7 @@
 // and printing secret files.
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { git, isFlagCluster, isUnder, targets } from "./_bash-args.mjs";
 import { program } from "./_shell.mjs";
@@ -72,24 +73,46 @@ function isRecursive(args) {
 // is set, and that folder can be outside the system temp folders.
 const TEMP_VARS = ["TMPDIR", "CLAUDE_CODE_TMPDIR"];
 
-/** Temp folder prefixes, each with a trailing slash. */
+/** The path with `/` separators, so that it compares with the prefixes. */
+const slashes = (p) => p.split(path.sep).join("/");
+
+/**
+ * Temp folder prefixes, each with a trailing slash. `os.tmpdir()` adds the
+ * Windows temp folder, which `TEMP` names.
+ */
 function tempPrefixes() {
-  const fromEnv = TEMP_VARS.map((name) =>
-    process.env[name]?.replace(/\/+$/, ""),
-  ).filter(Boolean);
-  return [...TEMP_PREFIXES, ...fromEnv.map((dir) => `${dir}/`)];
+  const dirs = [...TEMP_VARS.map((name) => process.env[name]), os.tmpdir()]
+    .filter(Boolean)
+    .map((dir) => slashes(dir).replace(/\/+$/, ""));
+  return [...TEMP_PREFIXES, ...dirs.map((dir) => `${dir}/`)];
 }
 
 function isTemp(p) {
-  const s = `${p}/`;
+  const s = `${slashes(p)}/`;
   return tempPrefixes().some((prefix) => s.startsWith(prefix));
 }
 
 /** A path strictly inside a temp folder, not the folder itself. */
 export function isTempChild(p) {
+  const s = slashes(p);
   return tempPrefixes().some(
-    (prefix) => p.startsWith(prefix) && p.length > prefix.length,
+    (prefix) => s.startsWith(prefix) && s.length > prefix.length,
   );
+}
+
+/**
+ * Resolve a path from a command against `base`. Claude Code on Windows runs
+ * commands in Git Bash. There `/tmp` is the folder that `TEMP` names, `/c/`
+ * is the drive `C:`. Other absolute paths keep their POSIX form, so the
+ * POSIX temp prefixes apply to them.
+ */
+export function shellResolve(base, p) {
+  if (process.platform !== "win32" || !p.startsWith("/"))
+    return path.resolve(base, p);
+  if (/^\/tmp(\/|$)/.test(p)) return path.join(os.tmpdir(), p.slice(4));
+  const drive = /^\/([a-z])(\/|$)/i.exec(p);
+  if (drive) return path.resolve(`${drive[1]}:\\`, p.slice(3));
+  return path.posix.resolve(p);
 }
 
 /**
@@ -179,7 +202,7 @@ function safeRoot(root, cmd, ctx, filter) {
   const p = resolveTarget(t, cmd, ctx);
   if (!p) return false;
   if (scratch(p, ctx)) return true;
-  if (filter && tempPrefixes().includes(`${p}/`)) {
+  if (filter && tempPrefixes().includes(`${slashes(p)}/`)) {
     if (!overlapsProject(p, ctx)) return true;
     // A temp folder that holds the project, such as `/tmp` on Linux: with
     // `-maxdepth 1`, only the project's own entry in the folder can reach
@@ -220,9 +243,9 @@ export function resolveTarget(target, cmd, ctx) {
       if (!home) return undefined;
       base = path.join(home, cmd.cwdHint.slice(1));
     } else if (cmd.cwdHint.startsWith("~")) return undefined;
-    else base = path.resolve(ctx.cwd, cmd.cwdHint);
+    else base = shellResolve(ctx.cwd, cmd.cwdHint);
   }
-  return path.resolve(base, target);
+  return shellResolve(base, target);
 }
 
 export function rm(cmd, ctx) {

@@ -110,14 +110,14 @@ export function contextFor(files, root) {
     } catch {
       continue;
     }
-    const rel = path.relative(root, f);
+    const rel = path.relative(root, f).split(path.sep).join("/");
     if (used + text.length > NESTED_INSTRUCTIONS_CHARS) {
       named.push(rel);
       continue;
     }
     used += text.length;
     parts.push(
-      `Contents of \`${rel}\` (instructions for files in \`${path.dirname(rel)}/\`):\n\n${text}`,
+      `Contents of \`${rel}\` (instructions for files in \`${path.posix.dirname(rel)}/\`):\n\n${text}`,
     );
   }
   if (named.length)

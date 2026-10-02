@@ -27,6 +27,10 @@ execFileSync("git", ["-C", project, "add", "-f", "build/keep/a.txt"]);
 fs.mkdirSync(path.join(project, "notes"));
 fs.writeFileSync(path.join(project, "notes/n.md"), "1\n");
 
+// A native path as a command writes it. Git Bash on Windows reads `\` as an
+// escape and takes `C:/` paths.
+const sh = (p) => p.split(path.sep).join("/");
+
 const decision = (command) =>
   hook(
     "pre-tool-use/block-destructive-commands.mjs",
@@ -55,7 +59,10 @@ test.each([
 
 test.each([
   ["rm -rf src", "tracked files in a project under a temp folder"],
-  [`rm -rf ${project}/src`, "an absolute path into a project in a temp folder"],
+  [
+    `rm -rf ${sh(project)}/src`,
+    "an absolute path into a project in a temp folder",
+  ],
   ["rm -rf notes", "untracked files that git does not ignore"],
   ["find src -delete", "tracked files"],
   ['find . -name "*.log" -delete', "the project root"],
@@ -71,7 +78,7 @@ test.each([
   ],
   ["cd /tmp && rm -rf $n", "a run-time name directly in a temp folder"],
   [
-    `rm -rf ${path.dirname(project)}/dotclaude-del$n`,
+    `rm -rf ${sh(path.dirname(project))}/dotclaude-del$n`,
     "a run-time name that can complete the project's name",
   ],
   ['S="$HOME/x"; rm -rf "$S"', "a variable outside the temp folders"],
@@ -84,7 +91,7 @@ test.each([
 // The temp folder that holds the project, as `/tmp` does on Linux, where
 // `os.tmpdir()` is `/tmp`. The test preload sets `TMPDIR` to a folder of its
 // own, which holds the project the same way.
-const holder = os.tmpdir().replace(/\/+$/, "");
+const holder = sh(os.tmpdir()).replace(/\/+$/, "");
 
 test.each([
   [`find ${holder} -maxdepth 1 -name 'ojd-*' -exec rm -rf {} +`],

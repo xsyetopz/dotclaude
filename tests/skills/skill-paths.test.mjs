@@ -31,7 +31,7 @@ function missingPaths(skillDir, text) {
       refs.push(path.join(skillDir, rel));
   return [...new Set(refs)]
     .filter((p) => !fs.existsSync(p))
-    .map((p) => path.relative(ROOT, p));
+    .map((p) => path.relative(ROOT, p).split(path.sep).join("/"));
 }
 
 test("every path a SKILL.md names exists", () => {

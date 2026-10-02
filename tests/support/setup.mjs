@@ -27,7 +27,9 @@ export function runWith(env, script, home, ...args) {
     encoding: "utf8",
     env: {
       ...process.env,
+      // os.homedir() reads USERPROFILE on Windows and HOME elsewhere.
       HOME: home,
+      USERPROFILE: home,
       CLAUDE_CONFIG_DIR: "",
       ZDOTDIR: "",
       XDG_CONFIG_HOME: "",

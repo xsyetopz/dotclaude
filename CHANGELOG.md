@@ -10,6 +10,27 @@ steps after each update.
 
 ## [Unreleased]
 
+### Fixed
+
+Windows fixes. The Windows CI job had 75 failures.
+
+- The `setup` scripts `apply-settings.mjs` and `apply-claude-md.mjs` did not
+  find their profiles on Windows. They read their folder from the URL path
+  (`/D:/...`). They now use `import.meta.dirname`.
+- On Windows, the Bash guard did not see temp paths. It now reads command
+  paths as Git Bash does: `/tmp` is the folder that `TEMP` names, and `/c/`
+  is the drive `C:`. It also compares temp folders with `/` separators and
+  knows the Windows temp folder. The agent budget's temp delete check uses
+  the same rules.
+- The ledger, the nested instruction note, the status line, the instruction
+  size note, and the search guard now give paths below the project with `/`.
+  With `\`, the checks for dot folders and `.claude/` failed on Windows.
+- `exclude-session-files` now asks git for the path below the top level. A
+  short name such as `RUNNER~1` made the path comparison fail on Windows.
+- Tests write paths in commands with `/`, set `USERPROFILE` beside `HOME`,
+  and expect native paths. Tests that run a `#!/bin/sh` stub or a mode 000
+  folder run only on POSIX systems.
+
 ## [0.17.1] - 2026-10-01
 
 ### Breaking
