@@ -177,6 +177,7 @@ or in progress. It does not apply to subagents, or to a turn that ends with
 
 **Why:** a stale task list tells you that work is open when it is done, or
 done when it is open. Claude marks each task done or says why it stays open.
+The engine reminders to use the task tools are then left out.
 
 ### Loop Reviews (`gate_tasks`)
 
@@ -282,14 +283,15 @@ are in `hooks/lib/_budget.mjs`.
 ## Usage
 
 The usage bounds, usage notes, model lock, and scratchpad pruning are on
-[Usage Hooks](hooks-usage.md).
+[Usage Hooks](hooks-usage.md). Where each hook runs is on
+[Hooks Module](mods.md).
 
 ## Options
 
 | Option | Default | Effect |
 | --- | --- | --- |
 | `guard_bash`, `guard_edit`, `guard_secrets`, `context_nested_instructions`, `context_session_files`, `gate_verify`, `gate_tasks`, `gate_goal_stall`, `context_compact_carryover`, `context_handoff_pointer`, `model_lock`, `git_commit_hygiene` | on | the hooks above |
-| `agent_guidance` | on | shared rules and report format for agents, and the `general-purpose` refusal |
+| `agent_guidance` | on | shared rules and report format for agents, the `general-purpose` refusal, and the [hidden built-in agents](mods.md#built-ins-that-dotclaude-replaces) |
 | `guard_ask_in_auto` | off | asks about recoverable actions in auto mode too |
 | `git_attribution` | on | adds the `Co-Authored-By` trailer and pull request footer |
 | `model_allowed` | the four models | the models that the lock accepts |

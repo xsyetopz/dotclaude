@@ -104,6 +104,11 @@ message starts with `[dotclaude]`, except the text of a permission prompt. To
 run a command that a guard denied, type
 `! <command>`.
 
+Most hooks run in a [hooks module](docs/mods.md), so a tool call starts no
+hook process. Where Claude Code does not load mods, such as with `--bare` or
+in safe mode, no guard runs. The module also hides the built-in agents that
+the dotclaude agents replace.
+
 ### [Models](docs/models.md)
 
 Opus 5.5 for the session, Sonnet 5.5 for cheap delegated work, Haiku 4.5 for

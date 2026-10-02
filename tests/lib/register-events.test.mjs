@@ -113,3 +113,75 @@ test("a precompute saves nothing and continues", async () => {
   expect(out).toEqual({ skip: "x" });
   expect(ledger($)).toBeNull();
 });
+
+const offer = (agent, source = "built-in") => ({
+  agent,
+  description: "x",
+  source,
+  provider: { plugin: source === "built-in" ? "engine" : "p", tier: "core" },
+});
+const offered = { isOffered: true };
+
+test("agent.offer hides the built-in agents that dotclaude replaces", async () => {
+  const on = registered();
+  for (const agent of [
+    "general-purpose",
+    "claude",
+    "Explore",
+    "Plan",
+    "statusline-setup",
+  ])
+    expect(
+      await on["agent.offer"](fake(), offer(agent), async () => offered),
+    ).toEqual({
+      isOffered: false,
+    });
+  for (const agent of ["claude-code-guide", "dotclaude:reviewer"])
+    expect(
+      await on["agent.offer"](fake(), offer(agent), async () => offered),
+    ).toBe(offered);
+});
+
+test("agent.offer keeps a plugin agent with a built-in name, and all with the option off", async () => {
+  const next = async () => offered;
+  expect(
+    await registered()["agent.offer"](fake(), offer("Plan", "plugin"), next),
+  ).toBe(offered);
+  const off = registered({ agent_guidance: false });
+  expect(await off["agent.offer"](fake(), offer("claude"), next)).toBe(offered);
+});
+
+const attachment = (type, kind = "engine") => ({
+  type,
+  text: "Use the task tools.",
+  origin: { kind },
+});
+const kept = { text: "kept" };
+
+test("prompt.attachment leaves out the engine task reminders", async () => {
+  const on = registered();
+  for (const type of ["task_reminder", "todo_reminder"])
+    expect(
+      await on["prompt.attachment"](fake(), attachment(type), async () => kept),
+    ).toEqual({
+      text: null,
+    });
+  expect(
+    await on["prompt.attachment"](fake(), attachment("date"), async () => kept),
+  ).toBe(kept);
+  expect(
+    await on["prompt.attachment"](
+      fake(),
+      attachment("task_reminder", "plugin"),
+      async () => kept,
+    ),
+  ).toBe(kept);
+  const off = registered({ gate_tasks: false });
+  expect(
+    await off["prompt.attachment"](
+      fake(),
+      attachment("task_reminder"),
+      async () => kept,
+    ),
+  ).toBe(kept);
+});

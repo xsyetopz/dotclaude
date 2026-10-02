@@ -62,10 +62,10 @@ compatibility layer.
 
 ## Evals
 
-The behavior evals run with `claude plugin eval`. `evals/` has 8 tasks in 4
-tiers, from a one-file fix to delegation. `evals-heldout/` has cases written
-without access to dotclaude's prompts. Each run costs money, so run it only
-when you decide to.
+The behavior evals run with `claude plugin eval`. `evals/` has 12 tasks in 5
+tiers, from a one-file fix to debugging, review, and slices. `evals-heldout/`
+has cases written without access to dotclaude's prompts. Each run costs
+money, so run it only when you decide to.
 
 ```bash
 claude plugin eval . --model haiku --judge-model sonnet --runs 3 --scaffold \
@@ -88,15 +88,16 @@ the workspace. `--allow-tools` grants the tools that the cases list.
 run's `home/` or `tmp/`, the CLI seals them in `sealed/` with mode 000, and
 it warns you once for each run. `evals/oracle.mjs` opens the seal only for
 the copy, and it runs `git` only in the copy. A case with a `reply.json`
-(`maxWords` and `reason`) also gets two reply graders from `evals/oracle.mjs`.
-`word-count` fails a final reply with more words than `maxWords`. `adverbs`
-fails a reply with a word from the `ADVERBS` list in `evals/reply.mjs`.
-`claude plugin eval` has no grader that runs a command. `--judge-model sonnet` sets the model of the `llm`
-graders. The default judge is Haiku 4.5, and it failed a correct `t4-slices`
-reply 3 times out of 3. The CLI does not keep the judge's text, so the cause
-is not known. Do not use the agent's model as the judge, because a model
-prefers its own output. The default ablation also runs each case without
-the plugin, so the report shows the plugin's effect.
+(`maxWords` and `reason`) also gets two reply graders from
+`evals/oracle.mjs`. `word-count` fails a final reply with more words than
+`maxWords`. `adverbs` fails a reply with a word from the `ADVERBS` list in
+`evals/reply.mjs`. `claude plugin eval` has no grader that runs a command.
+`--judge-model sonnet` sets the model of the `llm` graders. The default
+judge is Haiku 4.5, and it failed a correct `t4-slices` reply in 3 of 3
+runs. The CLI does not keep the judge's text, so the cause is not known. Do
+not use the agent's model as the judge, because a model prefers its own
+output. The default ablation also runs each case without the plugin, so the
+report shows the plugin's effect.
 
 `t4-slices` and `t4-handoff` call skills that 0.17.0 renamed. Releases before
 0.17.0 fail their `with-only` graders.

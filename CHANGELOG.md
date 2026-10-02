@@ -10,7 +10,54 @@ steps after each update.
 
 ## [Unreleased]
 
+### Breaking
+
+- dotclaude is a mod. The hooks module `hooks/register.mjs` runs the
+  PreToolUse, PostToolUse, PostToolUseFailure, SubagentStart,
+  UserPromptSubmit, and PreCompact actions with the native events
+  `tool.call`, `tool.check`, `agent.spawn`, `turn.step`, `prompt.submit`, and
+  `session.compact`. The classic command hooks for these events are removed,
+  so a tool call starts no hook process. Where Claude Code does not load
+  mods, such as with `--bare`, in safe mode, in an untrusted workspace, or
+  with `allowManagedModsOnly`, no guard runs.
+- SessionStart, Stop, SubagentStop, TaskCompleted, StopFailure,
+  PreModelSwitch, PostModelSwitch, and ConfigChange stay classic command
+  hooks, because no native event can do their work. The reasons are in
+  `docs/mods.md`.
+- The module gets no permission mode. So a guard can ask in auto, `dontAsk`,
+  and `bypassPermissions` mode where the classic hook stayed quiet.
+
+### Added
+
+- The model is not offered the built-in `general-purpose`, `claude`,
+  `Explore`, `Plan`, and `statusline-setup` agents (`agent_guidance`). The
+  engine reminders to use the task tools are left out of the request
+  (`gate_tasks`).
+- The `polish` skill makes a light edit of a named deliverable in place. Only
+  the user starts it.
+- `scripts/count-tokens.mjs` counts the tokens of the output style and of
+  each text that dotclaude injects. It needs `ANTHROPIC_API_KEY`.
+- The evals grade the word count and the adverbs of the final reply, and the
+  new case `t1-found-defect` checks that Claude fixes and reports a second
+  bug.
+
 ### Changed
+
+- The output style has no copy of the lean system prompt's rules, and its
+  bound is 2,350 tokens. Reports give only the outcome, with no process
+  history. Claude fixes each defect that an MRE confirms, uses no adverbs,
+  and lets errors reach the caller.
+- The subagent conventions name the project's test command from a
+  `justfile`, `package.json`, `CLAUDE.md`, or `AGENTS.md`.
+- The announced-work check finds more offers and deferrals, such as "if you
+  want" and "left as a follow-up". Only a push, publish, or delete question
+  is exempt.
+- The agent budget gives the full deny text once for each agent, and one
+  short line after that.
+- The hooks library reaches files, processes, and the environment only
+  through an `io` object, with pure path, glob, YAML, and SHA-1 code in place
+  of Node and Bun APIs. So the same actions run in the module and in the
+  command hooks.
 
 - The status line shows the reset time of each usage limit at all levels,
   not only from 75%. Reset and pace times use the format of Claude Code's
@@ -19,6 +66,11 @@ steps after each update.
   `/usage` copy that Claude Code keeps in `~/.claude.json`, when it is less
   than one hour old.
 - The cache miss glyph is `✘`, Claude Code's own cross, not `✗`.
+
+### Removed
+
+- `hooks/post-tool-use-failure/record-failed-checks.mjs`.
+  `record-edits-and-checks.mjs` records a failed check too.
 
 ## [0.17.1] - 2026-10-02
 

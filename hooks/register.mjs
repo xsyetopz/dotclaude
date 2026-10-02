@@ -390,6 +390,30 @@ async function placeOf($, options, places) {
   return { sessionId, io: await places.get(sessionId) };
 }
 
+/** Whether the dotclaude option `name` is on in the current session. */
+async function optionOn($, options, places, name) {
+  const place = await placeOf($, options, places);
+  const io = place?.io ?? (await modIo($, options, {}));
+  return option(io.env, name);
+}
+
+// The built-in agents that a dotclaude agent or skill replaces. `general-purpose`
+// and `claude` have no turn limit and every tool. `Explore` and `Plan` run on
+// the main model, and the settings profile removes them too (`explore-plan`).
+// `dotclaude:setup` sets the status line. `claude-code-guide` stays, because
+// no dotclaude agent answers questions about Claude Code.
+const REPLACED_AGENTS = new Set([
+  "general-purpose",
+  "claude",
+  "Explore",
+  "Plan",
+  "statusline-setup",
+]);
+
+// The engine reminders to use the task tools. The `gate_tasks` check at the
+// end of a turn replaces them.
+const TASK_REMINDERS = new Set(["task_reminder", "todo_reminder"]);
+
 /**
  * Mark the subagent `agentId` as running again. The engine gives no
  * subagent transcript, so the marker time is the only activity time of the
@@ -428,8 +452,10 @@ async function noteAgentContext($, options, places, agentId, usage) {
  * of `tool.call`. An "allow" is not kept, so the engine's rules decide, as
  * they do for a classic hook's "allow". `agent.spawn` runs the SubagentStart
  * actions. `prompt.submit` runs the UserPromptSubmit actions, and
- * `session.compact` runs the PreCompact actions. `turn.step` keeps the
- * context of each subagent, because the engine does not give it.
+ * `session.compact` runs the PreCompact actions. `agent.offer` and
+ * `prompt.attachment` remove the built-in agents and reminders that dotclaude
+ * replaces. `turn.step` keeps the context of each subagent, because the
+ * engine does not give it.
  */
 export function register(on, options) {
   const verdicts = new Map();
@@ -547,6 +573,30 @@ export function register(on, options) {
       if (typeof e.agentId === "string" && e.agentId) data.agent_id = e.agentId;
       await runActions($, options, "PreCompact", data);
     }
+    return next(e);
+  });
+
+  // A built-in agent in REPLACED_AGENTS is not offered to the model, in its
+  // listing or at dispatch. An agent of the user or a plugin with the same
+  // name stays.
+  on("agent.offer", async ($, e, next) => {
+    if (
+      e.source === "built-in" &&
+      REPLACED_AGENTS.has(e.agent) &&
+      (await optionOn($, options, places, "agent_guidance"))
+    )
+      return { isOffered: false };
+    return next(e);
+  });
+
+  // The engine's task reminders are left out of the request.
+  on("prompt.attachment", async ($, e, next) => {
+    if (
+      e.origin?.kind === "engine" &&
+      TASK_REMINDERS.has(e.type) &&
+      (await optionOn($, options, places, "gate_tasks"))
+    )
+      return { text: null };
     return next(e);
   });
 
