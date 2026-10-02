@@ -340,7 +340,8 @@ function parseScalar(text) {
     if (trim(text.slice(end)) !== "") fail("text after a quoted string");
     return str;
   }
-  if (/:([ \t]|$)/.test(text)) fail("a mapping value is not allowed here");
+  // A folded plain scalar keeps a line break for each blank line.
+  if (/:([ \t\n]|$)/.test(text)) fail("a mapping value is not allowed here");
   return resolvePlain(text);
 }
 

@@ -237,6 +237,7 @@ describe("parseYaml matches Bun.YAML on the frontmatter of this repository", () 
 describe("parseYaml throws where Bun.YAML throws", () => {
   const THROWS = {
     "colon in plain value": "a: b: c\n",
+    "colon at the end of a folded plain line": "description: foo\n  bar:\n\n  baz\n",
     "unclosed flow": "a: [1, 2\n",
     "unclosed quote": 'a: "x\n',
     "bad escape": 'a: "\\q"\n',
