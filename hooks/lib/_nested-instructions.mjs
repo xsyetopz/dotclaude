@@ -6,12 +6,9 @@
 // helpers find the files a Read would have loaded, so a PostToolUse hook can
 // add them.
 
-import fs from "node:fs";
-import path from "node:path";
 import { NESTED_INSTRUCTIONS_CHARS } from "./_budget.mjs";
+import { pathFor, posix } from "./_path.mjs";
 import { parse } from "./_shell.mjs";
-import { tail } from "./_transcript.mjs";
-import { nestedFromText } from "./_transcript-parse.mjs";
 
 /** Programs whose path arguments are files Claude reads or searches. */
 const READERS = new Set([
@@ -30,19 +27,16 @@ const READERS = new Set([
 ]);
 
 /** The files Claude Code loads for one directory, in its order. */
-const NAMES = [
-  "CLAUDE.md",
-  path.join(".claude", "CLAUDE.md"),
-  "CLAUDE.local.md",
-];
+const NAMES = [["CLAUDE.md"], [".claude", "CLAUDE.md"], ["CLAUDE.local.md"]];
 
-const inside = (root, p) => {
+const inside = (path, root, p) => {
   const rel = path.relative(root, p);
   return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
 };
 
 /** Existing paths under `root` that reader commands in `command` name. */
-export function readPaths(command, cwd, root) {
+export async function readPaths(io, command, cwd, root) {
+  const path = pathFor(io.platform);
   const found = new Set();
   for (const cmd of parse(command).commands) {
     if (!READERS.has(cmd.name)) continue;
@@ -50,7 +44,7 @@ export function readPaths(command, cwd, root) {
     for (const arg of cmd.args) {
       if (arg.startsWith("-")) continue;
       const p = path.resolve(base, arg);
-      if (inside(root, p) && fs.existsSync(p)) found.add(p);
+      if (inside(path, root, p) && (await io.fs.exists(p))) found.add(p);
     }
   }
   return [...found];
@@ -61,42 +55,38 @@ export function readPaths(command, cwd, root) {
  * (its directory when it is a file). The root's own files load at session
  * start, so they are not included.
  */
-export function instructionFiles(target, root) {
+export async function instructionFiles(io, target, root) {
+  const path = pathFor(io.platform);
   let dir = target;
   try {
-    if (!fs.statSync(target).isDirectory()) dir = path.dirname(target);
+    if ((await io.fs.stat(target)).kind !== "dir") dir = path.dirname(target);
   } catch {
     return [];
   }
   const dirs = [];
-  for (; inside(root, dir); dir = path.dirname(dir)) dirs.unshift(dir);
+  for (; inside(path, root, dir); dir = path.dirname(dir)) dirs.unshift(dir);
   const files = [];
   for (const d of dirs)
     for (const name of NAMES) {
-      const f = path.join(d, name);
-      if (fs.existsSync(f)) files.push(f);
+      const f = path.join(d, ...name);
+      if (await io.fs.exists(f)) files.push(f);
     }
   return files;
-}
-
-/** Paths that the transcript shows Claude Code loaded as nested memory. */
-export function loadedInTranscript(transcriptPath) {
-  const text = transcriptPath ? tail(transcriptPath) : null;
-  return text ? nestedFromText(text) : new Set();
 }
 
 /**
  * The context text for `files`: each file's text while the total stays
  * inside NESTED_INSTRUCTIONS_CHARS, and the path alone for the rest.
  */
-export function contextFor(files, root) {
+export async function contextFor(io, files, root) {
+  const path = pathFor(io.platform);
   const parts = [];
   const named = [];
   let used = 0;
   for (const f of files) {
     let text;
     try {
-      text = fs.readFileSync(f, "utf8").trim();
+      text = (await io.fs.read(f)).trim();
     } catch {
       continue;
     }
@@ -107,7 +97,7 @@ export function contextFor(files, root) {
     }
     used += text.length;
     parts.push(
-      `Contents of \`${rel}\` (instructions for files in \`${path.posix.dirname(rel)}/\`):\n\n${text}`,
+      `Contents of \`${rel}\` (instructions for files in \`${posix.dirname(rel)}/\`):\n\n${text}`,
     );
   }
   if (named.length)

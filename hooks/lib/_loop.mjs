@@ -11,23 +11,31 @@
 // worktree map back to the main root.
 
 import fs from "node:fs";
-import path from "node:path";
+import nodePath from "node:path";
+import { globMatch } from "./_glob.mjs";
+import { pathFor, posix, win32 } from "./_path.mjs";
 
 const WORKTREE = /^(.*?)[\\/]\.claude[\\/]worktrees[\\/][^\\/]+(?:[\\/](.*))?$/;
 
+/** The main root of the absolute path `abs`, as `path` writes it. */
+const rootOf = (abs) => WORKTREE.exec(abs)?.[1] ?? abs;
+
 /** The main project root of `dir`, also when `dir` is in an agent worktree. */
-export function mainRoot(dir) {
-  const m = WORKTREE.exec(path.resolve(dir));
-  return m ? m[1] : path.resolve(dir);
+export async function mainRoot(io, dir) {
+  return rootOf(pathFor(io.platform).resolve(io.cwd, dir));
 }
 
-const loopDir = (root) => path.join(mainRoot(root), ".dotclaude", "loop");
+const loopDir = (io, root) => {
+  const path = pathFor(io.platform);
+  return path.join(rootOf(path.resolve(io.cwd, root)), ".dotclaude", "loop");
+};
 
 /** `loop.json`, or null when no loop runs in this project. */
-export function loopConfig(root) {
+export async function loopConfig(io, root) {
+  const path = pathFor(io.platform);
   try {
     const config = JSON.parse(
-      fs.readFileSync(path.join(loopDir(root), "loop.json"), "utf8"),
+      await io.fs.read(path.join(loopDir(io, root), "loop.json")),
     );
     return config && typeof config === "object" ? config : null;
   } catch {
@@ -36,10 +44,11 @@ export function loopConfig(root) {
 }
 
 /** The slices, skipping lines that do not parse. */
-export function loopSlices(root) {
+export async function loopSlices(io, root) {
+  const path = pathFor(io.platform);
   let text;
   try {
-    text = fs.readFileSync(path.join(loopDir(root), "slices.jsonl"), "utf8");
+    text = await io.fs.read(path.join(loopDir(io, root), "slices.jsonl"));
   } catch {
     return [];
   }
@@ -58,16 +67,16 @@ export function loopSlices(root) {
 }
 
 /** `{done, total}` for the status line, or null when there are no slices. */
-export function loopProgress(root) {
-  const slices = loopSlices(root);
+export async function loopProgress(io, root) {
+  const slices = await loopSlices(io, root);
   if (!slices.length) return null;
   const done = slices.filter((s) => s.status === "merged").length;
   return { done, total: slices.length };
 }
 
 /** The protected globs of the loop in `root`, or an empty list. */
-export function protectedGlobs(root) {
-  const globs = loopConfig(root)?.protected;
+export async function protectedGlobs(io, root) {
+  const globs = (await loopConfig(io, root))?.protected;
   return Array.isArray(globs)
     ? globs.filter((g) => typeof g === "string" && g.trim())
     : [];
@@ -77,31 +86,34 @@ export function protectedGlobs(root) {
  * The path of `file` relative to its project root, with the worktree part
  * removed. Null when the file is outside the project.
  */
-function projectPath(file, root, allowRoot = false) {
+function projectPath(path, file, root, allowRoot = false) {
   const abs = path.resolve(root, file);
   const m = WORKTREE.exec(abs);
-  const rel = m ? (m[2] ?? "") : path.relative(mainRoot(root), abs);
+  const rel = m ? (m[2] ?? "") : path.relative(rootOf(path.resolve(root)), abs);
   if ((!rel && !allowRoot) || rel.startsWith("..") || path.isAbsolute(rel))
     return null;
   return rel.split(path.sep).join("/");
 }
 
 /** The first protected glob that `file` matches, or null. */
-export function protectedMatch(file, root, globs = protectedGlobs(root)) {
+export function protectedMatch(file, root, globs) {
   if (!globs.length) return null;
-  const rel = projectPath(file, root);
+  // The root is absolute, so its form tells the path flavor.
+  const path = /^(?:[A-Za-z]:|[\\/]{2})/.test(root) ? win32 : posix;
+  const rel = projectPath(path, file, root);
   if (!rel) return null;
-  return globs.find((g) => new Bun.Glob(g).match(rel)) ?? null;
+  return globs.find((g) => globMatch(g, rel)) ?? null;
 }
 
 /**
  * The first protected glob with a matching file under the directory `dir`,
- * or null. A removal of the directory removes that file too.
+ * or null. A removal of the directory removes that file too. It is sync
+ * because the rule engine is sync, and slice s12 ports it to the io seam.
  */
-export function protectedUnder(dir, root, globs = protectedGlobs(root)) {
+export function protectedUnder(dir, root, globs) {
   if (!globs.length) return null;
-  const abs = path.resolve(root, dir);
-  const rel = projectPath(abs, root, true);
+  const abs = nodePath.resolve(root, dir);
+  const rel = projectPath(nodePath, abs, root, true);
   if (rel === null) return null;
   try {
     if (!fs.statSync(abs).isDirectory()) return null;
@@ -111,7 +123,8 @@ export function protectedUnder(dir, root, globs = protectedGlobs(root)) {
   const top = rel ? abs.slice(0, abs.length - rel.length - 1) : abs;
   for (const g of globs)
     for (const hit of new Bun.Glob(g).scanSync({ cwd: top, dot: true }))
-      if (!rel || hit.split(path.sep).join("/").startsWith(`${rel}/`)) return g;
+      if (!rel || hit.split(nodePath.sep).join("/").startsWith(`${rel}/`))
+        return g;
   return null;
 }
 
@@ -120,9 +133,9 @@ export function protectedUnder(dir, root, globs = protectedGlobs(root)) {
  * loop with protected globs runs. The main conversation can change the
  * oracle, because the user directs it there.
  */
-export function oracleFor(data, root) {
+export async function oracleFor(io, data, root) {
   if (!data.agent_id) return undefined;
-  const globs = protectedGlobs(root);
+  const globs = await protectedGlobs(io, root);
   return globs.length ? { root, globs } : undefined;
 }
 

@@ -35,7 +35,7 @@ run(async (data) => {
     commitHygiene: option(process.env, "git_commit_hygiene"),
     claudeTrailerOff: claudeTrailerOff(root),
     background: Boolean(data.tool_input?.run_in_background),
-    oracle: oracleFor(data, root),
+    oracle: await oracleFor(nodeIo(data), data, root),
   });
   if (!guard)
     findings = findings.filter(([, reason]) => LOCK_ONLY.test(reason));

@@ -13,7 +13,7 @@ import { nodeIo } from "../lib/_io-node.mjs";
 import { loopSlices } from "../lib/_loop.mjs";
 import { waitsForUser } from "../lib/_transcript.mjs";
 
-run((data) => {
+run(async (data) => {
   if (
     !option(process.env, "gate_tasks") ||
     data.stop_hook_active ||
@@ -26,7 +26,8 @@ run((data) => {
     )
   )
     return;
-  const open = loopSlices(projectRoot(nodeIo(data), data)).filter(
+  const io = nodeIo(data);
+  const open = (await loopSlices(io, projectRoot(io, data))).filter(
     (s) => s.status === "implemented",
   );
   if (!open.length || waitsForUser(data.transcript_path)) return;

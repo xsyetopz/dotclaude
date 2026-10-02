@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { NESTED_INSTRUCTIONS_CHARS } from "../../hooks/lib/_budget.mjs";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 import {
   contextFor,
   instructionFiles,
@@ -39,8 +40,9 @@ const bash = (sid, command, extra = {}) =>
   });
 const context = (out) => out?.hookSpecificOutput?.additionalContext ?? "";
 
-test("reader commands name existing paths inside the project only", () => {
-  const paths = readPaths(
+test("reader commands name existing paths inside the project only", async () => {
+  const paths = await readPaths(
+    nodeIo(),
     "cd pkg && sed -n 1,20p api/server.ts; rg foo api missing /etc/hosts; ls docs",
     repo,
     repo,
@@ -51,24 +53,32 @@ test("reader commands name existing paths inside the project only", () => {
   ]);
 });
 
-test("instruction files run from below the root down to the file's directory", () => {
+test("instruction files run from below the root down to the file's directory", async () => {
   expect(
-    instructionFiles(path.join(repo, "pkg/api/server.ts"), repo).map((f) =>
-      path.relative(repo, f).split(path.sep).join("/"),
-    ),
+    (
+      await instructionFiles(
+        nodeIo(),
+        path.join(repo, "pkg/api/server.ts"),
+        repo,
+      )
+    ).map((f) => path.relative(repo, f).split(path.sep).join("/")),
   ).toEqual([
     "pkg/CLAUDE.md",
     "pkg/.claude/CLAUDE.md",
     "pkg/api/CLAUDE.local.md",
   ]);
-  expect(instructionFiles(path.join(repo, "docs/readme.txt"), repo)).toEqual(
-    [],
-  );
+  expect(
+    await instructionFiles(nodeIo(), path.join(repo, "docs/readme.txt"), repo),
+  ).toEqual([]);
 });
 
-test("a file past the size bound is named for the Read tool", () => {
+test("a file past the size bound is named for the Read tool", async () => {
   const big = put("big/CLAUDE.md", "x".repeat(NESTED_INSTRUCTIONS_CHARS + 1));
-  const text = contextFor([path.join(repo, "pkg/CLAUDE.md"), big], repo);
+  const text = await contextFor(
+    nodeIo(),
+    [path.join(repo, "pkg/CLAUDE.md"), big],
+    repo,
+  );
   expect(text).toContain("pkg rules");
   // The big file is named by its path, and its text is not added.
   expect(text).toContain("`big/CLAUDE.md`");

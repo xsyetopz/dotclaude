@@ -3,6 +3,7 @@
 // stdin and prints rows that wrap at $COLUMNS. See hooks/lib/_status-line.mjs.
 
 import { readInput } from "../lib/_common.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { loopProgress } from "../lib/_loop.mjs";
 import { gitState, renderMain } from "../lib/_status-line.mjs";
 import { readUsage } from "../lib/_usage.mjs";
@@ -16,7 +17,7 @@ try {
     renderMain(data, {
       columns: columns - 4,
       git: gitState(dir),
-      loop: loopProgress(root),
+      loop: await loopProgress(nodeIo(data), root),
       // Read Claude Code's cached `/usage` copy only while a window is missing.
       usage:
         data.rate_limits?.five_hour && data.rate_limits?.seven_day

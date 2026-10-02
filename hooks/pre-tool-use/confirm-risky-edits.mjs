@@ -21,7 +21,11 @@ run(async (data) => {
     allowedModels: planAllowlist().list,
     editGuard,
     modelLock,
-    oracle: oracleFor(data, projectRoot(nodeIo(data), data)),
+    oracle: await oracleFor(
+      nodeIo(data),
+      data,
+      projectRoot(nodeIo(data), data),
+    ),
   });
   // Read the transcript only when the edit removes assertions: parsing it
   // costs about 25 ms on a long session.
