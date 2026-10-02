@@ -8,13 +8,14 @@
 
 import { emit, run } from "../lib/_common.mjs";
 import { option } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { redact, scan, strings } from "../lib/_secrets.mjs";
 
 run(async (data) => {
   if (!option(process.env, "guard_secrets")) return;
   const output = data.tool_response;
   if (output === undefined || output === null) return;
-  const findings = await scan(strings(output).join("\n"));
+  const findings = await scan(nodeIo(data), strings(output).join("\n"));
   if (!findings?.length) return;
   const { value, count } = redact(output, findings);
   if (!count) return;

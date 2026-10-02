@@ -8,6 +8,7 @@
 
 import { emit, run } from "../lib/_common.mjs";
 import { option } from "../lib/_core.mjs";
+import { nodeIo } from "../lib/_io-node.mjs";
 import { profileStamp, STAMP_KEY } from "../lib/_profile.mjs";
 import { scannerInstalled } from "../lib/_secrets.mjs";
 import {
@@ -18,7 +19,7 @@ import { CLAUDE_CODE, claudeVersion, olderThan } from "../lib/_version.mjs";
 
 const MIN_BUN = "1.4.2";
 
-run(() => {
+run(async (data) => {
   const notices = [];
   const env = process.env;
   // Settings env reaches hooks from every scope, so the stamp counts wherever
@@ -51,7 +52,10 @@ run(() => {
       `its hooks need Bun ${MIN_BUN} or later, and ${Bun.version} is on PATH. Run \`bun upgrade\`.`,
     );
   }
-  if (option(process.env, "guard_secrets") && !scannerInstalled()) {
+  if (
+    option(process.env, "guard_secrets") &&
+    !(await scannerInstalled(nodeIo(data)))
+  ) {
     notices.push(
       "secret redaction is on, but betterleaks is not on PATH, so tool output reaches Claude unscanned. Run `brew install betterleaks`, or turn off the guard_secrets option.",
     );

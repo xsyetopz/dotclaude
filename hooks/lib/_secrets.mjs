@@ -10,8 +10,6 @@
 // applies. Live validation stays off, so no secret leaves the machine. A run
 // takes about 30 ms.
 
-import os from "node:os";
-
 const ARGS = [
   "stdin",
   "--no-banner",
@@ -26,39 +24,34 @@ const ARGS = [
   "-",
 ];
 
-export const scannerInstalled = () => Bun.which("betterleaks") !== null;
+/** True when Betterleaks starts. A reject means it is not installed. */
+export async function scannerInstalled(io) {
+  try {
+    await io.run(["betterleaks", "version"], { timeoutMs: 5000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
- * Secrets that gitleaks finds in `text`, as `[{rule, secret}]`, or null when
- * gitleaks is missing or fails.
+ * Secrets that Betterleaks finds in `text`, as `[{rule, secret}]`, or null when
+ * Betterleaks is missing or fails.
  */
-export async function scan(text) {
-  // `Bun.which` reads the start-up PATH unless it gets the current one.
-  const bin = text
-    ? Bun.which("betterleaks", { PATH: process.env.PATH ?? "" })
-    : null;
-  if (!bin) return null;
-  // Async, so the dispatcher runs the other PostToolUse actions while
-  // Betterleaks runs. `Bun.spawn`, not `node:child_process`: loading the
-  // Node stream layer costs about 15 ms per hook run. A timeout or a full
-  // buffer kills the child, which leaves `exitCode` null.
+export async function scan(io, text) {
+  if (!text) return null;
+  // The host resolves the name. A reject (no binary, or a timeout) and a
+  // nonzero exit both mean no scan.
   let stdout = null;
   try {
-    const child = Bun.spawn([bin, ...ARGS], {
-      cwd: os.tmpdir(),
-      stdin: new Blob([text]),
-      stdout: "pipe",
-      stderr: "ignore",
-      timeout: 8000,
-      maxBuffer: 64 * 1024 * 1024,
+    const result = await io.run(["betterleaks", ...ARGS], {
+      cwd: io.tmp,
+      stdin: text,
+      timeoutMs: 8000,
     });
-    const [out, code] = await Promise.all([
-      new Response(child.stdout).text(),
-      child.exited,
-    ]);
-    if (code === 0) stdout = out;
+    if (result.exitCode === 0) stdout = result.stdout;
   } catch {
-    // Betterleaks went missing after the check, or the spawn failed.
+    // Betterleaks is missing, or it passed the timeout.
   }
   if (stdout === null) return null;
   try {
