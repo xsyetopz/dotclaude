@@ -27,7 +27,10 @@ const ARGS = [
 /** True when Betterleaks starts. A reject means it is not installed. */
 export async function scannerInstalled(io) {
   try {
-    await io.run(["betterleaks", "version"], { timeoutMs: 5000 });
+    await io.run(["betterleaks", "version"], {
+      cwd: io.tmp,
+      timeoutMs: 5000,
+    });
     return true;
   } catch {
     return false;
@@ -48,10 +51,11 @@ export async function scan(io, text) {
       cwd: io.tmp,
       stdin: text,
       timeoutMs: 8000,
+      maxBytes: 64 * 1024 * 1024,
     });
     if (result.exitCode === 0) stdout = result.stdout;
   } catch {
-    // Betterleaks is missing, or it passed the timeout.
+    // Betterleaks is missing, or it passed the timeout or the output cap.
   }
   if (stdout === null) return null;
   try {
