@@ -302,9 +302,9 @@ test("read, write, exists, stat, and list map to $.fs", async () => {
   const refused = await modIo(fake({ existsFails: true }).$);
   expect(await refused.fs.exists("/a")).toBe(false);
   expect(await io.fs.list("/d")).toEqual([
-    { name: "a.json", kind: "file", size: 3, mtimeMs: 7, isLink: false },
-    { name: "sub", kind: "dir", size: 0, mtimeMs: 0, isLink: false },
-    { name: "ln", kind: "other", size: 0, mtimeMs: 0, isLink: true },
+    { name: "a.json", kind: "file", isLink: false },
+    { name: "sub", kind: "dir", isLink: false },
+    { name: "ln", kind: "other", isLink: true },
   ]);
 });
 

@@ -138,8 +138,6 @@ export const statOf = (s) => {
 export const entryOf = (e) => ({
   name: e.name,
   kind: e.kind,
-  size: e.kind === "file" ? e.size : 0,
-  mtimeMs: e.mtimeMs,
   isLink: e.isLink,
 });
 

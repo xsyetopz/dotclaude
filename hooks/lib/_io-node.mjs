@@ -42,28 +42,17 @@ async function stat(file, options = {}) {
 
 async function list(dir) {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-  return Promise.all(
-    entries.map(async (e) => {
-      const isLink = e.isSymbolicLink();
-      const kind = isLink
-        ? "other"
-        : e.isFile()
-          ? "file"
-          : e.isDirectory()
-            ? "dir"
-            : "other";
-      let size = 0;
-      let mtimeMs = 0;
-      if (kind === "file") {
-        const s = await fs.promises
-          .stat(path.join(dir, e.name))
-          .catch(() => null);
-        size = s?.size ?? 0;
-        mtimeMs = s?.mtimeMs ?? 0;
-      }
-      return { name: e.name, kind, size, mtimeMs, isLink };
-    }),
-  );
+  return entries.map((e) => {
+    const isLink = e.isSymbolicLink();
+    const kind = isLink
+      ? "other"
+      : e.isFile()
+        ? "file"
+        : e.isDirectory()
+          ? "dir"
+          : "other";
+    return { name: e.name, kind, isLink };
+  });
 }
 
 const MAX_READ = 4 * 1024 * 1024;

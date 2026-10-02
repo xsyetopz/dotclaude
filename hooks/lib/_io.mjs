@@ -23,11 +23,11 @@
  */
 
 /**
+ * An entry has no size or time, so a listing costs no `stat` for each file.
+ * Use `stat` for them.
  * @typedef {object} IoEntry
  * @property {string} name
  * @property {"file" | "dir" | "other"} kind A symbolic link is `other`.
- * @property {number} size
- * @property {number} mtimeMs
  * @property {boolean} isLink
  */
 

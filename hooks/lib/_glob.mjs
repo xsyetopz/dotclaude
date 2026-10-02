@@ -318,7 +318,7 @@ const WIN_ROOT = /^(?:[A-Za-z]:\/|\/\/[^/]+\/[^/]+\/?)/;
 
 /**
  * The paths that match `pattern`, found with `io.fs.list(dir)` (which gives
- * `[{ name, kind, size, mtimeMs, isLink }]` and rejects for a missing folder).
+ * `[{ name, kind, isLink }]` and rejects for a missing folder).
  * A link has `kind: "other"` and `isLink: true`. An absolute pattern gives
  * absolute paths. A relative pattern starts in `cwd` and gives paths relative
  * to it. A trailing `/` keeps only folders. The list is in walk order, with
