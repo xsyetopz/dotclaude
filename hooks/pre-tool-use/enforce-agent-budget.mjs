@@ -17,6 +17,7 @@ import {
 } from "../lib/_budget.mjs";
 import { option, preToolOutput, stateDir } from "../lib/_core.mjs";
 import { pathFor } from "../lib/_path.mjs";
+import { load, save } from "../lib/_ledger.mjs";
 import { isTempChild, shellResolve } from "../lib/_rules-filesystem.mjs";
 import { parse } from "../lib/_shell.mjs";
 
@@ -61,6 +62,22 @@ function deletesTempOnly(io, data) {
   });
 }
 
+/**
+ * The deny text for a budget of `kind`. The first deny of a kind for an agent
+ * gives the full text. Later ones give `short`, because the agent has read
+ * the full text. The ledger keeps which kinds were given.
+ */
+async function denyText(io, data, kind, full, short) {
+  const state = await load(io, data.session_id, data.agent_id);
+  const given = state.budgetDenies ?? [];
+  if (given.includes(kind)) return short;
+  await save(io, data.session_id, data.agent_id, {
+    ...state,
+    budgetDenies: [...given, kind],
+  });
+  return full;
+}
+
 /** True the first time this agent passes `mark`. */
 async function firstTime(io, data, mark) {
   const path = pathFor(io.platform);
@@ -89,7 +106,13 @@ export default async function (io, data) {
     if (context.last >= cap)
       return preToolOutput(
         "deny",
-        `context budget: this agent's context is ${k(context.last)} tokens, past dotclaude's ${k(cap)} limit, and each further turn re-reads all of it. ${REPORT}`,
+        await denyText(
+          io,
+          data,
+          "context",
+          `context budget: this agent's context is ${k(context.last)} tokens, past dotclaude's ${k(cap)} limit, and each further turn re-reads all of it. ${REPORT}`,
+          `context budget: ${k(context.last)} tokens, past the ${k(cap)} limit. Make no tool calls and give your report now.`,
+        ),
       );
     if (
       context.last >= cap - SUBAGENT_WRAP_UP_TOKENS &&
@@ -109,6 +132,12 @@ export default async function (io, data) {
   if (used === null || used < limit - reserve(limit)) return;
   return preToolOutput(
     "deny",
-    `turn budget: ${used} of ${limit} turns used. ${REPORT}`,
+    await denyText(
+      io,
+      data,
+      "turn",
+      `turn budget: ${used} of ${limit} turns used. ${REPORT}`,
+      `turn budget: ${used} of ${limit} turns used. Make no tool calls and give your report now.`,
+    ),
   );
 }

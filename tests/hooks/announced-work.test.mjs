@@ -42,7 +42,8 @@ test("a finished report, a second stop, and public steps pass", () => {
   expect(stop("Should I push the branch and open the pull request?")).toBe(
     null,
   );
-  expect(stop("Next I'll publish 0.12.0 after your sandbox run.")).toBe(null);
+  expect(stop("Should I publish 0.12.0 after your sandbox run?")).toBe(null);
+  expect(stop("Do you want me to delete the old branch?")).toBe(null);
 });
 
 test("a turn that an `AskUserQuestion` or `ExitPlanMode` call ended passes", () => {
@@ -117,4 +118,65 @@ test("a headless session or a subagent is told to end with the full report", () 
   expect(run({ CLAUDE_CODE_ENTRYPOINT: "cli" })).not.toContain(
     "only your last message",
   );
+});
+
+const blocks = (message) =>
+  blocked(stop(`Report line.\n\n${message}`)) === "Stop";
+
+test("new offer phrases block, and near misses pass", () => {
+  for (const message of [
+    "The fix is in. If you want, I can also rename it.",
+    "The fix is in. Say so and the rename follows.",
+    "The fix is in. Say the word and the rename follows.",
+    "The fix is in. Renaming it is your call.",
+    "The rename is a decision for you.",
+    "The fix is in, and so, in the end, should I rename it or leave it as is?",
+    "Done with the parser. Shall I go on?",
+  ])
+    expect(blocks(message), message).toBe(true);
+  for (const message of [
+    "The fix is in. Your caller passes the id.",
+    "The fix is in. It does not say something new.",
+    "The fix is in. The docs say the words once.",
+    "The fix is in. This is a decision for your team.",
+    "The fix is in. I should add this to the notes.",
+  ])
+    expect(blocks(message), message).toBe(false);
+  // Only the last paragraph counts.
+  expect(stop("If you want more, ask.\n\nDone: the parser is fixed.")).toBe(
+    null,
+  );
+});
+
+test("new deferral phrases block, and near misses pass", () => {
+  for (const message of [
+    "The second call site is not fixed.",
+    "The second call site is left as a follow-up.",
+    "Follow-up: the second call site.",
+    "The second call site ships in a later release.",
+    "The second call site ships in a later version.",
+    "The second call site moves to the next version.",
+  ])
+    expect(blocks(message), message).toBe(true);
+  for (const message of [
+    "The second call site is fixed.",
+    "The follow-up question was answered.",
+    "The next versions of the file match.",
+    "The retry is not fixing the call sites.",
+  ])
+    expect(blocks(message), message).toBe(false);
+});
+
+test("only a question about a push, a publish, or a delete is exempt", () => {
+  // A release or a tag alone does not exempt a deferral or an offer.
+  expect(blocks("The tag step is left as a follow-up for the release.")).toBe(
+    true,
+  );
+  expect(blocks("Next I'll cut the release and tag it.")).toBe(true);
+  expect(blocks("Should I tag the release?")).toBe(true);
+  // A statement that names a push is not a question.
+  expect(blocks("Next I'll push the branch.")).toBe(true);
+  expect(blocks("Should I push the branch?")).toBe(false);
+  expect(blocks("Shall I publish it, or say the word later?")).toBe(false);
+  expect(blocks("Want me to delete the scratch folder?")).toBe(false);
 });

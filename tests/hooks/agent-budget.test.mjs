@@ -156,3 +156,25 @@ test("near the budget, a subagent gets one note to finish", () => {
   const other = `far-${process.pid}-${Date.now()}`;
   expect(budget(far, { agent_id: other }, other)).toBeNull();
 });
+
+test("a later deny of the same kind is one short line, per agent", () => {
+  const text = (out) => out?.hookSpecificOutput?.permissionDecisionReason ?? "";
+  const turns = [...brief, ...calls(0, 76)];
+  const grown = [...brief, call(0), result(), call(1, 101_000), result()];
+  const run = (entries, id) => text(budget(entries, { agent_id: id }, id));
+  const id = (kind) => `${kind}-${process.pid}-${Date.now()}`;
+  const [a, b, c] = [id("turn-a"), id("turn-b"), id("ctx")];
+  const first = run(turns, a);
+  expect(first).toContain("Your next action is your report");
+  const second = run(turns, a);
+  expect(second).toContain("turn budget: 76 of 80 turns used");
+  expect(second).toContain("give your report now");
+  expect(second.length).toBeLessThan(first.length / 2);
+  // Another agent gets the full text on its first deny.
+  expect(run(turns, b)).toBe(first);
+  // The kinds are separate: a context deny after a turn deny is still full.
+  expect(run(grown, a)).toContain("each further turn re-reads all of it");
+  expect(run(grown, a)).toContain("past the 100k limit");
+  expect(run(grown, a)).not.toContain("re-reads");
+  expect(run(grown, c)).toContain("re-reads");
+});
