@@ -3,7 +3,7 @@ name: reviewer
 description: Fresh-context, read-only review of code, security, a plan, or one loop slice diff. Use for reviews, risky changes, trust boundaries, and multi-module plans.
 tools: Read, Grep, Glob, Bash, mcp__codegraph__codegraph_explore
 disallowedTools: Edit, Write, NotebookEdit, Agent
-model: claude-opus-5-5
+model: claude-sonnet-5-5
 effort: high
 maxTurns: 60
 color: yellow

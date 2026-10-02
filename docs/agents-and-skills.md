@@ -26,8 +26,8 @@ Anthropic's guidance is to start low and raise effort on failure.
 
 | Agent | Model, effort | Use | Why this model |
 | --- | --- | --- | --- |
-| `reviewer` | Opus 5.5, high | fresh-context, read-only review with a lens from the brief: `code`, `security`, `plan`, or `diff` (one agent-loop slice from its diff and `GUIDE.md` only) | Review is judgment. A fresh context does not share the author's assumptions. A reviewer that does not see the implementer's reasoning finds what the implementer rationalized. It has no edit tools. |
-| `debugger` | Opus 5.5, high | root cause by measurement, speed or memory work | A wrong root cause costs more than the extra effort. |
+| `reviewer` | Sonnet 5.5, high | fresh-context, read-only review with a lens from the brief: `code`, `security`, `plan`, or `diff` (one agent-loop slice from its diff and `GUIDE.md` only) | Review is judgment. A fresh context does not share the author's assumptions. A reviewer that does not see the implementer's reasoning finds what the implementer rationalized. It has no edit tools. In the 0.17.1 evals, Sonnet 5.5 at `high` passed the review and debug cases as often as Opus 5.5 at about 55% of the cost ([evals](dossier/evals.md)). |
+| `debugger` | Sonnet 5.5, high | root cause by measurement, speed or memory work | A wrong root cause costs more than the extra effort, so it runs at `high`. |
 | `reverse-engineer` | Opus 5.5, high | Ghidra analysis of a binary, protocol, or file format, and byte matching | A wrong reading of machine code is hard to find later. It uses the `ghidra` MCP tools of the session, so it has no tool allowlist. |
 | `implementer` | Sonnet 5.5, medium | one well-scoped piece of work, including its tests and docs | It follows a plan. `model: "opus"` gives it design judgment when a slice needs it. |
 | `investigator` | Opus 5.5, medium | read-only, with a lens: `ci` failures, `history` of code, `dependencies` health | It keeps long logs and history out of the main context. |

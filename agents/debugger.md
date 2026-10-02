@@ -2,7 +2,7 @@
 name: debugger
 description: Finds the root cause of a failure or regression and makes the smallest fix, or measures and speeds up a slow path. Use when the cause is unclear or a fix failed.
 disallowedTools: Agent
-model: claude-opus-5-5
+model: claude-sonnet-5-5
 effort: high
 maxTurns: 60
 color: orange
