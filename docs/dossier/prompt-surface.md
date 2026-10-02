@@ -51,9 +51,10 @@ output style carries the engineering, git, and report rules in about 2.3k
 tokens (`LIMITS.outputStyleTokens`). The 0.16 prompt and style took about
 4.9k tokens.
 
-- The style carries the `<pasted_content>` rule, the security paragraph, the
-  paragraph on hard-to-reverse actions, and the `/<skill-name>` and
-  `! <command>` guidance. The lean prompt does not explain them.
+- The 2.1.287 prompt has the `<pasted_content>` rule, the `/<skill-name>`
+  and `! <command>` guidance, and the rule on hard-to-reverse actions
+  (**binary**). So the style keeps only the security paragraph and the parts
+  of the approval rule that are dotclaude's own.
 - The profile turns auto memory off, so no `# Memory` section is necessary.
 - The header and identity line are always sent (**capture**).
 

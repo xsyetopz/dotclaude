@@ -1,6 +1,9 @@
 // Subagent start guidance injection.
 
 import { expect, test } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   k,
   LIMITS,
@@ -72,4 +75,91 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
       { CLAUDE_PLUGIN_OPTION_AGENT_GUIDANCE: "false" },
     ),
   ).toBe(null);
+});
+
+/** The conventions block for a project root that holds `files`. */
+function conventionsIn(files) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-tests-"));
+  for (const [name, text] of Object.entries(files))
+    fs.writeFileSync(path.join(dir, name), text);
+  const out = hook(
+    "subagent-start/inject-working-conventions.mjs",
+    {
+      hook_event_name: "SubagentStart",
+      agent_type: "general-purpose",
+      cwd: dir,
+    },
+    { CLAUDE_PROJECT_DIR: dir },
+  );
+  fs.rmSync(dir, { recursive: true });
+  return block(out.hookSpecificOutput.additionalContext, "working_conventions");
+}
+
+/** The commands that the conventions line for the check names. */
+const testCommands = (conventions) =>
+  [
+    ...(conventions.match(/^- After a code change.*$/m)?.[0] ?? "").matchAll(
+      /`([^`]+)`/g,
+    ),
+  ].map((m) => m[1]);
+
+test("the conventions name the project test command from the project root", () => {
+  const justfile = conventionsIn({
+    justfile:
+      'dir := "tests"\n\n# Lint\nlint:\n    biome ci .\n\ntest *args:\n    bun test "$@"\n\n@check: lint test\n',
+    "package.json": JSON.stringify({ scripts: { test: "vitest" } }),
+  });
+  // A justfile recipe comes before the package.json script.
+  expect(testCommands(justfile)).toEqual(["just test", "just check"]);
+  expect(justfile.length).toBeLessThanOrEqual(LIMITS.sessionNoteChars.fail);
+
+  // A justfile with no test or check recipe gives no command.
+  expect(
+    testCommands(
+      conventionsIn({
+        justfile: "build:\n    make\n",
+        "package.json": JSON.stringify({ scripts: { test: "vitest" } }),
+        "bun.lock": "{}",
+      }),
+    ),
+  ).toEqual(["bun run test"]);
+  expect(
+    testCommands(
+      conventionsIn({
+        "package.json": JSON.stringify({ scripts: { test: "jest" } }),
+      }),
+    ),
+  ).toEqual(["npm test"]);
+
+  // The placeholder script of `npm init` is not a test command.
+  const placeholder = conventionsIn({
+    "package.json": JSON.stringify({
+      scripts: { test: 'echo "Error: no test specified" && exit 1' },
+    }),
+    "CLAUDE.md":
+      "# App\n\n- `src/` holds the code.\n- `cargo test --workspace` runs the tests.\n",
+  });
+  expect(testCommands(placeholder)).toEqual(["cargo test --workspace"]);
+
+  // A command longer than 80 characters would make the block too long.
+  const long = `go test ./... -run '${"x".repeat(80)}'`;
+  expect(
+    testCommands(
+      conventionsIn({ "CLAUDE.md": `Run \`${long}\` or \`go test ./...\`.\n` }),
+    ),
+  ).toEqual(["go test ./..."]);
+
+  expect(
+    testCommands(
+      conventionsIn({
+        "AGENTS.md": "## Test\n\n```sh\n$ uv run pytest -q tests\n```\n",
+      }),
+    ),
+  ).toEqual(["uv run pytest -q tests"]);
+
+  const none = conventionsIn({ "README.md": "Run `make`.\n" });
+  expect(testCommands(none)).toEqual([]);
+  expect(none).toContain(
+    "run a check that exercises it. Fix a failing test at its cause.",
+  );
 });

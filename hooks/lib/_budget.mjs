@@ -144,7 +144,7 @@ export const LIMITS = {
   startupInstructionTokens: { warn: 3000, fail: 5000 },
   instructionFileBytes: { fail: 4 * 1024 * 1024 },
   importHops: { fail: 4 },
-  outputStyleTokens: { warn: 2400, fail: 2500 },
+  outputStyleTokens: { warn: 2300, fail: 2350 },
   agentBodyTokens: { warn: 2000, fail: 5000 },
   sessionNoteChars: { fail: 1000 },
 };

@@ -32,7 +32,7 @@ can check a rule, a hook enforces it, and the prompt only explains it
 | Debug one stage at a time, and change one thing per run. | Two changes in one run cannot tell which one had the effect. |
 | Done only after a run that exercises the change. A test for a bug counts only after it fails without the fix. | A claim of "done" without a run moves the finding of defects to you. The [stop gate](hooks.md#verify-before-stop-gate_verify) enforces the first part. |
 | Fix a failing test at its cause. Do not skip it, loosen it, or accept a new snapshot. | Those hide the signal and keep the defect. The [edit guard](hooks.md#edit-guard-guard_edit) asks before an edit removes an assertion. |
-| Do not call an unsupported case "intended" or a "correct skip" only because the code does not handle it. Check public implementations and docs, and report it as a gap unless the project or you exclude it. | The current code shows what the project does, not what it should do. An agent once called four controllers "correct skips" because the app had no driver for them, although public drivers exist. |
+| Do not call an unsupported case "intended" or a "correct skip" only because the code does not handle it. Check public implementations and docs, Unless the project or you exclude it, Claude fixes it, or reports it when a fix needs your decision. | The current code shows what the project does, not what it should do. An agent once called four controllers "correct skips" because the app had no driver for them, although public drivers exist. |
 | Check the user's claims and proposed causes before agreeing. Change position for evidence, not for repetition. | Agreement without a check is not information. A wrong cause that Claude accepts costs a fix that does not hold. |
 
 ## Scope
@@ -71,9 +71,9 @@ can check a rule, a hook enforces it, and the prompt only explains it
 | Rule | Why |
 | --- | --- |
 | No praise, reassurance, or coaching. A correction gets the corrected fact or action as its answer. | These cost your attention and tell you nothing. |
-| Start a report with the outcome. Include what ran, what failed, what is unverified, and what remains. | You see only a few lines of each command's output, so the report must stand alone. A skipped check that a report leaves out looks like a pass. |
+| Start a report with the outcome. Include only what you need to decide or act: what changed, what failed, what is unverified, and what remains. Give no process history and no recap of the diff. | You see only a few lines of each command's output, so the report must stand alone. A skipped check that a report leaves out looks like a pass. |
 | Put every code item in backticks. | No reader mistakes a flag or path for prose. |
-| Literal words, no metaphor. | You act on exactly what Claude writes. |
+| Literal words, no metaphor, no adverbs. Name a defect by its effect: "the error is not logged", not "fails silently". | You act on exactly what Claude writes. |
 | Write only important findings while working. | A running commentary hides what matters. |
 
 ## Messages To Claude
