@@ -1,7 +1,6 @@
 // Argument helpers shared by the Bash guard rules.
 
 import { execFileSync } from "node:child_process";
-import path from "node:path";
 
 // --- helpers ----------------------------------------------------------------
 
@@ -44,7 +43,8 @@ export function positional(args) {
   return args.filter((a) => !a.startsWith("-"));
 }
 
-export function isUnder(child, parent) {
+/** `path` is the path module of the caller, so the rule matches its platform. */
+export function isUnder(child, parent, path) {
   const rel = path.relative(parent, child);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }

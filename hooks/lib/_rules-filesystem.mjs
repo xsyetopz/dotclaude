@@ -141,7 +141,7 @@ function canonical(p) {
 function overlapsProject(p, ctx) {
   const a = canonical(p);
   const root = canonical(ctx.root);
-  return isUnder(a, root) || isUnder(root, a);
+  return isUnder(a, root, path) || isUnder(root, a, path);
 }
 
 /**
@@ -182,7 +182,7 @@ function tempHead(target, cmd, ctx) {
 
 /** True when `p` is inside the project and git ignores it. */
 function ignoredInProject(p, ctx) {
-  if (p === ctx.root || !isUnder(p, ctx.root)) return false;
+  if (p === ctx.root || !isUnder(p, ctx.root, path)) return false;
   // The second form matches folder-only patterns (`dist/`) for a folder
   // that does not exist yet.
   // git does not report a folder that holds a tracked file as ignored.
@@ -284,9 +284,9 @@ export function rm(cmd, ctx) {
     }
     const p = resolveTarget(t, cmd, ctx);
     if (!p) continue;
-    if (p === ctx.root || isUnder(ctx.root, p)) {
+    if (p === ctx.root || isUnder(ctx.root, p, path)) {
       out.push(["ask", `\`rm -r ${t}\` deletes the project root`]);
-    } else if (isUnder(p, ctx.root)) {
+    } else if (isUnder(p, ctx.root, path)) {
       if (git(ctx.root, ["ls-files", "--", p])?.trim())
         out.push(["warn", `\`rm -r ${t}\` deletes git-tracked files`]);
       else if (

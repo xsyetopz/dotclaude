@@ -419,8 +419,8 @@ const WALKERS = {
 function ignoredDirs(dir, ctx) {
   // Under the project: ask about that directory. Above it: the whole project.
   let scope;
-  if (isUnder(dir, ctx.root)) scope = dir;
-  else if (isUnder(ctx.root, dir)) scope = ctx.root;
+  if (isUnder(dir, ctx.root, path)) scope = dir;
+  else if (isUnder(ctx.root, dir, path)) scope = ctx.root;
   else return [];
   const rel = path.relative(ctx.root, scope) || ".";
   if (
