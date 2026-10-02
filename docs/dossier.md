@@ -19,12 +19,12 @@ Read only the part that answers your question.
 | 5 | [Claude Code Prompt Surface](dossier/prompt-surface.md) | what a request contains, the lean prompt, the working rules, output styles, tool removal |
 | 6–8 | [Evals](dossier/evals.md) | fast-compact against `/compact`, the behavior eval suites and their results, compactions before a handoff |
 | 8–9 | [Open Items](dossier/open-items.md) | work still to measure or decide, reported claims that dotclaude does not act on |
+| 10 | [Claude Mods](dossier/mods.md) | the plugin hooks modules of Claude Code 2.1.287, their gate and events, the plan for a dotclaude mod |
 
 ## Sources
 
-The facts date from 2026-09-26 to 2026-09-29 and Claude Code 2.1.283 to
-2.1.284. Each
-fact carries one of these source labels:
+The facts date from 2026-09-26 to 2026-10-01 and Claude Code 2.1.283 to
+2.1.287. Each fact carries one of these source labels:
 
 | Label | Source |
 | --- | --- |

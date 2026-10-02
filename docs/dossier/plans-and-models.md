@@ -76,6 +76,12 @@ API list prices per million tokens (**official**):
   key. Subagents use 5 minutes. A prompt after the TTL, and a `/compact`
   after it, write the whole context again. dotclaude tells the user when this
   happens on 100k tokens or more.
+- **binary:** From Claude Code 2.1.287, the SessionStart input for `resume`
+  and `fork` has `seconds_since_last_response`, `context_tokens`,
+  `prompt_cache_likely_expired`, and `estimated_cache_write_usd`. dotclaude
+  uses them to tell the user before the first prompt.
+- **reported:** One user found that turns more than 1 hour after the last
+  turn were 1.6% of turns and 80% of cache writes.
 - **official:** `/model` loses the whole cache. An effort change and the
   advisor toggle keep it. `/rewind` and forks read the existing cache.
 - **measured:** A one-word Fable reply from a fresh `claude -p` context cost
@@ -85,6 +91,10 @@ API list prices per million tokens (**official**):
   215k tokens each on average, with no cache reads. That was 2.1% of the
   API-equivalent cost on Opus 5.5. The call's own `usage` leaves the advisor
   out, and `usage.iterations` holds it as an `advisor_message`.
+- **reported:** A user quotes Anthropic's advisor docs: a Fable 5.1 advisor
+  over Opus 5.5 at high effort scored 1.7 points more for about 2.1 times the
+  cost, Opus 5.5 at xhigh alone scored 91.1%, and low effort with an advisor
+  scored 7 points less. dotclaude keeps `advisorModel` on Opus 5.5.
 
 ### Model Fit
 
@@ -106,9 +116,11 @@ This section weighs **reported** experience and Anthropic's guidance.
   Sonnet 5 in 0.11.0. Anthropic says Sonnet 5 follows instructions literally,
   and that Sonnet 5 prompts work on Sonnet 5.5 without changes. Its effort
   levels are recalibrated. At `low`, it sometimes reports a change as done
-  without a check (**official**). dotclaude uses it only for fully specified
-  agents (`mechanical-worker`, `implementer`)
-  and adds a reminder about scope and checks. **measured:** On this
+  without a check (**official**). dotclaude uses it for fully specified
+  agents (`mechanical-worker`, `implementer`), and adds a reminder about
+  scope and checks. From 0.17.1, `reviewer` and `debugger` also use it, at
+  `high`. In the 0.17.1 evals, they passed the review and debug cases as
+  often as Opus 5.5 at about 55% of the cost ([evals](evals.md)). **measured:** On this
   machine, 169 `implementer` runs on
   Opus 5.5 took 66 calls and $2.50 at the median, and 28 runs on Sonnet 5
   took 50 calls and $1.03. The tasks were not the same, and Opus got the
@@ -161,6 +173,15 @@ This section weighs **reported** experience and Anthropic's guidance.
   the main session is not covered.
 - **official:** Effort can change per turn without a cache miss on Opus 5.5
   and Fable 5.1 (code.claude.com/docs/en/prompt-caching).
+- **official:** Claude Code defaults Opus 5.5 and Sonnet 5.5 to `medium`.
+  The API default is `high` for Sonnet 5.5 and `medium` for Opus 5.5. For
+  agentic coding on Sonnet 5.5, Anthropic says to start at `medium` on
+  well-specified tasks and use `high` on harder or longer ones
+  (platform.claude.com/docs/en/build-with-claude/effort).
+- **measured:** Issue #96163 reports that Opus 5.5 in `-p` mode writes the
+  whole cache again on every turn. The 0.17.1 sweep runs in `-p` mode, and
+  Opus 5.5 wrote 14k to 17k cache tokens per run against 15k to 16k on
+  Sonnet 5.5, so the sweep does not show it.
 - **official:** Medium effort costs about 70% of high for about 2.5 points
   less. xhigh costs about 2.5x high for 1.4 points more. Start low and raise
   effort on failure.

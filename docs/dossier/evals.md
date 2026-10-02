@@ -46,8 +46,8 @@ plugin as a baseline.
 
 | Suite | Cases | Author | What it can show |
 | --- | ---: | --- | --- |
-| `evals/` | 8 | the 0.17.0 rework, in 4 tiers from simple to complex | whether dotclaude changes the pass rate and the cost per pass |
-| `evals-heldout/` | 30 | three safe-mode sessions without dotclaude's prompts | whether dotclaude reduces reported failures |
+| `evals/` | 11 | the 0.17.0 rework, in 4 tiers from simple to complex, and 3 role cases from 0.17.1 | whether dotclaude changes the pass rate and the cost per pass |
+| `evals-heldout/` | 50 | five safe-mode sessions without dotclaude's prompts, groups `d` and `e` with harder cases from 0.17.1 | whether dotclaude reduces reported failures |
 
 0.17.0 replaced the 16 cases of `evals/` with 8 tiered tasks. The old cases
 were circular: several came right after the rule that they test.
@@ -61,6 +61,7 @@ frozen before any run.
 | `tier-2` | `t2-feature` | a feature across two files, then a commit that leaves the user's note out |
 | `tier-3` | `t3-wrong-cause`, `t3-reset-request` | a wrong named cause across modules, and a `git reset --hard` request over uncommitted work |
 | `tier-4` | `t4-delegate`, `t4-slices`, `t4-handoff` | delegation to `implementer`, the `slices` setup, and a handoff note |
+| `tier-5` | `t5-review`, `t5-debug`, `t5-slice` | a review with planted defects, a failure from shared state, and a specified feature across four files |
 
 Each code case has a hidden test oracle, `oracle.sh`, that the agent never
 sees. `claude plugin eval` has no grader that runs a command. Thus
@@ -77,7 +78,7 @@ included, divided by the trials that passed. After the oracle step, it also
 reports the mean input, output, cache-read, and cache-write tokens. With 5
 trials, a case that always passes still has a lower bound of 57%.
 
-The 0.17.0 suite has no results yet. The procedure is in
+The results for 0.17.1 are below. The procedure is in
 [development](../development.md#evals).
 
 ### Results For 0.4.0
@@ -93,14 +94,99 @@ agent and judge.
   passed every trial in both arms.
 - The one regression was an edit-guard bug, which 0.4.0 fixed.
 
+### Model And Effort Sweep For 0.17.1
+
+**measured:** the 8 `t*` cases, 3 trials per arm, dotclaude only, Claude Code
+2.1.287, Sonnet 5.5 judge, effort from `CLAUDE_CODE_EFFORT_LEVEL`
+(`evals/results/0.17.1-sweep/summary.md`).
+
+| Arm | Passed | Cost per pass |
+| --- | --- | --- |
+| Haiku 4.5 | 17/24 | $0.14 |
+| Sonnet 5.5 low, medium, high | 21, 20, 22 of 24 | $0.12 to $0.13 |
+| Opus 5.5 low, medium, high | 20, 22, 22 of 24 | $0.20 to $0.22 |
+| Opus 5.5 xhigh | 24/24 | $0.28 |
+
+- Most `t1-false-alarm` failures were correct replies that showed the
+  results but not the command. Without that case, every Sonnet and Opus arm
+  passed 20 or 21 of 21.
+- Haiku 4.5 failed on judgment cases and cost more per pass than Sonnet 5.5
+  low. This supports Haiku only for `test-runner`.
+- Opus 5.5 medium passed as many trials as high for less. This supports
+  medium as the default.
+- 3 trials give wide intervals. The arms from Sonnet 5.5 low to Opus 5.5
+  xhigh do not differ significantly.
+
+### Longer Opus And Sonnet Run For 0.17.1
+
+**measured:** the 11 cases, with the 3 role cases, 10 trials per arm,
+dotclaude only, Claude Code 2.1.287, Sonnet 5.5 judge
+(`evals/results/0.17.1-long/summary.md`).
+
+| Arm | Passed | Without `t1-false-alarm` | Cost per pass |
+| --- | --- | --- | --- |
+| Sonnet 5.5 medium | 98/110 | 98/100 | $0.12 |
+| Sonnet 5.5 high | 99/110 | 99/100 | $0.13 |
+| Opus 5.5 medium | 101/110 | 100/100 | $0.22 |
+| Opus 5.5 high | 99/110 | 98/100 | $0.24 |
+
+- Every arm passed the 3 role cases in 10 of 10 trials. The role cases do
+  not separate the models.
+- In `t1-false-alarm`, the correctness judge passed 40 of 40. The format
+  judge failed 38 of 40, because the replies did not show the command.
+- Sonnet 5.5 is at the ceiling on these tasks at 55% to 60% of the Opus 5.5
+  cost. Opus 5.5 medium passed as many trials as high for less.
+- The first `t5-debug` oracle failed 3 correct fixes that added a test. The
+  oracle now fails only when a line of `client.test.mjs` is removed or
+  changed.
+- The run found a stop-hook bug. `node --test` was not a check, so 64 of 200
+  code replies answered a false "no check ran" note. 0.17.1 fixes it. The
+  extra turns make the costs a little high in every arm.
+
+### Re-Run And Model Swap For 0.17.1
+
+**measured:** the same 11 cases and arms after the fixes above
+(`evals/results/0.17.1-rerun/summary.md`).
+
+| Arm | Passed | Cost per pass |
+| --- | --- | --- |
+| Sonnet 5.5 medium | 109/110 | $0.10 |
+| Sonnet 5.5 high | 107/110 | $0.12 |
+| Opus 5.5 medium | 110/110 | $0.19 |
+| Opus 5.5 high | 109/110 | $0.21 |
+
+- The rule, set before the results: an Opus agent moves to Sonnet when
+  Sonnet passes its role case within 1 in 10 trials of Opus, at 60% of the
+  Opus cost per pass or less.
+- `t5-review`: Sonnet 5.5 high passed 10 of 10 at 52% of the Opus 5.5 high
+  cost. `t5-debug` and `t3-wrong-cause`: 20 of 20 against 19 of 20, at 54%.
+  The first run gave 53% to 56%. Thus `reviewer` and `debugger` use Sonnet
+  5.5 at `high` from 0.17.1.
+- `investigator`, `web-researcher`, and `reverse-engineer` have no role
+  case, so they keep Opus 5.5.
+- 3 Sonnet replies to `t1-fix` ended with an offer. The output style now
+  forbids an offer at the end. In 10 trials each after the change, Sonnet
+  5.5 medium and high passed `t1-fix` 10 of 10.
+- One Opus report was replaced by a short reply to a Stop hook note,
+  because `claude -p` returns only the last message. The note now asks for
+  the full report in the last message. A unit test covers this. The eval
+  trace does not record Stop hook output, so the runs do not show it.
+- The role cases are at the ceiling for both models. The swap is not tested
+  on hard reviews or hard root causes. A reported private batch of hard
+  tasks found Sonnet 5.5 high lower than Opus 5.5 medium
+  ([Models](plans-and-models.md)).
+
 ### What The Evals Do Not Show
 
 - On 30 blind, single-turn tasks in small repositories, Opus 5.5 already
   behaves well. dotclaude neither helps nor hurts measurably.
 - The measured gains come from cases written with the rules. They show that
   Claude follows the rules, not that the rules matter on real work.
-- The held-out suite is at its ceiling. It is a regression check, not a
-  measure of benefit.
+- The held-out groups `a` to `c` are at their ceiling. They are a regression
+  check, not a measure of benefit. 0.17.1 adds groups `d` and `e`: 20 cases in
+  larger repositories with interacting traps and up to 80 turns. Group `e`
+  uses dossier parts that no earlier case cites. No agent has run groups `d`
+  and `e` yet.
 - Neither suite covers long sessions, compaction, corrections over several
   turns, or large repositories. A held-out run of 30 cases, 5 trials, and
   both arms cost about $54 and took 32 minutes.

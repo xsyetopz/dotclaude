@@ -50,3 +50,10 @@ source labels.
   request cannot keep an Opus or Fable cache warm.
 - **A cold cache costs 10 times more on Opus and 40 times on Fable.** The
   official cache prices do not produce these ratios.
+- **A Sonnet session started 8 Fable agents on extra usage.** One report.
+  dotclaude already denies `Agent(model:fable*)`.
+- **Opus 5.5 got worse after launch.** Public trackers do not agree. One
+  shows 103.8% of the launch score. No change.
+- **A tool-call batching rule saves about 20% of tokens on Opus 5.5.** One
+  user measured it, and a stronger wording made reviews worse. Claude Code
+  already tells Claude to make independent calls together.
