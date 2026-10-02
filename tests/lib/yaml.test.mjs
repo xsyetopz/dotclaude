@@ -145,8 +145,24 @@ const CASES = {
   "tab after colon": "a:\tb\n",
   "no trailing newline": "a: 1",
   bom: "\uFEFFa: 1\n",
-  "plain with apostrophe": 'a: it\'s here\nb: "q"x\n'.replace('"q"x', "q"),
+  "plain with apostrophe": "a: it's here\nb: q\n",
   "proto key": "__proto__: 1\nb: 2\n",
+  "quoted continuation with hash": 'a: "Use for foo.\n  See issue #12"\n',
+  "single quoted continuation with hash": "a: 'x\n  # y'\n",
+  "quote after a space in a plain value": "description: x y 'z # c\n",
+  "double quote after a space in a plain value": 'description: x y "z # c\n',
+  "quote in a flow item after a space": "a: [x 'y, z]\n",
+  "hex and octal": "a: 0o8\nb: +0x1F\nc: -0o7\nd: 0o17\ne: 0x1G\nf: -0x1F\n",
+  "capital radix letters stay strings": "a: 0X1F\nb: 0O7\n",
+  "escaped line break": 'a: "x\\\n   y"\n',
+  "escaped line break then blank line": 'a: "x\\\n\n  y"\n',
+  "block scalar with a wide blank line": "b: >\n - x\n  \n",
+  "literal with a wide blank line": "b: |\n  x\n     \n  y\n",
+  "keep at the end": "a: |+\n  x\n",
+  "keep without content": "a: >+\n",
+  "flow with a comment": "a: [1, # c\n 2]\n",
+  "keys resolve like values": "~: a\n1.50: b\n0o7: c\n.inf: d\n",
+  "flow map keys resolve like values": "a: {~: 1, 0x1F: 2}\n",
 };
 
 describe("parseYaml matches Bun.YAML", () => {
@@ -187,15 +203,8 @@ describe("parseYaml matches Bun.YAML on the frontmatter of this repository", () 
   }
 });
 
-describe("parseYaml throws outside the subset", () => {
+describe("parseYaml throws where Bun.YAML throws", () => {
   const THROWS = {
-    anchor: "a: &x 1\nb: 2\n",
-    alias: "a: &x 1\nb: *x\n",
-    tag: "a: !!str 1\n",
-    "custom tag": "a: !custom x\n",
-    "two documents": "a: 1\n---\nb: 2\n",
-    "document end": "a: 1\n...\n",
-    "complex key": "? a\n: b\n",
     "colon in plain value": "a: b: c\n",
     "unclosed flow": "a: [1, 2\n",
     "unclosed quote": 'a: "x\n',
@@ -203,12 +212,94 @@ describe("parseYaml throws outside the subset", () => {
     "text after quote": "a: 'x' y\n",
     "bad indent": "a: 1\n  b: 2\n",
     "key after sequence": "- a\nb: 1\n",
+    "dash after a key": "description: - x\n",
+    "lone dash after a key": "a: -\n",
+    "dash in a flow item": "a: [- x]\n",
+    "block header with text": "description: > x\n",
+    "literal header with text": "description: | x\n",
+    "comment before a plain continuation": "a: x # c\n   y\n",
+    "comment line in a plain scalar": "a: x y\n#c\n  x\n",
+    "tab as indent": "a:\n\tb: 1\n",
+    "tab in a block scalar": "a: |\n  x\n\ty\n",
+    "NUL in a value": "a: x\u0000y\n",
+    "NUL in a quoted value": 'a: "x\u0000y"\n',
+    "closing bracket as a value": "a: ]\n",
+    "closing brace as a value": "- }\n",
+    "hash after a bracket": "a: [#x]\n",
+    "blank line wider than the first line": "a: |\n    \n  x\n",
+    "reserved start": "a: @x\n",
   };
   for (const [name, text] of Object.entries(THROWS)) {
     test(name, () => {
+      expect(() => Bun.YAML.parse(text)).toThrow();
       expect(() => parseYaml(text)).toThrow(Error);
     });
   }
+});
+
+// Bun.YAML reads these, but they are outside the subset, so parseYaml throws.
+describe("parseYaml throws by design where Bun.YAML reads the input", () => {
+  const BY_DESIGN = {
+    anchor: "a: &x 1\nb: 2\n",
+    alias: "a: &x 1\nb: *x\n",
+    tag: "a: !!str 1\n",
+    "custom tag": "a: !custom x\n",
+    "two documents": "a: 1\n---\nb: 2\n",
+    "document end": "a: 1\n...\n",
+    "complex key": "? a\n: b\n",
+  };
+  for (const [name, text] of Object.entries(BY_DESIGN)) {
+    test(name, () => {
+      expect(() => Bun.YAML.parse(text)).not.toThrow();
+      expect(() => parseYaml(text)).toThrow(Error);
+    });
+  }
+});
+
+describe("parseYaml uses linear time and a nesting limit", () => {
+  const timed = (run) => {
+    const start = performance.now();
+    run();
+    return performance.now() - start;
+  };
+
+  test("a long chain of dashes throws a parse error at once", () => {
+    const text = `${"- ".repeat(20000)}x`;
+    const ms = timed(() =>
+      expect(() => parseYaml(text)).toThrow(/YAML Parse error/),
+    );
+    expect(ms).toBeLessThan(200);
+  });
+
+  test("deep flow nesting throws a parse error and not a RangeError", () => {
+    const text = `a: ${"[".repeat(20000)}`;
+    expect(() => parseYaml(text)).toThrow(/YAML Parse error/);
+  });
+
+  test("deep block nesting throws a parse error", () => {
+    const text = Array.from(
+      { length: 200 },
+      (_, i) => `${" ".repeat(i)}a:`,
+    ).join("\n");
+    expect(() => parseYaml(text)).toThrow(/YAML Parse error/);
+  });
+
+  test("a nesting below the limit still parses", () => {
+    const text = `a: ${"[".repeat(30)}${"]".repeat(30)}\n`;
+    expect(parseYaml(text)).toStrictEqual(Bun.YAML.parse(text));
+    const dashes = `${"- ".repeat(30)}x\n`;
+    expect(parseYaml(dashes)).toStrictEqual(Bun.YAML.parse(dashes));
+  });
+
+  test("a flow sequence of 60000 lines parses fast", () => {
+    const text = `a: [\n${"1,\n".repeat(60000)}]\n`;
+    let result;
+    const ms = timed(() => {
+      result = parseYaml(text);
+    });
+    expect(result.a.length).toBe(60000);
+    expect(ms).toBeLessThan(200);
+  });
 });
 
 test("hosts.yml shape gives the login", () => {
