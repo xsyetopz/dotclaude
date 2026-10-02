@@ -1,0 +1,4 @@
+{
+  "maxWords": 110,
+  "reason": "No results exist in evals/results to measure. The reply has the t1-fix content, about 30 to 45 words, plus the second bug, its confirming check, and its fix, about 30 to 40 words. 110 leaves room for one code span and fails a reply that retells the work."
+}

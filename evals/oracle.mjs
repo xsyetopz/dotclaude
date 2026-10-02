@@ -7,7 +7,9 @@
 // `claude plugin eval` has no grader that runs a command, so the oracle runs
 // after the eval. For each run of a case with an `oracle.sh`, it copies the
 // kept workspace, runs `bash oracle.sh` in the copy with `ORACLE_DIR` set to
-// the case directory, and adds an `oracle` grader that passes on exit 0. The
+// the case directory, and adds an `oracle` grader that passes on exit 0. A case
+// with a `reply.json` also gets the `word-count` and `adverbs` graders of
+// `evals/reply.mjs`, which read the final reply from the trace. The
 // agent never sees the oracle, so it cannot fit the code to it. The token
 // split comes from the `result` event of the run's stream-json trace. The
 // result file is rewritten in place. Exit 2 when a workspace was not kept.
@@ -16,6 +18,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { finalReply, gradeAdverbs, gradeWordCount } from "./reply.mjs";
 
 const TIMEOUT_MS = 180_000;
 
@@ -98,19 +101,47 @@ function copyWorkspace(kept) {
   }
 }
 
-/** Add the oracle grader and tokens to each run. Returns the runs whose workspace is gone. */
+/** Put `graders` on the run in place of any of the same names. */
+function setGraders(run, graders) {
+  const names = new Set(graders.map((g) => g.name));
+  run.graders = [
+    ...(run.graders ?? []).filter((g) => !names.has(g.name)),
+    ...graders,
+  ];
+  run.passed = run.graders.every((g) => g.scored === false || g.passed);
+}
+
+/** The reply graders of a case, from its `reply.json`, or null. */
+function replyBound(caseDir) {
+  try {
+    return JSON.parse(
+      fs.readFileSync(path.join(caseDir, "reply.json"), "utf8"),
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Add the oracle and reply graders and tokens to each run. Returns the runs whose workspace is gone. */
 export function grade(result, root) {
   const missing = [];
   for (const c of result.cases) {
     const caseDir = path.resolve(root, c.dir ?? "");
     const oracle = path.join(caseDir, "oracle.sh");
     const hasOracle = fs.existsSync(oracle);
+    const bound = replyBound(caseDir);
     for (const [arm, runs] of Object.entries(c.arms ?? {}))
       for (const [i, run] of runs.entries()) {
         const kept = run.tracePath
           ? path.dirname(path.dirname(run.tracePath))
           : null;
         if (kept) run.tokens = runTokens(run.tracePath);
+        const reply = bound && kept ? finalReply(run.tracePath) : null;
+        if (reply !== null)
+          setGraders(run, [
+            gradeWordCount(reply, bound.maxWords),
+            gradeAdverbs(reply),
+          ]);
         if (!hasOracle) continue;
         let verdict;
         if (run.error) verdict = { passed: false, explanation: "run failed" };
@@ -122,11 +153,9 @@ export function grade(result, root) {
           }
           verdict = runOracle(oracle, caseDir, copy);
         }
-        run.graders = [
-          ...(run.graders ?? []).filter((g) => g.name !== "oracle"),
+        setGraders(run, [
           { name: "oracle", weight: 1, scored: true, ...verdict },
-        ];
-        run.passed = run.graders.every((g) => g.scored === false || g.passed);
+        ]);
       }
   }
   return missing;

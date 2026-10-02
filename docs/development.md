@@ -87,8 +87,11 @@ the workspace. `--allow-tools` grants the tools that the cases list.
 `oracle.sh` in a copy of the kept workspace. When the plugin wrote to the
 run's `home/` or `tmp/`, the CLI seals them in `sealed/` with mode 000, and
 it warns you once for each run. `evals/oracle.mjs` opens the seal only for
-the copy, and it runs `git` only in the copy. `claude plugin eval` has no
-grader that runs a command. `--judge-model sonnet` sets the model of the `llm`
+the copy, and it runs `git` only in the copy. A case with a `reply.json`
+(`maxWords` and `reason`) also gets two reply graders from `evals/oracle.mjs`.
+`word-count` fails a final reply with more words than `maxWords`. `adverbs`
+fails a reply with a word from the `ADVERBS` list in `evals/reply.mjs`.
+`claude plugin eval` has no grader that runs a command. `--judge-model sonnet` sets the model of the `llm`
 graders. The default judge is Haiku 4.5, and it failed a correct `t4-slices`
 reply 3 times out of 3. The CLI does not keep the judge's text, so the cause
 is not known. Do not use the agent's model as the judge, because a model

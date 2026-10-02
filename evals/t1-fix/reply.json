@@ -1,0 +1,4 @@
+{
+  "maxWords": 70,
+  "reason": "No results exist in evals/results to measure. The reply needs the fix, the cause, and the test result, about 30 to 45 words. 70 leaves room for one code span and one caveat, and it fails a reply that retells the work."
+}
