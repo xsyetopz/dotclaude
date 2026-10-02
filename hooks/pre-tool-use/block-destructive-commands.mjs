@@ -27,7 +27,8 @@ run(async (data) => {
   if (!guard && !modelLock) return;
   const io = nodeIo(data);
   const root = projectRoot(io, data);
-  let findings = check(command, {
+  let findings = await check(command, {
+    io,
     root,
     cwd: path.resolve(data.cwd || root),
     allowedModels: (await planAllowlist(io)).list,

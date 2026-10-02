@@ -3,6 +3,7 @@
 // engine io, so the functions that the guards call cannot use them.
 
 import { expect, test } from "bun:test";
+import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 import {
   agentStarted,
   agentStopped,
@@ -134,13 +135,18 @@ test("agentStopped removes the marker", async () => {
   expect(removed).toStrictEqual([`${DIR}/s1.a_1.running`]);
 });
 
-test("shellWrites expands `~` with `home` and resolves against `root` with no `cwd`", () => {
+test("shellWrites expands `~` with `home` and resolves against `root` with no `cwd`", async () => {
   const command = "echo a > ~/proj/src/a.js && echo b > src/b.js";
-  expect(shellWrites(command, "/home/u/proj", "/home/u")).toStrictEqual([
-    "src/a.js",
-    "src/b.js",
-  ]);
   expect(
-    shellWrites("echo c > c.js", "/home/u/proj", "/home/u", "/home/u/proj/src"),
+    await shellWrites(nodeIo(), command, "/home/u/proj", "/home/u"),
+  ).toStrictEqual(["src/a.js", "src/b.js"]);
+  expect(
+    await shellWrites(
+      nodeIo(),
+      "echo c > c.js",
+      "/home/u/proj",
+      "/home/u",
+      "/home/u/proj/src",
+    ),
   ).toStrictEqual(["src/c.js"]);
 });

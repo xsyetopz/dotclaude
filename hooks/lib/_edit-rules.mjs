@@ -1,26 +1,33 @@
 // Rules for the Edit/Write guard.
 //
-// check(toolName, toolInput, ctx) returns findings shaped [level, reason].
+// check(toolName, toolInput, ctx) resolves to findings shaped [level, reason].
 
-import fs from "node:fs";
-import path from "node:path";
 import { PROTECTED_REASON, protectedMatch } from "./_loop.mjs";
 import { allowed } from "./_models.mjs";
+import { pathFor } from "./_path.mjs";
+import { parseYaml } from "./_yaml.mjs";
 
 /**
  * `bashWrite` marks a file that a Bash command writes. The Bash guard owns
  * settings files for those, and a new file there is build output, not an edit.
  * `oracle` holds the agent loop's protected globs and the project root, set
- * only for a subagent.
- * @typedef {{allowedModels: string[], env?: Record<string, string | undefined>, editGuard?: boolean, modelLock?: boolean, bashWrite?: boolean, oracle?: {root: string, globs: string[]}}} Context
+ * only for a subagent. `io` gives host access.
+ * @typedef {{io: import("./_io.mjs").Io, allowedModels: string[], env?: Record<string, string | undefined>, editGuard?: boolean, modelLock?: boolean, bashWrite?: boolean, oracle?: {root: string, globs: string[]}}} Context
  */
 
-export function check(toolName, toolInput, ctx) {
+export async function check(toolName, toolInput, ctx) {
   const c = { editGuard: true, modelLock: true, ...ctx };
+  const { io } = c;
+  const path = pathFor(io.platform);
   const filePath = toolInput.file_path || toolInput.notebook_path || "";
   if (!filePath) return [];
   const posix = filePath.split(path.sep).join("/");
-  const { before, after } = beforeAfter(toolName, toolInput, filePath);
+  const { before, after } = await beforeAfter(
+    io,
+    toolName,
+    toolInput,
+    filePath,
+  );
   const out = [];
   if (!c.bashWrite && (isClaudeSettings(posix) || MANAGED_DROP_IN.test(posix)))
     out.push(...settings(before, after, c));
@@ -30,16 +37,16 @@ export function check(toolName, toolInput, ctx) {
     protectedMatch(filePath, c.oracle.root, c.oracle.globs, c.oracle.platform);
   if (glob) out.push(["deny", PROTECTED_REASON(glob)]);
   if (TEST_PATH.test(posix)) out.push(...testWeakening(before, after));
-  if (!c.bashWrite || fs.existsSync(filePath))
-    out.push(...generated(filePath, posix));
-  out.push(...frontmatter(toolName, toolInput, filePath, posix));
+  if (!c.bashWrite || (await io.fs.exists(filePath)))
+    out.push(...(await generated(io, filePath, posix)));
+  out.push(...(await frontmatter(io, toolName, toolInput, filePath, posix)));
   if (toolName === "Write" && before !== null)
     out.push(...shrink(before, after));
   return out;
 }
 
 /** Old text (null when the file is new) and new text for each editing tool. */
-function beforeAfter(toolName, input, filePath) {
+async function beforeAfter(io, toolName, input, filePath) {
   switch (toolName) {
     case "Edit":
       return { before: input.old_string ?? "", after: input.new_string ?? "" };
@@ -53,15 +60,18 @@ function beforeAfter(toolName, input, filePath) {
     case "NotebookEdit":
       return { before: "", after: input.new_source ?? "" };
     default:
-      return { before: readExisting(filePath), after: input.content ?? "" };
+      return {
+        before: await readExisting(io, filePath),
+        after: input.content ?? "",
+      };
   }
 }
 
-function readExisting(filePath) {
+async function readExisting(io, filePath) {
   try {
-    const stat = fs.statSync(filePath);
-    return stat.isFile() && stat.size < 2_000_000
-      ? fs.readFileSync(filePath, "utf8")
+    const stat = await io.fs.stat(filePath);
+    return stat.kind === "file" && stat.size < 2_000_000
+      ? await io.fs.read(filePath)
       : null;
   } catch {
     return null;
@@ -114,10 +124,10 @@ function testWeakening(before, after) {
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
 
 /** The whole file as this edit leaves it, or undefined when that is unknown. */
-function resultText(toolName, input, filePath) {
+async function resultText(io, toolName, input, filePath) {
   if (toolName === "Write") return input.content ?? "";
   if (toolName !== "Edit" && toolName !== "MultiEdit") return undefined;
-  let text = readExisting(filePath);
+  let text = await readExisting(io, filePath);
   if (text === null) return undefined;
   const edits = toolName === "Edit" ? [input] : (input.edits ?? []);
   for (const e of edits) {
@@ -135,12 +145,15 @@ function resultText(toolName, input, filePath) {
 
 // Skill, agent, rule, and output-style files are read through their YAML
 // frontmatter; an unquoted value containing ": " breaks the whole block.
-function frontmatter(toolName, input, filePath, posix) {
+async function frontmatter(io, toolName, input, filePath, posix) {
   if (!posix.endsWith(".md")) return [];
-  const match = FRONTMATTER.exec(resultText(toolName, input, filePath) ?? "");
+  const match = FRONTMATTER.exec(
+    (await resultText(io, toolName, input, filePath)) ?? "",
+  );
   if (!match) return [];
+  const path = pathFor(io.platform);
   try {
-    Bun.YAML.parse(match[1]);
+    parseYaml(match[1]);
     return [];
   } catch (err) {
     return [
@@ -158,8 +171,8 @@ const GENERATED_PATH =
   /\.min\.(js|css)$|(^|\/)(dist|build|out|target|\.next|node_modules|vendor|Pods|DerivedData)\/|\.(pb|pb\.gw)\.go$|_pb2(_grpc)?\.pyi?$|\.g\.dart$|\.freezed\.dart$|\.generated\.\w+$|(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lockb?|Cargo\.lock|poetry\.lock|uv\.lock|Gemfile\.lock|composer\.lock|go\.sum|Package\.resolved|Podfile\.lock)$/;
 const GENERATED_MARK = /@generated|DO NOT EDIT|auto-generated|autogenerated/i;
 
-function generated(filePath, posix) {
-  const name = path.basename(filePath);
+async function generated(io, filePath, posix) {
+  const name = pathFor(io.platform).basename(filePath);
   if (GENERATED_PATH.test(posix))
     return [
       [
@@ -169,13 +182,8 @@ function generated(filePath, posix) {
     ];
   let head = "";
   try {
-    const fd = fs.openSync(filePath, "r");
-    const buf = Buffer.alloc(1024);
-    const n = fs.readSync(fd, buf, 0, buf.length, 0);
-    fs.closeSync(fd);
-    head = buf
-      .subarray(0, n)
-      .toString("utf8")
+    head = new TextDecoder()
+      .decode(await io.fs.head(filePath, 1024))
       .split("\n")
       .slice(0, 5)
       .join("\n");

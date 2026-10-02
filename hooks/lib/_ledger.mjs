@@ -1,11 +1,8 @@
 // Per-session record of edits and check runs, used by the stop gate and the
 // compaction carry-over. Stored under CLAUDE_PLUGIN_DATA, never in the repo.
 
-// Three imports keep this file out of the engine. `shellWrites` uses
-// `node:path` for `writeTargets`. `_bash-args.mjs` imports `node:child_process`
-// for `git()`, which `codeFile` uses. `_bash-writes.mjs` imports `node:fs`.
-// Slices s12 and s13 remove them.
-import nodePath from "node:path";
+// One import keeps this file out of the engine. `_bash-args.mjs` imports
+// `node:child_process` for `git()`, which `codeFile` uses. Slice s13 removes it.
 import { git } from "./_bash-args.mjs";
 import { expandHome, writeTargets } from "./_bash-writes.mjs";
 import { stateDir } from "./_core.mjs";
@@ -162,8 +159,8 @@ export function outputShowsFailure(text) {
  * `home` is the folder that `~` expands to. `cwd` is `root` when it is not
  * given.
  */
-export function shellWrites(command, root, home, cwd = root) {
-  const path = nodePath;
+export async function shellWrites(io, command, root, home, cwd = root) {
+  const path = pathFor(io.platform);
   const inProject = (target, base) => {
     if (!target || target.includes("$") || target.startsWith("/dev/"))
       return undefined;
@@ -187,7 +184,7 @@ export function shellWrites(command, root, home, cwd = root) {
         ? path.resolve(cwd, expandHome(cmd.cwdHint, home))
         : cwd;
     // Scratch files outside the project, such as in /tmp, are not edits.
-    for (const { target } of writeTargets(cmd, base, home, path)) {
+    for (const { target } of await writeTargets(io, cmd, base, home, path)) {
       const rel = inProject(target, base);
       if (rel) out.add(rel);
     }

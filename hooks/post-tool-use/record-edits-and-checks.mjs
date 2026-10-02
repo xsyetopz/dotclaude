@@ -106,7 +106,8 @@ run(async (data) => {
       const command = data.tool_input?.command;
       const written =
         data.hook_event_name === "PostToolUse" && typeof command === "string"
-          ? shellWrites(
+          ? await shellWrites(
+              io,
               command,
               projectRoot(io, data),
               io.home,

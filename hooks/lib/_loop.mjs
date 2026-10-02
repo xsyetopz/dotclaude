@@ -10,9 +10,7 @@
 // A worktree agent works in `<root>/.claude/worktrees/<name>`, so paths in a
 // worktree map back to the main root.
 
-import fs from "node:fs";
-import nodePath from "node:path";
-import { globMatch } from "./_glob.mjs";
+import { globFiles, globMatch } from "./_glob.mjs";
 import { pathFor } from "./_path.mjs";
 
 const WORKTREE = /^(.*?)[\\/]\.claude[\\/]worktrees[\\/][^\\/]+(?:[\\/](.*))?$/;
@@ -105,25 +103,27 @@ export function protectedMatch(file, root, globs, platform) {
 
 /**
  * The first protected glob with a matching file under the directory `dir`,
- * or null. A removal of the directory removes that file too. It is sync
- * because the rule engine is sync, and slice s12 ports it to the io seam.
+ * or null. A removal of the directory removes that file too.
  */
-export function protectedUnder(dir, root, globs, platform) {
+export async function protectedUnder(io, dir, root, globs, platform) {
   if (!globs.length) return null;
   const path = pathFor(platform);
   const abs = path.resolve(root, dir);
   const rel = projectPath(path, abs, root, true);
   if (rel === null) return null;
   try {
-    if (!fs.statSync(abs).isDirectory()) return null;
+    if ((await io.fs.stat(abs)).kind !== "dir") return null;
   } catch {
     return null;
   }
   const top = rel ? abs.slice(0, abs.length - rel.length - 1) : abs;
   for (const g of globs)
-    for (const hit of new Bun.Glob(g).scanSync({ cwd: top, dot: true }))
-      if (!rel || hit.split(nodePath.sep).join("/").startsWith(`${rel}/`))
-        return g;
+    for (const hit of await globFiles(io, g, {
+      cwd: top,
+      dot: true,
+      onlyFiles: true,
+    }))
+      if (!rel || hit.split(path.sep).join("/").startsWith(`${rel}/`)) return g;
   return null;
 }
 

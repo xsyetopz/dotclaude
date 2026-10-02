@@ -18,7 +18,8 @@ run(async (data) => {
   const modelLock = option(process.env, "model_lock");
   if (!editGuard && !modelLock) return;
   const io = nodeIo(data);
-  let findings = check(data.tool_name ?? "", data.tool_input ?? {}, {
+  let findings = await check(data.tool_name ?? "", data.tool_input ?? {}, {
+    io,
     allowedModels: (await planAllowlist(io)).list,
     env: io.env,
     editGuard,

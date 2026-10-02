@@ -3,7 +3,6 @@
 // file for writing. The stop gate counts these as edits, and the Bash guard
 // sends them through the Edit rules.
 
-import fs from "node:fs";
 import { positional } from "./_bash-args.mjs";
 import { posix } from "./_path.mjs";
 
@@ -65,9 +64,10 @@ export function commandBase(cmd, cwd, home, path = posix) {
  * Write targets of one parsed command, as written in the command, in order.
  * `content` is the whole new file text when the command states it: a heredoc
  * that `cat` or `tee` writes over the target. Otherwise it is undefined.
- * @returns {{target: string, content?: string}[]}
+ * `path` is the path module of the caller.
+ * @returns {Promise<{target: string, content?: string}[]>}
  */
-export function writeTargets(cmd, base, home, path = posix) {
+export async function writeTargets(io, cmd, base, home, path) {
   const out = [];
   const whole =
     cmd.heredoc !== null &&
@@ -89,7 +89,7 @@ export function writeTargets(cmd, base, home, path = posix) {
     // the script unless -e gave it, and only existing files count.
     const scriptGiven = cmd.args.some((a) => /^-[a-zA-Z]*e$/.test(a));
     for (const t of operands.slice(scriptGiven ? 0 : 1))
-      if (base && fs.existsSync(path.resolve(base, expandHome(t, home))))
+      if (base && (await io.fs.exists(path.resolve(base, expandHome(t, home)))))
         out.push({ target: t });
   }
   if (cmd.name === "sd")

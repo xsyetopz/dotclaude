@@ -1,16 +1,16 @@
 // Rules for the Bash guard.
 //
-// check(command, ctx) returns findings shaped [level, reason] with level
+// check(command, ctx) resolves to findings shaped [level, reason] with level
 // "deny", "ask", or "warn" (a recoverable action that asks only outside auto
 // mode; see decide() in _common.mjs). The guard never returns "allow": commands that match
 // nothing fall through to Claude Code's normal permission flow.
 
-import path from "node:path";
 import { CLAUDE_TRAILER } from "./_attribution.mjs";
 import { positional } from "./_bash-args.mjs";
 import { commandBase, expandHome, writeTargets } from "./_bash-writes.mjs";
 import { check as editCheck } from "./_edit-rules.mjs";
 import { PROTECTED_REASON, protectedMatch, protectedUnder } from "./_loop.mjs";
+import { pathFor } from "./_path.mjs";
 import { contribution } from "./_rules-contrib.mjs";
 import { DB_CLIENTS, db, dbReset, snapshotBless } from "./_rules-data.mjs";
 import {
@@ -30,12 +30,12 @@ import { settingsWrite } from "./_rules-settings.mjs";
 import { parse, program, readsStdinScript } from "./_shell.mjs";
 
 /**
- * @typedef {{root: string, cwd: string, allowedModels: string[], env?: Record<string, string | undefined>, modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean, background?: boolean, ghUser?: string, oracle?: {root: string, globs: string[]}}} Context
+ * @typedef {{io: import("./_io.mjs").Io, root: string, cwd: string, allowedModels: string[], env?: Record<string, string | undefined>, modelLock?: boolean, editGuard?: boolean, commitHygiene?: boolean, claudeTrailerOff?: boolean, background?: boolean, ghUser?: string, oracle?: {root: string, globs: string[]}}} Context
  * @typedef {["deny" | "ask" | "warn", string]} Finding
  */
 
-/** @returns {Finding[]} */
-export function check(command, ctx) {
+/** @returns {Promise<Finding[]>} */
+export async function check(command, ctx) {
   const parsed = parse(command);
   const c = {
     modelLock: true,
@@ -45,7 +45,9 @@ export function check(command, ctx) {
     command,
     commands: parsed.commands,
   };
-  const findings = parsed.commands.flatMap((cmd) => checkCommand(cmd, c));
+  const findings = [];
+  for (const cmd of parsed.commands)
+    findings.push(...(await checkCommand(cmd, c)));
   if (parsed.unparsed.length) findings.push(...rawScan(command));
   findings.push(
     ...parsed.commands.flatMap((cmd) => endless(cmd, c, BOUNDED.test(command))),
@@ -71,7 +73,7 @@ export function check(command, ctx) {
   });
 }
 
-function checkCommand(cmd, ctx) {
+async function checkCommand(cmd, ctx) {
   const out = [];
   const handler = HANDLERS[cmd.name];
   if (handler) out.push(...handler(cmd, ctx));
@@ -92,11 +94,12 @@ function checkCommand(cmd, ctx) {
     }
   }
   if (INTERPRETERS.has(cmd.name)) {
-    out.push(...interpreterInline(cmd, ctx));
+    out.push(...(await interpreterInline(cmd, ctx)));
   }
   out.push(...snapshotBless(cmd));
-  if (ctx.editGuard) out.push(...fileWrites(cmd, ctx));
-  if (ctx.editGuard && ctx.oracle) out.push(...oracleRemovals(cmd, ctx));
+  if (ctx.editGuard) out.push(...(await fileWrites(cmd, ctx)));
+  if (ctx.editGuard && ctx.oracle)
+    out.push(...(await oracleRemovals(cmd, ctx)));
   out.push(...ignoredWalk(cmd, ctx));
   if (ctx.modelLock) out.push(...modelEnv(cmd, ctx));
   return out;
@@ -213,7 +216,7 @@ function codeOnly(code, lang) {
   return scan(false);
 }
 
-function interpreterInline(cmd, ctx) {
+async function interpreterInline(cmd, ctx) {
   let code;
   for (let i = 0; i < cmd.args.length - 1; i += 1) {
     if (INLINE_FLAGS.has(cmd.args[i])) {
@@ -233,7 +236,7 @@ function interpreterInline(cmd, ctx) {
   ) {
     for (const match of code.matchAll(STRING_LIT)) {
       const literal = match[1] ?? match[2] ?? "";
-      if (literal.includes(" ")) out.push(...check(literal, ctx));
+      if (literal.includes(" ")) out.push(...(await check(literal, ctx)));
     }
   }
   return out;
@@ -243,23 +246,28 @@ function interpreterInline(cmd, ctx) {
 
 // A Bash write gets the same Edit rules as the edit tools, so a heredoc cannot
 // weaken a test or break frontmatter that `Write` would have caught.
-function fileWrites(cmd, ctx) {
-  const base = commandBase(cmd, ctx.cwd, process.env.HOME, path);
+async function fileWrites(cmd, ctx) {
+  const { io } = ctx;
+  const path = pathFor(io.platform);
+  const home = io.env.HOME;
+  const base = commandBase(cmd, ctx.cwd, home, path);
   if (!base) return [];
   const out = [];
-  for (const { target, content } of writeTargets(
+  for (const { target, content } of await writeTargets(
+    io,
     cmd,
     base,
-    process.env.HOME,
+    home,
     path,
   )) {
     if (/\$|__SUBST__|^\/dev\//.test(target)) continue;
-    const file_path = path.resolve(base, expandHome(target, process.env.HOME));
+    const file_path = path.resolve(base, expandHome(target, home));
     const input =
       content === undefined
         ? ["Edit", { file_path, old_string: "", new_string: "" }]
         : ["Write", { file_path, content }];
-    for (const [level, reason] of editCheck(...input, {
+    for (const [level, reason] of await editCheck(...input, {
+      io,
       allowedModels: ctx.allowedModels,
       env: ctx.env,
       modelLock: ctx.modelLock,
@@ -273,8 +281,11 @@ function fileWrites(cmd, ctx) {
 
 // `rm` and `git rm` of an oracle file, and `mv` or `git mv` away from one.
 // `fileWrites` covers the files that a command writes.
-function oracleRemovals(cmd, ctx) {
-  let base = commandBase(cmd, ctx.cwd, process.env.HOME, path);
+async function oracleRemovals(cmd, ctx) {
+  const { io } = ctx;
+  const path = pathFor(io.platform);
+  const home = io.env.HOME;
+  let base = commandBase(cmd, ctx.cwd, home, path);
   if (!base) return [];
   let args = cmd.args;
   let sub = cmd.name;
@@ -292,10 +303,10 @@ function oracleRemovals(cmd, ctx) {
   const out = [];
   for (const target of operands) {
     if (/\$|__SUBST__/.test(target)) continue;
-    const file = path.resolve(base, expandHome(target, process.env.HOME));
+    const file = path.resolve(base, expandHome(target, home));
     const glob =
       protectedMatch(file, root, globs, platform) ??
-      protectedUnder(file, root, globs, platform);
+      (await protectedUnder(io, file, root, globs, platform));
     if (glob)
       out.push([
         "deny",
