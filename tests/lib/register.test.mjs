@@ -7,6 +7,7 @@
 
 import { expect, test } from "bun:test";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { ACTIONS, matches, merge } from "../../hooks/lib/_actions.mjs";
 import { HOOKS, hook, noAccount, repo, session } from "../support/hooks.mjs";
@@ -35,11 +36,22 @@ function classic(event, data, env) {
   return merge(outputs) ?? null;
 }
 
+/** Run a `turn.step` hook to its end. Its `next` yields no chunk. */
+async function step(on, $, e) {
+  const stream = on["turn.step"]($, e, async function* () {
+    yield* [];
+    return {};
+  });
+  while (!(await stream.next()).done);
+}
+
 /**
  * Run one case through the `tool.call` hook. A `CLAUDE_PLUGIN_OPTION_*` name
  * in `env` becomes a plugin option of `register`, as Claude Code gives it.
  * The other names, and the names that `hook()` sets, go to the fake `$`.
- * `next` records its input and the `tool.check` verdict of the call.
+ * A case with `effort` first runs a main-thread step at that effort, because
+ * the module gets the session effort only from a step. `next` records its
+ * input and the `tool.check` verdict of the call.
  */
 async function viaModule(c) {
   const options = {};
@@ -61,6 +73,7 @@ async function viaModule(c) {
     files: agentFiles,
     secrets: c.secrets,
   });
+  if (c.effort) await step(on, $, { effort: c.effort });
   const e = { tool: c.tool, tool_use_id: "t1", ...c.input };
   const engine = { decision: "allow" };
   const calls = [];
@@ -225,9 +238,10 @@ test.each([
   await samePre(c);
 });
 
-// The `tool.call` input has no permission mode, so the module judges each
-// call as in default mode. In auto mode the classic path stays quiet on a
-// recoverable finding, and the module asks.
+// The engine API gives no live permission mode to a module. `tool.call` and
+// `tool.check` have no mode field, and `/config` has only the default mode.
+// So the module judges each call as in default mode. In auto mode the classic
+// path stays quiet on a recoverable finding, and the module asks.
 test.todo.each([
   ["a recoverable finding", bash("find . -name '*.log' -delete", auto)],
 ])("bash-guard in auto mode: %s", async (_name, c) => {
@@ -275,6 +289,135 @@ test.each([
     "a session with no count allows",
     agent({ subagent_type: "dotclaude:implementer" }),
   ],
+  [
+    "haiku passes",
+    agent({ model: "haiku" }, { ANTHROPIC_DEFAULT_HAIKU_MODEL: "" }),
+  ],
+  ["opus with no prompt passes", { ...agent({}), input: { model: "opus" } }],
+  [
+    "no type with forks off is denied",
+    agent({}, { CLAUDE_CODE_FORK_SUBAGENT: "false" }),
+  ],
+  [
+    "a fork with forks on runs in the foreground",
+    agent({ prompt: "fork this" }, { CLAUDE_CODE_FORK_SUBAGENT: "" }),
+  ],
+  [
+    "Explore in the foreground passes",
+    {
+      ...agent({}),
+      input: { subagent_type: "Explore", run_in_background: false },
+    },
+  ],
+  [
+    "general-purpose passes with agent_guidance off",
+    {
+      ...agent({}, { CLAUDE_PLUGIN_OPTION_AGENT_GUIDANCE: "false" }),
+      input: { subagent_type: "general-purpose" },
+    },
+  ],
+  // The session effort comes from a main-thread step.
+  ...["xhigh", "max"].map((level) => [
+    `sonnet at session effort ${level} is denied`,
+    { ...agent({ model: "sonnet" }), effort: level },
+  ]),
+  [
+    "opus at session effort max is denied",
+    {
+      ...agent({ model: "opus" }, { ANTHROPIC_DEFAULT_OPUS_MODEL: "" }),
+      effort: "max",
+    },
+  ],
 ])("model-lock: %s", async (_name, c) => {
   await samePre(c);
+});
+
+// delete-guard.test.mjs and git-discard.test.mjs. These cases ask before git
+// can tell, so the fake `$`, which has no git, gives the same input as a real
+// repository. The cases that need real git status or project files are not
+// here: the tracked, untracked, and gitignored paths of delete-guard, the
+// paths beside the project in its temp folder, and the clean, dirty, and
+// colliding repositories of git-discard.
+const scratchpad = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-cc-"));
+const del = (command) =>
+  bash(command, {
+    mode: "default",
+    env: { CLAUDE_CODE_TMPDIR: scratchpad },
+  });
+test.each([
+  ["a delete in the scratchpad runs", del('rm -r "$CLAUDE_CODE_TMPDIR/x"')],
+  ["a named delete in /tmp runs", del("cd /tmp && rm -rf oc-shots/$n")],
+  ["a whole temp folder asks", del("find /tmp -delete")],
+  ["a run-time name in a temp folder asks", del("cd /tmp && rm -rf $n")],
+  ["a variable outside the temp folders asks", del('S="$HOME/x"; rm -rf "$S"')],
+  ["a parent segment asks", del('S="$TMPDIR/../x"; rm -rf "$S"')],
+  ["a glob after a temp variable asks", del('find "$TMPDIR/"* -delete')],
+  [
+    "a reassigned temp variable asks",
+    del('CLAUDE_CODE_TMPDIR=/; rm -rf "$CLAUDE_CODE_TMPDIR/etc"'),
+  ],
+  ["a run-time path asks", del("git checkout -- $F")],
+  ["a run-time folder asks", del("cd $W && git reset --hard")],
+  ["a folder under home asks", del("git -C ~/w reset --hard")],
+])("delete-guard and git-discard: %s", async (_name, c) => {
+  await samePre(c);
+});
+
+/**
+ * Expect the module to give the PostToolUse output of the classic path. The
+ * module result is the classic `updatedToolOutput`, or the response
+ * unchanged when the classic path redacts nothing.
+ */
+async function samePost(c) {
+  const h = classic(
+    "PostToolUse",
+    {
+      session_id: session(),
+      hook_event_name: "PostToolUse",
+      tool_name: c.tool,
+      tool_input: c.input,
+      tool_response: c.response,
+    },
+    c.env,
+  )?.hookSpecificOutput;
+  const m = await viaModule(c);
+  expect(m.out.result).toEqual(h?.updatedToolOutput ?? c.response);
+  if (h?.additionalContext)
+    expect(m.out.context).toContain(h.additionalContext);
+}
+
+// redact-secrets.test.mjs. The token is made at run time, so this file
+// holds no secret. It is random, because Betterleaks skips a token with low
+// entropy. The fake `$` reports the token as Betterleaks does.
+const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+const token = `ghp_${Array.from(
+  { length: 36 },
+  () => chars[Math.floor(Math.random() * chars.length)],
+).join("")}`;
+const output = (stdout, extra = {}) => ({
+  tool: "Bash",
+  input: {},
+  response: { stdout, stderr: "", interrupted: false },
+  ...extra,
+});
+test.skipIf(!hasScanner)(
+  "redact-secrets: a GitHub token is redacted",
+  async () => {
+    await samePost(
+      output(`line one\ntoken=${token}\nend\n`, {
+        secrets: [{ secret: token, rule: "github-pat" }],
+      }),
+    );
+  },
+);
+test.skipIf(!hasScanner)("redact-secrets: clean output passes", async () => {
+  await samePost(output("hello world\n"));
+});
+test("redact-secrets: the guard_secrets option turns redaction off", async () => {
+  await samePost(
+    output(token, {
+      secrets: [{ secret: token, rule: "github-pat" }],
+      env: { CLAUDE_PLUGIN_OPTION_GUARD_SECRETS: "false" },
+    }),
+  );
 });
