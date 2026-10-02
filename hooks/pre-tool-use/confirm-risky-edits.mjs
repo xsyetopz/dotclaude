@@ -14,7 +14,6 @@ import { guardDecision } from "../lib/_verdicts.mjs";
 const REMOVES_ASSERTIONS = /assertion\(s\) from a test file/;
 
 run(async (data) => {
-  const io = nodeIo(data);
   const editGuard = option(process.env, "guard_edit");
   const modelLock = option(process.env, "model_lock");
   if (!editGuard && !modelLock) return;
