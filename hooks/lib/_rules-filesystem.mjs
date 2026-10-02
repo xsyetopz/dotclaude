@@ -499,6 +499,18 @@ export async function fd(cmd, ctx) {
   return [["warn", "`fd --exec rm` deletes every match"]];
 }
 
+/**
+ * The `mkfs` name of a command, or `undefined`. `program` splits a name at
+ * `\`, so the name of `"mkfs\x"` is `x`. The last `/` part of the raw first
+ * word keeps `mkfs`.
+ */
+export function mkfsName(cmd) {
+  const raw = cmd.argv?.[0] ?? "";
+  return [cmd.name, raw.slice(raw.lastIndexOf("/") + 1)].find((n) =>
+    n.startsWith("mkfs"),
+  );
+}
+
 export function disk(cmd) {
   switch (cmd.name) {
     case "wipefs":
@@ -513,12 +525,7 @@ export function disk(cmd) {
         ? [["ask", `\`diskutil ${cmd.args[0]}\` erases a disk`]]
         : [];
     default: {
-      // `program` splits a name at `\`, so the name of `"mkfs\x"` is `x`.
-      // The last `/` part of the raw first word keeps `mkfs`.
-      const raw = cmd.argv?.[0] ?? "";
-      const name = [cmd.name, raw.slice(raw.lastIndexOf("/") + 1)].find((n) =>
-        n.startsWith("mkfs"),
-      );
+      const name = mkfsName(cmd);
       return name ? [["ask", `\`${name}\` formats a device`]] : [];
     }
   }

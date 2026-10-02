@@ -36,7 +36,8 @@ function deletesTempOnly(io, data) {
   if (data.tool_name !== "Bash") return false;
   const { commands, unparsed } = parse(String(data.tool_input?.command ?? ""));
   if (unparsed.length || !commands.length) return false;
-  const cwd = data.cwd ?? "/";
+  // An empty or relative `cwd` would make `resolve` throw. Root it at `io.cwd`.
+  const cwd = path.resolve(io.cwd, data.cwd || io.cwd);
   // A project can itself sit in a temp folder. Its files are not scratch.
   const project = path.resolve(process.env.CLAUDE_PROJECT_DIR || cwd);
   return commands.every((cmd) => {

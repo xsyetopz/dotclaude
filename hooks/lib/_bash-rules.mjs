@@ -18,6 +18,7 @@ import {
   disk,
   fd,
   find,
+  mkfsName,
   READERS,
   rm,
   secretRead,
@@ -75,7 +76,7 @@ export async function check(command, ctx) {
 
 async function checkCommand(cmd, ctx) {
   const out = [];
-  const handler = HANDLERS[cmd.name];
+  const handler = mkfsName(cmd) ? disk : HANDLERS[cmd.name];
   if (handler) out.push(...(await handler(cmd, ctx)));
   if (cmd.name === "gh" || cmd.name === "git")
     out.push(...contribution(cmd, ctx));
@@ -488,13 +489,3 @@ const HANDLERS = {
     ]),
   ),
 };
-for (const mk of [
-  "mkfs",
-  "mkfs.ext4",
-  "mkfs.fat",
-  "mkfs.vfat",
-  "mkfs.xfs",
-  "mkfs.btrfs",
-  "mkfs.apfs",
-])
-  HANDLERS[mk] = disk;
