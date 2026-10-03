@@ -150,3 +150,16 @@ test("an action that throws does not stop the call or the other actions", async 
   );
   expect(deny.deny).toStartWith("[dotclaude]");
 });
+
+test("an action that throws reaches the engine under `DOTCLAUDE_DEBUG`", async () => {
+  const on = registered();
+  const e = { tool: "Read", tool_use_id: "t7", file_path: "/work/a.txt" };
+  // The engine logs a thrown hook as "hook failed" and runs the call without it.
+  await expect(
+    on["tool.call"](
+      fake({ fsFails: true, env: { DOTCLAUDE_DEBUG: "1" } }),
+      e,
+      nextOf({ result: "ok" }).next,
+    ),
+  ).rejects.toThrow();
+});

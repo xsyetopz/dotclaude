@@ -390,7 +390,11 @@ async function runActions($, options, event, data, only) {
           JSON.parse(JSON.stringify(data)),
         );
         return out ? tagOutput(out) : undefined;
-      } catch {
+      } catch (err) {
+        // The module has no stderr.
+        // A thrown hook makes the engine log "hook failed" and skip all of dotclaude for the event,
+        // so only a debug run rethrows.
+        if (io.env.DOTCLAUDE_DEBUG) throw err;
         return undefined;
       }
     }),
