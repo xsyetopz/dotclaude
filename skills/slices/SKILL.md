@@ -62,7 +62,9 @@ For each slice of the wave:
    Give it no implementer report.
    For a `risk: high` slice, also start a second `reviewer` with the `code` lens in the same message, so two independent reviews read the diff.
 3. **Fix.**
-   When a reviewer reports a blocking or should-fix finding, start a new `implementer` in the same worktree with the diff and the findings.
+   Before a fix starts, open each finding at its `path:line` and check it, because a wrong finding produces a wrong fix.
+   Drop a finding that the code does not show, and tell the user.
+   When a reviewer reports a blocking or should-fix finding that you confirmed, start a new `implementer` in the same worktree with the diff and the findings.
    A new agent does not share the first agent's assumptions.
    After two fix rounds, set the status to `failed` and tell the user.
 4. **Check.**

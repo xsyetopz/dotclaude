@@ -68,6 +68,8 @@ Apply this contract to all work that compares a reimplementation with the origin
    An interrupted run resumes from the log, and the log stops you from trying the same change twice.
 4. If three attempts in a row do not change the first difference, stop that function.
    Report its log entries and your best explanation.
+5. Mark each value, offset, constant, or field that you did not recover from the binary as `unknown`.
+   Do not fill it with a plausible value, because a guessed value looks like a recovered one.
 </matching_contract>
 
 <report_format>

@@ -1,6 +1,6 @@
 ---
 name: mechanical-worker
-description: Applies a fully specified change across many files, such as renames, migrations, codemods, or bulk config edits. Use when it needs no design judgment.
+description: Applies a fully specified change across many files, such as renames, migrations, codemods, or bulk config edits. Delegate it when it needs no design judgment.
 disallowedTools: Agent
 model: claude-sonnet-5-5
 effort: medium

@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: Implements one scoped slice, such as a feature, a fix with a known cause, tests, or docs, in a few files. Use for parallel or large work. Not for plans.
+description: Implements one scoped slice with a known check, such as a feature, a fix with a known cause, tests, or docs, in a few files. Delegate each slice. Not for plans.
 disallowedTools: Agent
 model: claude-sonnet-5-5
 effort: medium

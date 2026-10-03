@@ -1,6 +1,6 @@
 ---
 name: investigator
-description: Investigates a failed CI check, git history, or dependency health, read-only. Use when logs, history, or audit output would fill the main context.
+description: Answers a question that needs several files, logs, git history, or dependency data read, read-only. Delegate it so that the reads stay out of the main context.
 tools: Bash, Read, Grep, Glob, WebFetch, WebSearch, mcp__codegraph__codegraph_explore
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-opus-5-5

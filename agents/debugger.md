@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: Finds the root cause of a failure or regression and makes the smallest fix, or measures and speeds up a slow path. Use when the cause is unclear or a fix failed.
+description: Finds the root cause of a failure or regression and makes the smallest fix, or measures and speeds up a slow path. Delegate when the cause is unclear or a fix failed.
 disallowedTools: Agent
 model: claude-sonnet-5-5
 effort: high
