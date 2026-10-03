@@ -17,12 +17,13 @@ export function parseDefinition(text) {
     maxTurns: n > 0 ? n : null,
     model: /^model:\s*(\S+)\s*$/m.exec(head)?.[1] ?? "",
     effort: /^effort:\s*(\S+)\s*$/m.exec(head)?.[1] ?? "",
+    readOnly: /^disallowedTools:.*\bEdit\b/m.test(head),
   };
 }
 
 /**
- * `maxTurns`, `model`, and `effort` from a dotclaude agent's definition, or
- * undefined.
+ * `maxTurns`, `model`, `effort`, and `readOnly` (no `Edit`) from a dotclaude
+ * agent's definition, or undefined.
  */
 export async function definition(io, agentType) {
   const name = agentFile(agentType);

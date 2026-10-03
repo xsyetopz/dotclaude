@@ -68,9 +68,14 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   expect(numbers(block(reviewer, "report_budget"))).toContain(
     HANDBACK_FINDINGS_CHARS,
   );
-  // The read-only investigator keeps the conventions and the common bound.
+  // The read-only investigator keeps the conventions and the common bound,
+  // with no lines about fixes or checks, because it cannot edit files.
   const investigator = start("dotclaude:investigator");
   expect(investigator).toContain(CONVENTIONS);
+  expect(block(investigator, "working_conventions")).not.toMatch(
+    /\bfix\b|run a check/i,
+  );
+  expect(block(implementer, "working_conventions")).toMatch(/fix it/);
   expect(numbers(block(investigator, "turn_budget"))).toContain(40);
   expect(block(investigator, "context_budget")).toContain(
     k(SUBAGENT_CONTEXT_TOKENS),
@@ -148,8 +153,8 @@ test("the conventions name the project test command from the project root", () =
   });
   expect(testCommands(placeholder)).toEqual(["cargo test --workspace"]);
 
-  // A command longer than 80 characters would make the block too long.
-  const long = `go test ./... -run '${"x".repeat(80)}'`;
+  // A command longer than the block's limit would make the block too long.
+  const long = `go test ./... -run '${"x".repeat(LIMITS.sessionNoteChars.fail)}'`;
   expect(
     testCommands(
       conventionsIn({ "CLAUDE.md": `Run \`${long}\` or \`go test ./...\`.\n` }),
@@ -169,4 +174,50 @@ test("the conventions name the project test command from the project root", () =
   expect(none).toContain(
     "run a check that exercises it.\nFix a failing test at its cause.",
   );
+});
+
+test("the conventions name the test command that a build file implies", () => {
+  const cases = [
+    [{ "Cargo.toml": "[package]\n" }, ["cargo test"]],
+    [{ "go.mod": "module x\n" }, ["go test ./..."]],
+    [{ Makefile: "build:\n\tcc a.c\ntest: build\n\t./a\n" }, ["make test"]],
+    [{ "tox.ini": "[tox]\n" }, ["tox"]],
+    [{ "pyproject.toml": "[tool.pytest.ini_options]\n" }, ["pytest"]],
+    [{ "setup.cfg": "[tool:pytest]\n" }, ["pytest"]],
+    [{ "build.gradle.kts": "", gradlew: "" }, ["./gradlew test"]],
+    [{ "pom.xml": "<project/>" }, ["mvn test"]],
+    [{ "App.csproj": "<Project/>" }, ["dotnet test"]],
+    [{ "MODULE.bazel": "" }, ["bazel test //..."]],
+    [{ "build.zig": "" }, ["zig build test"]],
+    [{ "Package.swift": "" }, ["swift test"]],
+    [{ "mix.exs": "" }, ["mix test"]],
+    [{ "deno.json": "{}" }, ["deno test"]],
+    [
+      { "pubspec.yaml": "dependencies:\n  flutter:\n    sdk: flutter\n" },
+      ["flutter test"],
+    ],
+    [{ "pubspec.yaml": "name: x\n" }, ["dart test"]],
+    [{ Gemfile: "gem 'rspec'\n" }, ["bundle exec rspec"]],
+    [
+      {
+        "composer.json": JSON.stringify({
+          "require-dev": { "phpunit/phpunit": "^11" },
+        }),
+      },
+      ["vendor/bin/phpunit"],
+    ],
+    // A build file that does not show the command names none.
+    [{ "pyproject.toml": "[project]\nname = 'x'\n" }, []],
+    [{ "CMakeLists.txt": "project(x)\n" }, []],
+    // A command in CLAUDE.md comes before a build file.
+    [
+      { "go.mod": "module x\n", "CLAUDE.md": "Run `go test -race ./...`.\n" },
+      ["go test -race ./..."],
+    ],
+  ];
+  for (const [files, commands] of cases)
+    expect(
+      testCommands(conventionsIn(files)),
+      Object.keys(files).join(" "),
+    ).toEqual(commands);
 });

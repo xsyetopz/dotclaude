@@ -47,6 +47,7 @@ test("definition reads the agent file under io.pluginRoot", async () => {
     maxTurns: 40,
     model: "claude-sonnet-5-5",
     effort: "high",
+    readOnly: false,
   });
   expect(await definition(host, "dotclaude:none")).toBe(undefined);
   expect(await definition(host, "other:x")).toBe(undefined);
