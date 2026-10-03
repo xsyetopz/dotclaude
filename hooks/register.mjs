@@ -10,6 +10,7 @@
 // statically. The action table is in `lib/_actions.mjs`.
 
 import { ACTIONS, MATCH_FIELD, matches, merge } from "./lib/_actions.mjs";
+import { COMPACTIONS_BEFORE_HANDOFF } from "./lib/_budget.mjs";
 import { option, TAG, tagOutput } from "./lib/_core.mjs";
 import {
   agentContextFile,
@@ -437,6 +438,48 @@ const REPLACED_AGENTS = new Set([
 // end of a turn replaces them.
 const TASK_REMINDERS = new Set(["task_reminder", "todo_reminder"]);
 
+// The engine sends `silent_turn_reminder` after 5 API turns with no text. A
+// server flag can make it ask for a few words on what Claude does, and 93 of
+// 189 messages that only named the next step, from 2026-10-02 to 2026-10-03,
+// came after it. This text asks only for news.
+export const SILENT_TURN_TEXT =
+  "If you found a fact, a failure, or a change of plan since your last message, tell the user in one sentence.\nIf not, continue with no message, because a message that only names the next step gives the user no information.";
+
+// The text that each compaction adds to its instructions. From 2026-09-30 to
+// 2026-10-03, each compaction kept 45% to 59% of the facts that the next part
+// needed (`scripts/compaction-report.mjs`).
+export const COMPACT_TEXT = `<compaction_priorities>
+Keep the user's requests and constraints in the user's own words.
+Keep the decisions and the rejected approaches, with their reasons.
+Keep the current state and the open items.
+Keep exact paths, commands, errors, and numbers.
+The next part of the conversation acts on these details, and a paraphrase loses them.
+</compaction_priorities>`;
+
+// After COMPACTIONS_BEFORE_HANDOFF compactions, the context note asks for a
+// handoff note, so the summary starts from it.
+export const COMPACT_HANDOFF_TEXT = `<compaction_handoff>
+Make the summary from the latest handoff note under \`.claude/handoffs/\`, if one exists.
+Keep its open items and next steps in its own words, and give its path.
+</compaction_handoff>`;
+
+/**
+ * The compaction instructions of `e` with dotclaude's text added. The main
+ * conversation gets the handoff text after COMPACTIONS_BEFORE_HANDOFF
+ * compactions.
+ */
+async function compactInstructions($, options, places, e) {
+  const parts = [e.instructions, COMPACT_TEXT];
+  const place = await placeOf($, options, places);
+  if (!e.agentId && place) {
+    const file = compactionsFile(place.io, place.sessionId);
+    const count = countOf(await $.fs.read(file).catch(() => ""));
+    if ((count ?? 0) >= COMPACTIONS_BEFORE_HANDOFF)
+      parts.push(COMPACT_HANDOFF_TEXT);
+  }
+  return parts.filter(Boolean).join("\n\n");
+}
+
 /**
  * Mark the subagent `agentId` as running again. The engine gives no
  * subagent transcript, so the marker time is the only activity time of the
@@ -584,7 +627,8 @@ export function register(on, options) {
 
   // The PreCompact actions. A `precompute` installs nothing, and the
   // compaction that uses its result fires this event again, so only that
-  // one runs the actions. The compaction always continues.
+  // one runs the actions and adds dotclaude's instructions. The compaction
+  // always continues.
   on("session.compact", async ($, e, next) => {
     if (e.trigger !== "precompute") {
       const data = {
@@ -595,6 +639,11 @@ export function register(on, options) {
       };
       if (typeof e.agentId === "string" && e.agentId) data.agent_id = e.agentId;
       await runActions($, options, "PreCompact", data);
+      if (await optionOn($, options, places, "context_compact_carryover"))
+        return next({
+          ...e,
+          instructions: await compactInstructions($, options, places, e),
+        });
     }
     return next(e);
   });
@@ -612,7 +661,8 @@ export function register(on, options) {
     return next(e);
   });
 
-  // The engine's task reminders are left out of the request.
+  // The engine's task reminders are left out of the request, and its
+  // silent-turn reminder gets dotclaude's text.
   on("prompt.attachment", async ($, e, next) => {
     if (
       e.origin?.kind === "engine" &&
@@ -620,6 +670,8 @@ export function register(on, options) {
       (await optionOn($, options, places, "gate_tasks"))
     )
       return { text: null };
+    if (e.origin?.kind === "engine" && e.type === "silent_turn_reminder")
+      return next({ ...e, text: SILENT_TURN_TEXT });
     return next(e);
   });
 

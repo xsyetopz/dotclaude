@@ -81,6 +81,7 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
   let redirects = [];
   let overwrites = [];
   let stdinRedirect = false;
+  let stdinFile = null;
   let pendingHeredoc = null;
   let prevArgv = null;
   let pipeNext = false;
@@ -102,6 +103,7 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
         cmd.writes = redirects;
         cmd.overwrites = overwrites;
         cmd.stdinRedirect = stdinRedirect || pendingHeredoc !== null;
+        cmd.stdinFile = stdinFile;
         cmd.pipedFrom = pipeNext ? prevArgv : null;
         cmd.cwdHint = cwdHint;
         if (cmd.name === "cd" && cmd.args.length) cwdHint = cmd.args[0];
@@ -114,6 +116,7 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
     redirects = [];
     overwrites = [];
     stdinRedirect = false;
+    stdinFile = null;
     pendingHeredoc = null;
     pipeNext = sep === "|" || sep === "|&";
   };
@@ -127,6 +130,12 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
         // `<`, `0<`, `<<<`, or `<&` without another descriptor before it.
         const fd = /^\d+$/.test(tokens[i - 1]) ? tokens[i - 1] : "0";
         if (/^0?</.test(tok.op) && fd === "0") stdinRedirect = true;
+        if (
+          /^0?<$/.test(tok.op) &&
+          fd === "0" &&
+          typeof tokens[i + 1] === "string"
+        )
+          stdinFile = tokens[i + 1];
         if (tok.op.startsWith("<<") && tok.op !== "<<<") {
           pendingHeredoc = heredocs[heredocIndex] ?? "";
           heredocIndex += 1;

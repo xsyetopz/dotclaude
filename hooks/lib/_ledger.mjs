@@ -5,6 +5,7 @@ import { git } from "./_bash-args.mjs";
 import { expandHome, writeTargets } from "./_bash-writes.mjs";
 import { stateDir } from "./_core.mjs";
 import { pathFor } from "./_path.mjs";
+import { gitSplit } from "./_rules-git.mjs";
 import { parse } from "./_shell.mjs";
 
 /** Files that are not code: editing them alone needs no test run. */
@@ -117,17 +118,20 @@ export async function withLedger(io, sessionId, agentId, fn) {
 }
 
 // Commands that test, build, lint or type-check. Matched against each simple
-// command after wrappers are stripped.
-const CHECK = [
+// command after wrappers are stripped. The name of the command is its base
+// name, so `./gradlew` is `gradlew`.
+export const CHECK = [
   /^(pytest|py\.test|tox|nox|nose2|mypy|pyright|basedpyright|ruff check|ruff|pylint|flake8)\b/,
   /^python[0-9.]* -m (pytest|unittest|mypy|ruff|pyright|compileall|tox)\b/,
   /^(uv|poetry|pdm|hatch|rye) run (pytest|mypy|ruff|pyright|tox|python -m pytest)\b/,
   /^(npm|pnpm|yarn|bun) (run )?(test|build|lint|check|typecheck|type-check|tsc|verify|validate|ci|e2e|test:\S+|lint:\S+|build:\S+)\b/,
+  // A script name with a check word as one part: `release:check`, `check-all`.
+  /^(npm|pnpm|yarn|bun) (run )?[^\s-]\S*?\b(test|build|lint|check|typecheck|verify|validate)\b/,
   /^(npm|pnpm|yarn) (t|tst)$/,
   /^bun test\b/,
   // Node's built-in runner. Flags only before `--test`: `node app.mjs --test` runs app.mjs.
   /^node (-\S+ )*--test( |$)/,
-  /^(npx|pnpx|bunx|pnpm exec|yarn exec|pnpm dlx) (jest|vitest|tsc|eslint|biome|oxlint|playwright|mocha|ava|prettier --check|cypress run|markdownlint(?:-cli2)?)\b/,
+  /^(npx|pnpx|bunx|pnpm exec|yarn exec|pnpm dlx) (--?[a-z][\w-]* )*(jest|vitest|tsc|eslint|biome|oxlint|playwright|mocha|ava|prettier --check|cypress run|markdownlint(?:-cli2)?)\b/,
   /^(jest|vitest|mocha|ava|tsc|eslint|biome|oxlint|playwright test|cypress run|markdownlint(?:-cli2)?)\b/,
   /^claude plugin validate\b/,
   /^cargo (test|build|check|clippy|nextest|fmt --check|fmt -- --check)\b/,
@@ -138,7 +142,10 @@ const CHECK = [
   /^(make|gmake|just|task|mage)$/,
   /^(make|gmake|just|task|mage) (.* )?(\S*[^a-z ])?(test|tests|check|build|lint|all|ci|verify|validate)([^a-z ]\S*)?( |$)/,
   /^(xcrun (\S+ )*?)?(swift (build|test)|xcodebuild\b.*\b(build|test))\b/,
-  /^(\.\/gradlew|gradle|\.\/mvnw|mvn) .*\b(test|build|check|verify|assemble|compile)\b/,
+  // A task that holds a check word in any case: `:sharedUI:jvmTest`,
+  // `spotlessCheck`, `detekt`.
+  /^(gradlew|gradle|mvnw|mvn)( \S+)*? (?!-)\S*(test|build|check|verify|assemble|compile|lint|detekt)/i,
+  /^(xcrun (\S+ )*?)?swift[- ]format lint\b/,
   /^dotnet (build|test)\b/,
   /^(ctest|ninja|meson test|cmake --build)\b/,
   /^bazel(isk)? (test|build)\b/,
@@ -147,7 +154,26 @@ const CHECK = [
   /^deno (test|check|lint)\b/,
   /^(shellcheck|clang-tidy|swiftlint|ktlint|hadolint|actionlint)\b/,
   /^(flutter|dart) (test|analyze)\b/,
+  // A script with a check word as one part of its file name, run directly
+  // or by an interpreter: `check-localizations.sh`, `python3 tools/check.py`.
+  /^((ba|z)?sh |python[0-9.]* |bun |node )?(\S*\/)?([^\s/]*[-_.])?(check|verify|test|lint)s?([-_.][^\s/]*)?\.(sh|bash|zsh|py|mjs|cjs|js|ts|rb|pl)( |$)/i,
+  // A project command with a check subcommand: `ojd check schemas`,
+  // `swiftpm.sh test`. Tools that take a file, a pattern, or a word as
+  // their first argument are not project commands.
+  /^(?!(git|gh|brew|echo|printf|cd|ls|cat|less|head|tail|rg|grep|egrep|fgrep|tgrep|ag|ack|fd|find|tree|sed|sd|awk|jq|yq|wc|du|stat|file|touch|mkdir|rmdir|rm|cp|mv|ln|open|code|vim|nvim|nano|man|which|type|command|whereis|xargs|tee|test|diff|chmod|chown|tar|zip|unzip|curl|wget|tmux|kill|pkill|pgrep|ps|say|osascript|defaults|launchctl|plutil|codesign|openssl|security|pip|pip3|uv|docker|podman) )\S+ (test|check|lint|verify|build)( |$)/,
 ];
+
+// A shell script that runs the command in its arguments, for example a
+// toolchain wrapper: `x27.sh swift test`, `zsh run.sh cargo test`.
+const SCRIPT = /\.(sh|bash|zsh)$/;
+
+/** The command that a wrapper script in front of `argv` runs, or undefined. */
+function wrapped(argv) {
+  if (/^(ba|z)?sh$/.test(argv[0]) && SCRIPT.test(argv[1] ?? ""))
+    return argv.length > 2 ? argv.slice(2) : undefined;
+  if (SCRIPT.test(argv[0]) && argv.length > 1) return argv.slice(1);
+  return undefined;
+}
 
 /**
  * The first simple command in `command` that is a check, without wrappers,
@@ -158,7 +184,8 @@ export function checkCommand(command) {
   try {
     for (const cmd of parse(command).commands) {
       const joined = [cmd.name, ...cmd.args].join(" ");
-      if (CHECK.some((re) => re.test(joined))) return joined;
+      for (let argv = [cmd.name, ...cmd.args]; argv; argv = wrapped(argv))
+        if (CHECK.some((re) => re.test(argv.join(" ")))) return joined;
     }
   } catch {
     // An unparsable command is not a check.
@@ -212,8 +239,101 @@ export async function shellWrites(io, command, root, home, cwd = root) {
       const rel = inProject(target, base);
       if (rel) out.add(rel);
     }
+    for (const target of await gitWrites(io, cmd, base, home, path)) {
+      const rel = inProject(target, base);
+      if (rel) out.add(rel);
+    }
   }
   return [...out];
+}
+
+// `git apply` options that only report or that change only the index.
+const APPLY_NO_WRITE = /^--(check|stat|numstat|summary|cached)$/;
+
+/**
+ * The files that a patch text changes, from its `+++` lines. `fromTop` is
+ * true for a file under a `diff --git` header, whose path git reads from the
+ * top of the work tree.
+ */
+function patchEntries(text) {
+  const out = [];
+  let fromTop = false;
+  for (const line of (text ?? "").split("\n")) {
+    if (line.startsWith("diff ")) fromTop = line.startsWith("diff --git ");
+    const m = /^\+\+\+ (\S+)/.exec(line);
+    if (m && m[1] !== "/dev/null")
+      out.push({ name: m[1].replace(/^[ab]\//, ""), fromTop });
+  }
+  return out;
+}
+
+/**
+ * Files that `git apply`, `patch`, `git checkout -- <paths>`, or
+ * `git restore <paths>` change in the work tree. The guard does not send
+ * these through the Edit rules, because a restore only returns a file to a
+ * committed state. Paths resolve against the directory of `git -C`.
+ */
+async function gitWrites(io, cmd, base, home, path) {
+  const { globals, sub, rest } =
+    cmd.name === "git" ? gitSplit(cmd.args) : { globals: [], rest: [] };
+  for (let i = 0; i < globals.length - 1; i += 1)
+    if (globals[i] === "-C")
+      base = path.resolve(base, expandHome(globals[i + 1], home));
+  const resolved = (files) =>
+    files.map((f) => path.resolve(base, expandHome(f, home)));
+  const stdin = async () =>
+    cmd.stdinFile ? await patchText(cmd.stdinFile) : cmd.heredoc;
+  const patchText = async (file) => {
+    try {
+      return await io.fs.read(path.resolve(base, expandHome(file, home)));
+    } catch {
+      return "";
+    }
+  };
+  if (sub === "apply" && !rest.some((a) => APPLY_NO_WRITE.test(a))) {
+    const files = rest.filter((a) => !a.startsWith("-"));
+    const texts = files.length
+      ? await Promise.all(files.map(patchText))
+      : [await stdin()];
+    // In a subfolder, git skips a `diff --git` path outside the subfolder.
+    // It reads another path from the subfolder, but a path that starts with
+    // the subfolder's own prefix it reads from the top.
+    const prefix =
+      (await git(io, base, ["rev-parse", "--show-prefix"]))?.trim() ?? "";
+    const top = path.resolve(
+      base,
+      ...prefix
+        .split("/")
+        .filter(Boolean)
+        .map(() => ".."),
+    );
+    return texts.flatMap(patchEntries).flatMap(({ name, fromTop }) => {
+      const inPrefix = name.startsWith(prefix);
+      if (fromTop && !inPrefix) return [];
+      return [path.resolve(fromTop || inPrefix ? top : base, name)];
+    });
+  }
+  if (cmd.name === "patch" && !cmd.args.includes("--dry-run")) {
+    const i = cmd.args.findIndex((a) => a === "-i" || a === "--input");
+    const given = cmd.args
+      .find((a) => a.startsWith("--input="))
+      ?.slice("--input=".length);
+    const file = given ?? (i >= 0 ? cmd.args[i + 1] : undefined);
+    const text = file ? await patchText(file) : await stdin();
+    return resolved(patchEntries(text).map((e) => e.name));
+  }
+  if (sub === "checkout" && rest.includes("--"))
+    return resolved(rest.slice(rest.indexOf("--") + 1));
+  if (sub === "restore") {
+    const staged = rest.some((a) => a === "--staged" || a === "-S");
+    const worktree = rest.some((a) => a === "--worktree" || a === "-W");
+    if (staged && !worktree) return [];
+    const dash = rest.indexOf("--");
+    return resolved(
+      dash >= 0 ? rest.slice(dash + 1) : rest.filter((a) => !a.startsWith("-")),
+    );
+  }
+  return [];
 }
 
 // A plain `cat` of named files, with no pipe, redirect, glob, or expansion:

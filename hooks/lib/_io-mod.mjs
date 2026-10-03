@@ -220,10 +220,17 @@ const isSummary = (row) =>
     .trimStart()
     .startsWith("This session is being continued from");
 
+/** The index of the first row in the run of assistant rows at `i`. */
+function runStart(rows, i) {
+  while (i > 0 && rows[i - 1].role === "assistant") i -= 1;
+  return i;
+}
+
 /**
  * Engine rows as transcript lines, so that the parsers of
- * `_transcript-parse.mjs` read them. A row has no message id, so each
- * assistant row gets its index. A row has no meta flag, so each user row
+ * `_transcript-parse.mjs` read them. A row has no message id, and one API
+ * message gives one row per content block, so each run of assistant rows
+ * gets the index of its first row. A row has no meta flag, so each user row
  * counts as typed.
  */
 const linesOf = (rows) =>
@@ -231,7 +238,7 @@ const linesOf = (rows) =>
     .map((row, i) =>
       JSON.stringify(
         row.role === "assistant"
-          ? { type: "assistant", message: { id: `row-${i}` } }
+          ? { type: "assistant", message: { id: `row-${runStart(rows, i)}` } }
           : {
               type: "user",
               message: {

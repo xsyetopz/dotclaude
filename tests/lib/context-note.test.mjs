@@ -11,6 +11,7 @@ import {
 } from "../../hooks/lib/_budget.mjs";
 import { contextNote } from "../../hooks/lib/_context-note.mjs";
 import { nodeIo } from "../../hooks/lib/_io-node.mjs";
+import noteContextSize from "../../hooks/post-tool-use/note-context-size.mjs";
 
 function noteIo(tokens, count) {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-data-"));
@@ -58,4 +59,23 @@ test("the note comes again after the context was under the bound, when remove on
   expect(await contextNote(module, data, true)).toContain("handoff");
   expect(await contextNote(module, data, true)).toBeNull();
   expect(await contextNote(module, data, true)).toContain("handoff");
+});
+
+test("a handoff write gives no note, and the next call gives none", async () => {
+  const io = noteIo(CONTEXT_NOTE_TOKENS + 1, COMPACTIONS_BEFORE_HANDOFF);
+  const call = (file_path) =>
+    noteContextSize(io, {
+      ...data,
+      tool_name: "Write",
+      tool_input: { file_path },
+    });
+  expect(await call("/repo/.claude/handoffs/2026-10-03-x.md")).toBeUndefined();
+  expect(await call("/repo/src/a.js")).toBeUndefined();
+  const other = noteIo(CONTEXT_NOTE_TOKENS + 1, COMPACTIONS_BEFORE_HANDOFF);
+  const out = await noteContextSize(other, {
+    ...data,
+    tool_name: "Write",
+    tool_input: { file_path: "/repo/src/a.js" },
+  });
+  expect(out.hookSpecificOutput.additionalContext).toContain("handoff");
 });

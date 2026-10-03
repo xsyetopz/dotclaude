@@ -10,6 +10,50 @@ steps after each update.
 
 ## [Unreleased]
 
+### Changed
+
+- Before a compaction, the summary request tells Claude to keep your requests and constraints in your own words, the decisions and the rejected approaches with their reasons, the current state, the open items, and exact paths, commands, errors, and numbers.
+  After four compactions of the main session, the summary starts from the latest handoff note and gives its path.
+  `context_compact_carryover` controls it.
+- The engine reminder after five API calls with no text now asks for a fact, a failure, or a change of plan in one sentence, or for no message.
+  The engine text asked Claude to say what it does, and 93 of 189 messages that only named the next step came after it.
+- A subagent report longer than 6,000 characters (10,000 for `reviewer` and `investigator`) is refused once, with the parts to keep and a request to put long detail in a file.
+  The second report always passes.
+  The subagent conventions give the same limit in `<report_budget>`.
+- The announced-work check no longer reads a reply for a choice, because a reply can be in any language.
+  The working rules and the block reason tell Claude to ask a choice with `AskUserQuestion`, which the check passes.
+  A question about a commit, a tag, a merge, a release, or a version bump passes, and so does a request to allow a denied command.
+- The status line shows `⇊N/4` before the handoff point, and only `⇊N` in red from it, such as `⇊7`.
+  `⇊7/4` read as a limit that did not hold.
+- The comments of `MAIN_CONTEXT_TOKENS` and `SUBAGENT_CONTEXT_TOKENS` give the measurements from 2026-09-29 to 2026-10-03.
+  The values do not change.
+- The working rules tell Claude to reproduce and fix a case that the requested behavior does not handle, as part of the task.
+  The old rule told Claude to report such a case as a gap, and Claude then stopped with the work not done.
+  A part is blocked only when it needs a decision, an access, or information that only you can give.
+- The working rules tell Claude to treat a correction as new state, with no apology, defense, or explanation of the error unless you ask for it.
+- The final report gives an unverified part, an assumption, or a remaining item only when it changes what you do next,
+  and adds a recommendation or a caveat only when correctness, safety, or completion needs it.
+  Before Claude sends a reply, it checks each sentence against the request, your constraints, and the evidence,
+  and does each remaining item that it can do with its tools.
+
+### Fixed
+
+- The search guard denied `grep -r` on a file or a directory when an ignored directory such as `build/` was next to it.
+  Only an ignored directory inside the target counts now.
+- In the hooks module, each assistant row counted as one turn, so the turn count of a subagent was too high.
+  A run of assistant rows counts as one turn now.
+- The edit ledger did not record many check commands, so the verify gate asked for a check that ran.
+  It now records Gradle and Maven tasks such as `:app:jvmTest` and `spotlessCheck`, runner options such as `bunx --bun`, package scripts such as `release:check`, `swift-format lint`, scripts with `check`, `verify`, `test`, or `lint` in the name, and project commands such as `ojd check`.
+  Of 60,129 logged Bash commands, the check-like commands that it missed went from 3,099 to 1,546.
+- The edit ledger did not record a check that a wrapper script runs, for example `x27.sh swift test` or `zsh run.sh cargo test`.
+  It now also reads the command after a `.sh`, `.bash`, or `.zsh` script.
+  Of 87 logged commands that run a check through a toolchain wrapper, it recorded 5 before and 84 now.
+- The edit ledger now records the files that `git apply`, `patch`, `git checkout --`, and `git restore` change.
+  It reads a patch from a file, from a heredoc, or from stdin with `<`, and it resolves the paths against the directory of `git -C`.
+  In a subfolder of a repository, it reads the paths of `git apply` as git does: a `diff --git` path from the top of the work tree, and another path from the subfolder.
+- After Claude wrote a handoff note, the next tool call could still ask for one.
+  A write under `.claude/handoffs/` now counts as the context note.
+
 ## [0.18.0] - 2026-10-03
 
 ### Breaking

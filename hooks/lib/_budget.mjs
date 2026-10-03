@@ -7,6 +7,10 @@
  * Main-conversation context (tokens) at which to hand off or compact. From
  * 2026-09-28 to 2026-09-29, with compaction at 200k, main-conversation calls
  * above 150k were 13% of all cost. Claude Code accepts 100k to 1M.
+ * From 2026-09-30 to 2026-10-03, at this value, a main call cost $0.049 to
+ * $0.056 from 40k to 120k, and $0.074 from 20k to 40k, where the cache is
+ * written again after a compaction. A lower value adds compactions at that
+ * cost.
  */
 export const MAIN_CONTEXT_TOKENS = 150_000;
 
@@ -54,11 +58,34 @@ export const COMPACTIONS_BEFORE_HANDOFF = 4;
 export const STALE_CACHE_CONTEXT_TOKENS = 100_000;
 
 /**
+ * Characters of a subagent's `SubagentHandback` report above which the first
+ * report is refused once, so that the agent can shorten it. The main
+ * conversation keeps each report and reads it again on every later turn, and
+ * Claude Code 2.1.288 does not cut the report. In 680 runs from 2026-09-29 to
+ * 2026-10-03, the median report was 1.4k (test-runner) to 6.1k
+ * (investigator) characters, and 184 reports above 6k were 14% of all report
+ * text. The `reviewer` and the `investigator` report findings with evidence,
+ * so they get HANDBACK_FINDINGS_CHARS (p90 8.1k and 13.8k).
+ */
+export const HANDBACK_CHARS = 6_000;
+export const HANDBACK_FINDINGS_CHARS = 10_000;
+
+/** The report limit for a subagent type, with or without its plugin prefix. */
+export const handbackChars = (agentType) =>
+  ["reviewer", "investigator"].includes(
+    String(agentType ?? "").replace(/^dotclaude:/, ""),
+  )
+    ? HANDBACK_FINDINGS_CHARS
+    : HANDBACK_CHARS;
+
+/**
  * Subagent context (tokens) at which tool calls are refused and the agent
  * reports. In the week of 2026-09-21, 83% of implementer and 85% of
  * general-purpose cost came from calls above 100k. From 2026-09-28 to
  * 2026-09-29, with the bound at 150k, 34 of 69 implementer runs passed 100k,
  * and subagent calls from 100k to 150k were 9% of all cost.
+ * From 2026-09-29 to 2026-10-03, writer subagents that finished cleanly
+ * peaked at a median of 62k and a 90th percentile of 100k.
  */
 export const SUBAGENT_CONTEXT_TOKENS = 100_000;
 

@@ -40,6 +40,10 @@ function makeRepo() {
     );
   }
   fs.writeFileSync(path.join(root, "web", "main.js"), "");
+  // Names that start with the name of an ignored directory.
+  fs.writeFileSync(path.join(root, "web", "node_modules.json"), "{}");
+  fs.mkdirSync(path.join(root, ".build-logic"));
+  fs.writeFileSync(path.join(root, ".build-logic", "a.kts"), "");
   execFileSync("git", [
     "-C",
     root,
@@ -47,6 +51,8 @@ function makeRepo() {
     ".gitignore",
     "src/app.swift",
     "web/main.js",
+    "web/node_modules.json",
+    ".build-logic/a.kts",
   ]);
   return root;
 }
@@ -113,6 +119,10 @@ const PASS = [
   // `src/__pycache__/` is ignored but small.
   "find src -type f",
   "grep -n needle src/app.swift",
+  // git matches a pathspec as a string prefix, but these targets do not hold
+  // `.build/` or `web/node_modules/`.
+  "grep -rn needle web/node_modules.json",
+  "grep -rn needle .build-logic",
   "grep -r needle .build/out",
   "grep -r needle src .build",
   "grep -rn --exclude-dir=.build --exclude-dir=node_modules needle .",

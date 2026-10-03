@@ -4,7 +4,12 @@
 
 import { expect, test } from "bun:test";
 import { compactionsFile } from "../../hooks/lib/_io-mod.mjs";
-import { modIo } from "../../hooks/register.mjs";
+import {
+  COMPACT_HANDOFF_TEXT,
+  COMPACT_TEXT,
+  modIo,
+  SILENT_TURN_TEXT,
+} from "../../hooks/register.mjs";
 import { fake, registered } from "./fake-engine.mjs";
 
 /** The ledger state of the main session `s1`, or null. */
@@ -101,8 +106,34 @@ test("session.compact saves the recent prompts and continues", async () => {
     return done;
   });
   expect(out).toBe(done);
-  expect(seen).toEqual([e]);
+  expect(seen).toEqual([{ ...e, instructions: COMPACT_TEXT }]);
   expect(ledger($)?.prompts).toEqual(["first ask"]);
+});
+
+/** The instructions that `session.compact` gives to `next`. */
+async function compactText(on, $, e) {
+  let given;
+  await on["session.compact"]($, e, async (x) => {
+    given = x.instructions;
+    return { messages: [] };
+  });
+  return given;
+}
+
+test("session.compact adds the handoff text after 4 compactions", async () => {
+  const on = registered();
+  const $ = fake();
+  const e = { trigger: "auto", messages: [], instructions: "mine" };
+  expect(await compactText(on, $, e)).toBe(`mine\n\n${COMPACT_TEXT}`);
+  $.files.set(compactionsFile(await modIo($), "s1"), "4");
+  expect(await compactText(on, $, e)).toBe(
+    `mine\n\n${COMPACT_TEXT}\n\n${COMPACT_HANDOFF_TEXT}`,
+  );
+  expect(await compactText(on, $, { ...e, agentId: "a1" })).toBe(
+    `mine\n\n${COMPACT_TEXT}`,
+  );
+  const off = registered({ context_compact_carryover: false });
+  expect(await compactText(off, $, e)).toBe("mine");
 });
 
 test("a precompute saves nothing and continues", async () => {
@@ -157,6 +188,24 @@ const attachment = (type, kind = "engine") => ({
   origin: { kind },
 });
 const kept = { text: "kept" };
+
+test("prompt.attachment replaces the text of the silent-turn reminder", async () => {
+  const on = registered();
+  const seen = [];
+  const next = async (x) => {
+    seen.push(x);
+    return kept;
+  };
+  const e = attachment("silent_turn_reminder");
+  expect(await on["prompt.attachment"](fake(), e, next)).toBe(kept);
+  expect(seen).toEqual([{ ...e, text: SILENT_TURN_TEXT }]);
+  const other = attachment("date");
+  await on["prompt.attachment"](fake(), other, next);
+  expect(seen[1]).toBe(other);
+  const plugin = attachment("silent_turn_reminder", "plugin");
+  await on["prompt.attachment"](fake(), plugin, next);
+  expect(seen[2]).toBe(plugin);
+});
 
 test("prompt.attachment leaves out the engine task reminders", async () => {
   const on = registered();

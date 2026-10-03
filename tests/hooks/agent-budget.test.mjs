@@ -178,3 +178,31 @@ test("a later deny of the same kind is one short line, per agent", () => {
   expect(run(grown, a)).not.toContain("re-reads");
   expect(run(grown, c)).toContain("re-reads");
 });
+
+test("the first report above the limit is refused once, and a short one passes", () => {
+  const id = (kind) => `report-${kind}-${process.pid}-${Date.now()}`;
+  const report = (chars, agentId, agentType = "dotclaude:implementer") =>
+    budget(
+      brief,
+      {
+        agent_id: agentId,
+        agent_type: agentType,
+        tool_name: "SubagentHandback",
+        tool_input: { message: "x".repeat(chars) },
+      },
+      agentId,
+    );
+  const level = (out) => out?.hookSpecificOutput?.permissionDecision ?? "pass";
+  const long = id("long");
+  const first = report(6_001, long);
+  expect(level(first)).toBe("deny");
+  expect(first.hookSpecificOutput.permissionDecisionReason).toContain(
+    "6001 characters",
+  );
+  // The second report always passes, so a report is never lost.
+  expect(level(report(9_000, long))).toBe("pass");
+  expect(level(report(6_000, id("short")))).toBe("pass");
+  // The reviewer and the investigator report findings, with a higher limit.
+  expect(level(report(9_000, id("rev"), "dotclaude:reviewer"))).toBe("pass");
+  expect(level(report(10_001, id("inv"), "investigator"))).toBe("deny");
+});

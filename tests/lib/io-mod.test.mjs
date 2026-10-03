@@ -455,6 +455,22 @@ test("agentTurns counts assistant rows since the last prompt", async () => {
   expect(await io.session.agentTurns()).toBe(2);
 });
 
+test("agentTurns counts one API message with several rows once", async () => {
+  // The engine gives one row per content block, for example text and then a
+  // tool call.
+  const agentRows = [
+    row("user", "task"),
+    row("assistant", "1"),
+    row("assistant", "1"),
+    result,
+    row("assistant", "2"),
+    row("assistant", "2"),
+    result,
+  ];
+  const io = await modIo(fake({ agentRows }).$, {}, { agent_id: "a1" });
+  expect(await io.session.agentTurns()).toBe(2);
+});
+
 test("agentTurns is null on a refusal or with no agent", async () => {
   const denied = await modIo(fake().$, {}, { agent_id: "a1" });
   expect(await denied.session.agentTurns()).toBeNull();

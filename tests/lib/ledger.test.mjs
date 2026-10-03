@@ -150,3 +150,78 @@ test("shellWrites expands `~` with `home` and resolves against `root` with no `c
     ),
   ).toStrictEqual(["src/c.js"]);
 });
+
+test("shellWrites records the files of a patch and of a restore", async () => {
+  const io = memoryIo({
+    "/home/u/proj/fix.patch": "--- a/src/a.js\n+++ b/src/a.js\n@@\n",
+  });
+  const writes = (command) =>
+    shellWrites(io, command, "/home/u/proj", "/home/u");
+  expect(await writes("git apply fix.patch")).toStrictEqual(["src/a.js"]);
+  expect(
+    await writes("git apply <<'EOF'\n--- /dev/null\n+++ b/src/new.js\nEOF"),
+  ).toStrictEqual(["src/new.js"]);
+  expect(await writes("patch -p1 -i fix.patch")).toStrictEqual(["src/a.js"]);
+  expect(await writes("git checkout HEAD -- src/a.js src/b.js")).toStrictEqual([
+    "src/a.js",
+    "src/b.js",
+  ]);
+  expect(await writes("git restore src/c.js")).toStrictEqual(["src/c.js"]);
+});
+
+test("shellWrites reads a patch from `<` and resolves `git -C`", async () => {
+  const io = memoryIo({
+    "/home/u/proj/fix.patch": "+++ b/src/a.js\n",
+    "/home/u/proj/sub/fix.patch": "+++ b/src/b.js\n",
+  });
+  const writes = (command) =>
+    shellWrites(io, command, "/home/u/proj", "/home/u");
+  expect(await writes("patch -p1 < fix.patch")).toStrictEqual(["src/a.js"]);
+  expect(await writes("git apply < fix.patch")).toStrictEqual(["src/a.js"]);
+  expect(await writes("git -C sub apply fix.patch")).toStrictEqual([
+    "sub/src/b.js",
+  ]);
+  expect(await writes("git -C sub checkout -- c.js")).toStrictEqual([
+    "sub/c.js",
+  ]);
+  expect(await writes("git -C sub apply --check fix.patch")).toStrictEqual([]);
+});
+
+test("shellWrites reads `git apply` paths in a subfolder as git does", async () => {
+  const io = memoryIo({
+    "/home/u/proj/sub/git.patch":
+      "diff --git a/sub/a.js b/sub/a.js\n+++ b/sub/a.js\n" +
+      "diff --git a/top.js b/top.js\n+++ b/top.js\n",
+    "/home/u/proj/sub/plain.patch": "+++ b/src/b.js\n+++ b/sub/c.js\n",
+  });
+  // `git rev-parse --show-prefix` in the subfolder.
+  io.run = async (argv) => ({
+    exitCode: 0,
+    stdout: argv.includes("--show-prefix") ? "sub/\n" : "",
+  });
+  const writes = (command) =>
+    shellWrites(io, command, "/home/u/proj", "/home/u");
+  // A `diff --git` patch names paths from the top, and git skips `top.js`.
+  expect(await writes("git -C sub apply git.patch")).toStrictEqual([
+    "sub/a.js",
+  ]);
+  // A plain patch names paths from the subfolder, without its own prefix.
+  expect(await writes("cd sub && git apply plain.patch")).toStrictEqual([
+    "sub/src/b.js",
+    "sub/c.js",
+  ]);
+});
+
+test("shellWrites skips a patch check, a staged restore, and a branch switch", async () => {
+  const io = memoryIo({ "/home/u/proj/fix.patch": "+++ b/src/a.js\n" });
+  const writes = (command) =>
+    shellWrites(io, command, "/home/u/proj", "/home/u");
+  for (const command of [
+    "git apply --check fix.patch",
+    "git apply --cached fix.patch",
+    "patch --dry-run -p1 -i fix.patch",
+    "git restore --staged src/a.js",
+    "git checkout main",
+  ])
+    expect(await writes(command)).toStrictEqual([]);
+});

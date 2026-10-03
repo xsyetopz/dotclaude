@@ -80,10 +80,12 @@ test("the main context is measured against the compaction point, with the compac
   const early = mainContextPart(30_000, COMPACTIONS_BEFORE_HANDOFF);
   expect(early).not.toContain("handoff");
   const due = mainContextPart(CONTEXT_NOTE_TOKENS, COMPACTIONS_BEFORE_HANDOFF);
-  expect(plain(due)).toEndWith(
-    ` ⇊${COMPACTIONS_BEFORE_HANDOFF}/${COMPACTIONS_BEFORE_HANDOFF} handoff`,
-  );
+  expect(plain(due)).toEndWith(` ⇊${COMPACTIONS_BEFORE_HANDOFF} handoff`);
   expect(due).toContain(`${RED}handoff`);
+  // Past the handoff point, the count has no limit.
+  const past = mainContextPart(30_000, COMPACTIONS_BEFORE_HANDOFF + 3);
+  expect(plain(past)).toEndWith(` ⇊${COMPACTIONS_BEFORE_HANDOFF + 3}`);
+  expect(past).toContain(`${RED}⇊`);
 });
 
 test("the main line counts the compactions in its transcript", () => {

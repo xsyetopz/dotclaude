@@ -10,6 +10,9 @@ for `reviewer`) or near its
 turn limit, so its next action is its report. The work continues in a
 fresh agent. Claude cannot spawn `general-purpose` agents, and subagents run
 in the foreground. With 5 subagents running, Claude cannot start a sixth.
+A subagent report longer than 6,000 characters (10,000 for `reviewer` and `investigator`) is refused once.
+The agent then keeps the outcome, the changed files, the check results, the unverified parts, and the open items, and puts long detail in a file.
+A second report always passes, so no report is lost.
 
 **Why:** calls with a context over 150k tokens were 74.7% of the measured
 cost. `general-purpose` runs were 17.6% of it, in place of the cheaper
@@ -24,6 +27,7 @@ its own cap, and that caused 50 of 77 measured `Agent` errors. The guard
 denies the start first and tells Claude to wait for a report. See
 [enforced bounds](dossier/design.md#2-enforced-bounds)
 and [usage evidence](dossier/usage.md).
+From 2026-09-29 to 2026-10-03, 184 of 680 reports were longer than 6,000 characters, and the main conversation reads each report again on every later turn.
 
 ## Usage Notes (`usage_notes`)
 
@@ -38,6 +42,7 @@ you to run `/clear` at the next natural stop. Until a compaction, a later
 prompt gives only the size and does not ask for the handoff again. A
 notification names a limit that stops a turn, its reset time, and
 `claude --resume`.
+When Claude writes a handoff note before the note comes, that counts as the note, so no note asks for it again.
 
 **Why:** no hook input gives Claude its usage or its context size. A compaction
 and a handoff cost the same per turn, but compactions 5 to 8 kept fewer facts

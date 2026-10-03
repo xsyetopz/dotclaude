@@ -441,9 +441,13 @@ async function ignoredDirs(dir, ctx) {
     rel,
   ]);
   if (!out) return [];
+  // With `--directory`, git matches the pathspec as a string prefix:
+  // `build-logic` gives `build/`, and `x/a.kts` gives `x/`.
+  // Keep only the directories under the scope.
+  const under = rel === "." ? "" : `${rel.split(path.sep).join("/")}/`;
   return out
     .split("\0")
-    .filter((p) => p.endsWith("/"))
+    .filter((p) => p.endsWith("/") && p.startsWith(under))
     .map((p) => p.slice(0, -1));
 }
 

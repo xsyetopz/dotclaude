@@ -169,16 +169,57 @@ test("new deferral phrases block, and near misses pass", () => {
     expect(blocks(message), message).toBe(false);
 });
 
-test("only a question about a push, a publish, or a delete is exempt", () => {
-  // A release or a tag alone does not exempt a deferral or an offer.
+test("only a question about a step that waits for the user is exempt", () => {
+  // A statement that names a release or a tag is not a question.
   expect(blocks("The tag step is left as a follow-up for the release.")).toBe(
     true,
   );
   expect(blocks("Next I'll cut the release and tag it.")).toBe(true);
-  expect(blocks("Should I tag the release?")).toBe(true);
+  expect(blocks("Should I tag the release?")).toBe(false);
+  expect(blocks("Should I commit the fix?")).toBe(false);
   // A statement that names a push is not a question.
   expect(blocks("Next I'll push the branch.")).toBe(true);
   expect(blocks("Should I push the branch?")).toBe(false);
   expect(blocks("Shall I publish it, or say the word later?")).toBe(false);
   expect(blocks("Want me to delete the scratch folder?")).toBe(false);
+});
+
+// The 11 blocks in the verdict log from 2026-09-29 to 2026-10-02. In 7 of
+// them, only the user could choose, and Claude ended the turn again with no
+// change. The text can be in any language, so the hook does not read it for
+// a choice. The block reason asks for `AskUserQuestion` instead.
+const LOGGED = {
+  c1b8a9a0:
+    "Should I raise the limit to match how the docs are actually wrapped and then add the CI step, or reflow every doc to 80 columns?",
+  "8cb3638e":
+    "I'd start with the `binding clear --all` lockout, since it's the only item that could break input for a user. Which ones do you want me to take on?",
+  c738a655: "Should I run `just bump 0.17.0` now, or wait for that re-run?",
+  "5c927e22-0826":
+    "The `any-llm` Docker image I pulled is already gone. Should I go ahead, and do you want group `d` written?",
+  "171140a2": "Should I add the upgrade-on-import migration?",
+  "1bd74f03":
+    "Should I run the capture in the sandbox and then restructure based on the result?",
+  "733fff86":
+    "After you regenerate, I'll run the full check list. Then I'll move on to the remaining buckets, starting with `third-party-ps5` (12 rows) and `XInputPS4Controller` (9 rows). I'm keeping the SDL sources in `/tmp/ojd-sdl3p/` for that work.",
+  "5c927e22-0835":
+    "When the session ends, I'll check every case myself: run each fixture and confirm the regex graders pass a reference fix and fail the unsolved state. Then I'll copy the cases to `evals-heldout/d/`, update `evals-heldout/README.md`, `docs/dossier/evals.md` and the CHANGELOG, and run `just check`.",
+  "5c927e22-1152":
+    "When the session ends, I'll check the cases and copy them to `evals-heldout/e/`. Then I'll update the docs and run `just check`.",
+  c21b4425: "Should I add these?",
+};
+
+test("the logged endings block and ask for `AskUserQuestion`, except a bump and a denied command", () => {
+  for (const [id, paragraph] of Object.entries(LOGGED)) {
+    const out = stop(`Report line.\n\n${paragraph}`);
+    if (id === "c738a655") expect(out, id).toBe(null);
+    else {
+      expect(blocked(out), id).toBe("Stop");
+      expect(feedback(out), id).toContain("`AskUserQuestion`");
+    }
+  }
+  expect(
+    stop(
+      "To finish, allow `bun test tests/rules/search-rules.test.mjs` or run it yourself. Tell me if you want me to retry.",
+    ),
+  ).toBe(null);
 });

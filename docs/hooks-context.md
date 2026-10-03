@@ -45,11 +45,18 @@ not touch them.
 
 **What:** after compaction, restores your last messages word for word, the
 last check result, and the files this session edited.
+Before compaction, it adds instructions to the summary request:
+keep your requests and constraints in your own words,
+the decisions and the rejected approaches with their reasons,
+the current state and the open items,
+and exact paths, commands, errors, and numbers.
+After four compactions of the main session, the summary also starts from the latest handoff note under `.claude/handoffs/` and gives its path.
 
 **Why:** a compaction summary paraphrases. Your exact words, the last test
 result, and the list of edited files are the facts that the next turn acts
 on, so the hook restores them unchanged. A subagent compaction keeps and
 restores nothing, so it cannot replace the main session's messages.
+From 2026-09-30 to 2026-10-03, each compaction kept 45% to 59% of the facts that the next part of the session used.
 
 The note has a bound of 2500 characters.
 Each file list stops at 400 characters and gives the count of the other files,

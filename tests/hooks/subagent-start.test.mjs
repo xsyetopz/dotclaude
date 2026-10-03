@@ -5,6 +5,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  HANDBACK_CHARS,
+  HANDBACK_FINDINGS_CHARS,
   k,
   LIMITS,
   REVIEWER_CONTEXT_TOKENS,
@@ -58,6 +60,13 @@ test("subagent guidance is injected, skipped for the reviewer, and can be turned
   expect(numbers(block(reviewer, "turn_budget"))).toContain(60);
   expect(block(reviewer, "context_budget")).toContain(
     k(REVIEWER_CONTEXT_TOKENS),
+  );
+  // The report limit that enforce-agent-budget applies.
+  expect(numbers(block(implementer, "report_budget"))).toContain(
+    HANDBACK_CHARS,
+  );
+  expect(numbers(block(reviewer, "report_budget"))).toContain(
+    HANDBACK_FINDINGS_CHARS,
   );
   // The read-only investigator keeps the conventions and the common bound.
   const investigator = start("dotclaude:investigator");

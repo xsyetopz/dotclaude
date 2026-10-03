@@ -7,7 +7,12 @@
 // because the hooks module has no `node:*`.
 
 import { definition, reserve } from "../lib/_agents.mjs";
-import { k, LIMITS, subagentContextTokens } from "../lib/_budget.mjs";
+import {
+  handbackChars,
+  k,
+  LIMITS,
+  subagentContextTokens,
+} from "../lib/_budget.mjs";
 import { option, projectRoot } from "../lib/_core.mjs";
 import { pathFor } from "../lib/_path.mjs";
 
@@ -153,6 +158,10 @@ function budget(io, limit) {
 const context = (agentType) =>
   `<context_budget>\nEvery turn reads your whole context again.\nOnce it passes about ${k(subagentContextTokens(agentType))} tokens, a hook refuses tool calls, and your next action is your report.\nTo stay under it, read files by line range.\nKeep command output short.\nUse what you already read instead of reading it again.\n</context_budget>`;
 
+// enforce-agent-budget refuses the first report above this limit once.
+const report = (agentType) =>
+  `<report_budget>\nThe main conversation reads your report again on each of its later turns.\nKeep the report at ${handbackChars(agentType)} characters or less.\nGive the outcome, the changed files, the check results, the parts that you did not verify, and the open items.\nLeave out the steps that you did and the full output of commands.\nIf you can write files, put a long handoff or long detail in a file under \`.claude/handoffs/\`, and give its path in the report.\n</report_budget>`;
+
 // Anthropic's Sonnet 5 prompting guide: it "does not silently generalize an
 // instruction from one item to another", most of all at lower effort. The
 // Sonnet 5.5 guide keeps Sonnet 5 prompts, and says that at `low` effort it
@@ -177,7 +186,8 @@ export default async function (io, data) {
   const parts = OWN_PROMPT.has(type) ? [] : [await conventions(io, data)];
   const def = await definition(io, agentType);
   if (def?.maxTurns) parts.push(budget(io, def.maxTurns));
-  if (option(io.env, "usage_agent_bounds")) parts.push(context(agentType));
+  if (option(io.env, "usage_agent_bounds"))
+    parts.push(context(agentType), report(agentType));
   if (/sonnet/.test(def?.model ?? "")) parts.push(SONNET);
   if (!parts.length) return;
   return {

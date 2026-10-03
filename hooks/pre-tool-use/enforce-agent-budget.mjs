@@ -10,6 +10,7 @@
 import { definition, reserve } from "../lib/_agents.mjs";
 import { isUnder } from "../lib/_bash-args.mjs";
 import {
+  handbackChars,
   k,
   SUBAGENT_CONTEXT_GROWTH,
   SUBAGENT_WRAP_UP_TOKENS,
@@ -93,9 +94,18 @@ async function firstTime(io, data, mark) {
 
 export default async function (io, data) {
   if (!option(io.env, "usage_agent_bounds")) return;
-  // The report tool must stay open, or the agent could not deliver it.
-  if (data.tool_name === "SubagentHandback") return;
   if (!data.agent_id) return;
+  // The report tool must stay open, or the agent could not deliver it. Only
+  // the first report that is too long is refused.
+  if (data.tool_name === "SubagentHandback") {
+    const size = String(data.tool_input?.message ?? "").length;
+    const limit = handbackChars(data.agent_type);
+    if (size <= limit || !(await firstTime(io, data, "handback"))) return;
+    return preToolOutput(
+      "deny",
+      `report size: this report has ${size} characters, and the limit for this agent type is ${limit}. The main conversation reads each report again on all of its later turns. Write a shorter report, and then call \`SubagentHandback\` again. Keep the outcome, the changed files, the check results, the parts that you did not verify, and the open items. Put long detail, such as full logs or long lists, in a file, and give its path. dotclaude accepts your next report at all sizes.`,
+    );
+  }
   const { session } = io;
   const context = await session.agentContext();
   if (context) {

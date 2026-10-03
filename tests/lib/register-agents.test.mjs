@@ -38,7 +38,7 @@ test("agent.spawn puts the conventions before the prompt and marks the agent as 
   expect(out).toEqual({ model: "m", agentId: "a1" });
   expect(calls).toHaveLength(1);
   expect(calls[0].prompt).toStartWith("[dotclaude] <working_conventions>");
-  expect(calls[0].prompt).toEndWith("</context_budget>\n\nFix the bug.");
+  expect(calls[0].prompt).toEndWith("</report_budget>\n\nFix the bug.");
   expect(calls[0].subagentType).toBe("general-purpose");
   expect(runningMarkers($)).toHaveLength(1);
   expect(runningMarkers($)[0]).toEndWith("/s1.a1.running");

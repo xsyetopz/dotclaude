@@ -165,9 +165,13 @@ the task. When the last paragraph of a reply announces the next step or asks
 permission for work ("Should I ...?"), the gate sends Claude back once to do
 the work. Public or hard-to-reverse steps pass, and so does a turn that ends
 with `AskUserQuestion` or `ExitPlanMode`.
+A question about a push, a commit, a tag, a merge, a release, or a version bump passes, and so does a request to allow a denied command.
+A reply can be in any language, so the gate does not read it for a choice.
+The working rules tell Claude to ask a choice that only you can make with `AskUserQuestion`.
 
 **Why:** "done" without a check that ran moves the finding of defects to you.
 The working rules say this in prose, and the gate enforces it.
+From 2026-09-29 to 2026-10-02, 7 of the 11 blocks of the announced-work check were choices in the reply text, and Claude ended the turn again with no change.
 
 ### Open-Task Check (`gate_tasks`)
 

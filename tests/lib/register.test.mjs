@@ -95,9 +95,14 @@ function moduleOf(c) {
     files: agentFiles,
     secrets: c.secrets,
     agents: c.agent ? [{ id: c.agent.id, type: c.agent.type }] : [],
-    messages: Array.from({ length: c.agent?.turns ?? 0 }, () => ({
-      role: "assistant",
-    })),
+    // Each turn is an assistant row and the tool result that follows it.
+    messages: Array.from({ length: c.agent?.turns ?? 0 }, () => [
+      { role: "assistant" },
+      {
+        role: "user",
+        toolResults: [{ tool_use_id: "t1", text: "ok", isError: false }],
+      },
+    ]).flat(),
   });
   return { on, $ };
 }

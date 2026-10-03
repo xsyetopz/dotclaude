@@ -69,6 +69,8 @@ class Command {
     this.overwrites = [];
     // True when a redirect or a heredoc gives the command its own stdin.
     this.stdinRedirect = false;
+    // The file that `<` gives as stdin, or null.
+    this.stdinFile = null;
     // True when a `timeout` wrapper ends the command.
     this.bounded = false;
   }

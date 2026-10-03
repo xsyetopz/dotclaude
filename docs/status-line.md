@@ -17,7 +17,7 @@ Each part is short. A one-column glyph replaces a word where it saves space:
 
 | Glyph | Meaning |
 | --- | --- |
-| `⇊` | compactions of the main conversation, out of those before a handoff |
+| `⇊` | compactions of the main conversation, out of those before a handoff, or the count alone in red after them |
 | `⎇` | git branch, with `±` changed files and `↑` `↓` commits ahead and behind |
 | `⊞` | worktree |
 | `◷` | warm prompt cache, with the minutes until it expires |
@@ -47,7 +47,9 @@ The second row shows what the session uses:
 - the model with its effort, and the context against the 117k compaction
   point, with a bar that turns yellow at 75% and red at 90%. After a
   compaction, `⇊1/4` gives the compactions so far out of the four before a
-  handoff. `handoff` shows when the context note asks for one
+  handoff. From the fourth compaction, `⇊4` or `⇊7` in red gives only the
+  count, because Claude Code keeps compacting after the handoff point.
+  `handoff` shows when the context note asks for one
 - the prompt cache: the minutes until it expires, its hit ratio, and its
   misses with the last cause, or the tokens that the next turn re-reads when
   it is cold on 100k or more

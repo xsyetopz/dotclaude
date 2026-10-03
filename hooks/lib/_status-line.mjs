@@ -91,15 +91,19 @@ export function contextPart(tokens, limit, cells = 5, markPast = true) {
 
 /**
  * The main context against the compaction point, and `⇊2/4` for the
- * compactions so far out of those before a handoff. `handoff` shows when the
- * context note asks for one.
+ * compactions so far out of those before a handoff. From the handoff point,
+ * it shows only the count in red, such as `⇊5`, because a fraction past one
+ * reads as a limit that does not hold. `handoff` shows when the context note
+ * asks for one.
  */
 export function mainContextPart(tokens, count) {
   let text = contextPart(tokens, AUTO_COMPACT_TOKENS, 5, false);
-  if (count > 0) {
-    const color = count >= COMPACTIONS_BEFORE_HANDOFF ? C.red : C.dim;
-    text += ` ${color(`⇊${count}/${COMPACTIONS_BEFORE_HANDOFF}`)}`;
-  }
+  if (count > 0)
+    text += ` ${
+      count >= COMPACTIONS_BEFORE_HANDOFF
+        ? C.red(`⇊${count}`)
+        : C.dim(`⇊${count}/${COMPACTIONS_BEFORE_HANDOFF}`)
+    }`;
   if (count >= COMPACTIONS_BEFORE_HANDOFF && tokens >= CONTEXT_NOTE_TOKENS)
     text += ` ${C.red("handoff")}`;
   return text;

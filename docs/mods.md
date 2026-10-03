@@ -15,9 +15,9 @@ process. It uses only the native events of Claude Code:
 | The subagent conventions and the running-agent count | `agent.spawn` |
 | The subagent context, the running marker, and the main effort | `turn.step` |
 | The usage notes on a prompt | `prompt.submit` |
-| The saved prompts for the compaction carry-over | `session.compact` |
+| The saved prompts and the summary instructions for the compaction carry-over | `session.compact` |
 | The built-in agents that dotclaude replaces | `agent.offer` |
-| The engine task reminders | `prompt.attachment` |
+| The engine task reminders and the silent-turn reminder | `prompt.attachment` |
 
 These hooks stay classic command hooks, because no native event can do their
 work:
@@ -54,6 +54,11 @@ copy of each guard as a command hook would run twice where mods are on.
 - **Task reminders** (`gate_tasks`): the engine reminders to use the task
   tools are left out of the request. The open-task check at the end of a turn
   does that job, and the reminders add text to the context.
+- **Silent-turn reminder**: after five API calls with no text, the engine
+  tells Claude to say what it does.
+  dotclaude replaces that text.
+  Claude gives a fact, a failure, or a change of plan in one sentence, or continues with no message.
+  From 2026-10-02 to 2026-10-03, 93 of 189 messages that only named the next step came after this reminder.
 - **Settings profile**: the [optional switches](settings-profile.md) remove
   the bundled skills, `Explore` and `Plan`, `ReportFindings`, and other
   built-in features that cost context on each request.

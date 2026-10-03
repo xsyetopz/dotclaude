@@ -10,6 +10,22 @@ import {
 import { stateDir } from "./_core.mjs";
 import { pathFor } from "./_path.mjs";
 
+/** The marker that a note was given in the current crossing of the bound. */
+function markerFile(io, data) {
+  const safe = String(data.session_id || "unknown").replace(
+    /[^A-Za-z0-9_-]/g,
+    "_",
+  );
+  return pathFor(io.platform).join(stateDir(io), `${safe}.context-note`);
+}
+
+/**
+ * Mark the note as given, so that `once` gives no note in this crossing. A
+ * handoff note that Claude writes before the note comes has the same effect.
+ */
+export const markContextNote = (io, data) =>
+  io.fs.write(markerFile(io, data), "1");
+
 /**
  * The `<context_use>` note when the main context is at CONTEXT_NOTE_TOKENS or
  * more after COMPACTIONS_BEFORE_HANDOFF compactions, else null. Before that,
@@ -23,11 +39,7 @@ import { pathFor } from "./_path.mjs";
 export async function contextNote(io, data, once = false) {
   const used = await io.session.mainContextTokens();
   if (used === null) return null;
-  const safe = String(data.session_id || "unknown").replace(
-    /[^A-Za-z0-9_-]/g,
-    "_",
-  );
-  const file = pathFor(io.platform).join(stateDir(io), `${safe}.context-note`);
+  const file = markerFile(io, data);
   if (used < CONTEXT_NOTE_TOKENS) {
     await io.fs.remove(file);
     return null;
