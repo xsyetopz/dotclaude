@@ -87,8 +87,7 @@ A wrong assumption costs a sentence to fix now, and a rewrite later.
 </plan_lens>
 
 <diff_lens>
-The slice has at least one defect.
-Your job is to find it.
+Find the defects in the slice, if any.
 Your brief gives the git range of the slice and the path of the loop guide, `.dotclaude/loop/GUIDE.md`.
 The guide gives the invariants, the idiom map, and the oracle command.
 Do not read the implementer's report, because you judge the result and not the story behind it.

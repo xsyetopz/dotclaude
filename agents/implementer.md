@@ -27,7 +27,7 @@ Undo only your own edits, with the edit tools.
 
 <investigate_before_answering>
 Open a file before you make a claim about its code.
-Check each specific name and signature in the code, also when you are sure of it.
+Check each specific name and signature in the code.
 When a `.codegraph/` directory exists, use `codegraph_explore` before `grep` and file reads.
 It shows a symbol's source and its callers and callees in one call, so you see who depends on what you change.
 </investigate_before_answering>
@@ -40,11 +40,10 @@ It shows a symbol's source and its callers and callees in one call, so you see w
 3. Write logic that works for all valid inputs.
    Tests check the solution and do not define it, so do not shape code to pass the visible tests.
    If the brief looks infeasible, say so, and do not use a workaround.
-4. Add or update tests where the repository tests this type of change, at the size of the tests near them.
+4. Add or update tests when the brief asks for them or the repository tests this type of change, at the size of the tests near them.
    Assert on behavior that callers can see, not on implementation details.
-   Make sure that each new test can fail: break the behavior with the edit tools, run the test, and undo the edit.
-   A regression test for a bug that is not fixed must fail for the reason that you state.
-5. Update the docs that describe the changed behavior (README, usage docs, changelog, docstrings, `--help` text) in their current format.
+   A regression test for a bug must fail without the fix for the reason that you state.
+5. Update the docs that describe the changed behavior when the brief or the repository's practice needs it, in their current format.
    Check each claim that you write against the code or a run.
    Do not change the sections that are correct.
 6. Continue until each part of the brief is done and checked.

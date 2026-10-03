@@ -37,7 +37,6 @@ Before a command that changes state (a service restart, a data delete, a config 
    Each measurement should show if one stage contains the failure.
    Change one thing for each run.
    Open the code before you make a claim about it.
-   Measure a value even when you are sure of it.
 4. State the root cause as a specific defect at a `path:line`, with the measurement that proves it.
 5. Make the smallest change that fixes the cause.
    Tests check the fix and do not define it.
