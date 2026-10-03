@@ -15,7 +15,12 @@ const write = (on, $, file, content) =>
   );
 
 test("a column wrap that Claude writes gets a note", async () => {
-  const r = await write(registered(), fake(), "/work/docs/a.md", wrapped);
+  const r = await write(
+    registered({ context_line_breaks: true }),
+    fake(),
+    "/work/docs/a.md",
+    wrapped,
+  );
   const note = r.context.join("\n");
   expect(note).toStartWith(
     "[dotclaude] <line_break_findings>\n- The line stops in a clause:",
@@ -27,12 +32,23 @@ test("a column wrap that Claude writes gets a note", async () => {
 test("semantic line breaks get no note", async () => {
   const text =
     "# Notes\n\nThe hook reads the file that the edit wrote.\nThen it compares the lines with the rules of the project.\n";
-  const r = await write(registered(), fake(), "/work/docs/a.md", text);
+  const r = await write(
+    registered({ context_line_breaks: true }),
+    fake(),
+    "/work/docs/a.md",
+    text,
+  );
   expect(r).toEqual({ result: "ok" });
 });
 
-test("the context_line_breaks option turns the check off", async () => {
-  const off = registered({ context_line_breaks: false });
-  const r = await write(off, fake(), "/work/docs/a.md", wrapped);
-  expect(r).toEqual({ result: "ok" });
+test("the check is off by default and with context_line_breaks false", async () => {
+  for (const options of [{}, { context_line_breaks: false }]) {
+    const r = await write(
+      registered(options),
+      fake(),
+      "/work/docs/a.md",
+      wrapped,
+    );
+    expect(r).toEqual({ result: "ok" });
+  }
 });

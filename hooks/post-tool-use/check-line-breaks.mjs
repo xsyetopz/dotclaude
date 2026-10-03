@@ -16,7 +16,7 @@ import {
 } from "../lib/_linefeeds.mjs";
 
 export default async function (io, data) {
-  if (!option(io.env, "context_line_breaks")) return;
+  if (!option(io.env, "context_line_breaks", false)) return;
   const input = data.tool_input ?? {};
   const file = input.file_path ?? input.notebook_path;
   if (typeof file !== "string" || skipped(file, io.tmp)) return;

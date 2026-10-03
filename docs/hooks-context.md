@@ -122,6 +122,8 @@ Otherwise a built-in check finds prose lines of 60 characters or more that stop 
 Both ways, the hook finds a word split between two comment lines, such as `configur` and `ation`.
 `semlf` 1.0.1 does not find a split word.
 A PostToolUse hook cannot stop an edit, so each finding is a note.
+The option is off by default, because the line-break style is a project convention, not a default for every repository.
+Turn it on with `/plugin`, or with `echo '{"context_line_breaks": "true"}' | claude plugin configure dotclaude@dotclaude --values-stdin`.
 The hook skips `tmp/`, `vendor/`, `node_modules/`, `dist/`, `build/`, `testdata/`, and `fixtures/`,
 as `semlf` does.
 

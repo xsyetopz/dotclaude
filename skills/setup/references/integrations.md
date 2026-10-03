@@ -82,7 +82,7 @@ Without `betterleaks` on `PATH`, tool output goes to Claude without redaction, a
 </betterleaks>
 
 <semlf>
-semlf checks semantic line breaks: each sentence starts on a new line, and a long sentence breaks only between clauses. dotclaude's line-break check (the `context_line_breaks` option, on by default) runs `semlf --hook claude` after each edit when `semlf` is on `PATH`.
+semlf checks semantic line breaks: each sentence starts on a new line, and a long sentence breaks only between clauses. dotclaude's line-break check (the `context_line_breaks` option, off by default) runs `semlf --hook claude` after each edit when `semlf` is on `PATH`.
 Without it, a built-in check finds fewer defects.
 
 - Requirements: Python 3.9 or newer and `uv`.
