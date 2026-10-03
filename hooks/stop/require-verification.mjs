@@ -1,35 +1,20 @@
 #!/usr/bin/env bun
 
 // Stop and SubagentStop hook: send Claude (or a subagent) back once when it
-// ends after code edits with no later check run, or with a failed check it
-// reports as passing. Each ledger state blocks at most once, and a
-// continuation is never blocked again. A pass claim with nothing edited and
-// nothing run is not blocked: read-only agents quote results that others ran.
+// ends after code edits with no later check run, or when the last check
+// after its edits failed.
+// An edit with no check passes when the project names no test command,
+// because then Claude cannot run a check, and the gate would only add a turn.
+// A failed check with no edit passes, because a read-only agent such as
+// `test-runner` reports failures.
+// Each ledger state blocks at most once, and a continuation is never blocked again.
+// The hook reads only the ledger, not the reply, because a reply can be in any language.
 
 import { run, stopFeedback } from "../lib/_common.mjs";
-import { option } from "../lib/_core.mjs";
+import { option, projectRoot } from "../lib/_core.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
 import { load, save } from "../lib/_ledger.mjs";
-
-const CLAIMS_PASS =
-  /\b(all\s+)?(tests?|specs?|checks?|builds?|suite|lint(ing)?|type-?checks?)\s+(now\s+)?(pass(es|ed|ing)?|succeed(s|ed)?|(are|is)\s+(green|passing|clean)|green)\b|\b\d+\s+passed\b|\bverified\b/i;
-// A reply that says outright the change was not checked. Mentioning an error
-// or failure the change fixed ("fixed the parser error") is not that.
-const SAYS_UNVERIFIED =
-  /\b(not\s+(yet\s+)?(run|ran|verified|tested|checked)|unverified|untested|didn'?t\s+(run|test|verify|check)|haven'?t\s+(run|tested|verified|checked)|could\s?n[o']t\s+(run|test|verify|check)|without\s+(running|testing|verifying))\b/i;
-// A reply that reports a failure or a gap, which is honest after a failed check.
-const ADMITS_GAP =
-  /\b(fail(s|ed|ing|ure)?|error|broken|not\s+(yet\s+)?(run|ran|verified|tested)|unverified|untested|didn'?t\s+(run|test|verify)|haven'?t\s+(run|tested|verified)|could\s?n[o']t\s+(run|test))\b/i;
-
-/** `message` without quoted lines (`>`) and code (fenced or in backticks). */
-function ownWords(message) {
-  return message
-    .replace(/```[\s\S]*?(```|$)/g, " ")
-    .replace(/`[^`\n]*`/g, " ")
-    .split("\n")
-    .filter((line) => !/^\s*>/.test(line))
-    .join("\n");
-}
+import { findTestCommand } from "../lib/_test-command.mjs";
 
 run(async (data) => {
   if (!option(process.env, "gate_verify") || data.stop_hook_active) return;
@@ -44,7 +29,6 @@ run(async (data) => {
     data.hook_event_name === "SubagentStop" ? data.agent_id : null;
   const io = nodeIo(data);
   const state = await load(io, data.session_id, agentId);
-  const message = data.last_assistant_message ?? "";
   const { lastEdit, lastCheck } = state;
   let reason;
 
@@ -52,7 +36,7 @@ run(async (data) => {
     lastEdit &&
     (!lastCheck || lastCheck.seq < lastEdit.seq) &&
     state.blockedEdit !== lastEdit.seq &&
-    !SAYS_UNVERIFIED.test(message)
+    (await findTestCommand(io, projectRoot(io, data)))
   ) {
     state.blockedEdit = lastEdit.seq;
     reason = lastCheck
@@ -61,13 +45,12 @@ run(async (data) => {
   } else if (
     lastCheck &&
     lastCheck.ok === false &&
-    (!lastEdit || lastCheck.seq > lastEdit.seq) &&
-    state.blockedCheck !== lastCheck.seq &&
-    CLAIMS_PASS.test(ownWords(message)) &&
-    !ADMITS_GAP.test(message)
+    lastEdit &&
+    lastCheck.seq > lastEdit.seq &&
+    state.blockedCheck !== lastCheck.seq
   ) {
     state.blockedCheck = lastCheck.seq;
-    reason = `The last check (\`${lastCheck.command}\`) failed${lastCheck.code ? ` (exit ${lastCheck.code})` : ""}, but the reply says it passes. Fix it, or report it as failing.`;
+    reason = `The last check (\`${lastCheck.command}\`) failed${lastCheck.code ? ` (exit ${lastCheck.code})` : ""}. Fix it, or report it as failing.`;
   }
 
   if (!reason) return;

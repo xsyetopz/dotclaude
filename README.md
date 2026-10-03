@@ -85,9 +85,9 @@ To try an unreleased checkout, run `claude --plugin-dir /path/to/dotclaude`.
   background commands that can wait on stdin, such as `codex exec`, and a
   subagent's change to the frozen test files of an agent loop. They redact
   secrets from tool output with Betterleaks.
-- **Gates** send Claude back once when it stops without a check that ran,
-  with open tasks, with an agent-loop slice that no reviewer read, or with a
-  reply that only announces the next step. A task stays open once after a
+- **Gates** send Claude back once when it stops after a code edit with no
+  check after it or with a failed check, with open tasks, or with an
+  agent-loop slice that no reviewer read. A task stays open once after a
   code edit that no check followed.
 - **Context** hooks load the `CLAUDE.md` of directories that Bash reads,
   restore your exact words after compaction, and tell Claude when the text

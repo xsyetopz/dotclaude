@@ -156,22 +156,19 @@ mode's own classifier already decides recoverable actions.
 ### Verify-Before-Stop (`gate_verify`)
 
 **What:** sends Claude back once when it edits code and stops without a test,
-build, or lint run. It does the same when Claude says that tests pass after a
-failure. A claim in quotes, a `>` line, or code does not count. A pass
-claim with no edit and no check passes, because a read-only agent reports
-results that others ran. When Claude marks a task completed after a code
-edit with no check after it, the gate keeps the task open once, and names
-the task. When the last paragraph of a reply announces the next step or asks
-permission for work ("Should I ...?"), the gate sends Claude back once to do
-the work. Public or hard-to-reverse steps pass, and so does a turn that ends
-with `AskUserQuestion` or `ExitPlanMode`.
-A question about a push, a commit, a tag, a merge, a release, or a version bump passes, and so does a request to allow a denied command.
-A reply can be in any language, so the gate does not read it for a choice.
-The working rules tell Claude to ask a choice that only you can make with `AskUserQuestion`.
+build, or lint run after the edit.
+It does the same when the last check after an edit failed.
+A failed check with no edit passes, because a read-only agent such as `test-runner` reports failures.
+When Claude marks a task completed after a code edit with no check after it, the gate keeps the task open once, and names the task.
+An edit with no check passes when the project root shows no tests.
+These show tests: a `justfile` `test` or `check` recipe, a `package.json` test script, a test command in `CLAUDE.md` or `AGENTS.md`, or a build file.
+The build files are `Cargo.toml`, `go.mod`, a `Makefile` with a `test` or `check` target, `pyproject.toml`, `setup.cfg`, `setup.py`, `tox.ini`, `noxfile.py`, `pytest.ini`, Gradle and Maven files, .NET project and solution files, `CMakeLists.txt`, `meson.build`, Bazel files, `build.zig`, `Package.swift`, `mix.exs`, `deno.json`, `pubspec.yaml`, `Gemfile`, and `composer.json`.
+In a project with none of these, Claude cannot run a check, and a block would only add a turn.
+Subagents get the test command that a build file implies only when the file shows it, for example `cargo test` for `Cargo.toml`, or `pytest` for a `pyproject.toml` with a `[tool.pytest]` table.
+The gate reads only the edit and check ledger, not the reply, because a reply can be in any language.
 
 **Why:** "done" without a check that ran moves the finding of defects to you.
 The working rules say this in prose, and the gate enforces it.
-From 2026-09-29 to 2026-10-02, 7 of the 11 blocks of the announced-work check were choices in the reply text, and Claude ended the turn again with no change.
 
 ### Open-Task Check (`gate_tasks`)
 
@@ -221,9 +218,10 @@ The usage bounds, usage notes, model lock, and scratchpad pruning are on
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `guard_bash`, `guard_edit`, `guard_secrets`, `context_nested_instructions`, `context_session_files`, `gate_verify`, `gate_tasks`, `gate_goal_stall`, `context_compact_carryover`, `context_handoff_pointer`, `context_line_breaks`, `model_lock`, `git_commit_hygiene` | on | the hooks above |
+| `guard_bash`, `guard_edit`, `guard_secrets`, `context_nested_instructions`, `context_session_files`, `gate_verify`, `gate_tasks`, `gate_goal_stall`, `context_compact_carryover`, `context_handoff_pointer`, `model_lock`, `git_commit_hygiene` | on | the hooks above |
 | `agent_guidance` | on | shared rules and report format for agents, the `general-purpose` refusal, and the [hidden built-in agents](mods.md#built-ins-that-dotclaude-replaces) |
 | `guard_ask_in_auto` | off | asks about recoverable actions in auto mode too |
+| `context_line_breaks` | off | the [line-break check](hooks-context.md#line-breaks-context_line_breaks), for projects that use semantic line breaks |
 | `git_attribution` | on | adds the `Co-Authored-By` trailer and pull request footer |
 | `model_allowed` | the four models | the models that the lock accepts |
 | `model_plan` | `auto` | `pro`, `max_5x`, `max_20x`, `team_standard`, `team_premium`, `enterprise`, or `api` |

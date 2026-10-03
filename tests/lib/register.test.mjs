@@ -31,15 +31,22 @@ const PLUGIN_ROOT =
 
 // The fake `$` has the agent definitions at the fake plugin root.
 const AGENTS = path.join(HOOKS, "..", "agents");
-const agentFiles = Object.fromEntries(
-  fs
-    .readdirSync(AGENTS)
-    .filter((f) => f.endsWith(".md"))
-    .map((f) => [
-      path.join(PLUGIN_ROOT, "agents", f),
-      fs.readFileSync(path.join(AGENTS, f), "utf8"),
-    ]),
-);
+const agentFiles = {
+  ...Object.fromEntries(
+    fs
+      .readdirSync(AGENTS)
+      .filter((f) => f.endsWith(".md"))
+      .map((f) => [
+        path.join(PLUGIN_ROOT, "agents", f),
+        fs.readFileSync(path.join(AGENTS, f), "utf8"),
+      ]),
+  ),
+  // The fixture repo's test command, which the classic path reads on disk.
+  [path.join(repo, "justfile")]: fs.readFileSync(
+    path.join(repo, "justfile"),
+    "utf8",
+  ),
+};
 
 // The keys of a `tool.call` input that are not arguments of the tool.
 const RESERVED = ["tool", "tool_use_id", "agentId", "consent"];

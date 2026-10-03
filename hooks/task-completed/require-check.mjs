@@ -2,12 +2,14 @@
 
 // TaskCompleted hook: send Claude back once when it marks a task completed
 // after code edits with no later check run. It reads the same ledger as the
-// stop gate. Exit code 2 keeps the task open and gives stderr to Claude.
+// stop gate, and it also passes when the project names no test command.
+// Exit code 2 keeps the task open and gives stderr to Claude.
 
 import { exitBlocking, run } from "../lib/_common.mjs";
-import { option, TAG } from "../lib/_core.mjs";
+import { option, projectRoot, TAG } from "../lib/_core.mjs";
 import { nodeIo } from "../lib/_io-node.mjs";
 import { load, save } from "../lib/_ledger.mjs";
+import { findTestCommand } from "../lib/_test-command.mjs";
 
 run(async (data) => {
   if (!option(process.env, "gate_verify")) return;
@@ -19,7 +21,8 @@ run(async (data) => {
   if (
     !lastEdit ||
     (lastCheck && lastCheck.seq > lastEdit.seq) ||
-    state.blockedTask === lastEdit.seq
+    state.blockedTask === lastEdit.seq ||
+    !(await findTestCommand(io, projectRoot(io, data)))
   )
     return;
   state.blockedTask = lastEdit.seq;

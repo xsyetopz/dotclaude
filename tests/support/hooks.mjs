@@ -14,6 +14,8 @@ export const repo = fs.realpathSync(
   fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-repo-")),
 );
 execFileSync("git", ["init", "-q", repo]);
+// A test command, because the verify gate passes in a project with none.
+fs.writeFileSync(path.join(repo, "justfile"), "test:\n    bun test\n");
 // No cached Claude account, so the machine running the tests does not
 // decide the plan.
 export const noAccount = fs.mkdtempSync(

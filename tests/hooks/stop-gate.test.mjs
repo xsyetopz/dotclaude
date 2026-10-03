@@ -15,6 +15,7 @@ import {
   repo,
   session,
   stop,
+  tmp,
 } from "../support/hooks.mjs";
 
 test("stop gate blocks once after an unverified edit", () => {
@@ -209,15 +210,11 @@ test("stop gate passes after a passing check", () => {
   expect(stop(sid)).toBe(null);
 });
 
-test("stop gate accepts a reply that says the change is unverified", () => {
+test("a failed check with no edit is not blocked", () => {
+  // A read-only agent such as `test-runner` reports failures that it ran.
   const sid = session();
-  edit(sid);
-  expect(
-    stop(
-      sid,
-      "Changed the parser. I haven't run the tests; there is no test runner configured.",
-    ),
-  ).toBe(null);
+  checkRun(sid, "pytest", false);
+  expect(stop(sid, "3 tests fail.")).toBe(null);
 });
 
 test("stop gate honors stop_hook_active and running background work", () => {
@@ -238,6 +235,18 @@ test("stop gate catches a failed check reported as passing", () => {
   const out = stop(sid, "All tests pass now.");
   expect(blocked(out)).toBe("Stop");
   expect(feedback(out)).toMatch(/pytest/);
+});
+
+test("a failed last check blocks once in any language of the reply", () => {
+  // The gate reads the ledger, not the reply, because a reply can be in any
+  // language.
+  const sid = session();
+  edit(sid);
+  checkRun(sid, "pytest", false);
+  const out = stop(sid, "Wszystkie testy przechodzą.");
+  expect(blocked(out)).toBe("Stop");
+  expect(feedback(out)).toMatch(/pytest/);
+  expect(stop(sid, "Testy nie przechodzą."), "blocks once").toBe(null);
 });
 
 test("a piped check whose output shows failures counts as failed", () => {
@@ -266,25 +275,6 @@ test("a pass claim with no edit and no check is not blocked", () => {
   expect(stop(sid, "All tests pass.")).toBe(null);
 });
 
-test("a quoted pass claim after a failed check is not blocked", () => {
-  for (const message of [
-    "Upstream says `all tests pass` on main. The local pytest run is still red.",
-    "Upstream CI printed:\n\n```\nAll tests passed\n```\n\nThe local pytest run is still red.",
-    "The issue says:\n> Tests pass on main.\nThe local pytest run is still red.",
-  ]) {
-    const sid = session();
-    edit(sid);
-    checkRun(sid, "pytest", false);
-    expect(stop(sid, message), message).toBe(null);
-  }
-  const sid = session();
-  edit(sid);
-  checkRun(sid, "pytest", false);
-  expect(blocked(stop(sid, "The log was quoted. All tests pass."))).toBe(
-    "Stop",
-  );
-});
-
 test("plugin validation and markdownlint count as check runs", () => {
   for (const command of [
     "bun run validate",
@@ -299,19 +289,15 @@ test("plugin validation and markdownlint count as check runs", () => {
   }
 });
 
-test("stop gate is not bypassed by a reply that mentions an error or failure it fixed", () => {
-  for (const message of [
-    "Fixed the parser error; empty input now returns [].",
-    "Fixed the failing branch in parse().",
-  ]) {
-    const sid = session();
-    edit(sid);
-    expect(blocked(stop(sid, message)), message).toBe("Stop");
-  }
+test("a reply that says the change is not verified still blocks once", () => {
+  const sid = session();
+  edit(sid);
+  expect(blocked(stop(sid, "I haven't run the tests."))).toBe("Stop");
+  expect(stop(sid, "I haven't run the tests.")).toBe(null);
 });
 
 // TaskCompleted blocks with exit code 2 and a reason on stderr.
-function completeTask(input) {
+function completeTask(input, env = {}) {
   const res = spawnSync(
     "bun",
     [path.join(HOOKS, "task-completed/require-check.mjs")],
@@ -328,11 +314,53 @@ function completeTask(input) {
         ...process.env,
         CLAUDE_PLUGIN_DATA: data,
         CLAUDE_PROJECT_DIR: repo,
+        ...env,
       },
     },
   );
   return { code: res.status, stderr: res.stderr };
 }
+
+test("an edit with no check passes when the project names no test command", () => {
+  // Claude cannot run a check there, so a block would only add a turn.
+  const bare = tmp("dotclaude-bare-");
+  const env = { CLAUDE_PROJECT_DIR: bare };
+  const sid = session();
+  edit(sid);
+  const input = {
+    session_id: sid,
+    hook_event_name: "Stop",
+    stop_hook_active: false,
+    cwd: bare,
+  };
+  expect(hook("stop/require-verification.mjs", input, env)).toBe(null);
+  expect(completeTask({ session_id: sid, cwd: bare }, env).code).toBe(0);
+  // A Makefile with no test target does not show tests.
+  fs.writeFileSync(path.join(bare, "Makefile"), "build:\n\tcc a.c\n");
+  edit(sid, "src/b.js");
+  expect(hook("stop/require-verification.mjs", input, env)).toBe(null);
+  fs.rmSync(bare, { recursive: true });
+});
+
+test("a build file that shows tests turns the gate on", () => {
+  // A pyproject.toml shows a Python project, though not its test command.
+  const dir = tmp("dotclaude-py-");
+  fs.writeFileSync(path.join(dir, "pyproject.toml"), "[project]\nname = 'x'\n");
+  const sid = session();
+  edit(sid);
+  const out = hook(
+    "stop/require-verification.mjs",
+    {
+      session_id: sid,
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      cwd: dir,
+    },
+    { CLAUDE_PROJECT_DIR: dir },
+  );
+  expect(blocked(out)).toBe("Stop");
+  fs.rmSync(dir, { recursive: true });
+});
 
 test("a task completion after an unchecked edit is blocked once", () => {
   const sid = session();
