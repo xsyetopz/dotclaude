@@ -22,21 +22,38 @@ steps after each update.
 - A subagent report longer than 6,000 characters (10,000 for `reviewer` and `investigator`) is refused once, with the parts to keep and a request to put long detail in a file.
   The second report always passes.
   The subagent conventions give the same limit in `<report_budget>`.
-- The announced-work check no longer reads a reply for a choice, because a reply can be in any language.
-  The working rules and the block reason tell Claude to ask a choice with `AskUserQuestion`, which the check passes.
-  A question about a commit, a tag, a merge, a release, or a version bump passes, and so does a request to allow a denied command.
 - The status line shows `⇊N/4` before the handoff point, and only `⇊N` in red from it, such as `⇊7`.
   `⇊7/4` read as a limit that did not hold.
 - The comments of `MAIN_CONTEXT_TOKENS` and `SUBAGENT_CONTEXT_TOKENS` give the measurements from 2026-09-29 to 2026-10-03.
   The values do not change.
-- The working rules tell Claude to reproduce and fix a case that the requested behavior does not handle, as part of the task.
-  The old rule told Claude to report such a case as a gap, and Claude then stopped with the work not done.
-  A part is blocked only when it needs a decision, an access, or information that only you can give.
-- The working rules tell Claude to treat a correction as new state, with no apology, defense, or explanation of the error unless you ask for it.
-- The final report gives an unverified part, an assumption, or a remaining item only when it changes what you do next,
-  and adds a recommendation or a caveat only when correctness, safety, or completion needs it.
-  Before Claude sends a reply, it checks each sentence against the request, your constraints, and the evidence,
-  and does each remaining item that it can do with its tools.
+- The working rules are 5.1 KB, down from 8.4 KB, and the warn level of their bound is 5,500 bytes.
+  A public benchmark measured that a rule set of about 3,100 tokens cost about 25% more than one of about 800 tokens.
+  The rules no longer list forbidden behaviors, ask for a forced objection, ask for a minimal reproducible example in each reply, ask Claude to let four compactions occur, or run a self-check loop before each reply.
+  The rules and the subagent conventions no longer tell Claude to treat tool results as data, because Claude then reported harness reminders as prompt injection.
+  They tell Claude to treat a correction as new state, to report other defects with their evidence, and to ask first when a wrong reading of the request is expensive to undo.
+- The verify gate reads only the edit ledger, not the words of the reply, because a reply can be in any language.
+  It blocks once on an edit with no later check, and once on a failed last check after an edit.
+  An edit with no check passes when the project root shows no tests: no test command in a `justfile`, `package.json`, `CLAUDE.md`, or `AGENTS.md`, and no build file such as `Cargo.toml`, `go.mod`, `pyproject.toml`, or a `Makefile` with a `test` target.
+- The subagent conventions also name the test command that a build file implies, such as `cargo test`, `go test ./...`, `make test`, `./gradlew test`, `dotnet test`, or `swift test`.
+- The subagent conventions are shorter.
+  An agent that cannot edit files (`investigator`, `web-researcher`, `test-runner`) gets no lines about fixes or checks.
+- The `reviewer` diff lens asks for the defects in the slice, if any, and no longer says that the slice has one.
+  The `implementer` adds tests and docs only when the brief or the repository's practice needs them.
+  The `debugger` no longer asks for a measurement of each value that it is sure of.
+- The usage note at 90% asks for the handoff note first, with no condition.
+  The context note no longer asks Claude to check if it wrote the handoff note.
+  The Fable 5.1 note no longer says that the model batches tool calls less, because no measurement supports it.
+- `context_line_breaks` is off by default, because semantic line breaks are a project convention.
+- The global `CLAUDE.md` profile no longer has a `# Compact instructions` section, because the compaction hook sends the same priorities.
+
+### Removed
+
+- The announced-work Stop hook (`finish-announced-work`).
+  It read English phrases in the last paragraph, and by its own count most of its blocks were wrong.
+- The held-out evals (`evals-heldout/`) and the reply graders (`word-count`, `adverbs`).
+  Their regex graders came from failure reports, which are not an acceptance suite.
+  The `evals/` cases that a command grades stay.
+- The tests that pinned prose: the skill description collision test, and the checks of numbers and phrases in the docs and styles.
 
 ### Fixed
 
