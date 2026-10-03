@@ -25,7 +25,7 @@ Design and evidence: `docs/dossier.md`.
 - Write each message that goes to Claude (hook output, deny reasons, skill and agent prompts) in strict ASD-STE100.
   Follow Claude's prompting best practices: give the reason, say what to do, use no forceful words, and put code items in backticks.
 - Change a usage bound only in `hooks/lib/_budget.mjs`.
-  Tests pin its copies.
+  Tests pin its copies in code and config, not in prose.
 - `hooks/lib` imports only itself.
   Event hooks import only `hooks/lib`.
   Only the hooks module `hooks/register.mjs` also imports the event actions.

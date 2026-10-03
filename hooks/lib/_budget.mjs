@@ -161,10 +161,10 @@ export const RUNNING_AGENT_IDLE_MINUTES = 10;
  * - workingRulesBytes: the working rules that a SessionStart hook adds to
  *   every main session. Claude Code keeps at most about 10,000 bytes of the
  *   output of one hook command in the context, and puts a larger output in
- *   a file (docs/dossier/prompt-surface.md). The rules are 7.0 KB, against
- *   8.9 KB for the rules in the 0.18.0 Default style. The warn level leaves
- *   about 0.5 KB for new rules. The fail level stays below 10,000 bytes,
- *   with room for the `[dotclaude] ` prefix.
+ *   a file (docs/dossier/prompt-surface.md). Each rule loads on every turn,
+ *   and a rule set of about 3,100 tokens cost about 25% more than one of
+ *   about 800 tokens in a public benchmark. The 0.18.1 rules are 5.1 KB,
+ *   down from 8.4 KB. The warn level leaves about 0.4 KB for new rules.
  * - outputStyleTokens: a selected output style loads into every main turn.
  *   A style holds only its reply-style rules, up to 0.4k tokens.
  * - sessionNoteChars: one note that a hook adds at every session or
@@ -177,7 +177,7 @@ export const LIMITS = {
   startupInstructionTokens: { warn: 3000, fail: 5000 },
   instructionFileBytes: { fail: 4 * 1024 * 1024 },
   importHops: { fail: 4 },
-  workingRulesBytes: { warn: 7500, fail: 9000 },
+  workingRulesBytes: { warn: 5500, fail: 7000 },
   outputStyleTokens: { warn: 400, fail: 500 },
   agentBodyTokens: { warn: 2000, fail: 5000 },
   sessionNoteChars: { fail: 1000 },

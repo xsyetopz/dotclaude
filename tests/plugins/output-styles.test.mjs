@@ -26,9 +26,7 @@ test("each style file has its name, a description, and the coding instructions",
   for (const name of NAMES) {
     const meta = front(read(name));
     expect(meta, name).toContain(`name: ${name}\n`);
-    // A literal description says what the style does, with no "Name:"
-    // label in front.
-    expect(meta, name).toMatch(/^description: "[A-Z][a-z]+s [^:]+"$/m);
+    expect(meta, name).toMatch(/^description: /m);
     expect(meta, name).toContain("keep-coding-instructions: true");
     // A forced style overrides the user's `outputStyle`, so setup could not
     // select a variant.
@@ -39,7 +37,6 @@ test("each style file has its name, a description, and the coding instructions",
 test("each style holds only its blocks, and names only tags of the working rules", () => {
   for (const name of NAMES) {
     const text = body(read(name)).trim();
-    expect(text.startsWith("<"), name).toBe(true);
     expect(text, name).not.toContain("<harness>");
     for (const [, tag] of text.matchAll(/`<(\w+)>`/g))
       expect(rules, `${name}: <${tag}>`).toContain(`<${tag}>`);

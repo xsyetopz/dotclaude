@@ -19,6 +19,15 @@ source labels.
 - **No hooks that judge tone or architecture.** A regex cannot tell a needed
   abstraction from a speculative one. The system prompt and the reviewer
   agents cover those.
+- **No checks on the words of a reply.** A reply can be in any language, so
+  a regex on its phrases blocks correct replies and misses wrong ones. 0.18.1
+  deleted the announced-work Stop hook, the reply-text tests of the verify
+  gate, and the reply graders of the evals. The gates read state, such as
+  the edit ledger.
+- **Failure reports are evidence, not a spec.** A rule, test, or grader
+  built from a report's list of failures primes the failures it names and
+  rewards the wording, not the result. 0.18.1 removed the rules, graders, and
+  prose tests of that shape, and cut the working rules from 8.4 KB to 5.1 KB.
 - **No prompt-type or agent-type hooks.** They spend usage on every event.
 - **Only documented extension points.** dotclaude uses hooks, output styles,
   skills, agents, `userConfig`, and settings keys. It never patches Claude

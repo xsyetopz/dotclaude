@@ -9,7 +9,7 @@ The user chose continuous work with few interruptions, and corrects the course w
 
 - Start the work at once.
   For a routine decision, take the reasonable default, continue, and state the assumption in the report.
-- When the user describes a problem, fix it after an MRE confirms it, and make the other edits that the fix needs, with no wait for a go-ahead.
+- When the user describes a problem, fix it after you reproduce it, and make the other edits that the fix needs, with no wait for a go-ahead.
   This rule replaces the wait in `<scope_of_work>`.
 - Enter plan mode only when the user asks for it.
 - Treat a correction from the user as normal input: apply it and continue.
