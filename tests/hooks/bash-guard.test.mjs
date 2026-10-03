@@ -154,70 +154,63 @@ test("settings writes ask in auto mode, where the classifier would deny them", (
   expect(edit(path.join(repo, "config", "settings.json"))).toBe(null);
 });
 
-test("a Bash write that removes assertions asks unless the user asked for it", () => {
+// No check on the words of the prompt decides consent, so the ask stays
+// also when the user asked to remove tests.
+test("a Bash write that removes assertions asks, also when the user asked for it", () => {
   fs.mkdirSync(path.join(repo, "tests"), { recursive: true });
   fs.writeFileSync(
     path.join(repo, "tests", "w.test.mjs"),
     'test("w", () => expect(1).toBe(1));\n',
   );
-  const transcript = (prompt) => {
-    const file = path.join(
-      fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-t-")),
-      "t.jsonl",
-    );
-    fs.writeFileSync(
-      file,
-      JSON.stringify({ type: "user", message: { content: prompt } }),
-    );
-    return file;
-  };
-  const decision = (prompt) =>
+  const transcript = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-t-")),
+    "t.jsonl",
+  );
+  fs.writeFileSync(
+    transcript,
+    JSON.stringify({
+      type: "user",
+      message: { content: "Remove the flaky tests for the old flag." },
+    }),
+  );
+  const decision =
     hook("pre-tool-use/block-destructive-commands.mjs", {
       tool_name: "Bash",
       tool_input: {
         command: "cat > tests/w.test.mjs <<'EOF'\ntest(\"w\", () => {});\nEOF",
       },
-      transcript_path: transcript(prompt),
+      transcript_path: transcript,
     })?.hookSpecificOutput.permissionDecision ?? null;
-  expect(decision("Tidy the helper.")).toBe("ask");
-  expect(decision("Remove the flaky tests for the old flag.")).toBe(null);
+  expect(decision).toBe("ask");
 });
 
-test("an Edit that removes assertions asks unless the user asked for it", () => {
+test("an Edit that removes assertions asks, also when the user asked for it", () => {
   const file = path.join(repo, "tests", "e.test.mjs");
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const transcript = (prompts) => {
-    const out = path.join(
-      fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-t-")),
-      "t.jsonl",
-    );
-    fs.writeFileSync(
-      out,
-      prompts
-        .map((p) => JSON.stringify({ type: "user", message: { content: p } }))
-        .join("\n"),
-    );
-    return out;
-  };
-  const decision = (prompts, newString = "test();") =>
-    hook("pre-tool-use/confirm-risky-edits.mjs", {
-      tool_name: "Edit",
-      tool_input: {
-        file_path: file,
-        old_string: "test(() => expect(1).toBe(1));",
-        new_string: newString,
-      },
-      transcript_path: transcript(prompts),
-    })?.hookSpecificOutput;
-  expect(decision(["Tidy the helper."]).permissionDecision).toBe("ask");
-  // Only the latest prompt counts.
-  expect(decision(["Remove the tests.", "Tidy the helper."])).toBeDefined();
-  expect(decision(["Tidy it.", "Remove the flaky tests."])).toBeUndefined();
-  // The request removes only the assertion finding, not a new skip marker.
-  expect(
-    decision(["Remove the flaky tests."], "test.skip(() => {});")
-      .permissionDecisionReason,
-  ).toMatch(/skip, xfail, todo, or focus marker/);
+  const transcript = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-t-")),
+    "t.jsonl",
+  );
+  fs.writeFileSync(
+    transcript,
+    JSON.stringify({
+      type: "user",
+      message: { content: "Remove the flaky tests." },
+    }),
+  );
+  const out = hook("pre-tool-use/confirm-risky-edits.mjs", {
+    tool_name: "Edit",
+    tool_input: {
+      file_path: file,
+      old_string: "test(() => expect(1).toBe(1));",
+      new_string: "test();",
+    },
+    transcript_path: transcript,
+  })?.hookSpecificOutput;
+  expect(out.permissionDecision).toBe("ask");
+  expect(out.permissionDecisionReason).toMatch(
+    /assertion\(s\) from a test file/,
+  );
 });
 
 test("each guard decision adds one verdict log line with a bounded target", () => {

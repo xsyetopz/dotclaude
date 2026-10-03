@@ -7,9 +7,11 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   approveAsk,
+  clearKindApprovals,
   guardDecision,
   logVerdict,
 } from "../../hooks/lib/_verdicts.mjs";
+import clearAskApprovals from "../../hooks/user-prompt-submit/clear-ask-approvals.mjs";
 
 const LOG = "/data/verdicts.jsonl";
 const OLD_LOG = "/data/verdicts.1.jsonl";
@@ -217,4 +219,53 @@ test("_verdicts.mjs reaches no host API directly", () => {
   expect(
     [...source.matchAll(/from "([^"]+)"/g)].map((m) => m[1]),
   ).toStrictEqual(["./_core.mjs", "./_path.mjs", "./_sha1.mjs"]);
+});
+
+const editAsk = (n) => ({
+  ...data,
+  session_id: "s1",
+  tool_name: "Edit",
+  tool_use_id: `e${n}`,
+  tool_input: { file_path: `/work/tests/f${n}.test.js`, new_string: `${n}` },
+});
+const removal = [["ask", "the edit removes 1 assertion(s)", "test-edit"]];
+const post = (d) => ({ ...d, hook_event_name: "PostToolUse" });
+const text = (out) => out.hookSpecificOutput.permissionDecisionReason;
+
+test("an approved test ask lets the other test asks of its kind pass", async () => {
+  const io = memoryIo();
+  const first = await guardDecision(io, removal, editAsk(1), "edit");
+  expect(text(first)).toContain(
+    "If the user approves this edit, the other test edits of this kind also pass until the user sends the next message.",
+  );
+  await approveAsk(io, post(editAsk(1)));
+  expect(await guardDecision(io, removal, editAsk(2), "edit")).toBe(null);
+  const other = [["ask", "the edit changes TLS", "tls"]];
+  expect(await guardDecision(io, other, editAsk(3), "edit")).not.toBe(null);
+  const mixed = [...removal, ["ask", "it also edits a generated file"]];
+  const out = await guardDecision(io, mixed, editAsk(4), "edit");
+  expect(text(out)).not.toContain("this kind");
+  const deletion = [["ask", "`rm` deletes a test file", "test-delete"]];
+  expect(await guardDecision(io, deletion, data, "command")).not.toBe(null);
+});
+
+test("a denied test ask records nothing", async () => {
+  const io = memoryIo();
+  await guardDecision(io, removal, editAsk(1), "edit");
+  // No PostToolUse: the user denied the ask, so the tool did not run.
+  expect(await guardDecision(io, removal, editAsk(2), "edit")).not.toBe(null);
+});
+
+test("the next prompt of the user clears the approved kind", async () => {
+  const io = memoryIo();
+  await guardDecision(io, removal, editAsk(1), "edit");
+  await approveAsk(io, post(editAsk(1)));
+  await clearAskApprovals(io, {
+    session_id: "s1",
+    prompt: "<task-notification>x</task-notification>",
+  });
+  expect(await guardDecision(io, removal, editAsk(2), "edit")).toBe(null);
+  await clearAskApprovals(io, { session_id: "s1", prompt: "go on" });
+  expect(await guardDecision(io, removal, editAsk(3), "edit")).not.toBe(null);
+  await clearKindApprovals(io, { session_id: "other" });
 });

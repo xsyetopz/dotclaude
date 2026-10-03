@@ -21,7 +21,6 @@
 import { stateDir } from "./_core.mjs";
 import { pathFor } from "./_path.mjs";
 import {
-  LAST_PROMPT_CHARS,
   promptsFromText,
   stoppedAtLimitInText,
   turnsFromText,
@@ -257,10 +256,6 @@ export function recentPromptsOf(rows, limit = 5, maxChars = 600) {
   const prompts = rows.filter((row) => isPrompt(row) && !isSummary(row));
   return promptsFromText(linesOf(prompts), limit, maxChars);
 }
-
-/** The last typed prompt in the rows of `$.session.messages()`, or "". */
-export const lastPromptOf = (rows) =>
-  recentPromptsOf(rows, 1, LAST_PROMPT_CHARS).at(-1) ?? "";
 
 /** The assistant turns since the last prompt in the rows of an agent. */
 export const turnsOf = (rows) => turnsFromText(linesOf(rows));

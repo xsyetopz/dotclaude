@@ -17,7 +17,10 @@ export const ACTIONS = {
     ["resume|fork", "session-start/warn-cold-cache-resume.mjs"],
     ["*", "session-start/add-session-notes.mjs"],
   ],
-  UserPromptSubmit: [["*", "user-prompt-submit/note-usage-limits.mjs"]],
+  UserPromptSubmit: [
+    ["*", "user-prompt-submit/clear-ask-approvals.mjs"],
+    ["*", "user-prompt-submit/note-usage-limits.mjs"],
+  ],
   SubagentStart: [
     ["*", "subagent-start/inject-working-conventions.mjs"],
     ["*", "subagent-start/count-running-agents.mjs"],

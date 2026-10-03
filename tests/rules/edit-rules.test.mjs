@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ASKS_TEST_REMOVAL, check } from "../../hooks/lib/_edit-rules.mjs";
+import { check } from "../../hooks/lib/_edit-rules.mjs";
 import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 
 // A session with the dotclaude profile maps `sonnet` to Opus 5.5 through
@@ -30,21 +30,8 @@ test("removing an assertion from a test file asks", async () => {
   expect(levels(f)).toStrictEqual(["ask"]);
   // The count of removed assertions.
   expect(f[0][1]).toMatch(/\b1\b/);
-});
-
-test("test-removal requests are recognized in the user's own words", () => {
-  for (const said of [
-    "rip it out: legacy.js, the USE_LEGACY_PRICING flag, its tests, all of it",
-    "delete the flaky test",
-    "these tests are obsolete, remove them",
-  ])
-    expect(ASKS_TEST_REMOVAL.test(said), said).toBeTruthy();
-  for (const said of [
-    "fix the failing test",
-    "tests should still pass after",
-    "remove the log line. Tests should pass",
-  ])
-    expect(!ASKS_TEST_REMOVAL.test(said), said).toBeTruthy();
+  // One approval covers the other asks of this kind.
+  expect(f[0][2]).toBe("test-edit");
 });
 
 test("adding a skip marker asks", async () => {
@@ -58,6 +45,7 @@ test("adding a skip marker asks", async () => {
     ctx,
   );
   expect(levels(f)).toStrictEqual(["ask"]);
+  expect(f[0][2]).toBe("test-edit");
 });
 
 test("adding assertions to a test file passes", async () => {

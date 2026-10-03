@@ -1,6 +1,7 @@
 // Rules for the Edit/Write guard.
 //
-// check(toolName, toolInput, ctx) resolves to findings shaped [level, reason].
+// check(toolName, toolInput, ctx) resolves to findings shaped [level, reason], with an optional third item: the ask kind
+// that one approval covers (see `_verdicts.mjs`).
 
 import { PROTECTED_REASON, protectedMatch } from "./_loop.mjs";
 import { allowed } from "./_models.mjs";
@@ -93,28 +94,26 @@ const ASSERT =
 const SKIP =
   /\b(it|test|describe|context)\.(skip|todo|only)\b|\b(xit|xdescribe|xtest|fit|fdescribe)\s*\(|@pytest\.mark\.(skip|xfail)|pytest\.skip\(|@unittest\.skip|\bself\.skipTest\(|#\[ignore\]|\bt\.Skip(Now|f)?\(|XCTSkip|\.disabled\(|@Disabled\b|@Ignore\b|\[Ignore\]|\[Fact\(Skip|\bskip:\s*true/;
 
-// The user's latest message asks for tests to be removed ("rip out the flag,
-// its tests, all of it"), so deleting assertions is the requested change.
-export const ASKS_TEST_REMOVAL =
-  /\b(remove|delete|drop|rip(\s+\w+)?\s+out|get\s+rid\s+of|strip)\b(?:(?!\.\s)[^\n]){0,80}\btests?\b|\btests?\b(?:(?!\.\s)[^\n]){0,40}\b(remove|delete|drop)\b/i;
-
 function testWeakening(before, after) {
   // A new test file weakens nothing: conditional skips there are platform
   // guards such as `@unittest.skipUnless(shutil.which("openssl"))`.
   if (before === null) return [];
   const out = [];
   const removed = count(ASSERT, before ?? "") - count(ASSERT, after);
-  // The Edit and Bash guards drop this finding when the user asked to remove
-  // tests. A skip marker still asks: removing tests is not hiding a failing one.
+  // No check on the words of the prompt decides consent. The user approves
+  // the ask, and the `test-edit` kind lets the other such asks pass until the
+  // next prompt (see `_verdicts.mjs`).
   if (removed > 0)
     out.push([
       "ask",
       `the edit removes ${removed} assertion(s) from a test file`,
+      "test-edit",
     ]);
   if (count(SKIP, after) > count(SKIP, before ?? ""))
     out.push([
       "ask",
       "the edit adds a skip, xfail, todo, or focus marker to a test file",
+      "test-edit",
     ]);
   return out;
 }

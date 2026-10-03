@@ -12,6 +12,10 @@ import {
 } from "../../hooks/lib/_io-mod.mjs";
 import { modIo } from "../../hooks/register.mjs";
 
+/** The last of the recent prompts, cut as the saved prompts are. */
+const lastOf = async (session) =>
+  (await session.recentPrompts(1, 4000)).at(-1) ?? "";
+
 const enc = new TextEncoder();
 const toBase64 = (text) => Buffer.from(enc.encode(text)).toString("base64");
 
@@ -405,7 +409,7 @@ test("run rejects past maxBytes and on an engine cut", async () => {
   );
 });
 
-test("lastPrompt is the last typed user row, cut at 4000 characters", async () => {
+test("the last recent prompt is the last typed user row, cut at 4000 characters", async () => {
   const long = "y".repeat(4001);
   const rows = [
     row("user", "first"),
@@ -417,12 +421,12 @@ test("lastPrompt is the last typed user row, cut at 4000 characters", async () =
     row("user", "Caveat: local command"),
   ];
   const io = await modIo(fake({ mainRows: rows }).$);
-  expect(await io.session.lastPrompt()).toBe(`${"y".repeat(4000)} [...]`);
+  expect(await lastOf(io.session)).toBe(`${"y".repeat(4000)} [...]`);
   const short = await modIo(fake({ mainRows: rows.slice(0, 2) }).$);
-  expect(await short.session.lastPrompt()).toBe("first");
+  expect(await lastOf(short.session)).toBe("first");
 });
 
-test("lastPrompt skips the summary of a compaction", async () => {
+test("recent prompts skip the summary of a compaction", async () => {
   const rows = [
     row("user", "yes, push it"),
     row("assistant", "a"),
@@ -432,13 +436,13 @@ test("lastPrompt skips the summary of a compaction", async () => {
     ),
   ];
   const io = await modIo(fake({ mainRows: rows }).$);
-  expect(await io.session.lastPrompt()).toBe("yes, push it");
+  expect(await lastOf(io.session)).toBe("yes, push it");
 });
 
-test("lastPrompt is empty when not known", async () => {
-  expect(await (await modIo(fake().$)).session.lastPrompt()).toBe("");
+test("recent prompts are empty when not known", async () => {
+  expect(await lastOf((await modIo(fake().$)).session)).toBe("");
   const io = await modIo(fake({ mainRows: new Error("refused") }).$);
-  expect(await io.session.lastPrompt()).toBe("");
+  expect(await lastOf(io.session)).toBe("");
 });
 
 test("agentTurns counts assistant rows since the last prompt", async () => {

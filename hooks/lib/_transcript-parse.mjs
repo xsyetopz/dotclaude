@@ -4,7 +4,7 @@
 // copy of each parser. The transcript layout is not a documented contract,
 // so each parser is best-effort: it skips a line that it does not know.
 
-/** The longest last prompt that `io.session.lastPrompt()` gives. */
+/** The longest prompt that the saved recent prompts keep. */
 export const LAST_PROMPT_CHARS = 4000;
 
 /**

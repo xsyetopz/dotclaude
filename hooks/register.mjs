@@ -23,7 +23,6 @@ import {
   envOf,
   homeOf,
   known,
-  lastPromptOf,
   platformOf,
   pluginDataDir,
   projectDirOf,
@@ -53,6 +52,7 @@ import restrictSubagentModels from "./pre-tool-use/restrict-subagent-models.mjs"
 import skipUnchangedRereads from "./pre-tool-use/skip-unchanged-rereads.mjs";
 import countRunningAgents from "./subagent-start/count-running-agents.mjs";
 import injectWorkingConventions from "./subagent-start/inject-working-conventions.mjs";
+import clearAskApprovals from "./user-prompt-submit/clear-ask-approvals.mjs";
 import noteUsageLimits from "./user-prompt-submit/note-usage-limits.mjs";
 
 /** The ported actions that the module runs, by their path in `ACTIONS`. */
@@ -73,6 +73,7 @@ const RUNS = new Map([
   ["post-tool-use-failure/show-closest-lines.mjs", showClosestLines],
   ["subagent-start/inject-working-conventions.mjs", injectWorkingConventions],
   ["subagent-start/count-running-agents.mjs", countRunningAgents],
+  ["user-prompt-submit/clear-ask-approvals.mjs", clearAskApprovals],
   ["user-prompt-submit/note-usage-limits.mjs", noteUsageLimits],
   ["pre-compact/save-recent-prompts.mjs", saveRecentPrompts],
 ]);
@@ -193,10 +194,6 @@ function modSession($, data, io) {
     return Array.isArray(rows) ? rows : null;
   };
   return {
-    lastPrompt: known("", async () => {
-      const rows = await mainRows();
-      return rows ? lastPromptOf(rows) : "";
-    }),
     recentPrompts: known([], async (limit, maxChars) => {
       const rows = await mainRows();
       return rows ? recentPromptsOf(rows, limit, maxChars) : [];

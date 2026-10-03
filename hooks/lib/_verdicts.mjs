@@ -4,6 +4,12 @@
 // a rule that fires too often is visible. An ask that the user approved (the
 // tool then ran, so PostToolUse fired) is not asked again in that session for
 // the same target. A deny is never remembered.
+//
+// A finding can carry a third item, a kind from `ASK_KINDS`. When the user
+// approves an ask whose findings all have one kind, the other asks of that
+// kind pass until the next prompt of the user. The memory is per session, so
+// a subagent shares it with the main agent: the prompt that ends the task
+// clears it for both.
 
 import { preToolOutput, stateDir, verdict } from "./_core.mjs";
 import { pathFor } from "./_path.mjs";
@@ -13,6 +19,12 @@ const TARGET_MAX = 200;
 const LOG_MAX_BYTES = 1_000_000;
 const PENDING_MAX = 50;
 const APPROVED_MAX = 200;
+
+/** The asks that one approval covers, with the noun that the ask reason uses. */
+export const ASK_KINDS = {
+  "test-edit": "test edits",
+  "test-delete": "test deletions",
+};
 
 const clip = (s) => String(s ?? "").slice(0, TARGET_MAX);
 
@@ -91,15 +103,27 @@ async function loadMemory(io, sessionId) {
     return {
       pending: {},
       approved: [],
+      pendingKinds: {},
+      kinds: [],
       ...JSON.parse(await io.fs.read(memoryFile(io, sessionId))),
     };
   } catch {
-    return { pending: {}, approved: [] };
+    return { pending: {}, approved: [], pendingKinds: {}, kinds: [] };
   }
 }
 
 async function saveMemory(io, sessionId, memory) {
   await io.fs.write(memoryFile(io, sessionId), JSON.stringify(memory));
+}
+
+/** The kind that all asks of a decision share, or null. */
+function askKind(findings, decision) {
+  if (decision !== "ask") return null;
+  const asks = findings.filter(
+    ([level]) => level === "ask" || level === "warn",
+  );
+  const kind = asks[0]?.[2];
+  return kind in ASK_KINDS && asks.every((f) => f[2] === kind) ? kind : null;
 }
 
 /**
@@ -110,7 +134,8 @@ async function saveMemory(io, sessionId, memory) {
 export async function guardDecision(io, findings, data, label) {
   const v = verdict(findings, data, label, io.env);
   if (!v) return null;
-  const [decision, reason] = v;
+  const [decision, baseReason] = v;
+  const kind = askKind(findings, decision);
   const sid = data.session_id;
   // An edit is keyed on its whole input: one approved removal in a test file
   // must not approve a different one in the same file. The memory keeps the
@@ -119,20 +144,29 @@ export async function guardDecision(io, findings, data, label) {
     data.tool_name === "Bash"
       ? target(data)
       : JSON.stringify(data.tool_input ?? {});
-  const key = sha1(`${data.tool_name ?? ""}\0${subject}\0${reason}`);
+  const key = sha1(`${data.tool_name ?? ""}\0${subject}\0${baseReason}`);
   if (decision === "ask" && sid) {
     const memory = await loadMemory(io, sid);
-    if (memory.approved.includes(key)) {
-      await logVerdict(io, data, "remembered", reason);
+    if (
+      memory.approved.includes(key) ||
+      (kind && memory.kinds.includes(kind))
+    ) {
+      await logVerdict(io, data, "remembered", baseReason);
       return null;
     }
     if (data.tool_use_id) {
       memory.pending[data.tool_use_id] = key;
-      const ids = Object.keys(memory.pending);
-      for (const id of ids.slice(0, -PENDING_MAX)) delete memory.pending[id];
+      if (kind) memory.pendingKinds[data.tool_use_id] = kind;
+      for (const list of [memory.pending, memory.pendingKinds]) {
+        const ids = Object.keys(list);
+        for (const id of ids.slice(0, -PENDING_MAX)) delete list[id];
+      }
       await quietly(() => saveMemory(io, sid, memory));
     }
   }
+  const reason = kind
+    ? `${baseReason} If the user approves this ${label}, the other ${ASK_KINDS[kind]} of this kind also pass until the user sends the next message.`
+    : baseReason;
   await logVerdict(io, data, decision, reason);
   return preToolOutput(decision, reason);
 }
@@ -146,8 +180,24 @@ export async function approveAsk(io, data) {
   const key = memory.pending[id];
   if (!key) return;
   delete memory.pending[id];
+  const kind = memory.pendingKinds[id];
+  if (kind) {
+    delete memory.pendingKinds[id];
+    if (!memory.kinds.includes(kind)) memory.kinds.push(kind);
+  }
   memory.approved = [...memory.approved.filter((k) => k !== key), key].slice(
     -APPROVED_MAX,
   );
+  await saveMemory(io, sid, memory);
+}
+
+/** UserPromptSubmit: a new task starts, so no kind stays approved. */
+export async function clearKindApprovals(io, data) {
+  const sid = data.session_id;
+  if (!sid) return;
+  const memory = await loadMemory(io, sid);
+  if (!memory.kinds.length && !Object.keys(memory.pendingKinds).length) return;
+  memory.kinds = [];
+  memory.pendingKinds = {};
   await saveMemory(io, sid, memory);
 }

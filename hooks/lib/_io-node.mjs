@@ -11,7 +11,6 @@ import { subagentTranscript, tail } from "./_transcript.mjs";
 import {
   compactionsFromText,
   contextFromText,
-  LAST_PROMPT_CHARS,
   mainContextFromText,
   nestedFromText,
   promptsFromText,
@@ -274,11 +273,6 @@ function nodeSession(data) {
   };
   const mainTail = (bytes) => (transcript ? tail(transcript, bytes) : null);
   return {
-    lastPrompt: known(
-      "",
-      () =>
-        promptsFromText(mainTail() ?? "", 1, LAST_PROMPT_CHARS).at(-1) ?? "",
-    ),
     recentPrompts: known([], (limit = 5, maxChars = 600) =>
       promptsFromText(mainTail() ?? "", limit, maxChars),
     ),

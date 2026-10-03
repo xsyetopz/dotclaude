@@ -7,14 +7,12 @@
 import { claudeTrailerOff } from "../lib/_attribution.mjs";
 import { check } from "../lib/_bash-rules.mjs";
 import { option, projectRoot } from "../lib/_core.mjs";
-import { ASKS_TEST_REMOVAL } from "../lib/_edit-rules.mjs";
 import { oracleFor } from "../lib/_loop.mjs";
 import { pathFor } from "../lib/_path.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 import { guardDecision } from "../lib/_verdicts.mjs";
 
 const LOCK_ONLY = /fast mode|allowed models/;
-const REMOVES_ASSERTIONS = /assertion\(s\) from a test file/;
 
 export default async function (io, data) {
   const command = data.tool_input?.command;
@@ -38,13 +36,5 @@ export default async function (io, data) {
   });
   if (!guard)
     findings = findings.filter(([, reason]) => LOCK_ONLY.test(reason));
-  // Read the transcript only when a Bash write removes assertions.
-  if (
-    findings.some(([, reason]) => REMOVES_ASSERTIONS.test(reason)) &&
-    ASKS_TEST_REMOVAL.test(await io.session.lastPrompt())
-  )
-    findings = findings.filter(
-      ([, reason]) => !REMOVES_ASSERTIONS.test(reason),
-    );
   return guardDecision(io, findings, data, "command");
 }

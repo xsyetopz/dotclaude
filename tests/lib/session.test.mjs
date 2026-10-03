@@ -16,6 +16,10 @@ import {
 } from "../../hooks/lib/_transcript-parse.mjs";
 import { tmp } from "../support/hooks.mjs";
 
+/** The last of the recent prompts, cut as the saved prompts are. */
+const lastOf = async (session) =>
+  (await session.recentPrompts(1, 4000)).at(-1) ?? "";
+
 const jsonl = (...entries) =>
   `${entries.map((e) => JSON.stringify(e)).join("\n")}\n`;
 
@@ -59,7 +63,7 @@ function session(main, agent) {
   };
 }
 
-test("lastPrompt gives the last typed prompt, cut at 4000 characters", async () => {
+test("the last recent prompt is the last typed prompt, cut at 4000 characters", async () => {
   const long = "x".repeat(4100);
   const { data } = session(
     jsonl(
@@ -70,16 +74,14 @@ test("lastPrompt gives the last typed prompt, cut at 4000 characters", async () 
       prompt("<command-name>/clear</command-name>"),
     ),
   );
-  expect(await nodeIo(data).session.lastPrompt()).toBe(
-    `${"x".repeat(4000)} [...]`,
-  );
+  expect(await lastOf(nodeIo(data).session)).toBe(`${"x".repeat(4000)} [...]`);
   const { data: short } = session(jsonl(prompt("remove the test")));
-  expect(await nodeIo(short).session.lastPrompt()).toBe("remove the test");
+  expect(await lastOf(nodeIo(short).session)).toBe("remove the test");
 });
 
 test("each fact gives its do-not-know value without a transcript", async () => {
   const facts = nodeIo({}).session;
-  expect(await facts.lastPrompt()).toBe("");
+  expect(await lastOf(facts)).toBe("");
   expect(await facts.agentTranscriptPath()).toBe("");
   expect(await facts.agentTurns()).toBe(null);
   expect(await facts.agentContext()).toBe(null);
@@ -93,7 +95,7 @@ test("each fact gives its do-not-know value without a transcript", async () => {
     transcript_path: path.join(tmp("dotclaude-none-"), "s1.jsonl"),
   };
   const gone = nodeIo(missing).session;
-  expect(await gone.lastPrompt()).toBe("");
+  expect(await lastOf(gone)).toBe("");
   expect(await gone.agentTurns()).toBe(null);
   expect(await gone.agentContext()).toBe(null);
   expect(await gone.loadedNested()).toBe(null);
@@ -102,7 +104,7 @@ test("each fact gives its do-not-know value without a transcript", async () => {
   expect(await gone.agentStoppedAtLimit("a1")).toBe(null);
   // An input field of an unexpected type gives the do-not-know values too.
   const odd = nodeIo({ ...missing, transcript_path: 42 }).session;
-  expect(await odd.lastPrompt()).toBe("");
+  expect(await lastOf(odd)).toBe("");
   expect(await odd.agentTranscriptPath()).toBe("");
   expect(await odd.agentTurns()).toBe(null);
   expect(await odd.loadedNested()).toBe(null);
