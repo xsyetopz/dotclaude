@@ -51,21 +51,19 @@ test("apply-claude-md keeps a top-level heading the file already has", () => {
   );
 });
 
-test("the profile writes one `# Compact instructions` section, and a second apply changes nothing", () => {
+test("the profile writes its tagged rules once, and a second apply changes nothing", () => {
   const home = tempHome();
   const file = path.join(home, ".claude", "CLAUDE.md");
   run("apply-claude-md.mjs", home, "--apply");
   const first = fs.readFileSync(file, "utf8");
-  // Claude Code's compaction prompt finds summary instructions by a heading,
-  // so the heading stays Markdown and the rules sit in XML tags.
-  expect(first.match(/^# Compact instructions$/gm)?.length).toBe(1);
-  expect(first).toMatch(/in the user's own words/);
+  // The compaction hook sends the compaction priorities, so the profile has
+  // no `# Compact instructions` section.
+  expect(first).not.toMatch(/^# Compact instructions$/m);
   const tags = [...first.matchAll(/^<([a-z_]+)>$/gm)].map((m) => m[1]);
   expect(tags).toStrictEqual([
     "installed_tools",
     "git_state",
     "project_commands",
-    "compaction_priorities",
   ]);
   for (const tag of tags) expect(first).toContain(`\n</${tag}>\n`);
   expect(first).not.toMatch(/\{\{/);

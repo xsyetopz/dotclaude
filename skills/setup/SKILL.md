@@ -136,7 +136,6 @@ Each script writes nothing without `--apply`, so run its preview first.
    - the CLI tools found on this machine
    - reading the branch and `git status` before git work
    - that a repository's own files define its commands
-   - a `# Compact instructions` section that tells the compaction summary what to keep word for word
 
    If the file has no top-level heading, it also adds a `# CLAUDE.md` heading at the top.
    It leaves everything else as it is.
