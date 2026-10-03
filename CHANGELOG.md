@@ -10,6 +10,8 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-10-03
+
 ### Changed
 
 - Before a compaction, the summary request tells Claude to keep your requests and constraints in your own words, the decisions and the rejected approaches with their reasons, the current state, the open items, and exact paths, commands, errors, and numbers.
@@ -227,4 +229,4 @@ steps after each update.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.18.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.18.1...HEAD

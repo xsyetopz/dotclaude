@@ -14,6 +14,8 @@ const SCRIPT = path.resolve(
 test("without ANTHROPIC_API_KEY it exits 1 with a one-line message", () => {
   const env = { ...process.env };
   delete env.ANTHROPIC_API_KEY;
+  // FORCE_COLOR makes Bun wrap console.error output in ANSI codes.
+  delete env.FORCE_COLOR;
   const run = spawnSync("bun", [SCRIPT], { encoding: "utf8", env });
   expect(run.status).toBe(1);
   expect(run.stdout).toBe("");

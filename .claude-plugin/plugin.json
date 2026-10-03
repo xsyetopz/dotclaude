@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "description": "Adds guards against destructive commands and weakened tests, a check gate before Claude stops, carry-over of the user's messages across compaction, a model and effort lock that follows the Claude plan, working rules for each session, four output styles, and task agents on tiered models.",
   "author": {
     "name": "xsyetopz"
