@@ -10,224 +10,125 @@ steps after each update.
 
 ## [Unreleased]
 
-## [0.18.1] - 2026-10-03
-
-### Changed
-
-- Before a compaction, the summary request tells Claude to keep your requests and constraints in your own words, the decisions and the rejected approaches with their reasons, the current state, the open items, and exact paths, commands, errors, and numbers.
-  After four compactions of the main session, the summary starts from the latest handoff note and gives its path.
-  `context_compact_carryover` controls it.
-- The engine reminder after five API calls with no text now asks for a fact, a failure, or a change of plan in one sentence, or for no message.
-  The engine text asked Claude to say what it does, and 93 of 189 messages that only named the next step came after it.
-- A subagent report longer than 6,000 characters (10,000 for `reviewer` and `investigator`) is refused once, with the parts to keep and a request to put long detail in a file.
-  The second report always passes.
-  The subagent conventions give the same limit in `<report_budget>`.
-- The status line shows `⇊N/4` before the handoff point, and only `⇊N` in red from it, such as `⇊7`.
-  `⇊7/4` read as a limit that did not hold.
-- The comments of `MAIN_CONTEXT_TOKENS` and `SUBAGENT_CONTEXT_TOKENS` give the measurements from 2026-09-29 to 2026-10-03.
-  The values do not change.
-- The working rules are 5.1 KB, down from 8.4 KB, and the warn level of their bound is 5,500 bytes.
-  A public benchmark measured that a rule set of about 3,100 tokens cost about 25% more than one of about 800 tokens.
-  The rules no longer list forbidden behaviors, ask for a forced objection, ask for a minimal reproducible example in each reply, ask Claude to let four compactions occur, or run a self-check loop before each reply.
-  The rules and the subagent conventions no longer tell Claude to treat tool results as data, because Claude then reported harness reminders as prompt injection.
-  They tell Claude to treat a correction as new state, to report other defects with their evidence, and to ask first when a wrong reading of the request is expensive to undo.
-- The verify gate reads only the edit ledger, not the words of the reply, because a reply can be in any language.
-  It blocks once on an edit with no later check, and once on a failed last check after an edit.
-  An edit with no check passes when the project root shows no tests: no test command in a `justfile`, `package.json`, `CLAUDE.md`, or `AGENTS.md`, and no build file such as `Cargo.toml`, `go.mod`, `pyproject.toml`, or a `Makefile` with a `test` target.
-- The subagent conventions also name the test command that a build file implies, such as `cargo test`, `go test ./...`, `make test`, `./gradlew test`, `dotnet test`, or `swift test`.
-- The subagent conventions are shorter.
-  An agent that cannot edit files (`investigator`, `web-researcher`, `test-runner`) gets no lines about fixes or checks.
-- The `reviewer` diff lens asks for the defects in the slice, if any, and no longer says that the slice has one.
-  The `implementer` adds tests and docs only when the brief or the repository's practice needs them.
-  The `debugger` no longer asks for a measurement of each value that it is sure of.
-- The usage note at 90% asks for the handoff note first, with no condition.
-  The context note no longer asks Claude to check if it wrote the handoff note.
-  The Fable 5.1 note no longer says that the model batches tool calls less, because no measurement supports it.
-- `context_line_breaks` is off by default, because semantic line breaks are a project convention.
-- The global `CLAUDE.md` profile no longer has a `# Compact instructions` section, because the compaction hook sends the same priorities.
-
-### Removed
-
-- The announced-work Stop hook (`finish-announced-work`).
-  It read English phrases in the last paragraph, and by its own count most of its blocks were wrong.
-- The held-out evals (`evals-heldout/`) and the reply graders (`word-count`, `adverbs`).
-  Their regex graders came from failure reports, which are not an acceptance suite.
-  The `evals/` cases that a command grades stay.
-- The tests that pinned prose: the skill description collision test, and the checks of numbers and phrases in the docs and styles.
-
-### Fixed
-
-- The search guard denied `grep -r` on a file or a directory when an ignored directory such as `build/` was next to it.
-  Only an ignored directory inside the target counts now.
-- In the hooks module, each assistant row counted as one turn, so the turn count of a subagent was too high.
-  A run of assistant rows counts as one turn now.
-- The edit ledger did not record many check commands, so the verify gate asked for a check that ran.
-  It now records Gradle and Maven tasks such as `:app:jvmTest` and `spotlessCheck`, runner options such as `bunx --bun`, package scripts such as `release:check`, `swift-format lint`, scripts with `check`, `verify`, `test`, or `lint` in the name, and project commands such as `ojd check`.
-  Of 60,129 logged Bash commands, the check-like commands that it missed went from 3,099 to 1,546.
-- The edit ledger did not record a check that a wrapper script runs, for example `x27.sh swift test` or `zsh run.sh cargo test`.
-  It now also reads the command after a `.sh`, `.bash`, or `.zsh` script.
-  Of 87 logged commands that run a check through a toolchain wrapper, it recorded 5 before and 84 now.
-- The edit ledger now records the files that `git apply`, `patch`, `git checkout --`, and `git restore` change.
-  It reads a patch from a file, from a heredoc, or from stdin with `<`, and it resolves the paths against the directory of `git -C`.
-  In a subfolder of a repository, it reads the paths of `git apply` as git does: a `diff --git` path from the top of the work tree, and another path from the subfolder.
-- After Claude wrote a handoff note, the next tool call could still ask for one.
-  A write under `.claude/handoffs/` now counts as the context note.
-
-## [0.18.0] - 2026-10-03
-
-### Breaking
-
-- dotclaude is a mod. The hooks module `hooks/register.mjs` runs the
-  PreToolUse, PostToolUse, PostToolUseFailure, SubagentStart,
-  UserPromptSubmit, and PreCompact actions with the native events
-  `tool.call`, `tool.check`, `agent.spawn`, `turn.step`, `prompt.submit`, and
-  `session.compact`. The classic command hooks for these events are removed,
-  so a tool call starts no hook process. Where Claude Code does not load
-  mods, such as with `--bare`, in safe mode, in an untrusted workspace, or
-  with `allowManagedModsOnly`, no guard runs.
-- SessionStart, Stop, SubagentStop, TaskCompleted, StopFailure,
-  PreModelSwitch, PostModelSwitch, and ConfigChange stay classic command
-  hooks, because no native event can do their work. The reasons are in
-  `docs/mods.md`.
-- The module gets no permission mode. So a guard can ask in auto, `dontAsk`,
-  and `bypassPermissions` mode where the classic hook stayed quiet.
-- A SessionStart hook adds the working rules to each session, in place of
-  the `dotclaude` output style. The rules apply with every output style and
-  with no style. The hook adds them again after each compaction, and not on
-  `--resume` or in subagents.
-- Four optional output styles change only the reply style:
-  `dotclaude:Proactive`, `dotclaude:Concise`, `dotclaude:Explanatory`, and
-  `dotclaude:Learning`. Default is no output style. No style sets
-  `force-for-plugin`, because a forced style overrides your `outputStyle`.
-  Run `/dotclaude:setup` to select a style, or set `outputStyle` in
-  `/config`. Setup removes the old value `dotclaude:dotclaude`, because
-  Claude Code falls back to its default for a name that does not exist.
+## [0.19.0] - 2026-10-03
 
 ### Added
 
-- The model is not offered the built-in `general-purpose`, `claude`,
-  `Explore`, `Plan`, and `statusline-setup` agents (`agent_guidance`). The
-  engine reminders to use the task tools are left out of the request
-  (`gate_tasks`).
-- The `polish` skill makes a light edit of a named deliverable in place. Only
-  the user starts it.
-- `scripts/count-tokens.mjs` counts the tokens of the output style and of
-  each text that dotclaude injects. It needs `ANTHROPIC_API_KEY`.
-- The evals grade the word count and the adverbs of the final reply, and the
-  new case `t1-found-defect` checks that Claude fixes and reports a second
-  bug.
-- After an edit, Claude gets a note when the text that it wrote breaks lines
-  at a column, not between sentences or clauses (`context_line_breaks`). The
-  hook runs `semlf --hook claude` when `semlf` is on `PATH`, and a built-in
-  check otherwise. Both find a word split between two comment lines.
-  `/dotclaude:setup integrations semlf` installs `semlf`.
-- `apply-settings.mjs --style <name>|Default` selects the output style.
-  `Default` removes `outputStyle`. Without the flag, setup keeps the current
-  value.
-- Two setup switches. `builtin-plugins` turns on Claude Code's
-  `you-should-know` plugin and turns off the other built-in plugins that it
-  can switch. `skill-descriptions` cuts each skill description in the skill
-  listing to 300 characters.
-- `docs/usage-habits.md` gives habits that keep the context small and need
-  no code, such as `/btw`, `/rewind`, scoped `CLAUDE.md` files, and `/clear`
-  with a handoff note.
+- A `DesignSync` call that changes a Claude Design project asks you first, unless the session started the `/design-sync` skill.
+  The tool description requires that skill, and a 0.18.1 session uploaded files without it.
+  The read methods pass.
+  `guard_bash` controls it.
+- Two working rules: edit files with `Edit` or `Write` and not with shell scripts, and follow the limits that a tool description gives.
+  A skill or command is named only when it is in the session's skill list.
+- The Bash guard asks before infrastructure commands that destroy resources or apply changes with no review,
+  for example `terraform destroy`, `terraform apply -auto-approve`, `pulumi destroy`, `cdk destroy`, `kubectl delete`, `helm uninstall`, `aws s3 rm --recursive`, `gcloud … delete`, `az … delete`, and `fly apps destroy`.
+  The reason names the target when a file shows it, such as the kubeconfig context, `AWS_PROFILE`, or the Terraform workspace.
+- The Bash guard asks before a command adds a new dependency, such as `npm install <name>`, `pip install <name>`, `uv add`, `cargo add`, or `go get`.
+  The reason names each package and asks Claude to check that it exists and that the task needs it.
+  A bare install, a requirements file, an editable install, and a lockfile install pass.
+- The Bash guard asks before a command turns off TLS checks,
+  for example `curl -k`, `wget --no-check-certificate`, `NODE_TLS_REJECT_UNAUTHORIZED=0`, `GIT_SSL_NO_VERIFY`, `git config http.sslVerify false`, and `pip --trusted-host`.
+- The Bash guard asks before `rm` or `git rm` deletes a tracked test file, and before `mv` moves it.
+- The database reset ask also covers `prisma db push --accept-data-loss` and `drizzle-kit push --force`.
+- The Edit guard asks when an edit adds a proof escape in a `.lean`, `.v`, `.thy`, `.agda`, or `.idr` file,
+  for example `sorry`, `admit`, `Admitted`, `axiom`, `postulate`, or `native_decide`.
+- The Edit guard asks when an edit turns off TLS checks in code,
+  for example `verify=False`, `rejectUnauthorized: false`, or `InsecureSkipVerify: true`.
+- The verification gate counts more check forms, for example `lake build`, `coqc`, `verilator --lint-only`, `yosys`, `pio test`, `idf.py build`, `west build`, `dbt test`, `sqlfluff lint`, `jupyter nbconvert --execute`, and `godot --headless`.
+- `scripts/usage-report.mjs` prints the delegation share: subagent runs per 100 main turns, runs by agent type, and the tool-result tokens that enter the main context per session.
+  It also lists the latest subagent runs with their cost and the first line of their hand-back, and the `--runs` flag sets how many.
+- Option `context_compaction_handoff` (on by default): before a main-conversation compaction, the main model writes a handoff note.
+  dotclaude saves it under `.claude/handoffs/` and adds it to the compacted conversation.
+  If the model gives no note in 60 seconds, the compaction runs without it.
+- Option `notify_desktop` (on by default): a desktop notification when the main agent ends a turn,
+  when Claude asks a question, and when Claude Code asks for a permission.
+  The new `Notification` hook `notification/notify-permission.mjs` sends the permission notice.
+  It shows the task, the short session ID, and the repository, through `terminal-notifier` or `osascript`.
+  A notice with no answer gets one reminder after 5 minutes.
+  A question gets one notification, and a turn that you stop with Esc gets none.
+  When neither sender exists, nothing shows and nothing fails.
+- When you approve one ask for a test edit (removed assertions or a skip marker), the other test-edit asks pass until your next message.
+  A deleted or moved test file is a separate kind, with its own approval.
+  A denied ask records nothing.
+  The new action `user-prompt-submit/clear-ask-approvals.mjs` ends the approval at your next message.
+  Task notifications do not end it.
+- Option `context_auto_clear` (on by default): from 100k tokens of main context, your next typed prompt saves a handoff note, runs `/clear`, and comes back as your prompt.
+  The `SessionStart(clear)` hook adds the full note, so the work continues from it.
+  If the note fails, the prompt goes on with no clear.
+  The status line shows `clear` in red from that size.
+  With the option off, the context note asks Claude for a handoff, as before.
 
 ### Changed
 
-- The output style has no copy of the lean system prompt's rules, and its
-  bound is 2,350 tokens. Reports give only the outcome, with no process
-  history. Claude fixes each defect that an MRE confirms, uses no adverbs,
-  and lets errors reach the caller.
-- The subagent conventions name the project's test command from a
-  `justfile`, `package.json`, `CLAUDE.md`, or `AGENTS.md`.
-- The announced-work check finds more offers and deferrals, such as "if you
-  want" and "left as a follow-up". Only a push, publish, or delete question
-  is exempt.
-- The agent budget gives the full deny text once for each agent, and one
-  short line after that.
-- The hooks library reaches files, processes, and the environment only
-  through an `io` object, with pure path, glob, YAML, and SHA-1 code in place
-  of Node and Bun APIs. So the same actions run in the module and in the
-  command hooks.
-- The status line shows the reset time of each usage limit at all levels,
-  not only from 75%. Reset and pace times use the format of Claude Code's
-  `/usage`: `3pm`, `3:30pm`, or `Oct 4 at 12pm`. Before the first API
-  response of a session, the 5-hour and weekly limits come from the
-  `/usage` copy that Claude Code keeps in `~/.claude.json`, when it is less
-  than one hour old.
-- The cache miss glyph is `✘`, Claude Code's own cross, not `✗`.
-- The working rules, the output styles, the hook messages, and the agent and
-  skill prompts follow Anthropic's prompting guidance for Opus 5.5 and
-  Sonnet 5.5. Each rule gives its reason, and XML tags are lowercase
-  `snake_case` with no `source` attribute.
-- The global `CLAUDE.md` section that setup writes puts each rule in an XML
-  tag, such as `<installed_tools>` and `<compaction_priorities>`, and gives
-  its reason. The `# Compact instructions` heading stays, because Claude
-  Code's compaction prompt finds summary instructions by a heading. Run
-  `/dotclaude:setup` to replace the old section.
-- The plugin, marketplace, style, and agent descriptions say what each part
-  does, with no name label in front.
-- The working rules are about 7 KB (`LIMITS.workingRulesBytes`, warn 7500,
-  fail 9000). Each output style is at most 500 tokens
-  (`LIMITS.outputStyleTokens`, warn 400).
-- dotclaude requires Claude Code 2.1.288. In 2.1.287, the `tool.call` hook
-  of the module made each Bash call fail in a subagent with
-  `isolation: "worktree"`. 2.1.288 fixes it.
-- `/dotclaude:setup` does not write `autoUpdatesChannel`. The default
-  channel, `latest`, gets each fix first. The script keeps a channel that
-  you set, and it does not remove `"stable"` that an earlier setup wrote.
-  To get the default, remove that key yourself.
-- The working rules and the subagent conventions tell Claude to use semantic
-  line breaks in all text that is not code: each sentence starts on a new
-  line, and a long sentence breaks only between clauses. The rules,
-  the agents, the skills, and `AGENTS.md` use them now. Markdown lint bounds
-  only headings and code blocks to 100 columns.
+- The verification gate sorts each check into `run` (tests, build, type check) or `static` (lint, format, analyzers).
+  After a code edit, a `static` check alone does not satisfy the gate or the task gate when the project has a test command.
+  A failed `run` check stays reported until a later `run` check passes, also when a lint run passes after it.
+- The working rules are rewritten.
+  New rules for investigation: check a correction against the evidence, treat a cause that the user suggests as a hypothesis, change nothing when a reproduction shows no defect, and take constants from a source.
+  New rules for code: reuse existing mechanisms, keep compatibility only for a named consumer, label substitutes, check the named outcome, and fix a failing check at its cause.
+  The final report names workarounds, substitutes, and the level that each check reached.
+- The subagent rule now routes work to agents.
+  Before, it kept work in the main conversation, and the main agent did almost all work itself.
+  The agent descriptions now say when to delegate.
+- The `reviewer` reads staged changes, flags weakened checks and packages that do not exist, and has a new `comments` lens for pull request review comments.
+- The `web-researcher` quotes the passage that it cites and searches for sources that contradict the claim.
+- The `reverse-engineer` marks a value that it did not recover as unknown.
+- The `slices` skill checks a finding at its `path:line` before a fix agent starts.
+- The Bash guard reads quotes, heredocs, and command substitutions in one pass.
+  Before, three scanners with different quote rules let these commands pass with no finding:
+  a command after a here-string `<<<`, a `$(...)` inside double quotes, a quoted `{` that split a `git push --force`, and a `$(...)` in an unquoted heredoc body.
+  These forms also get a finding now:
+  a heredoc `<<` inside `((...))`, a `case` pattern `)` inside `$(...)`, an unquoted `{` after a command name, `$'\x72'` and octal escapes, a shell option value before `-c`, and nesting past the parse limit.
+- One list of interpreters, which includes versioned names such as `python3.12`, controls the scan of inline code.
+  The guard reads the code only from `-e`, `-c`, or `--eval`, and it also scans a heredoc that goes to `python3 -` or `node -`.
+- `uv run`, `uvx`, `uv tool run`, `poetry run`, `pdm run`, and `pipenv run` are wrappers,
+  so the guard checks the command that they start, also after global flags such as `uv --directory x run`.
+- The verification gate counts a run of the project's own test command as a check.
+- The verification gate counts workspace and toolchain forms as checks,
+  for example `pnpm -r test`, `npm --prefix app run build`, `yarn workspace web test`, `cargo +nightly test`, and `deno task test`.
+- A check command that shows help, a version, or a list, skips the run, or changes files does not count as a check.
+  Examples are `pytest --collect-only`, `cargo test --no-run`, `make -n test`, `eslint --fix`, `ruff format`, and `npm run lint:fix`.
+- Check detection is in `hooks/lib/_check-command.mjs` and covers the usual check tools of each ecosystem,
+  for example Python, JavaScript, Rust, Go, the JVM, Swift, .NET, C and C++, Ruby, PHP, Elixir, Haskell, Dart, Lua, shell, Nix, and infrastructure tools.
+  A formatter counts only in its check form, such as `prettier --check`, `gofmt -l`, or `black --check`.
+- The verification gate reads the task names of task runners,
+  for example `turbo run test`, `nx run-many -t test`, `nx run web:lint`, `moon run :test`, `mise run lint`, `rake spec`, `./gradlew :app:jvmTest`, and `mvn verify`.
+  A task name that only fixes or formats, such as `lint:fix` or `spotlessApply`, does not count.
+  `npm ci` does not count.
+- The verification gate reads the command inside a launcher,
+  for example `npx`, `bunx`, `pnpm dlx`, `bundle exec`, `rustup run`, `conda run`, `nix develop -c`, `docker run`, `docker compose run`, `python -m`, and `c8`.
+- `--dry-run` is a no-check flag only for tools that skip the run with it, such as `make`, `just`, `gradle`, `turbo`, `mocha`, and `rspec`.
+  For a formatter, `--dry-run` is the check.
+- An ignore-bypass search that would walk large ignored directories gets a deny reason that keeps the flag and asks for named or excluded directories.
+- `git push --force-with-lease` asks with a reason that names the lease.
+- `scripts/usage-report.mjs` reads the context bound from `MAIN_CONTEXT_TOKENS`.
 
 ### Removed
 
-- `hooks/post-tool-use-failure/record-failed-checks.mjs`.
-  `record-edits-and-checks.mjs` records a failed check too.
+- The Edit and Bash guards no longer drop the assertion ask when the last prompt asks to remove tests.
+  A regex on the words of the prompt decided that, and it fails on other wordings and other languages.
+  The ask now stays, and one approval covers the other asks of its kind until your next message.
+  `io.session.lastPrompt` had no other caller, so it is removed too.
+- The fast-compact integration (Jev by TypeSafe).
+  Users report that Jev compacts badly, and the dotclaude eval found its picks no better than keeping the newest outputs.
+  `/dotclaude:setup` no longer offers, installs, configures, or reports it.
 
 ### Fixed
 
-- Two parallel tool calls that change the session ledger keep both changes.
-  Before, the save of one action could replace the save of the other.
-- A subagent with `isolation: "worktree"` records its edits and checks against
-  its worktree. Before, its edits got paths below `.claude/worktrees/`, so
-  `gate_verify` did not see them as code edits. A worktree that a
-  `WorktreeCreate` hook puts outside the project is the project of its
-  subagent too, also after a `cd`.
-- The Stop reason for an announced step also names a deferred step, and it
-  tells Claude to end the turn again when the work is outside the request.
-- When the compaction carry-over is longer than its bound, the cut shortens
-  the quoted messages. Before, the cut could remove the instructions after
-  them, such as the rule to keep changes that are not Claude's.
-- The compaction carry-over puts your newest message in first and drops the
-  oldest messages first. Before, the cut removed the newest message first,
-  and each saved message stopped at 600 characters. Now it stops at 4000. A cut message keeps its
-  start and its end, and the note gives the transcript path for the full
-  text.
-- Each file list in the compaction carry-over stops at 400 characters and
-  gives the count of the other files. Before, long paths could fill the
-  bound, and then the cut removed your messages and the instructions.
-- When a subagent or a headless session gets a Stop note, the sentence that
-  asks for the full report starts on a new line. Before, it came at the end
-  of the last line of the note, such as after a closing tag.
-- The working rules and the compaction carry-over say that you made each change that no agent made.
-  Before, the carry-over said that another session could have made it,
-  and told Claude to check the transcript or the diff.
-- The tests pass on Linux and Windows.
-  The reset-time tests take the text between the date and the time from the ICU data of the runtime,
-  as Claude Code's `/usage` does, so `Oct 4, 12pm` is correct too.
-  The carry-over cut test does not depend on the length of the temp folder path.
-  The glob tests give `globFiles` the platform of the host.
-  The hooks module tests give the fake engine a plugin root with the shape of the host,
-  because a posix root with Windows folders made each guard action fail open.
+- The nested-instructions hook stops at the root of a git worktree.
+  In `.claude/worktrees/*`, it loaded the main `CLAUDE.md` again, 192 times in 193 runs.
+- With `DOTCLAUDE_DEBUG` set, an action error in the module engine reaches Claude Code.
+  Without it, the action is skipped as before, because an engine hook error skips all of dotclaude for the event.
+- Inline code that starts a shell command as an argument list got no finding,
+  for example `subprocess.run(['rm', '-rf', '/'])` or `system("rm", "-rf", "/")`.
+  The guard now also checks each comma-separated run of string literals as one command, backtick bodies, Perl `qx` and `qw`, Ruby `%x` and `%w`, and AppleScript `do shell script`.
+- `scripts/sandbox.mjs` removed each `DOTCLAUDE_` variable, also one that you set on the command line, such as `DOTCLAUDE_DEBUG`.
 
 ## Older Releases
 
 | Series | Releases |
 | --- | --- |
+| [0.18](docs/changelog/0.18.md) | 0.18.1, [0.18.0](docs/changelog/0.18.0.md) |
 | [0.17](docs/changelog/0.17.md) | 0.17.1, [0.17.0](docs/changelog/0.17.0.md) |
 | [0.16](docs/changelog/0.16.md) | 0.16.1, 0.16.0 |
 | [0.15](docs/changelog/0.15.md) | 0.15.1, 0.15.0 |
@@ -246,4 +147,4 @@ steps after each update.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.18.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.19.0...HEAD
