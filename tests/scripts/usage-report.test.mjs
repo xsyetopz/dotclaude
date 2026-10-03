@@ -377,3 +377,81 @@ test("a message streamed in several records counts its largest output once", () 
   expect(r.total).toBe(12);
   expect(r.output).toEqual({ tokens: 600_000, messages: 2, unfinished: 1 });
 });
+
+test("delegation: runs per 100 main turns, result size, and the run table", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "usage-report-"));
+  const sub = path.join(root, "p", "s1", "subagents");
+  fs.mkdirSync(sub, { recursive: true });
+  const at = "2026-09-27T10:00:00.000Z";
+  const turn = (id, content) =>
+    JSON.stringify({
+      type: "assistant",
+      timestamp: at,
+      message: { id, model: "claude-opus-5-5", usage: {}, content },
+    });
+  const agent = (id, description) => ({
+    type: "tool_use",
+    id,
+    name: "Agent",
+    input: { description, subagent_type: "dotclaude:implementer" },
+  });
+  const result = (id, content, toolUseResult) =>
+    JSON.stringify({
+      type: "user",
+      timestamp: at,
+      toolUseResult,
+      message: { content: [{ type: "tool_result", tool_use_id: id, content }] },
+    });
+  fs.writeFileSync(
+    path.join(root, "p", "s1.jsonl"),
+    [
+      turn("m1", [agent("t1", "Add the flag"), agent("t2", "Fix the typo")]),
+      result(
+        "t1",
+        [{ type: "text", text: `Done: flag added.\n${"x".repeat(400)}` }],
+        {
+          agentId: "a1",
+        },
+      ),
+      result("t2", "agentId: a2\nFixed it.", undefined),
+      turn("m2", []),
+      turn("m2", []), // a streamed duplicate
+      turn("m3", []),
+      turn("m4", []),
+    ].join("\n"),
+  );
+  // A second session without tool results.
+  fs.writeFileSync(path.join(root, "p", "s2.jsonl"), turn("n1", []));
+  for (const id of ["a1", "a2"]) {
+    fs.writeFileSync(
+      path.join(sub, `agent-${id}.jsonl`),
+      call(id, { cache_read_input_tokens: 1_000_000 }),
+    );
+    fs.writeFileSync(
+      path.join(sub, `agent-${id}.meta.json`),
+      JSON.stringify({ agentType: "dotclaude:implementer" }),
+    );
+  }
+  const d = report(root, new Date("2026-09-20")).delegation;
+  expect(d.mainTurns).toBe(5);
+  expect(d.runs).toBe(2);
+  expect(d.runsByType).toEqual([{ type: "dotclaude:implementer", runs: 2 }]);
+  expect(d.runsPer100Turns).toBe(40);
+  expect(d.resultTokensPerSession.sessions).toBe(2);
+  expect(d.resultTokensPerSession.median).toBe(0);
+  expect(d.resultTokensPerSession.p90).toBeGreaterThan(100);
+  const byId = Object.fromEntries(d.latestRuns.map((r) => [r.id, r]));
+  expect(byId.a1).toMatchObject({
+    description: "Add the flag",
+    cost: 0.2,
+    handback: "Done: flag added.",
+  });
+  expect(byId.a2).toMatchObject({
+    description: "Fix the typo",
+    handback: "Fixed it.",
+  });
+  // The run limit keeps the latest runs only.
+  expect(
+    report(root, new Date("2026-09-20"), null, 1).delegation.latestRuns,
+  ).toHaveLength(1);
+});

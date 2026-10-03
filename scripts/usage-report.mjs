@@ -2,12 +2,12 @@
 // Where Claude Code usage went, from the session transcripts under
 // ~/.claude/projects (or $CLAUDE_CONFIG_DIR/projects).
 //
-//   bun scripts/usage-report.mjs [--days 7] [--root DIR] [--json]
+//   bun scripts/usage-report.mjs [--days 7] [--root DIR] [--runs 20] [--json]
 //
 // Costs are API-equivalent dollars at list prices: a subscription does not
 // bill them, but its limits track the same token mix, so the shares show
 // what spends a plan's limits. Reports the share by agent type, the share of
-// calls whose context is past 150k tokens, and the cost of full cache
+// calls whose context is past MAIN_CONTEXT_TOKENS, and the cost of full cache
 // rewrites (a write over 30k tokens that is larger than the read), the
 // main-conversation turns that background agents started, the advisor's
 // share, and the prompt cache hit rate (cache reads over all input tokens).
@@ -23,11 +23,15 @@
 // `sdk-cli`, `sdk-py`) and the wake turns of each entrypoint, usage-limit hits (the synthetic assistant message
 // with `error: "rate_limit"` that Claude Code writes), `Skill` tool calls by
 // skill, and the dotclaude guard verdicts per rule from `verdicts.jsonl`.
+// The delegation share compares main-conversation turns with subagent runs,
+// and sizes the tool results that enter the main context per session.
+// The run table lists the latest subagent runs with the cost of each.
 
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { agentFile, parseDefinition, reserve } from "../hooks/lib/_agents.mjs";
+import { k, MAIN_CONTEXT_TOKENS, tokens } from "../hooks/lib/_budget.mjs";
 import { turnsFromText } from "../hooks/lib/_transcript-parse.mjs";
 
 // $ per million tokens: input, output, cache read, 5m write, 1h write.
@@ -107,6 +111,27 @@ const median = (xs) => {
   return s.length ? s[Math.floor((s.length - 1) / 2)] : 0;
 };
 
+// The `q` quantile of `xs`, by the nearest rank.
+const quantile = (xs, q) => {
+  const s = [...xs].sort((a, b) => a - b);
+  return s.length ? s[Math.max(0, Math.ceil(q * s.length) - 1)] : 0;
+};
+
+const resultText = (c) =>
+  typeof c === "string"
+    ? c
+    : (Array.isArray(c) ? c : []).map((b) => b.text ?? "").join("\n");
+
+/** The first line of `text`, cut to about 80 characters. */
+function firstLine(text) {
+  const line =
+    String(text ?? "")
+      .split("\n")
+      .find((l) => l.trim() && !l.startsWith("agentId:")) ?? "";
+  const t = line.trim();
+  return t.length > 80 ? `${t.slice(0, 79)}…` : t;
+}
+
 /** Per agent type: runs, and the median files and list items in the brief. */
 function briefStats(runs) {
   const byType = Map.groupBy(runs, (r) => r.type);
@@ -164,7 +189,7 @@ function maxTurns(agentType) {
   }
 }
 
-export function report(root, since, verdictsFile = null) {
+export function report(root, since, verdictsFile = null, runLimit = 20) {
   const byAgent = {};
   const entrypoints = {};
   const skills = {};
@@ -193,6 +218,13 @@ export function report(root, since, verdictsFile = null) {
   const limited = [];
   // Output tokens, messages, and messages without a final record.
   const output = { tokens: 0, messages: 0, unfinished: 0 };
+  // Delegation: main assistant turns, subagent runs, the tokens that tool
+  // results add to each main session, and what each `Agent` call said.
+  let mainTurns = 0;
+  const runsByType = {};
+  const sessionResultTokens = [];
+  const runs = [];
+  const agentCalls = new Map();
   const files = fs
     .readdirSync(root, { recursive: true })
     .map(String)
@@ -211,6 +243,9 @@ export function report(root, since, verdictsFile = null) {
         ...briefSize(file),
       });
     const seen = new Set();
+    let fileCost = 0;
+    let resultTokens = 0;
+    let handback = "";
     let wake = false;
     let hookContext = false;
     let firstPending = false;
@@ -263,6 +298,20 @@ export function report(root, since, verdictsFile = null) {
         compacted = true;
       if (type === "main" && entry.type === "user") {
         const content = entry.message?.content;
+        if (new Date(entry.timestamp) >= since)
+          for (const b of Array.isArray(content) ? content : []) {
+            if (b.type !== "tool_result") continue;
+            const text = resultText(b.content);
+            // Estimate with the shared token estimate, from content length.
+            resultTokens += tokens(text);
+            const call = agentCalls.get(b.tool_use_id);
+            if (call) {
+              call.handback = firstLine(text);
+              call.agentId =
+                entry.toolUseResult?.agentId ??
+                text.match(/agentId: (\w+)/)?.[1];
+            }
+          }
         const toolResult =
           Array.isArray(content) &&
           content.some((b) => b.type === "tool_result");
@@ -293,6 +342,17 @@ export function report(root, since, verdictsFile = null) {
             seen.add(b.id);
             skills[b.input.skill] = (skills[b.input.skill] ?? 0) + 1;
           }
+      if (entry.type === "assistant" && new Date(entry.timestamp) >= since)
+        for (const b of Array.isArray(m?.content) ? m.content : []) {
+          if (b.type !== "tool_use") continue;
+          if (type === "main" && (b.name === "Agent" || b.name === "Task"))
+            agentCalls.set(b.id, {
+              description: b.input?.description ?? "",
+              handback: "",
+            });
+          if (type !== "main" && b.name === "SubagentHandback")
+            handback = firstLine(b.input?.message);
+        }
       if (entry.type !== "assistant" || !m?.usage) continue;
       if (new Date(entry.timestamp) < since || seen.has(m.id)) continue;
       seen.add(m.id);
@@ -318,8 +378,10 @@ export function report(root, since, verdictsFile = null) {
         c.total += a;
       }
       total += c.total;
+      fileCost += c.total;
+      if (type === "main") mainTurns += 1;
       byAgent[type] = (byAgent[type] ?? 0) + c.total;
-      if (c.context > 150_000) over150k += c.total;
+      if (c.context > MAIN_CONTEXT_TOKENS) over150k += c.total;
       if (c.rewrite) {
         const reason =
           lastModel === null
@@ -342,7 +404,36 @@ export function report(root, since, verdictsFile = null) {
         cache[key][1] += c.read;
       }
     }
+    if (type === "main") sessionResultTokens.push(resultTokens);
+    else {
+      runsByType[type] = (runsByType[type] ?? 0) + 1;
+      runs.push({
+        id: path.basename(file, ".jsonl").replace(/^agent-/, ""),
+        type,
+        cost: fileCost,
+        handback,
+        at: fs.statSync(file).mtimeMs,
+      });
+    }
   }
+  const byId = new Map(
+    [...agentCalls.values()]
+      .filter((c) => c.agentId)
+      .map((c) => [c.agentId, c]),
+  );
+  const latest = runs
+    .sort((a, b) => b.at - a.at)
+    .slice(0, runLimit)
+    .map((r) => {
+      const call = byId.get(r.id);
+      return {
+        id: r.id,
+        type: r.type,
+        description: call?.description ?? "",
+        cost: Math.round(r.cost * 100) / 100,
+        handback: r.handback || call?.handback || "",
+      };
+    });
   const share = (x) => (total ? Math.round((1000 * x) / total) / 10 : 0);
   const hit = ([context, read]) =>
     context ? Math.round((1000 * read) / context) / 10 : null;
@@ -376,6 +467,22 @@ export function report(root, since, verdictsFile = null) {
     wakeShare: share(wakeCost),
     advisor: { calls: advisor.calls, share: share(advisor.cost) },
     output,
+    delegation: {
+      mainTurns,
+      runs: runs.length,
+      runsByType: Object.entries(runsByType)
+        .sort((a, b) => b[1] - a[1])
+        .map(([type, n]) => ({ type, runs: n })),
+      runsPer100Turns: mainTurns
+        ? Math.round((1000 * runs.length) / mainTurns) / 10
+        : null,
+      resultTokensPerSession: {
+        sessions: sessionResultTokens.length,
+        median: median(sessionResultTokens),
+        p90: quantile(sessionResultTokens, 0.9),
+      },
+      latestRuns: latest,
+    },
     cacheHitRate: { all: hit(cache.all), main: hit(cache.main) },
     firstCallAfterPrompt: Object.fromEntries(
       Object.entries(first).map(([k, [calls, write, context]]) => [
@@ -415,7 +522,12 @@ if (import.meta.main) {
       "verdicts.jsonl",
     ),
   );
-  const r = report(root, new Date(Date.now() - days * 86_400_000), verdicts);
+  const r = report(
+    root,
+    new Date(Date.now() - days * 86_400_000),
+    verdicts,
+    Number(opt("--runs", "20")),
+  );
   if (args.includes("--json")) {
     console.log(JSON.stringify(r, null, 2));
   } else {
@@ -424,7 +536,9 @@ if (import.meta.main) {
       console.log(
         `  ${a.type.padEnd(32)} $${a.cost.toFixed(2).padStart(9)}  ${a.share}%`,
       );
-    console.log(`Calls with context past 150k: ${r.over150kShare}% of cost`);
+    console.log(
+      `Calls with context past ${k(MAIN_CONTEXT_TOKENS)}: ${r.over150kShare}% of cost`,
+    );
     const o = r.output;
     console.log(
       `Output tokens: ${o.tokens} in ${o.messages} messages. ${o.unfinished} messages have no final record, so their count is a lower bound.`,
@@ -465,6 +579,18 @@ if (import.meta.main) {
     for (const v of r.verdicts.slice(0, 10))
       console.log(
         `  ${v.level.padEnd(10)} ${String(v.count).padStart(5)}  ${v.rule.slice(0, 100)}`,
+      );
+    const d = r.delegation;
+    console.log(
+      `Delegation: ${d.runs} subagent runs in ${d.mainTurns} main turns, ${d.runsPer100Turns ?? "-"} per 100 turns (${d.runsByType.map((t) => `${t.type} ${t.runs}`).join(", ") || "-"})`,
+    );
+    console.log(
+      `Tool results in the main context per session, estimated tokens: median ${d.resultTokensPerSession.median}, p90 ${d.resultTokensPerSession.p90} (${d.resultTokensPerSession.sessions} sessions)`,
+    );
+    console.log(`Latest ${d.latestRuns.length} subagent runs:`);
+    for (const run of d.latestRuns)
+      console.log(
+        `  ${run.id.slice(0, 8).padEnd(8)} ${run.type.slice(0, 24).padEnd(24)} $${run.cost.toFixed(2).padStart(6)}  ${run.description.slice(0, 40)} | ${run.handback}`,
       );
     const other = new Map(r.turnCap.other.map((o) => [o.type, o]));
     console.log(
