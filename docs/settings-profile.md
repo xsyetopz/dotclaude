@@ -35,6 +35,14 @@ you choose and can review.
   (`promptSuggestionEnabled`, `awaySummaryEnabled`, `crossSessionInbound`).
   Each of them sends a request that re-reads the conversation. `/recap` still
   works.
+  `crossSessionInbound: "hold"` shows a notice for each message from your other sessions and does not deliver it.
+  The default `accept` delivers it, "including background agents".
+  Messages from subagents "follow their own rules and aren't affected by this key", so `hold` does not delay a subagent hand-back.
+  The trade-off is for a coordinator session that dispatches many background agents as separate sessions:
+  with `hold`, the coordinator does not receive their messages until you approve each one, so it cannot act on them alone.
+  Set `"accept"` in that session, and keep `hold` elsewhere.
+  Source: [settings reference](https://code.claude.com/docs/en/settings-reference#crosssessioninbound)
+  and [cross-session messaging](https://code.claude.com/docs/en/cross-session-messaging#control-inbound-messages).
 - **Prompt cache:** Claude Code sets the TTL. On an API key or usage credits
   it is five minutes. Set `CLAUDE_CODE_PROMPT_CACHE_TTL=1h` if you often pause
   longer. dotclaude does not set a 1-hour TTL for subagents, because it

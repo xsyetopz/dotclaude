@@ -74,6 +74,8 @@ evidence.
 | PreCompact prompt save | `session.compact` | A `precompute` installs nothing, and the real compaction fires the event again (**official**, d.ts). |
 | Built-in agents | `agent.offer` | `{ isOffered: false }` removes the agent from the listing and from dispatch (**official**, d.ts). |
 | Task reminders | `prompt.attachment` | `{ text: null }` leaves an attachment out. The reminders have type `task_reminder` or `todo_reminder` and origin `engine` (**official**, d.ts). |
+| Automatic clear | `prompt.submit`, `command.run` | `{ drop }` enters no prompt. `$.command.run` rejects inside a hook that the turn waits on, so the module runs `/clear` from a timer after the hook returns (**official**, d.ts, and **measured**, 2.1.288). `$.prompt.submit` takes no `context` and skips the hook that calls it, so the `SessionStart(clear)` hook adds the note (**measured**). |
+| Permission reminders | `telemetry.log` | A `tool_decision` record has `decision` (`accept` or `reject`), `source` (`config`, `user_temporary`, or `user_reject`), and the `tool_use_id` of the `tool.check` call. It comes before the tool runs (**measured**, 2.1.288). |
 
 These stay classic command hooks:
 
@@ -94,6 +96,10 @@ These stay classic command hooks:
 - A classic `allow` is dropped, so the engine rules decide. This matters only
   for `Agent` and `SendMessage`, which no permission rule gates.
 - An action that throws is skipped, and its error is not logged.
+  The module has no stderr.
+  A rethrow would make the engine skip all of dotclaude for the event and
+  count the failure toward a runaway (**binary**, `hookFailed`).
+  So only `DOTCLAUDE_DEBUG` rethrows.
 - The running marker is written after `next` of `agent.spawn`. Two spawns in
   one message can both pass the concurrency check.
 - `$.fs.write` is not atomic. It runs `mkdir` and then `writeFile`
@@ -119,6 +125,10 @@ These stay classic command hooks:
   file searches read the wrong folder in subagents that run in a worktree"
   (**official**, release notes). On 2.1.288, 0 calls failed (**measured**).
   dotclaude requires 2.1.288 for this reason.
+- `$.env.get` reads the environment of the Claude Code process (**binary**, 2.1.288).
+  The `Notification` input for an `AskUserQuestion` dialog is `permission_prompt` with the message "Claude needs your permission" and no tool name (**measured**, 2.1.288).
+  So only state that the module writes can tell it from a permission dialog.
+- After `--continue`, the first `$.model.fork` gives `nothing-to-fork`, and a fork after the next turn works (**measured**, 2.1.288).
 - The API can change in each release: "this surface may change between
   releases without notice" (**official**, d.ts header). Each dotclaude
   release names one Claude Code version.

@@ -38,6 +38,20 @@ source labels.
   `load-nested-instructions.mjs` covers only `CLAUDE.md`, `.claude/CLAUDE.md`,
   and `CLAUDE.local.md`
   ([#90450](https://github.com/anthropics/claude-code/issues/90450)).
+- Remove the race between the module and the Node hooks on the session
+  ledger.
+  The module `$.fs` has no rename and no lock, so a module write and a Node
+  write in the same step can lose one of the two records.
+- Count a check inside a compound or background command.
+  The ledger records a check only from a foreground command, and
+  `run_in_background` checks arrive after the stop gate reads the ledger.
+- Measure whether the 0.19.0 working rules change behavior.
+  Compare the delegation share of `bun scripts/usage-report.mjs --days 7`
+  after one week with the [baseline](usage.md): 3.8 subagent runs per 100
+  main turns.
+- The compaction handoff (`context_compaction_handoff`) is on by default.
+  Measure it with `scripts/compaction-report.mjs` after use.
+  The baseline is 42% to 57% retention ([section 8](evals.md)).
 
 ## 9. Claims Not Acted On
 
@@ -53,7 +67,21 @@ source labels.
 - **A Sonnet session started 8 Fable agents on extra usage.** One report.
   dotclaude already denies `Agent(model:fable*)`.
 - **Opus 5.5 got worse after launch.** Public trackers do not agree. One
-  shows 103.8% of the launch score. No change.
+  shows 103.8% of the launch score.
+  The Reddit threads of 2026-10-03 in `docs/external/2026-10-03/` report the
+  same.
+  dotclaude responds with prompt rules in the working rules, not with checks
+  on words.
 - **A tool-call batching rule saves about 20% of tokens on Opus 5.5.** One
   user measured it, and a stronger wording made reviews worse. Claude Code
   already tells Claude to make independent calls together.
+- **Non-Claude model serving** (report parts 04, 05, 23, and 29 of the
+  external reports). Quantization, routing, and serving of other vendors'
+  models are outside a plugin's reach.
+- **Refusals by a safety classifier.** A plugin cannot change the classifier
+  of the model or of the engine.
+- **DensePack.** A tool that a user built to save usage. No measurement
+  shows that it helps, and it compresses text with loss.
+- **Domain checklists.** A checklist per field, such as security or
+  accessibility. No evidence shows that a checklist raises the pass rate, and
+  the reports are not a spec.

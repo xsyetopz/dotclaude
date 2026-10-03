@@ -38,6 +38,12 @@ Three things drive the limit. Model choice is not one of them.
 `bun scripts/usage-report.mjs --days 7` repeats this scan on any machine.
 It also counts the sessions by entrypoint, the usage-limit hits, the skill
 calls, and the guard verdicts per rule.
+The report also shows the delegation share: subagent runs per 100 main turns, by agent type, and the median and p90 of tool-result tokens per main session.
+`--runs N` sets how many of the latest subagent runs the table lists, with the cost and the first line of the hand-back.
+
+**measured** (2026-10-03, 7 days): 976 subagent runs in 25578 main turns, which is 3.8 per 100 turns.
+Tool-result tokens per main session: median 19169, p90 167675 (253 sessions).
+This is the baseline for the 0.19.0 routing rule in [Design](design.md#the-routing-rule).
 
 ### What This Means On Pro
 

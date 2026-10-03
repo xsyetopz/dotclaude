@@ -46,7 +46,10 @@ The second row shows what the session uses:
 
 - the model with its effort, and the context against the 117k compaction
   point, with a bar that turns yellow at 75% and red at 90%. After a
-  compaction, `⇊1/4` gives the compactions so far out of the four before a
+  compaction, `⇊2` gives the compactions so far.
+  With `context_auto_clear` on (the default), `clear` in red shows from 100k
+  tokens, because your next typed prompt then clears the context.
+  With it off, `⇊1/4` gives the compactions out of the four before a
   handoff. From the fourth compaction, `⇊4` or `⇊7` in red gives only the
   count, because Claude Code keeps compacting after the handoff point.
   `handoff` shows when the context note asks for one

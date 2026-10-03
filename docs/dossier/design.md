@@ -24,6 +24,9 @@ source labels.
   deleted the announced-work Stop hook, the reply-text tests of the verify
   gate, and the reply graders of the evals. The gates read state, such as
   the edit ledger.
+  The same applies to the user's prompt.
+  0.19.0 deleted the regex that found "remove the tests" in the last prompt and then dropped the assertion ask.
+  The ask now stays, and the user approves it once.
 - **Failure reports are evidence, not a spec.** A rule, test, or grader
   built from a report's list of failures primes the failures it names and
   rewards the wording, not the result. 0.18.1 removed the rules, graders, and
@@ -118,6 +121,16 @@ their worktree. **measured:** the 50 errors were Claude Code's own refusals
 of commands that it cannot verify stay in the worktree. The skill's brief
 tells each agent to run plain commands from the worktree root. dotclaude adds
 no guard for this, because the refusal already stops the command.
+
+### The Routing Rule
+
+0.19.0 replaced the subagent rule "Work in the main conversation, and use a subagent only for …" with a routing rule.
+The routing rule tells Claude to delegate work whose tool results it does not need later, and to match the work to the agent descriptions.
+The old rule came from one week in which subagents were over half the cost.
+The causes were fan-out and `general-purpose` agents, which hooks now limit (Q1 to Q7 above).
+But each main Opus turn reads the whole main context again ([99.9% cache reads](usage.md)), and users report that the main agent does almost all the work itself.
+**measured** before the change (2026-10-03, 7 days): 3.8 subagent runs per 100 main turns, and a median of 19169 tool-result tokens per main session ([baseline](usage.md)).
+**open:** whether the rule changes this share is in [Open Items](open-items.md).
 
 ### Rejected Alternatives
 

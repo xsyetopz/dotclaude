@@ -34,14 +34,21 @@ From 2026-09-29 to 2026-10-03, 184 of 680 reports were longer than 6,000 charact
 **What:** tells Claude once when the session or weekly limit passes 75% and 90%,
 with the reset time. At 75%, Claude writes a handoff with
 the `handoff` skill and asks you to run `/clear`. At 90%, when the work does
-not fit, Claude writes a handoff and tells you the reset time. After four
-compactions, past 100k tokens of main context, each prompt (or one tool call in
-a run with no prompt) gives the context size and asks for a handoff before the
-current step ends. The note does not stop the work. Claude continues and asks
-you to run `/clear` at the next natural stop. Until a compaction, a later
-prompt gives only the size and does not ask for the handoff again. A
-notification names a limit that stops a turn, its reset time, and
+not fit, Claude writes a handoff and tells you the reset time.
+A notification names a limit that stops a turn, its reset time, and
 `claude --resume`.
+
+From 100k tokens of main context, with `context_auto_clear` on (the default),
+your next typed prompt saves a handoff note, clears the context, and comes back
+with the note, see [Optional Features](mods.md#optional-features).
+No context note comes then.
+With the option off, after four compactions, past 100k tokens of main context,
+each prompt (or one tool call in a run with no prompt) gives the context size
+and asks for a handoff before the current step ends.
+The note does not stop the work.
+Claude continues and asks you to run `/clear` at the next natural stop.
+Until a compaction, a later prompt gives only the size and does not ask for
+the handoff again.
 When Claude writes a handoff note before the note comes, that counts as the note, so no note asks for it again.
 
 **Why:** no hook input gives Claude its usage or its context size. A compaction

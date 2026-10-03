@@ -5,9 +5,12 @@ Part of the [dotclaude documentation](README.md).
 ## Agents
 
 Claude picks an agent from its description, or you name one
-(`dotclaude:<name>`). The working rules keep work in the main conversation by
-default, and they use an agent only when its output would fill the context,
-for parallel work that you ask for, or for a fresh-context review.
+(`dotclaude:<name>`).
+Since 0.19.0, the working rules route work to agents.
+They tell Claude to delegate work whose tool results it does not need later, and to match the work to the agent descriptions.
+Each description now says when to delegate, for example "Delegate each slice" for `implementer`.
+The old rule kept work in the main conversation, and users reported that the main agent did almost all the work itself.
+The reason is in the [design notes](dossier/design.md#the-routing-rule).
 
 **Why so few agents:** each fresh subagent writes about 14k tokens to the
 cache before its first tool call, and its 5-minute cache can expire while it
@@ -26,14 +29,14 @@ Anthropic's guidance is to start low and raise effort on failure.
 
 | Agent | Model, effort | Use | Why this model |
 | --- | --- | --- | --- |
-| `reviewer` | Sonnet 5.5, high | fresh-context, read-only review with a lens from the brief: `code`, `security`, `plan`, or `diff` (one agent-loop slice from its diff and `GUIDE.md` only) | Review is judgment. A fresh context does not share the author's assumptions. A reviewer that does not see the implementer's reasoning finds what the implementer rationalized. It has no edit tools. In the 0.17.1 evals, Sonnet 5.5 at `high` passed the review and debug cases as often as Opus 5.5 at about 55% of the cost ([evals](dossier/evals.md)). |
-| `debugger` | Sonnet 5.5, high | root cause by measurement, speed or memory work | A wrong root cause costs more than the extra effort, so it runs at `high`. |
-| `reverse-engineer` | Opus 5.5, high | Ghidra analysis of a binary, protocol, or file format, and byte matching | A wrong reading of machine code is hard to find later. It uses the `ghidra` MCP tools of the session, so it has no tool allowlist. |
-| `implementer` | Sonnet 5.5, medium | one well-scoped piece of work, including its tests and docs | It follows a plan. `model: "opus"` gives it design judgment when a slice needs it. |
-| `investigator` | Opus 5.5, medium | read-only, with a lens: `ci` failures, `history` of code, `dependencies` health | It keeps long logs and history out of the main context. |
-| `mechanical-worker` | Sonnet 5.5, medium | fully specified bulk edits | No design judgment. Anthropic's start for well-specified agentic coding on Sonnet 5.5 is `medium`, and at `low` it sometimes skips the check. |
-| `test-runner` | Haiku 4.5 | test runs without log noise | It runs one command, searches the log, and copies the failure lines. It changes no code, so it needs no Sonnet judgment. Haiku costs half as much per token. It loads no `CLAUDE.md` at start and has no MCP tool, so its context starts small. |
-| `web-researcher` | Opus 5.5, low | web answers with sources, read from raw pages | Reading and summary. Raw pages keep the source exact. |
+| `reviewer` | Sonnet 5.5, high | fresh-context, read-only review with a lens from the brief: `code`, `security`, `plan`, `diff` (one agent-loop slice from its diff and `GUIDE.md` only), or `comments` (checks each pull request review comment at its `path:line` and gives a verdict) | Review is judgment. A fresh context does not share the author's assumptions. A reviewer that does not see the implementer's reasoning finds what the implementer rationalized. It has no edit tools. It reads staged changes too, flags weakened checks, and checks that each added package exists, with read-only registry lookups. In the 0.17.1 evals, Sonnet 5.5 at `high` passed the review and debug cases as often as Opus 5.5 at about 55% of the cost ([evals](dossier/evals.md)). |
+| `debugger` | Sonnet 5.5, high | root cause by measurement, speed or memory work, delegated when the cause is unclear or a fix failed | A wrong root cause costs more than the extra effort, so it runs at `high`. |
+| `reverse-engineer` | Opus 5.5, high | Ghidra analysis of a binary, protocol, or file format, and byte matching | A wrong reading of machine code is hard to find later. It marks each value that it did not recover as `unknown`, so a guess does not look like a finding. It uses the `ghidra` MCP tools of the session, so it has no tool allowlist. |
+| `implementer` | Sonnet 5.5, medium | one well-scoped slice with a known check, including its tests and docs, delegated one slice at a time | It follows a plan. `model: "opus"` gives it design judgment when a slice needs it. |
+| `investigator` | Opus 5.5, medium | read-only questions that need several files, logs, history, or dependency data, with a lens: `ci` failures, `history` of code, `dependencies` health | It keeps long logs and history out of the main context. |
+| `mechanical-worker` | Sonnet 5.5, medium | fully specified bulk edits such as renames, migrations, and codemods | No design judgment. Anthropic's start for well-specified agentic coding on Sonnet 5.5 is `medium`, and at `low` it sometimes skips the check. |
+| `test-runner` | Haiku 4.5 | long or slow runs of tests, build, type check, or lint, without log noise | It runs one command, searches the log, and copies the failure lines. It changes no code, so it needs no Sonnet judgment. Haiku costs half as much per token. It loads no `CLAUDE.md` at start and has no MCP tool, so its context starts small. |
+| `web-researcher` | Opus 5.5, low | web answers with sources, read from raw pages. It quotes the passage that it cites, and it searches for sources that contradict the claim | Reading and summary. Raw pages keep the source exact. A quote and a search for contradiction guard against a citation that does not say the claim. |
 
 **Why `implementer` is on Sonnet 5.5:** on this machine, 169 `implementer` runs
 on Opus 5.5 took 66 tool calls and $2.50 at the median, and 28 runs on
@@ -58,8 +61,8 @@ from an agent that it stops at its turn limit. See
 
 | Skill | Use | Why it is in dotclaude |
 | --- | --- | --- |
-| `/dotclaude:setup` | applies the [settings profile](settings-profile.md), removes the 0.16 shell function, and installs and configures CodeGraph, tgrep, fast-compact, Betterleaks, semlf, Ghidra, OpenSpec, and `dotclaude-browser` | A plugin cannot set permissions, environment variables, or models. Each integration cuts reads or protects the context. See below. |
-| `slices` | runs a large change as slices: implementer, diff-only reviewer, fixer, frozen test oracle | Bun, GitHub Copilot, and pnpm v12 ported large code bases this way. [Hooks](hooks.md#agent-loop-oracle-guard_edit) enforce the oracle and the review. See the [agent loop](dossier/design.md#the-agent-loop). |
+| `/dotclaude:setup` | applies the [settings profile](settings-profile.md), removes the 0.16 shell function, and installs and configures CodeGraph, tgrep, Betterleaks, semlf, Ghidra, OpenSpec, and `dotclaude-browser` | A plugin cannot set permissions, environment variables, or models. Each integration cuts reads or protects the context. See below. |
+| `slices` | runs a large change as slices: implementer, diff-only reviewer, fixer, frozen test oracle. It checks each finding at its `path:line` before a fix agent starts | Bun, GitHub Copilot, and pnpm v12 ported large code bases this way. [Hooks](hooks.md#agent-loop-oracle-guard_edit) enforce the oracle and the review. See the [agent loop](dossier/design.md#the-agent-loop). |
 | `contribute` | checks a project's AI policy, verifies the claim, and drafts an issue, pull request, discussion, or comment for you to send | A contribution speaks for you. See [Contributions](contributions.md). |
 | `handoff` | writes a note that a fresh session can continue from | A handoff and `/clear` cost less than `/compact` on a large or cold context. |
 | `explain` | answers "why did you do that?" from these pages | The reason for each dotclaude behavior is in these pages. |

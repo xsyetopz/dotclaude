@@ -51,6 +51,16 @@ that you do not own. See [Contributions](contributions.md).
 **Why:** a contribution speaks for you in public, and some projects do not
 accept AI work.
 
+**What:** asks before a `DesignSync` call that changes a Claude Design
+project, unless the session started the `/design-sync` skill.
+Reads, such as `list_projects` and `get_file`, pass.
+
+**Why:** the tool description permits `DesignSync` only in `/design-sync`,
+which the user starts.
+Claude Code can hide that skill and still offer the tool.
+In one session, Claude did not find the skill and uploaded a brief and nine
+reference images to a new project without it.
+
 **What:** denies a full `cat` or `Read` of a file that the same agent
 already read in full, when the file did not change. A partial `Read` with
 `offset` and `limit` passes. Compaction clears the record.
@@ -94,16 +104,28 @@ header.
 **Why:** reverse engineering and builds leave binaries in the working tree.
 A committed binary stays in the history after a delete.
 
+The Bash guard also asks about infrastructure changes, new dependencies,
+turned-off TLS checks, tracked test file deletion, and two more database
+reset flags.
+They are on [Guard Asks](hooks-asks.md#bash-guard-asks).
+
 ### Edit Guard (`guard_edit`)
 
 **What:** asks before an edit removes test assertions or skips an existing
 test. It also asks before edits to Claude settings, generated files, or
 lockfiles.
+When you approve an ask for removed assertions or a skip marker, the tool runs,
+and the other test edits of that kind pass until your next message.
+Your next message ends the approval.
+Other asks, such as TLS or generated files, stay one by one.
 
 **Why:** a removed assertion makes a failing test pass without a fix, and it
 hides the signal. An edit to Claude settings can change what Claude is
 permitted to do, so you approve it. A tool writes generated files and
 lockfiles, and a hand edit is lost or drifts from its source.
+
+The Edit guard also asks about proof escapes and turned-off TLS checks in code.
+They are on [Guard Asks](hooks-asks.md#edit-guard-asks).
 
 ### Agent-Loop Oracle (`guard_edit`)
 
@@ -166,9 +188,18 @@ The build files are `Cargo.toml`, `go.mod`, a `Makefile` with a `test` or `check
 In a project with none of these, Claude cannot run a check, and a block would only add a turn.
 Subagents get the test command that a build file implies only when the file shows it, for example `cargo test` for `Cargo.toml`, or `pytest` for a `pyproject.toml` with a `[tool.pytest]` table.
 The gate reads only the edit and check ledger, not the reply, because a reply can be in any language.
+Each check has a kind.
+A `run` check runs the code: a test, a build, a compile, a type check, or a run of a program or notebook.
+A `static` check reads the code: a lint run or a format check.
+A task runner task with a name that the gate does not know counts as `run`.
+After a code edit, a `static` check alone does not satisfy the gate or the task gate when the project has a test command.
+The reason names the last check and the command to run.
+A project with no test command accepts a `static` check.
+A failed `run` check stays reported until a later `run` check passes, also when a lint run passes after it.
 
 **Why:** "done" without a check that ran moves the finding of defects to you.
 The working rules say this in prose, and the gate enforces it.
+A lint run shows style, and it does not show that the change works.
 
 ### Open-Task Check (`gate_tasks`)
 
@@ -220,6 +251,9 @@ The usage bounds, usage notes, model lock, and scratchpad pruning are on
 | --- | --- | --- |
 | `guard_bash`, `guard_edit`, `guard_secrets`, `context_nested_instructions`, `context_session_files`, `gate_verify`, `gate_tasks`, `gate_goal_stall`, `context_compact_carryover`, `context_handoff_pointer`, `model_lock`, `git_commit_hygiene` | on | the hooks above |
 | `agent_guidance` | on | shared rules and report format for agents, the `general-purpose` refusal, and the [hidden built-in agents](mods.md#built-ins-that-dotclaude-replaces) |
+| `context_auto_clear` | on | at 100k tokens of main context, the next typed prompt saves a handoff note, runs `/clear`, and sends the prompt again, see [Optional Features](mods.md#optional-features) |
+| `context_compaction_handoff` | on | before a main compaction, saves a handoff note and adds it to the compacted conversation, see [Optional Features](mods.md#optional-features) |
+| `notify_desktop` | on | a desktop notification at the end of a main turn, when Claude asks a question, and when it asks for a permission, with one reminder after 5 minutes, see [Optional Features](mods.md#optional-features) |
 | `guard_ask_in_auto` | off | asks about recoverable actions in auto mode too |
 | `context_line_breaks` | off | the [line-break check](hooks-context.md#line-breaks-context_line_breaks), for projects that use semantic line breaks |
 | `git_attribution` | on | adds the `Co-Authored-By` trailer and pull request footer |

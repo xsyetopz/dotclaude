@@ -180,6 +180,13 @@ dotclaude only, Claude Code 2.1.287, Sonnet 5.5 judge
   tasks found Sonnet 5.5 high lower than Opus 5.5 medium
   ([Models](plans-and-models.md)).
 
+### Planned: Compatibility Rule
+
+A state-based eval for the working rule that keeps an old name only for a named consumer.
+The task is a rename in a fixture project at a version before 1.0.
+The oracle is the `git diff`: it must show no alias and no re-export of the old name.
+The case is not written yet.
+
 ### What The Evals Do Not Show
 
 - On 30 blind, single-turn tasks in small repositories, Opus 5.5 already

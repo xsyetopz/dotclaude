@@ -33,6 +33,7 @@ optimize for speed or for the volume of output.
 | --- | --- |
 | [Hooks](hooks.md) | each guard, gate, and note, the reason for it, and its option |
 | [Hooks Module](mods.md) | where each hook runs, and the built-ins that dotclaude replaces |
+| [Guard Asks](hooks-asks.md) | the 0.19.0 Bash and Edit guard asks: infrastructure, new dependencies, TLS, test deletion, and proof escapes |
 | [Context Hooks](hooks-context.md) | nested instructions, session files, compaction carry-over, handoff pointer, and the line-break check |
 | [Usage Hooks](hooks-usage.md) | usage bounds, usage notes, model lock, and scratchpad pruning |
 | [Usage Habits](usage-habits.md) | habits that keep the context small and need no code |
