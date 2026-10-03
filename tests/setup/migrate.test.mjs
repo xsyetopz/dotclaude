@@ -122,7 +122,12 @@ const MANIFEST_KEYS = Object.keys(
 );
 
 /** Manifest keys added after 0.16, so no 0.16 key renames to them. */
-const NEW_SINCE_016 = new Set(["context_line_breaks"]);
+const NEW_SINCE_016 = new Set([
+  "context_line_breaks",
+  "context_compaction_handoff",
+  "context_auto_clear",
+  "notify_desktop",
+]);
 
 /** A HOME whose user settings hold 0.16 option keys for dotclaude. */
 function homeWithOptions(options) {

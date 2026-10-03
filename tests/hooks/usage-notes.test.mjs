@@ -199,7 +199,10 @@ test("the context note waits for the allowed compactions", () => {
     hook(
       "user-prompt-submit/note-usage-limits.mjs",
       { session_id: "s6", prompt: "next step", transcript_path: file },
-      { CLAUDE_CONFIG_DIR: tmp("dotclaude-none-") },
+      {
+        CLAUDE_CONFIG_DIR: tmp("dotclaude-none-"),
+        CLAUDE_PLUGIN_OPTION_CONTEXT_AUTO_CLEAR: "false",
+      },
     );
   const above = response(0, CONTEXT_NOTE_TOKENS + 11_000);
   expect(prompt(transcript(above))).toBe(null);
@@ -251,7 +254,11 @@ test("a context note tells Claude its context size past the note bound", () => {
     hook(
       "user-prompt-submit/note-usage-limits.mjs",
       { session_id: "s5", prompt: "next step", transcript_path: file },
-      { CLAUDE_CONFIG_DIR: tmp("dotclaude-none-"), CLAUDE_PLUGIN_DATA: data },
+      {
+        CLAUDE_CONFIG_DIR: tmp("dotclaude-none-"),
+        CLAUDE_PLUGIN_DATA: data,
+        CLAUDE_PLUGIN_OPTION_CONTEXT_AUTO_CLEAR: "false",
+      },
     );
   const below = CONTEXT_NOTE_TOKENS - 20_000;
   expect(prompt(transcript(response(10, below)))).toBe(null);
@@ -293,6 +300,7 @@ test("a tool call past the note bound tells the main agent once per crossing", (
   const env = {
     CLAUDE_CONFIG_DIR: tmp("dotclaude-none-"),
     CLAUDE_PLUGIN_DATA: tmp("dotclaude-data-"),
+    CLAUDE_PLUGIN_OPTION_CONTEXT_AUTO_CLEAR: "false",
   };
   const tool = (file, extra = {}) =>
     hook(

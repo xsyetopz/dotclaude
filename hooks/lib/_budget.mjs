@@ -22,6 +22,9 @@ export const MAIN_CONTEXT_TOKENS = 150_000;
  * handoff at 150k comes too late: 145 automatic compactions in main sessions
  * to 2026-09-30 had a median of 121k tokens and a minimum of 116k. The note
  * comes only after COMPACTIONS_BEFORE_HANDOFF compactions.
+ * With `context_auto_clear` on, the module writes a handoff note and clears
+ * the context at the first typed prompt from this size, with no compaction
+ * before it, and gives no note.
  */
 export const CONTEXT_NOTE_TOKENS = 100_000;
 
@@ -201,3 +204,24 @@ export function severity(value, limit) {
 
 /** `200k` style label for prose. */
 export const k = (n) => `${Math.round(n / 1000)}k`;
+
+/**
+ * Time (ms) that the compaction waits for the model fork that writes the
+ * handoff note. After it, the compaction runs without the note.
+ */
+export const COMPACTION_HANDOFF_TIMEOUT_MS = 60_000;
+
+/**
+ * Age (ms) up to which `SessionStart(clear)` treats a `-clear.md` note as the
+ * note of the automatic clear that just ran, and adds its text to the context.
+ * The module sends the prompt again with no context of its own, because
+ * `$.prompt.submit` takes no `context` and skips the hook that calls it.
+ */
+export const AUTO_CLEAR_NOTE_MAX_AGE_MS = 5 * 60_000;
+
+/**
+ * Time (ms) that a desktop notification waits for the user before it sends
+ * one reminder. The user answers a prompt or a question in this time, or
+ * the reminder shows that Claude Code still waits.
+ */
+export const NOTIFY_REMINDER_MS = 5 * 60_000;

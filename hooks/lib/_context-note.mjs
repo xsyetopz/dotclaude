@@ -7,7 +7,7 @@ import {
   CONTEXT_NOTE_TOKENS,
   k,
 } from "./_budget.mjs";
-import { stateDir } from "./_core.mjs";
+import { option, stateDir } from "./_core.mjs";
 import { pathFor } from "./_path.mjs";
 
 /** The marker that a note was given in the current crossing of the bound. */
@@ -27,6 +27,17 @@ export const markContextNote = (io, data) =>
   io.fs.write(markerFile(io, data), "1");
 
 /**
+ * Whether the module clears the context at the next typed prompt: the main
+ * context is at CONTEXT_NOTE_TOKENS or more, and `context_auto_clear` is on.
+ * The clear replaces automatic compaction, so it waits for no compaction.
+ */
+export async function autoClearDue(io) {
+  if (!option(io.env, "context_auto_clear")) return false;
+  const used = await io.session.mainContextTokens();
+  return used !== null && used >= CONTEXT_NOTE_TOKENS;
+}
+
+/**
  * The `<context_use>` note when the main context is at CONTEXT_NOTE_TOKENS or
  * more after COMPACTIONS_BEFORE_HANDOFF compactions, else null. Before that,
  * automatic compaction runs. With `once`, the note comes only the first time
@@ -35,8 +46,11 @@ export const markContextNote = (io, data) =>
  * the size and refers to the first one, so Claude does not write the handoff
  * again for each prompt.
  * Each note marks the session, so a note after a prompt also counts.
+ * With `context_auto_clear` on, no note comes, because the module writes the
+ * handoff note and clears the context.
  */
 export async function contextNote(io, data, once = false) {
+  if (option(io.env, "context_auto_clear")) return null;
   const used = await io.session.mainContextTokens();
   if (used === null) return null;
   const file = markerFile(io, data);

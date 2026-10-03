@@ -68,6 +68,7 @@ export const ACTIONS = {
     ],
   ],
   TaskCompleted: [["*", "task-completed/require-check.mjs"]],
+  Notification: [["permission_prompt", "notification/notify-permission.mjs"]],
 };
 
 // Actions with their own hooks.json command, outside the dispatcher table.
@@ -98,6 +99,7 @@ export const MATCH_FIELD = {
   SessionStart: "source",
   StopFailure: "error",
   ConfigChange: "source",
+  Notification: "notification_type",
 };
 
 export function matches(matcher, value) {

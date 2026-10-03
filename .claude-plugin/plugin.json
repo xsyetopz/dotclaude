@@ -77,10 +77,28 @@
       "description": "When Claude Code's /goal check blocks a stop twice in a row and Claude did no work in between, end the turn. Say only you can end the goal early, with /goal clear. Otherwise each round re-reads the whole context, up to Claude Code's cap of 9.",
       "default": true
     },
+    "context_auto_clear": {
+      "type": "boolean",
+      "title": "Automatic handoff and clear",
+      "description": "When the main context reaches 100k tokens, the next typed prompt saves a handoff note under `.claude/handoffs/`, runs `/clear`, and sends the prompt again in the cleared session, so the next part starts from the note and not from a compaction summary. Costs one extra model call on the full context.",
+      "default": true
+    },
     "context_compact_carryover": {
       "type": "boolean",
       "title": "Compaction carry-over",
       "description": "After compaction, restore your last few prompts verbatim plus git diff stat and the last check result.",
+      "default": true
+    },
+    "context_compaction_handoff": {
+      "type": "boolean",
+      "title": "Compaction handoff note",
+      "description": "Before a compaction of the main conversation, ask the main model for a handoff note, save it under `.claude/handoffs/`, and add it to the compacted conversation. Costs one extra model call on the full context.",
+      "default": true
+    },
+    "notify_desktop": {
+      "type": "boolean",
+      "title": "Desktop notifications",
+      "description": "Show a desktop notification when the main agent ends a turn, asks a question, or needs a permission, with the task, the short session ID, and the repository. Sends one reminder after 5 minutes with no answer. Uses terminal-notifier, or osascript on macOS. Shows nothing when neither exists.",
       "default": true
     },
     "context_handoff_pointer": {

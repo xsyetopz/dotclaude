@@ -4,6 +4,7 @@ import { expect, test } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { AUTO_CLEAR_NOTE_MAX_AGE_MS } from "../../hooks/lib/_budget.mjs";
 import { hook } from "../support/hooks.mjs";
 
 const NAME = "2026-09-30-1200-retries.md";
@@ -68,4 +69,31 @@ test("a closed note, no note, or the option off adds nothing", () => {
 test("resume and compact do not repeat the pointer", () => {
   expect(start(note("in-progress"), "resume")).toBeUndefined();
   expect(start(note("in-progress"), "compact")).toBeUndefined();
+});
+
+const clearNote = (at) =>
+  `---\nstatus: in-progress\nbranch: main\nhead: abc1234\nwritten: ${at.toISOString()}\n---\n\n## Goal\nship the release\n`;
+
+test("after the automatic clear, the new note goes into the context in full", () => {
+  const ctx = start({ "2026-10-03-2013-clear.md": clearNote(new Date()) });
+  expect(ctx).toContain("`.claude/handoffs/2026-10-03-2013-clear.md`");
+  expect(ctx).toContain("<note>\n## Goal\nship the release\n</note>");
+  expect(ctx).not.toContain("status: in-progress");
+  expect(ctx).toContain("The next prompt continues the work in the note");
+});
+
+test("an old clear note, a startup, or the option off gives only the pointer", () => {
+  const old = new Date(Date.now() - AUTO_CLEAR_NOTE_MAX_AGE_MS - 1000);
+  const name = "2026-10-03-2013-clear.md";
+  for (const ctx of [
+    start({ [name]: clearNote(old) }),
+    start({ [name]: clearNote(new Date()) }, "startup"),
+    start({ [name]: clearNote(new Date()) }, "clear", {
+      CLAUDE_PLUGIN_OPTION_CONTEXT_AUTO_CLEAR: "false",
+    }),
+    start({ "2026-10-03-2013-retries.md": clearNote(new Date()) }),
+  ]) {
+    expect(ctx).toContain("When the user asks to continue earlier work");
+    expect(ctx).not.toContain("<note>");
+  }
 });

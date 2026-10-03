@@ -12,12 +12,29 @@ const enoent = (file) =>
  * with the rule `generic-api-key` or a `{ secret, rule }`, and each other
  * command exits with 1. `init.cwd` and `init.root` give the session folders.
  * `init.pluginRoot` gives the plugin root, whose shape sets the platform.
+ * `$.commands` and `$.prompts` show the slash commands and the prompts that
+ * the module sent. With `init.commandFails`, each slash command fails.
  */
 export function fake(init = {}) {
   const files = new Map(Object.entries(init.files ?? {}));
   const env = { HOME: "/home/u", ...init.env };
+  const commands = [];
+  const prompts = [];
   const $ = {
     files,
+    commands,
+    prompts,
+    command: {
+      run: async (input) => {
+        commands.push(input);
+        if (init.commandFails) throw new Error("command refused");
+      },
+    },
+    prompt: {
+      submit: async (input) => {
+        prompts.push(input);
+      },
+    },
     plugin: {
       name: "dotclaude",
       root: init.pluginRoot ?? "/plugins/dotclaude",
@@ -76,8 +93,8 @@ export function fake(init = {}) {
  */
 export function registered(options = {}) {
   const handlers = {};
-  register((name, hook) => {
-    handlers[name] = hook;
+  register((name, matcher, hook) => {
+    handlers[name] = hook ?? matcher;
   }, options);
   return handlers;
 }

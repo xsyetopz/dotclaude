@@ -17,6 +17,7 @@ import {
   SUBAGENT_CONTEXT_TOKENS,
 } from "../../hooks/lib/_budget.mjs";
 import {
+  autoClearOn,
   cachePart,
   contextPart,
   limitPart,
@@ -86,6 +87,35 @@ test("the main context is measured against the compaction point, with the compac
   const past = mainContextPart(30_000, COMPACTIONS_BEFORE_HANDOFF + 3);
   expect(plain(past)).toEndWith(` ⇊${COMPACTIONS_BEFORE_HANDOFF + 3}`);
   expect(past).toContain(`${RED}⇊`);
+});
+
+test("with the auto clear, the main context shows the count and the clear mark", () => {
+  const under = mainContextPart(CONTEXT_NOTE_TOKENS - 1, 2, true);
+  expect(plain(under)).toEndWith(" ⇊2");
+  expect(under).not.toContain("clear");
+  const due = mainContextPart(CONTEXT_NOTE_TOKENS, 0, true);
+  expect(plain(due)).toEndWith(" clear");
+  expect(due).toContain(`${RED}clear`);
+  expect(
+    mainContextPart(CONTEXT_NOTE_TOKENS, COMPACTIONS_BEFORE_HANDOFF, true),
+  ).not.toContain("handoff");
+});
+
+test("autoClearOn reads the dotclaude options of the user settings", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "statusline-"));
+  const env = { CLAUDE_CONFIG_DIR: dir };
+  expect(autoClearOn(env)).toBe(true);
+  const write = (options) =>
+    fs.writeFileSync(
+      path.join(dir, "settings.json"),
+      JSON.stringify({ pluginConfigs: { "dotclaude@dotclaude": { options } } }),
+    );
+  write({ guard_bash: true });
+  expect(autoClearOn(env)).toBe(true);
+  write({ context_auto_clear: false });
+  expect(autoClearOn(env)).toBe(false);
+  write({ context_auto_clear: true });
+  expect(autoClearOn(env)).toBe(true);
 });
 
 test("the main line counts the compactions in its transcript", () => {

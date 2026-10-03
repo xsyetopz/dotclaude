@@ -90,14 +90,21 @@ export function contextPart(tokens, limit, cells = 5, markPast = true) {
 }
 
 /**
- * The main context against the compaction point, and `⇊2/4` for the
- * compactions so far out of those before a handoff. From the handoff point,
- * it shows only the count in red, such as `⇊5`, because a fraction past one
- * reads as a limit that does not hold. `handoff` shows when the context note
- * asks for one.
+ * The main context against the compaction point, and the compactions so far.
+ * With `autoClear` (`context_auto_clear`), the next typed prompt from
+ * CONTEXT_NOTE_TOKENS clears the context, so `⇊2` gives only the count, and
+ * `clear` shows from that size. Else `⇊2/4` gives the compactions out of
+ * those before a handoff. From the handoff point, it shows only the count in
+ * red, such as `⇊5`, because a fraction past one reads as a limit that does
+ * not hold, and `handoff` shows when the context note asks for one.
  */
-export function mainContextPart(tokens, count) {
+export function mainContextPart(tokens, count, autoClear = false) {
   let text = contextPart(tokens, AUTO_COMPACT_TOKENS, 5, false);
+  if (autoClear) {
+    if (count > 0) text += ` ${C.dim(`⇊${count}`)}`;
+    if (tokens >= CONTEXT_NOTE_TOKENS) text += ` ${C.red("clear")}`;
+    return text;
+  }
   if (count > 0)
     text += ` ${
       count >= COMPACTIONS_BEFORE_HANDOFF
@@ -107,6 +114,27 @@ export function mainContextPart(tokens, count) {
   if (count >= COMPACTIONS_BEFORE_HANDOFF && tokens >= CONTEXT_NOTE_TOKENS)
     text += ` ${C.red("handoff")}`;
   return text;
+}
+
+/**
+ * Whether `context_auto_clear` is on in the user settings. Claude Code gives
+ * the plugin options to a hook, not to the status line, so this reads
+ * `pluginConfigs` of `settings.json`. A missing value is the default, on.
+ */
+export function autoClearOn(env = process.env) {
+  try {
+    const settings = JSON.parse(
+      fs.readFileSync(path.join(configDir(env), "settings.json"), "utf8"),
+    );
+    for (const [key, config] of Object.entries(settings.pluginConfigs ?? {}))
+      if (key.startsWith("dotclaude@")) {
+        const value = config?.options?.context_auto_clear;
+        if (value !== undefined) return value !== false && value !== "false";
+      }
+  } catch {
+    // No settings file gives the default.
+  }
+  return true;
 }
 
 /**
@@ -337,7 +365,14 @@ function pack(groups, columns) {
  */
 export function renderMain(
   data,
-  { columns = 120, now = Date.now(), git, loop, cached } = {},
+  {
+    columns = 120,
+    now = Date.now(),
+    git,
+    loop,
+    cached,
+    autoClear = false,
+  } = {},
 ) {
   const limits = limitsWithFallback(data.rate_limits, cached, now);
   const dir = data.workspace?.current_dir || data.cwd || "";
@@ -371,7 +406,11 @@ export function renderMain(
 
   const ctx = data.context_window?.total_input_tokens;
   if (typeof ctx === "number" && ctx > 0)
-    add(usage, 10, mainContextPart(ctx, compactions(data.transcript_path)));
+    add(
+      usage,
+      10,
+      mainContextPart(ctx, compactions(data.transcript_path), autoClear),
+    );
 
   add(usage, 7, cachePart(data.prompt_cache, now));
   // A limit past the first usage level outranks all but the context.

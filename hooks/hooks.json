@@ -118,6 +118,22 @@
         ]
       }
     ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs",
+              "Notification"
+            ],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
     "TaskCompleted": [
       {
         "hooks": [

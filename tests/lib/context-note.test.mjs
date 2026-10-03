@@ -9,15 +9,19 @@ import {
   COMPACTIONS_BEFORE_HANDOFF,
   CONTEXT_NOTE_TOKENS,
 } from "../../hooks/lib/_budget.mjs";
-import { contextNote } from "../../hooks/lib/_context-note.mjs";
+import { autoClearDue, contextNote } from "../../hooks/lib/_context-note.mjs";
 import { nodeIo } from "../../hooks/lib/_io-node.mjs";
 import noteContextSize from "../../hooks/post-tool-use/note-context-size.mjs";
 
-function noteIo(tokens, count) {
+/** The io of the note, with `context_auto_clear` off unless `autoClear`. */
+function noteIo(tokens, count, autoClear = "false") {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), "dotclaude-data-"));
   return {
     ...nodeIo(),
-    env: { CLAUDE_PLUGIN_DATA: data },
+    env: {
+      CLAUDE_PLUGIN_DATA: data,
+      CLAUDE_PLUGIN_OPTION_CONTEXT_AUTO_CLEAR: autoClear,
+    },
     session: {
       mainContextTokens: async () => tokens,
       compactions: async () => count,
@@ -78,4 +82,23 @@ test("a handoff write gives no note, and the next call gives none", async () => 
     tool_input: { file_path: "/repo/src/a.js" },
   });
   expect(out.hookSpecificOutput.additionalContext).toContain("handoff");
+});
+
+test("with the auto clear on, the clear is due at the bound with no compaction, and no note comes", async () => {
+  const io = noteIo(CONTEXT_NOTE_TOKENS, 0, "true");
+  expect(await autoClearDue(io)).toBe(true);
+  expect(
+    await contextNote(
+      noteIo(CONTEXT_NOTE_TOKENS + 1, COMPACTIONS_BEFORE_HANDOFF, "true"),
+      data,
+    ),
+  ).toBeNull();
+});
+
+test("the auto clear is not due under the bound, with no size, or when it is off", async () => {
+  expect(await autoClearDue(noteIo(CONTEXT_NOTE_TOKENS - 1, 0, "true"))).toBe(
+    false,
+  );
+  expect(await autoClearDue(noteIo(null, 0, "true"))).toBe(false);
+  expect(await autoClearDue(noteIo(CONTEXT_NOTE_TOKENS, 0))).toBe(false);
 });
