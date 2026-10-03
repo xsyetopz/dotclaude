@@ -1,7 +1,7 @@
 // Stop verification gate and the edit/check ledger it reads.
 
 import { expect, test } from "bun:test";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -154,11 +154,11 @@ test("the stop reason quotes only the check, not the script around it", () => {
   const sid = session();
   checkRun(
     sid,
-    "cd /tmp && ruff format src/app.py && python3 - <<'EOF'\nprint(`x`)\nEOF",
+    "cd /tmp && ruff check src/app.py && python3 - <<'EOF'\nprint(`x`)\nEOF",
   );
   edit(sid);
   const shown = /last check: `([^`]*)`/.exec(feedback(stop(sid)) ?? "")?.[1];
-  expect(shown).toBe("ruff format src/app.py");
+  expect(shown).toBe("ruff check src/app.py");
 });
 
 test("subagent stop checks the subagent's own ledger", () => {
@@ -275,18 +275,213 @@ test("a pass claim with no edit and no check is not blocked", () => {
   expect(stop(sid, "All tests pass.")).toBe(null);
 });
 
-test("plugin validation and markdownlint count as check runs", () => {
+test("plugin validation counts as a check run", () => {
+  const sid = session();
+  edit(sid);
+  checkRun(sid, "bun run validate");
+  expect(stop(sid)).toBe(null);
+});
+
+test("a lint run alone does not satisfy the gate in a project with tests", () => {
   for (const command of [
-    "bun run validate",
     "claude plugin validate --strict .",
     "bunx markdownlint-cli2 --config markdownlint-cli2.jsonc README.md",
     "markdownlint-cli2 '**/*.md'",
+    "bunx eslint src",
+    "just lint",
   ]) {
     const sid = session();
-    edit(sid);
+    edit(sid, "src/app.mjs");
     checkRun(sid, command);
-    expect(stop(sid), command).toBe(null);
+    const out = stop(sid);
+    expect(blocked(out), command).toBe("Stop");
+    expect(feedback(out), command).toMatch(/does not run the code/);
+    expect(feedback(out), "names the test command").toMatch(/`just test`/);
+    expect(stop(sid), "blocks once").toBe(null);
   }
+});
+
+test("the static-check reason stays short for long names", () => {
+  const sid = session();
+  edit(sid, `src/${"deep/".repeat(12)}application-module.mjs`);
+  checkRun(sid, `bunx eslint ${"--rule x ".repeat(20)}src`);
+  const out = stop(sid);
+  expect(blocked(out)).toBe("Stop");
+  expect(feedback(out).length, "a short reason").toBeLessThan(300);
+  expect(feedback(out)).toMatch(/`just test`/);
+});
+
+test("a failed run check is not hidden by a later lint run", () => {
+  const sid = session();
+  edit(sid, "src/app.mjs");
+  checkRun(sid, "bun test", false);
+  checkRun(sid, "bunx eslint src");
+  const out = stop(sid);
+  expect(blocked(out)).toBe("Stop");
+  expect(feedback(out)).toMatch(/`bun test`.*failed/);
+  // A passing run clears the failure.
+  const sid2 = session();
+  edit(sid2, "src/app.mjs");
+  checkRun(sid2, "bun test", false);
+  checkRun(sid2, "bun test");
+  expect(stop(sid2)).toBe(null);
+});
+
+/** A project with no `justfile` and a test command that only its instructions name. */
+function namedProject() {
+  const dir = fs.realpathSync(tmp("dotclaude-named-"));
+  execFileSync("git", ["init", "-q", dir]);
+  fs.writeFileSync(
+    path.join(dir, "CLAUDE.md"),
+    "Run `uv run python manage.py test` before you finish.\n",
+  );
+  const env = { CLAUDE_PROJECT_DIR: dir };
+  const record = (sid, tool_name, tool_input) =>
+    hook(
+      "post-tool-use/record-edits-and-checks.mjs",
+      {
+        session_id: sid,
+        hook_event_name: "PostToolUse",
+        tool_name,
+        tool_input,
+        tool_response: { stdout: "", stderr: "" },
+        cwd: dir,
+      },
+      env,
+    );
+  return { dir, env, record };
+}
+
+test("a project-named test command counts after a lint run that follows an edit", () => {
+  const { dir, env, record } = namedProject();
+  const sid = session();
+  record(sid, "Edit", { file_path: path.join(dir, "app.py") });
+  record(sid, "Bash", { command: "ruff check ." });
+  record(sid, "Bash", { command: "uv run python manage.py test" });
+  const input = {
+    session_id: sid,
+    hook_event_name: "Stop",
+    stop_hook_active: false,
+    cwd: dir,
+  };
+  expect(hook("stop/require-verification.mjs", input, env)).toBe(null);
+  fs.rmSync(dir, { recursive: true });
+});
+
+test("a task completion after only a lint run is blocked once", () => {
+  const sid = session();
+  edit(sid, "src/app.mjs");
+  checkRun(sid, "bunx eslint src");
+  const first = completeTask({ session_id: sid });
+  expect(first.code).toBe(2);
+  expect(first.stderr).toBe(
+    '[dotclaude] The last check (`bunx eslint src`) does not run the code, so the task #1 "Fix the parser" is not verified. Run `just test`. Then mark the task completed. If no check can run, mark the task completed again, and say in your reply that the change is unverified.\n',
+  );
+  expect(first.stderr.length, "a short reason").toBeLessThan(300);
+  expect(completeTask({ session_id: sid }).code, "blocks once").toBe(0);
+  const sid2 = session();
+  edit(sid2, "src/app.mjs");
+  checkRun(sid2, "bunx eslint src");
+  checkRun(sid2, "bun test");
+  expect(completeTask({ session_id: sid2 }).code).toBe(0);
+});
+
+test("a run check satisfies the gate, also before or after a lint run", () => {
+  for (const commands of [
+    ["bun test"],
+    ["bunx eslint src", "bun test"],
+    ["bun test", "bunx eslint src"],
+    ["just test"],
+    ["tsc --noEmit"],
+  ]) {
+    const sid = session();
+    edit(sid, "src/app.mjs");
+    for (const command of commands) checkRun(sid, command);
+    expect(stop(sid), commands.join(" then ")).toBe(null);
+  }
+});
+
+test("a run check before the edit does not cover a lint run after it", () => {
+  const sid = session();
+  checkRun(sid, "bun test");
+  edit(sid, "src/app.mjs");
+  checkRun(sid, "bunx eslint src");
+  expect(blocked(stop(sid))).toBe("Stop");
+});
+
+test("a lint run and a test run in one command count as a run check", () => {
+  const sid = session();
+  edit(sid, "src/app.mjs");
+  checkRun(sid, "bunx eslint src && bun test");
+  expect(stop(sid)).toBe(null);
+});
+
+test("a ledger check with no kind counts as a run check", () => {
+  const sid = session();
+  edit(sid, "src/app.mjs");
+  checkRun(sid, "bun test");
+  const file = fs
+    .readdirSync(data, { recursive: true })
+    .find((f) => String(f).includes(sid));
+  const ledger = path.join(data, String(file));
+  const state = JSON.parse(fs.readFileSync(ledger, "utf8"));
+  delete state.lastCheck.kind;
+  delete state.lastRunSeq;
+  fs.writeFileSync(ledger, JSON.stringify(state));
+  expect(stop(sid)).toBe(null);
+});
+
+test("a lint run satisfies the gate in a project with no test command", () => {
+  const bare = fs.realpathSync(tmp("dotclaude-lint-"));
+  execFileSync("git", ["init", "-q", bare]);
+  const env = { CLAUDE_PROJECT_DIR: bare };
+  const sid = session();
+  hook(
+    "post-tool-use/record-edits-and-checks.mjs",
+    {
+      session_id: sid,
+      hook_event_name: "PostToolUse",
+      tool_name: "Edit",
+      tool_input: { file_path: path.join(bare, "src/app.mjs") },
+      cwd: bare,
+    },
+    env,
+  );
+  hook(
+    "post-tool-use/record-edits-and-checks.mjs",
+    {
+      session_id: sid,
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      tool_input: { command: "bunx eslint src" },
+      tool_response: { stdout: "", stderr: "" },
+      cwd: bare,
+    },
+    env,
+  );
+  const input = {
+    session_id: sid,
+    hook_event_name: "Stop",
+    stop_hook_active: false,
+    cwd: bare,
+  };
+  expect(hook("stop/require-verification.mjs", input, env)).toBe(null);
+  // The same ledger blocks once the project names a test command.
+  fs.writeFileSync(
+    path.join(bare, "package.json"),
+    '{"scripts":{"test":"bun test"}}',
+  );
+  expect(blocked(hook("stop/require-verification.mjs", input, env))).toBe(
+    "Stop",
+  );
+  fs.rmSync(bare, { recursive: true });
+});
+
+test("a docs edit with a lint run passes", () => {
+  const sid = session();
+  edit(sid, "README.md");
+  checkRun(sid, "markdownlint-cli2 README.md");
+  expect(stop(sid)).toBe(null);
 });
 
 test("a reply that says the change is not verified still blocks once", () => {

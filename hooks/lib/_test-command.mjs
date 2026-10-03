@@ -1,6 +1,6 @@
 // The commands that a project names for its tests, from the first source that has one:
 // a `justfile` recipe, a `package.json` script, a command in `CLAUDE.md` or `AGENTS.md`,
-// or a build file of an ecosystem whose checks the ledger counts (`CHECK` in `_ledger.mjs`).
+// or a build file of an ecosystem whose checks the ledger counts (`_check-command.mjs`).
 // A build file can show that the project has tests but not which command runs them,
 // for example a `pyproject.toml` with no pytest config.
 // Then the result has no commands: the verify gate applies, and subagents get no command.

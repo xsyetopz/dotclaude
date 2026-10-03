@@ -35,6 +35,18 @@ function file(io, sessionId, agentId) {
   );
 }
 
+/**
+ * The sequence number of the last passing check that runs the code.
+ * A check with no kind, from an older ledger, counts as a `run` check.
+ */
+export function lastRunSeq(state) {
+  const check = state.lastCheck;
+  return Math.max(
+    state.lastRunSeq ?? -1,
+    check && check.kind !== "static" && check.ok !== false ? check.seq : -1,
+  );
+}
+
 export async function load(io, sessionId, agentId) {
   try {
     return {
@@ -115,82 +127,6 @@ export async function withLedger(io, sessionId, agentId, fn) {
     release();
     if (queues.get(key) === tail) queues.delete(key);
   }
-}
-
-// Commands that test, build, lint or type-check. Matched against each simple
-// command after wrappers are stripped. The name of the command is its base
-// name, so `./gradlew` is `gradlew`.
-export const CHECK = [
-  /^(pytest|py\.test|tox|nox|nose2|mypy|pyright|basedpyright|ruff check|ruff|pylint|flake8)\b/,
-  /^python[0-9.]* -m (pytest|unittest|mypy|ruff|pyright|compileall|tox)\b/,
-  /^(uv|poetry|pdm|hatch|rye) run (pytest|mypy|ruff|pyright|tox|python -m pytest)\b/,
-  /^(npm|pnpm|yarn|bun) (run )?(test|build|lint|check|typecheck|type-check|tsc|verify|validate|ci|e2e|test:\S+|lint:\S+|build:\S+)\b/,
-  // A script name with a check word as one part: `release:check`, `check-all`.
-  /^(npm|pnpm|yarn|bun) (run )?[^\s-]\S*?\b(test|build|lint|check|typecheck|verify|validate)\b/,
-  /^(npm|pnpm|yarn) (t|tst)$/,
-  /^bun test\b/,
-  // Node's built-in runner. Flags only before `--test`: `node app.mjs --test` runs app.mjs.
-  /^node (-\S+ )*--test( |$)/,
-  /^(npx|pnpx|bunx|pnpm exec|yarn exec|pnpm dlx) (--?[a-z][\w-]* )*(jest|vitest|tsc|eslint|biome|oxlint|playwright|mocha|ava|prettier --check|cypress run|markdownlint(?:-cli2)?)\b/,
-  /^(jest|vitest|mocha|ava|tsc|eslint|biome|oxlint|playwright test|cypress run|markdownlint(?:-cli2)?)\b/,
-  /^claude plugin validate\b/,
-  /^cargo (test|build|check|clippy|nextest|fmt --check|fmt -- --check)\b/,
-  /^go (test|build|vet)\b/,
-  /^(golangci-lint|staticcheck) run\b/,
-  // A task runner with no recipe, or with a recipe name that holds a check
-  // word (`just skills skill-lint`, `make -C app test`, `make ci-local`).
-  /^(make|gmake|just|task|mage)$/,
-  /^(make|gmake|just|task|mage) (.* )?(\S*[^a-z ])?(test|tests|check|build|lint|all|ci|verify|validate)([^a-z ]\S*)?( |$)/,
-  /^(xcrun (\S+ )*?)?(swift (build|test)|xcodebuild\b.*\b(build|test))\b/,
-  // A task that holds a check word in any case: `:sharedUI:jvmTest`,
-  // `spotlessCheck`, `detekt`.
-  /^(gradlew|gradle|mvnw|mvn)( \S+)*? (?!-)\S*(test|build|check|verify|assemble|compile|lint|detekt)/i,
-  /^(xcrun (\S+ )*?)?swift[- ]format lint\b/,
-  /^dotnet (build|test)\b/,
-  /^(ctest|ninja|meson test|cmake --build)\b/,
-  /^bazel(isk)? (test|build)\b/,
-  /^zig (build|test)\b/,
-  /^(mix (test|compile)|rspec|bundle exec (rspec|rake)|rake (test|spec)|phpunit|vendor\/bin\/phpunit|composer test)\b/,
-  /^deno (test|check|lint)\b/,
-  /^(shellcheck|clang-tidy|swiftlint|ktlint|hadolint|actionlint)\b/,
-  /^(flutter|dart) (test|analyze)\b/,
-  // A script with a check word as one part of its file name, run directly
-  // or by an interpreter: `check-localizations.sh`, `python3 tools/check.py`.
-  /^((ba|z)?sh |python[0-9.]* |bun |node )?(\S*\/)?([^\s/]*[-_.])?(check|verify|test|lint)s?([-_.][^\s/]*)?\.(sh|bash|zsh|py|mjs|cjs|js|ts|rb|pl)( |$)/i,
-  // A project command with a check subcommand: `ojd check schemas`,
-  // `swiftpm.sh test`. Tools that take a file, a pattern, or a word as
-  // their first argument are not project commands.
-  /^(?!(git|gh|brew|echo|printf|cd|ls|cat|less|head|tail|rg|grep|egrep|fgrep|tgrep|ag|ack|fd|find|tree|sed|sd|awk|jq|yq|wc|du|stat|file|touch|mkdir|rmdir|rm|cp|mv|ln|open|code|vim|nvim|nano|man|which|type|command|whereis|xargs|tee|test|diff|chmod|chown|tar|zip|unzip|curl|wget|tmux|kill|pkill|pgrep|ps|say|osascript|defaults|launchctl|plutil|codesign|openssl|security|pip|pip3|uv|docker|podman) )\S+ (test|check|lint|verify|build)( |$)/,
-];
-
-// A shell script that runs the command in its arguments, for example a
-// toolchain wrapper: `x27.sh swift test`, `zsh run.sh cargo test`.
-const SCRIPT = /\.(sh|bash|zsh)$/;
-
-/** The command that a wrapper script in front of `argv` runs, or undefined. */
-function wrapped(argv) {
-  if (/^(ba|z)?sh$/.test(argv[0]) && SCRIPT.test(argv[1] ?? ""))
-    return argv.length > 2 ? argv.slice(2) : undefined;
-  if (SCRIPT.test(argv[0]) && argv.length > 1) return argv.slice(1);
-  return undefined;
-}
-
-/**
- * The first simple command in `command` that is a check, without wrappers,
- * or undefined. Hook messages quote it, so a heredoc or a long pipeline
- * around the check does not show.
- */
-export function checkCommand(command) {
-  try {
-    for (const cmd of parse(command).commands) {
-      const joined = [cmd.name, ...cmd.args].join(" ");
-      for (let argv = [cmd.name, ...cmd.args]; argv; argv = wrapped(argv))
-        if (CHECK.some((re) => re.test(argv.join(" ")))) return joined;
-    }
-  } catch {
-    // An unparsable command is not a check.
-  }
-  return undefined;
 }
 
 // Failure markers in the output of a command that exited 0, for example

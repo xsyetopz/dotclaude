@@ -2,11 +2,12 @@
 // session ledger, and mark an asked guard decision as approved. Prints
 // nothing.
 
+import { checkInfo } from "../lib/_check-command.mjs";
 import { option, projectRoot } from "../lib/_core.mjs";
 import {
-  checkCommand,
   codeFile,
   fullReads,
+  lastRunSeq,
   load,
   outputShowsFailure,
   recordRead,
@@ -15,6 +16,7 @@ import {
   withLedger,
 } from "../lib/_ledger.mjs";
 import { pathFor } from "../lib/_path.mjs";
+import { findTestCommand } from "../lib/_test-command.mjs";
 import { approveAsk } from "../lib/_verdicts.mjs";
 
 /** Project-relative path an edit tool wrote, or null. */
@@ -33,26 +35,34 @@ function editedPath(io, data) {
   return rel;
 }
 
-/** Result of a finished test/build/lint command, or null when it doesn't count. */
-function checkRun(data) {
+/** Result of a finished test/build/lint command, with its kind (`run` or `static`), or undefined when it doesn't count. */
+function checkRun(data, project) {
   const input = data.tool_input ?? {};
-  const check =
-    typeof input.command === "string" ? checkCommand(input.command) : undefined;
-  if (!check) return undefined;
+  const info =
+    typeof input.command === "string"
+      ? checkInfo(input.command, project)
+      : undefined;
+  if (!info) return undefined;
+  const { command: check, kind } = info;
   if (input.run_in_background) return undefined; // result arrives later
   const flat = check.replace(/\s+/g, " ").replaceAll("`", "'");
   const recorded = flat.length > 200 ? `${flat.slice(0, 199)}…` : flat;
   if (data.hook_event_name === "PostToolUseFailure") {
     if (data.is_interrupt) return undefined;
     const code = /^Exit code (\d+)/.exec(data.error ?? "")?.[1];
-    return { command: recorded, ok: false, code: code ? Number(code) : null };
+    return {
+      command: recorded,
+      kind,
+      ok: false,
+      code: code ? Number(code) : null,
+    };
   }
   const response = data.tool_response ?? {};
   if (response.interrupted) return undefined;
   const output = `${response.stdout ?? ""}\n${response.stderr ?? ""}`.slice(
     -20000,
   );
-  return { command: recorded, ok: !outputShowsFailure(output), code: 0 };
+  return { command: recorded, kind, ok: !outputShowsFailure(output), code: 0 };
 }
 
 /** Every path this session (or subagent) wrote, so compaction can tell its
@@ -61,6 +71,15 @@ function recordEdited(state, rel) {
   const list = (state.edited ?? []).filter((p) => p !== rel);
   list.push(rel);
   state.edited = list.slice(-300);
+}
+
+/**
+ * The test commands that the project names, when an edit has no check after it.
+ * The lookup reads files, so it runs only when the gate needs a check.
+ */
+async function projectChecks(io, data, state) {
+  if (!state.lastEdit || state.lastEdit.seq <= lastRunSeq(state)) return [];
+  return (await findTestCommand(io, projectRoot(io, data)))?.commands ?? [];
 }
 
 export default async function (io, data) {
@@ -127,11 +146,19 @@ async function record(io, data) {
           : [];
       for (const abs of reads)
         await recordRead(io, state, abs, `\`${command.trim()}\``);
-      const result = checkRun(data);
+      const result = checkRun(data, await projectChecks(io, data, state));
       // A check in the same command runs after its writes (`... > f && make`).
       if (result) {
         if (written.length) state.seq += 1;
         state.lastCheck = { seq: state.seq, ...result };
+        // The gate needs the last passing `run` check apart from the last
+        // check, and a failed `run` check that a later `static` check hides.
+        if (result.kind === "run") {
+          if (result.ok) {
+            state.lastRunSeq = state.seq;
+            state.failedRun = null;
+          } else state.failedRun = { seq: state.seq, ...result };
+        }
       }
       if (!written.length && !result && !reads.length) return;
       break;

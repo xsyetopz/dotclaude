@@ -7,11 +7,7 @@
 // caller can fall back to a raw-text scan.
 
 import { unwrap } from "./_shell-command.mjs";
-import {
-  extractHeredocs,
-  extractSubstitutions,
-  tokenize,
-} from "./_shell-lexer.mjs";
+import { lex } from "./_shell-lexer.mjs";
 
 export { program } from "./_shell-command.mjs";
 
@@ -49,20 +45,24 @@ const MAX_DEPTH = 4;
 
 export function parse(command, depth = 0) {
   const result = { commands: [], unparsed: [] };
-  if (depth > MAX_DEPTH || !command.trim()) return result;
-  const { text: withoutHeredocs, bodies } = extractHeredocs(command);
-  const { text, found } = extractSubstitutions(withoutHeredocs);
-  for (const inner of found) merge(result, parse(inner, depth + 1));
-  let tokens;
+  if (!command.trim()) return result;
+  // Text nested deeper than the limit gets the raw-text scan.
+  if (depth > MAX_DEPTH) {
+    result.unparsed.push(command);
+    return result;
+  }
+  let lexed;
   try {
-    tokens = tokenize(text);
+    lexed = lex(command);
   } catch {
     result.unparsed.push(command);
     return result;
   }
+  for (const inner of lexed.substitutions)
+    merge(result, parse(inner, depth + 1));
   buildCommands(
-    tokens,
-    bodies,
+    lexed.tokens,
+    lexed.heredocs,
     result,
     depth,
     singlyAssigned(command),
@@ -84,6 +84,7 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
   let stdinFile = null;
   let pendingHeredoc = null;
   let prevArgv = null;
+  let prevCmd = null;
   let pipeNext = false;
   let cwdHint = null;
   let heredocIndex = 0;
@@ -105,11 +106,18 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
         cmd.stdinRedirect = stdinRedirect || pendingHeredoc !== null;
         cmd.stdinFile = stdinFile;
         cmd.pipedFrom = pipeNext ? prevArgv : null;
+        if (
+          pipeNext &&
+          prevCmd?.name === "cat" &&
+          !prevCmd.args.some((a) => a !== "-")
+        )
+          cmd.pipedInput = prevCmd.heredoc;
         cmd.cwdHint = cwdHint;
         if (cmd.name === "cd" && cmd.args.length) cwdHint = cmd.args[0];
         result.commands.push(cmd);
         expandNested(cmd, result, depth);
         prevArgv = cmd.argv;
+        prevCmd = cmd;
       }
     }
     current = [];
@@ -128,13 +136,9 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
         flush(tok.op);
       } else if (REDIRECT.test(tok.op)) {
         // `<`, `0<`, `<<<`, or `<&` without another descriptor before it.
-        const fd = /^\d+$/.test(tokens[i - 1]) ? tokens[i - 1] : "0";
-        if (/^0?</.test(tok.op) && fd === "0") stdinRedirect = true;
-        if (
-          /^0?<$/.test(tok.op) &&
-          fd === "0" &&
-          typeof tokens[i + 1] === "string"
-        )
+        // The lexer joins a descriptor number to its operator (`2>`).
+        if (/^0?</.test(tok.op)) stdinRedirect = true;
+        if (/^0?<$/.test(tok.op) && typeof tokens[i + 1] === "string")
           stdinFile = tokens[i + 1];
         if (tok.op.startsWith("<<") && tok.op !== "<<<") {
           pendingHeredoc = heredocs[heredocIndex] ?? "";
@@ -150,14 +154,6 @@ function buildCommands(tokens, heredocs, result, depth, resolvable, temps) {
         }
         i += 1; // skip the redirect target
       }
-    } else if (SEPARATORS.has(tok) && (tok === "{" || tok === "}")) {
-      flush(tok);
-    } else if (
-      /^\d+$/.test(tok) &&
-      typeof tokens[i + 1] === "object" &&
-      REDIRECT.test(tokens[i + 1].op)
-    ) {
-      // file descriptor number before a redirect
     } else {
       current.push(tok);
     }
@@ -302,30 +298,40 @@ function expandLoops(token, loops) {
   );
 }
 
-/** Script string for `bash -c '...'` style invocations, or null. */
-export function shellScript(cmd) {
-  if (!SHELLS.has(cmd.name)) return undefined;
-  const args = cmd.args;
+// Shell options whose value is the next word (`bash -o pipefail -c ...`).
+const SHELL_VALUE_FLAGS = new Set([
+  "-o",
+  "+o",
+  "-O",
+  "+O",
+  "--rcfile",
+  "--init-file",
+]);
+
+/** The `-c` script of a shell's arguments, or else its first operand. */
+function shellArgs(args) {
   for (let idx = 0; idx < args.length; idx += 1) {
     const tok = args[idx];
-    if (
-      tok === "-c" ||
-      (tok.startsWith("-") &&
-        !tok.startsWith("--") &&
-        tok.slice(1).includes("c"))
-    ) {
-      return args[idx + 1] ?? "";
-    }
-    if (!tok.startsWith("-")) return undefined; // running a script file
+    if (SHELL_VALUE_FLAGS.has(tok)) idx += 1;
+    else if (tok === "--") return { operand: args[idx + 1] };
+    else if (/^-[^-]/.test(tok) && tok.includes("c"))
+      return { script: args[idx + 1] ?? "" };
+    else if (!/^[-+]./.test(tok)) return { operand: tok };
   }
-  return undefined;
+  return {};
+}
+
+/** Script string for `bash -c '...'` style invocations, or undefined. */
+export function shellScript(cmd) {
+  if (!SHELLS.has(cmd.name)) return undefined;
+  return shellArgs(cmd.args).script;
 }
 
 /** True for a bare shell that executes whatever arrives on stdin. */
 export function readsStdinScript(cmd) {
-  if (!SHELLS.has(cmd.name) || shellScript(cmd) !== undefined) return false;
-  const positional = cmd.args.filter((a) => !a.startsWith("-"));
-  return positional.length === 0 || positional[0] === "-";
+  if (!SHELLS.has(cmd.name)) return false;
+  const { script, operand } = shellArgs(cmd.args);
+  return script === undefined && (operand === undefined || operand === "-");
 }
 
 function expandNested(cmd, result, depth) {
@@ -333,6 +339,6 @@ function expandNested(cmd, result, depth) {
   if (script) merge(result, parse(script, depth + 1));
   else if (cmd.name === "eval" && cmd.args.length)
     merge(result, parse(cmd.args.join(" "), depth + 1));
-  else if (cmd.heredoc && readsStdinScript(cmd))
-    merge(result, parse(cmd.heredoc, depth + 1));
+  else if ((cmd.heredoc ?? cmd.pipedInput) && readsStdinScript(cmd))
+    merge(result, parse(cmd.heredoc ?? cmd.pipedInput, depth + 1));
 }
