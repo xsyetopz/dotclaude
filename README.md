@@ -39,7 +39,7 @@ cannot set permissions, environment variables, or models. This skill writes
 them into a settings file that you choose. It shows the changes and makes a
 backup first. See [Settings Profile](docs/settings-profile.md).
 
-For the optional integrations (CodeGraph, tgrep, fast-compact, Betterleaks,
+For the optional integrations (CodeGraph, tgrep, Betterleaks,
 semlf, Ghidra, and the browser plugin), run `/dotclaude:setup integrations`, for
 example `/dotclaude:setup integrations codegraph`.
 
@@ -135,7 +135,7 @@ Setup selects a reply style: Default (no style), Proactive, Concise, Explanatory
 
 | Skill | Use |
 | --- | --- |
-| `/dotclaude:setup` | applies the settings profile, removes the 0.16 shell function, and installs CodeGraph, tgrep, fast-compact, Betterleaks, semlf, Ghidra, OpenSpec, and `dotclaude-browser` |
+| `/dotclaude:setup` | applies the settings profile, removes the 0.16 shell function, and installs CodeGraph, tgrep, Betterleaks, semlf, Ghidra, OpenSpec, and `dotclaude-browser` |
 | `slices` | runs a large change as slices with a diff-only reviewer and a frozen test oracle |
 | `handoff` | writes a note that a fresh session can continue from |
 | `contribute` | checks a project's AI policy and drafts an issue or pull request for you to send |

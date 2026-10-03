@@ -5,10 +5,9 @@
 //
 // Reads only: PATH, ~/.claude.json and the project's .mcp.json (MCP server
 // names, never their env or headers), the project's .codegraph/ and .tgrep/
-// directories, whether the global git excludes file lists .tgrep/, and for
-// fast-compact whether the plugin is installed and which settings are
-// present (key names only, never values), the betterleaks and semlf versions, and for
-// Ghidra the versions of `uvx`, Python, and Java, `GHIDRA_INSTALL_DIR`, the
+// directories, whether the global git excludes file lists .tgrep/, the
+// betterleaks and semlf versions, and for Ghidra the versions of `uvx`, Python,
+// and Java, `GHIDRA_INSTALL_DIR`, the
 // `ghidra` MCP entry, and the `ghidra-bridge` CLI. For dotclaude-browser it
 // reads whether the plugin, agent-browser, CloakBrowser, ddddocr, and the
 // ddddocr model are installed. For OpenSpec it reads the CLI version and
@@ -123,20 +122,6 @@ function browser() {
   };
 }
 
-/** fast-compact: plugin installed, function hooks on, which Jev key exists. */
-function fastCompact() {
-  const settings = readJson(path.join(configDir, "settings.json")) ?? {};
-  const env = { ...settings.env, ...process.env };
-  const installed = pluginInstalled("fast-compact");
-  const config = settings.pluginConfigs?.["fast-compact@fast-compact"] ?? {};
-  return {
-    installed,
-    function_hooks: env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS === "1",
-    keys: ["TYPESAFE_API_KEY", "OPENROUTER_API_KEY"].filter((k) => env[k]),
-    provider: config.options?.provider ?? null,
-  };
-}
-
 /** The version that `bin` prints, and whether its major and minor pass. */
 function runtime(bin, flag, pattern, [major, minor]) {
   if (!Bun.which(bin)) return null;
@@ -208,7 +193,6 @@ console.log(
         indexed: fs.existsSync(path.join(project, ".tgrep")),
         global_ignore: globalIgnore(),
       },
-      fast_compact: fastCompact(),
       betterleaks: { cli: version("betterleaks", "version") },
       semlf: { cli: version("semlf") },
       ghidra: ghidra(servers),

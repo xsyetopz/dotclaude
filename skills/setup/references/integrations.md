@@ -39,33 +39,6 @@ CodeGraph answers symbol questions (definitions, callers, call paths) for code i
   Tell the user to run `/dotclaude:setup` again to refresh that block.
 </tgrep>
 
-<fast_compact>
-fast-compact (NodarDavituri/fast-compact) adds `/fc`, which cuts old tool output to its start and end in about a second.
-It saves every cut to a file that Claude can read later.
-It also has Jev (TypeSafe's decision model) choose which old outputs stay whole.
-Claude Code's `/compact` stays unaffected.
-
-Before installing, tell the user what dotclaude measured on their transcripts (`docs/dossier/evals.md`).
-`/fc` keeps more of what the session later needs than `/compact` (83% against 40%).
-But it leaves 72–91% of the context in place, so every later turn re-reads that much.
-It is relief for a mid-sized context, not a replacement for compaction.
-Jev's picks measured no better than keeping the newest outputs whole.
-
-- Install the plugin: `claude plugin marketplace add NodarDavituri/fast-compact`, then `claude plugin install fast-compact@fast-compact`.
-- It needs two settings that the user adds to `~/.claude/settings.json`, because settings edits are theirs to make.
-  Give them the exact JSON:
-  - `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: "1"`, an early-access Claude Code feature the plugin's hooks run on.
-  - A Jev key.
-    When the status lists `TYPESAFE_API_KEY` among `keys`, have them set `pluginConfigs["fast-compact@fast-compact"].options.provider` to `"typesafe"`.
-    The plugin defaults to OpenRouter (`OPENROUTER_API_KEY`).
-    Never read or print the key.
-- Model: the plugin sends `jev-latest`, which TypeSafe accepts.
-  Its bench script defaults to `jev-1.13`, which TypeSafe rejects.
-  When you run the bench against TypeSafe, pass `JEV_BASE_URL=https://api.typesafe.ai/v1/systemone JEV_MODEL=jev-latest`.
-- After a restart or `/reload-plugins`, `/fc` should report the model and a cost line.
-  If it reports that it found no key, the key or provider setting is missing.
-</fast_compact>
-
 <betterleaks>
 dotclaude's secret redaction (the `guard_secrets` option, on by default) runs Betterleaks on every tool output.
 It replaces each secret that Betterleaks finds with `[REDACTED:<rule>]` before Claude sees it.

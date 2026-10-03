@@ -78,10 +78,6 @@ All are optional. dotclaude works without them.
 - **CodeGraph:** one query returns a symbol's source and its callers, in place
   of many searches and reads. Each read is a turn.
 - **tgrep:** indexed search for large repositories.
-- **fast-compact:** trims only old tool output. In 5 replayed compactions it
-  kept 83% of the facts that Claude used next, against 40% for `/compact`.
-  But it leaves 72–91% of the context, so every later turn costs more. It is
-  for work where lost facts cost more than usage ([evals](dossier/evals.md)).
 - **Betterleaks:** the scanner behind
   [secret redaction](hooks.md#secret-redaction-guard_secrets).
 - **semlf:** the checker behind the

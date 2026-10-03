@@ -5,6 +5,9 @@ source labels.
 
 ## 6. Compaction: fast-compact Against `/compact`
 
+0.19.0 removed the fast-compact integration.
+Users report that Jev compacts badly, and the eval below found Jev's picks no better than keeping the newest outputs.
+
 Measured on 2026-09-27 from local transcripts, with no Claude usage.
 
 **The fast-compact bench, on 28 local points** (20 answered):
