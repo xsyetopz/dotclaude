@@ -32,9 +32,9 @@ test("model lock denies disallowed subagent models and switches", async () => {
   for (const model of ["fable", "claude-fable-5-1"]) {
     const out = agent(model, { ANTHROPIC_DEFAULT_FABLE_MODEL: "" });
     expect(out.hookSpecificOutput.permissionDecision, model).toBe("deny");
-    // The deny names the agent to use instead.
+    // The deny tells Claude to omit `model`, and names no model to use.
     expect(out.hookSpecificOutput.permissionDecisionReason).toContain(
-      "`dotclaude:mechanical-worker`",
+      "Omit `model`, so that the agent's definition sets it.",
     );
   }
   const old = agent("claude-opus-4-1");
@@ -46,8 +46,8 @@ test("model lock denies disallowed subagent models and switches", async () => {
   expect(old.hookSpecificOutput.permissionDecisionReason).toContain(
     "`claude-sonnet-5-5`",
   );
-  expect(old.hookSpecificOutput.permissionDecisionReason).toContain(
-    "`dotclaude:mechanical-worker`",
+  expect(old.hookSpecificOutput.permissionDecisionReason).not.toContain(
+    "mechanical-worker",
   );
   for (const model of ["haiku", "claude-haiku-4-5"])
     expect(
@@ -172,6 +172,53 @@ test("general-purpose is refused, and other subagents run in the foreground", ()
   ).toBeUndefined();
 });
 
+test("the model lock removes a call's model for a dotclaude agent only", () => {
+  const spawn = (input, env = {}) =>
+    hook(
+      "pre-tool-use/prefer-dotclaude-agents.mjs",
+      { hook_event_name: "PreToolUse", tool_name: "Agent", tool_input: input },
+      env,
+    )?.hookSpecificOutput;
+  const pinned = spawn({
+    subagent_type: "dotclaude:implementer",
+    prompt: "x",
+    model: "opus",
+  });
+  expect(pinned.permissionDecision).toBe("allow");
+  expect(pinned.permissionDecisionReason).toBeUndefined();
+  expect(pinned.updatedInput).toEqual({
+    subagent_type: "dotclaude:implementer",
+    prompt: "x",
+    run_in_background: false,
+  });
+  // A foreground call still loses its `model`.
+  expect(
+    spawn({
+      subagent_type: "dotclaude:implementer",
+      model: "opus",
+      run_in_background: false,
+    }).updatedInput,
+  ).toEqual({
+    subagent_type: "dotclaude:implementer",
+    run_in_background: false,
+  });
+  // An agent from elsewhere keeps its `model`.
+  expect(
+    spawn({ subagent_type: "Explore", model: "haiku" }).updatedInput,
+  ).toEqual({
+    subagent_type: "Explore",
+    model: "haiku",
+    run_in_background: false,
+  });
+  // The lock off keeps it.
+  expect(
+    spawn(
+      { subagent_type: "dotclaude:implementer", model: "opus" },
+      { CLAUDE_PLUGIN_OPTION_MODEL_LOCK: "false" },
+    ).updatedInput.model,
+  ).toBe("opus");
+});
+
 test("each dotclaude agent runs on a model that the default lock allows", async () => {
   const { definition } = await import("../../hooks/lib/_agents.mjs");
   const { allowed, DEFAULT_ALLOWED, effortLevels } = await import(
@@ -240,6 +287,20 @@ test("the model lock denies a subagent effort outside EFFORT_LEVELS", () => {
   expect(forced.hookSpecificOutput.permissionDecisionReason).toContain(
     "`CLAUDE_CODE_EFFORT_LEVEL`",
   );
+  // The reason says which effort to change and advises no model.
+  const reason = forced.hookSpecificOutput.permissionDecisionReason;
+  expect(reason).not.toMatch(/Opus|Sonnet 5\.5 `high`|mechanical-worker|opus/);
+  const session = agent({ model: "sonnet" }, "xhigh");
+  expect(session.hookSpecificOutput.permissionDecisionReason).toContain(
+    "`/effort`",
+  );
+  expect(session.hookSpecificOutput.permissionDecisionReason).not.toMatch(
+    /Opus|mechanical-worker|model: "opus"/,
+  );
+  // A dotclaude agent ignores the call's `model`: the definition decides.
+  expect(
+    agent({ subagent_type: "dotclaude:implementer", model: "claude-opus-4-1" }),
+  ).toBe(null);
   // An agent from elsewhere with no `model` is not judged.
   expect(agent({ subagent_type: "Explore" }, "max")).toBe(null);
   // The lock off turns the check off.

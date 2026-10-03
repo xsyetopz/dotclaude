@@ -32,7 +32,7 @@ Before a command that changes state (a service restart, a data delete, a config 
    If you cannot reproduce it, report what you tried, and do not guess.
 2. Divide the path from the input to the failure into stages.
    State what each stage should receive and produce.
-   When a `.codegraph/` directory exists, use `codegraph_explore`, because it gives a symbol's source with its callers and callees in one call.
+   When a `.codegraph/` directory exists, run `codegraph explore "<symbol names or question>"` through Bash, because it gives a symbol's source with its callers and callees in one call.
 3. Measure at the stage boundaries with temporary logs, assertions, a smaller input, or `git log -S` and `git log -p` for a regression.
    Each measurement should show if one stage contains the failure.
    Change one thing for each run.

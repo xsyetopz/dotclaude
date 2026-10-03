@@ -3,18 +3,22 @@
 // prompt at 2.5x Opus 5.5's rate before doing any work, and Fable spends the
 // same weekly limit as every other model.
 //
+// A dotclaude agent whose definition sets a model ignores the call's `model`,
+// because `prefer-dotclaude-agents.mjs` removes it. The definition's model is
+// checked instead.
+//
 // Also deny a subagent that would run at an effort level outside
 // EFFORT_LEVELS for its model. Claude Code takes the model from the call's
 // `model`, then the definition; and the effort from `CLAUDE_CODE_EFFORT_LEVEL`,
 // then the definition, then the session. Only dotclaude definitions are read,
 // so an agent from elsewhere is checked only when the call names a model.
 
-import { definition } from "../lib/_agents.mjs";
+import { definition, pinnedModel } from "../lib/_agents.mjs";
 import { option, preToolOutput } from "../lib/_core.mjs";
 import { allowed, effortLevels, family } from "../lib/_models.mjs";
 import { planAllowlist } from "../lib/_plans.mjs";
 
-const HINT = `Omit \`model\` to use the agent's own model. For fully specified, mechanical work use \`dotclaude:mechanical-worker\` (Sonnet 5.5).`;
+const HINT = "Omit `model`, so that the agent's definition sets it.";
 
 /** True when `model` runs as Fable, after `ANTHROPIC_DEFAULT_*_MODEL`. */
 function isFable(model, env) {
@@ -32,19 +36,17 @@ function effortReason(model, data, def, env) {
   const source = envEffort
     ? "`CLAUDE_CODE_EFFORT_LEVEL` sets it for every agent. Unset it and use `/effort` for the session."
     : def?.effort
-      ? "The agent's definition sets it."
-      : "The agent takes the effort of the session.";
-  const next =
-    family(model, env) === "sonnet"
-      ? `Work that needs more effort than Sonnet 5.5 \`high\` needs judgment, so give it to Opus 5.5: omit \`model\` for a dotclaude agent, or set \`model: "opus"\`.`
-      : `Use a lower session effort, for example \`/effort xhigh\`.`;
-  return `dotclaude supports \`${model}\` only at the effort levels ${list(levels)}. This agent would run at \`${effort}\`. ${source} ${next}`;
+      ? "The agent's definition sets it. Change `effort` in the definition."
+      : "The agent takes the effort of the session. Change it with `/effort`.";
+  return `dotclaude supports \`${model}\` only at the effort levels ${list(levels)}. This agent would run at \`${effort}\`. ${source}`;
 }
 
 export default async function (io, data) {
   if (!option(io.env, "model_lock")) return;
   const input = data.tool_input ?? {};
-  const model = typeof input.model === "string" ? input.model : "";
+  const def = await definition(io, String(input.subagent_type ?? ""));
+  const pinned = pinnedModel(def);
+  const model = !pinned && typeof input.model === "string" ? input.model : "";
   if (model && isFable(model, io.env))
     return preToolOutput(
       "deny",
@@ -58,8 +60,7 @@ export default async function (io, data) {
         `Subagent model \`${model}\` is outside the allowed models (${list(models)}).${note} ${HINT}`,
       );
   }
-  const def = await definition(io, String(input.subagent_type ?? ""));
-  const target = model || (def?.model !== "inherit" ? def?.model : "") || "";
+  const target = pinned || model;
   if (!target) return;
   const reason = effortReason(target, data, def, io.env);
   if (reason) return preToolOutput("deny", reason);

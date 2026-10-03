@@ -1,5 +1,5 @@
-// PreToolUse(Agent): refuse `general-purpose`, and run every other subagent
-// in the foreground.
+// PreToolUse(Agent): refuse `general-purpose`, run every other subagent in the
+// foreground, and let a dotclaude agent's definition fix its model.
 //
 // general-purpose: in the week of 2026-09-21 these agents were 17.5% of
 // spend, 83 explicit calls, almost all implementation slices with no turn
@@ -17,12 +17,17 @@
 // Code applies `updatedInput` only with an allow or ask decision; a deny from
 // another hook or a settings deny rule still wins over this allow.
 //
+// Model: with `model_lock` on, a dotclaude agent whose definition sets a model
+// loses the call's `model`, so the definition decides. This is the only hook
+// that returns `updatedInput` for `Agent`, because the merge keeps one.
+//
 // Concurrency: with `MAX_CONCURRENT_AGENTS` subagents running, the call is
 // denied before Claude Code refuses it with `Concurrent subagent limit
 // reached`. The count comes from `SubagentStart` and `SubagentStop`. Resumes
 // and `/subtask` forks bypass Claude Code's own count, so this check only
 // denies when it counted the running agents itself.
 
+import { definition, pinnedModel } from "../lib/_agents.mjs";
 import {
   MAX_CONCURRENT_AGENTS,
   RUNNING_AGENT_IDLE_MINUTES,
@@ -62,13 +67,19 @@ export default async function (io, data) {
     await logVerdict(io, data, "deny", reason);
     return preToolOutput("deny", reason);
   }
-  if (input.run_in_background === false) return;
+  const strip =
+    option(io.env, "model_lock") &&
+    "model" in input &&
+    pinnedModel(await definition(io, String(type ?? ""))) !== "";
+  if (input.run_in_background === false && !strip) return;
+  const { model: _model, ...withoutModel } = input;
+  const rest = strip ? withoutModel : input;
   return {
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       // No reason: the user would see it on every spawn.
       permissionDecision: "allow",
-      updatedInput: { ...input, run_in_background: false },
+      updatedInput: { ...rest, run_in_background: false },
     },
   };
 }

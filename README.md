@@ -128,8 +128,7 @@ Setup selects a reply style: Default (no style), Proactive, Concise, Explanatory
 | --- | --- |
 | `reverse-engineer` | Opus 5.5, high |
 | `reviewer`, `debugger` | Sonnet 5.5, high |
-| `investigator` | Opus 5.5, medium |
-| `web-researcher` | Opus 5.5, low |
+| `investigator`, `web-researcher` | Sonnet 5.5, medium |
 | `implementer`, `mechanical-worker` | Sonnet 5.5, medium |
 | `test-runner` | Haiku 4.5 |
 

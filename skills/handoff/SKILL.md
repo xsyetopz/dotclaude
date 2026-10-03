@@ -11,7 +11,9 @@ argument-hint: "[output path, default .claude/handoffs/<YYYY-MM-DD-HHMM>-<topic>
 2. Write only what you verified or what the user said.
    Mark each item that you are not sure of as unverified, because the next session reads the note as fact.
 3. List as done only the files that this session or its subagents edited.
-   Name the other uncommitted changes as the user's work.
+   Before you name an uncommitted or untracked file as the user's work, look for an `Edit` or `Write` call or a command of this session that changed it.
+   Name it as the user's work only when you find no such call, because the next session repeats the note as fact.
+   When you cannot tell, mark the file as unverified.
 </procedure>
 
 <header>

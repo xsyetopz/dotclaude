@@ -10,6 +10,43 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-10-03
+
+### Added
+
+- A delegation note: after 12 read calls (`Read`, `Grep`, `Glob`, or a Bash command that only reads) in the main conversation since your last message, with no `Agent` call between them,
+  Claude gets one note per message to give the rest of the reading to `dotclaude:investigator` and the edits to `dotclaude:implementer`.
+  Each tool result stays in the main context, and each later call reads it again.
+  In the transcripts since 2026-09-28, the median message had 1 read call, and 12 is about the 83rd percentile.
+  `usage_notes` controls it, and `DELEGATION_NOTE_READS` in `hooks/lib/_budget.mjs` sets the bound.
+- Role evals `t5-investigate` and `t5-web-research`, and the `just eval-agent <model> <effort>` recipe that runs them at a subagent model and effort.
+
+### Changed
+
+- With `model_lock` on, the definition of a dotclaude agent sets its model.
+  dotclaude removes a `model` that an `Agent` call gives, and no deny reason names a model to use.
+  Before, 175 `implementer` runs used Opus 5.5 because a call set `model: "opus"`.
+- `investigator` and `web-researcher` run on Sonnet 5.5 at `medium`, from Opus 5.5 at `medium` and `low`.
+  They mostly read and summarize, and Anthropic's cost guidance gives such subagent steps to a cheaper model, with `medium` as the start for multi-step tool use.
+  `reverse-engineer` stays on Opus 5.5, because it has no role eval and a wrong reading of machine code is expensive to find later.
+- The working rule for subagents says that the main conversation coordinates and gives the reading of more than a few files, log scans, and multi-file edits to a subagent.
+- `/dotclaude:setup` uses CodeGraph through the `codegraph explore` command and removes the `codegraph` MCP server after `codegraph install`.
+  The MCP server sends fixed instructions that tell Claude not to give lookups to a subagent, and no setting turns them off.
+  Each setup run also removes a `codegraph` MCP server that is registered, for example after `codegraph upgrade` adds it again.
+  The agents run `codegraph explore` through Bash, and no agent lists the MCP tool.
+
+### Fixed
+
+- Claude finds the tool call that made a change before it says who made the change, and says that it does not know when it finds no call.
+  Before, the `handoff` skill told Claude to name each other uncommitted change as the user's work.
+  Claude then called a file that it had made "not this session's work", and the next session repeated the claim from the note.
+  The working rules, the subagent conventions, and the `handoff` skill have the check.
+- The `CLAUDE.md` preview of `/dotclaude:setup` lists the lines that the new block drops, and it says that a later dotclaude version removed them on purpose.
+  A 0.19.0 session read the `# Compact instructions` section, which 0.18.1 removed, as the user's text, and it moved the end marker to keep it.
+- `/dotclaude:setup` removes that `# Compact instructions` section from `~/.claude/CLAUDE.md` when it sits outside the block as an exact copy of an earlier dotclaude version.
+  The compaction hook sends the same priorities, so the section only repeated them.
+  A section that you changed stays.
+
 ## [0.19.0] - 2026-10-03
 
 ### Added
@@ -147,4 +184,4 @@ steps after each update.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.19.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.19.1...HEAD

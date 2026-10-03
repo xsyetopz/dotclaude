@@ -11,8 +11,27 @@
  * $0.056 from 40k to 120k, and $0.074 from 20k to 40k, where the cache is
  * written again after a compaction. A lower value adds compactions at that
  * cost.
+ * The window stays, because each main call reads the whole context from the
+ * cache at $0.20/M, so the cost per call grows with the window: about $0.021
+ * at 117k, about $0.035 at 300k to 400k, and about 5x that near 1M
+ * (estimates). A compaction costs about $0.28 (the cache write and the
+ * summary), and the cost optimum is about 104k. The lever is fewer tokens
+ * that enter the main context, not a larger window.
  */
 export const MAIN_CONTEXT_TOKENS = 150_000;
+
+/**
+ * Read calls (Read, Grep, Glob, and Bash that reads) that the main
+ * conversation makes after a typed prompt, with no `Agent` call, before it
+ * gets a note to delegate. Each result stays in the context and each later
+ * call reads it again. In 1,902 prompts of main sessions from 2026-09-28 to
+ * 2026-10-04, the median was 1 read call, the 75th percentile 7, and the 90th
+ * percentile 18 (the count that resets at each `Agent` call has a median of
+ * 2, a 75th percentile of 8, and a 90th percentile of 18). The counts from 10
+ * to 25 fall off slowly, with no sharp knee. 12 is about the 83rd percentile:
+ * a normal prompt gets no note, and about 1 prompt in 6 gets one.
+ */
+export const DELEGATION_NOTE_READS = 12;
 
 /**
  * Main-conversation context (tokens) from which each user prompt tells Claude

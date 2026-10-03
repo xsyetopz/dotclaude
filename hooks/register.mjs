@@ -55,6 +55,7 @@ import checkLineBreaks from "./post-tool-use/check-line-breaks.mjs";
 import excludeSessionFiles from "./post-tool-use/exclude-session-files.mjs";
 import loadNestedInstructions from "./post-tool-use/load-nested-instructions.mjs";
 import noteContextSize from "./post-tool-use/note-context-size.mjs";
+import noteDelegation from "./post-tool-use/note-delegation.mjs";
 import recordEditsAndChecks from "./post-tool-use/record-edits-and-checks.mjs";
 import redactSecrets from "./post-tool-use/redact-secrets.mjs";
 import showClosestLines from "./post-tool-use-failure/show-closest-lines.mjs";
@@ -71,6 +72,7 @@ import countRunningAgents from "./subagent-start/count-running-agents.mjs";
 import injectWorkingConventions from "./subagent-start/inject-working-conventions.mjs";
 import clearAskApprovals from "./user-prompt-submit/clear-ask-approvals.mjs";
 import noteUsageLimits from "./user-prompt-submit/note-usage-limits.mjs";
+import resetDelegationCount from "./user-prompt-submit/reset-delegation-count.mjs";
 
 /** The ported actions that the module runs, by their path in `ACTIONS`. */
 const RUNS = new Map([
@@ -85,6 +87,7 @@ const RUNS = new Map([
   ["post-tool-use/record-edits-and-checks.mjs", recordEditsAndChecks],
   ["post-tool-use/load-nested-instructions.mjs", loadNestedInstructions],
   ["post-tool-use/note-context-size.mjs", noteContextSize],
+  ["post-tool-use/note-delegation.mjs", noteDelegation],
   ["post-tool-use/exclude-session-files.mjs", excludeSessionFiles],
   ["post-tool-use/check-line-breaks.mjs", checkLineBreaks],
   ["post-tool-use/redact-secrets.mjs", redactSecrets],
@@ -93,6 +96,7 @@ const RUNS = new Map([
   ["subagent-start/count-running-agents.mjs", countRunningAgents],
   ["user-prompt-submit/clear-ask-approvals.mjs", clearAskApprovals],
   ["user-prompt-submit/note-usage-limits.mjs", noteUsageLimits],
+  ["user-prompt-submit/reset-delegation-count.mjs", resetDelegationCount],
   ["pre-compact/save-recent-prompts.mjs", saveRecentPrompts],
 ]);
 

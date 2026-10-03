@@ -179,13 +179,17 @@ function openspec() {
 }
 
 const servers = mcpServers();
+const codegraphMcp = servers.get("codegraph") ?? null;
 console.log(
   JSON.stringify(
     {
       project,
       codegraph: {
         cli: version("codegraph"),
-        mcp: servers.get("codegraph") ?? null,
+        mcp: codegraphMcp,
+        mcp_finding: codegraphMcp
+          ? "The CodeGraph MCP server sends instructions that discourage delegation to subagents, and dotclaude uses `codegraph explore` through Bash instead. Remove it with `claude mcp remove codegraph -s user`."
+          : null,
         indexed: fs.existsSync(path.join(project, ".codegraph")),
       },
       tgrep: {

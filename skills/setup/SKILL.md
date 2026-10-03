@@ -148,6 +148,10 @@ Each script writes nothing without `--apply`, so run its preview first.
 
    A second run replaces the block in place.
    `--remove --apply` removes the block again.
+   The preview lists the lines that the new block drops.
+   Only dotclaude writes inside the markers, so these lines are rules that a later dotclaude version removed on purpose.
+   Do not move the markers to keep them, because the dropped text then stays outside the block with no update.
+   The script also removes an exact copy of an earlier dotclaude `# Compact instructions` section outside the block, and the preview says so.
 
 6. The dotclaude status line.
    It replaces the user's `statusLine` setting, so show the current command from the preview in step 4:
@@ -169,6 +173,9 @@ Each script writes nothing without `--apply`, so run its preview first.
 8. Offer the integrations.
    Run `bun "${CLAUDE_SKILL_DIR}/scripts/status.mjs"` and tell the user which integrations are missing.
    Install one only when the user asks for it.
+   If `codegraph.mcp` is not null, give the reason from `codegraph.mcp_finding` and run `claude mcp remove codegraph -s user`.
+   Then run the status script again and check that `codegraph.mcp` is null.
+   `codegraph upgrade` can add the entry again, so the next setup run removes it again.
 
 9. Tell the user to restart Claude Code, because Claude Code reads `env`, model settings, the output style, managed settings, and `CLAUDE.md` at startup.
    If the migration removed the shell function, also tell them to open a new terminal, because an open terminal keeps the old function.

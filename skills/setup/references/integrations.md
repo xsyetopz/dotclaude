@@ -5,14 +5,23 @@ The `setup` skill reads the section of each integration that the user names.
 `status` means the JSON of `scripts/status.mjs`.
 
 <codegraph>
-CodeGraph indexes the repository so `codegraph_explore` returns a symbol's source with its callers in one call.
+CodeGraph indexes the repository so `codegraph explore` returns a symbol's source with its callers in one call.
+dotclaude uses the CodeGraph CLI through Bash and does not keep the CodeGraph MCP server.
+The MCP server sends fixed instructions to the main conversation that say a lookup in a sub-agent repeats work and costs more.
+That conflicts with the delegation rule of dotclaude.
+No CodeGraph or Claude Code setting turns these instructions off.
+The `CLAUDE.md` section already tells every agent, subagents included, to run `codegraph explore` from the shell.
 
 - Install the CLI: `bun i -g @colbymchenry/codegraph`.
-- Register the MCP server for Claude Code: `codegraph install --target=claude --location=global --yes`.
+- Write the `CLAUDE.md` section: `codegraph install --target=claude --location=global --yes`.
+  `codegraph install --help` has no flag that skips the MCP entry, and `--target none` wires no agent.
+- Remove the MCP server that the install added: `claude mcp remove codegraph -s user`.
+  `codegraph upgrade` runs `codegraph install --refresh`, which can add the entry again.
+  The `status` field `codegraph.mcp_finding` reports it.
 - Index the current project: `codegraph init` in the project root, which creates `.codegraph/`.
   Suggest adding `.codegraph/` to `.gitignore`.
 - `codegraph install` also writes a CodeGraph section (between `<!-- CODEGRAPH_START -->` and `<!-- CODEGRAPH_END -->`) into `~/.claude/CLAUDE.md`.
-  That section tells Claude to use `codegraph_explore` in indexed repositories. dotclaude adds no CodeGraph hook of its own.
+  That section tells Claude to run `codegraph explore` in indexed repositories. dotclaude adds no CodeGraph hook of its own.
   Check that the section is there after installing.
 - `codegraph install` also adds a `codegraph prompt-hook` entry to the `hooks` in `~/.claude/settings.json`.
   It injects up to about 15 KB of CodeGraph output into every prompt, including background-task notifications and subagent hand-backs.

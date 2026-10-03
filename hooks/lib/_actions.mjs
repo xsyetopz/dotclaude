@@ -20,6 +20,7 @@ export const ACTIONS = {
   UserPromptSubmit: [
     ["*", "user-prompt-submit/clear-ask-approvals.mjs"],
     ["*", "user-prompt-submit/note-usage-limits.mjs"],
+    ["*", "user-prompt-submit/reset-delegation-count.mjs"],
   ],
   SubagentStart: [
     ["*", "subagent-start/inject-working-conventions.mjs"],
@@ -42,6 +43,7 @@ export const ACTIONS = {
     [TOOL_EDITS, "post-tool-use/check-line-breaks.mjs"],
     ["*", "post-tool-use/redact-secrets.mjs"],
     ["*", "post-tool-use/note-context-size.mjs"],
+    ["Bash|Read|Grep|Glob|Agent", "post-tool-use/note-delegation.mjs"],
   ],
   PostToolUseFailure: [
     [`Bash|${TOOL_EDITS}`, "post-tool-use/record-edits-and-checks.mjs"],

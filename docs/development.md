@@ -62,8 +62,8 @@ compatibility layer.
 
 ## Evals
 
-The behavior evals run with `claude plugin eval`. `evals/` has 12 tasks in 5
-tiers, from a one-file fix to debugging, review, and slices. Each run costs
+The behavior evals run with `claude plugin eval`. `evals/` has 14 tasks in 5
+tiers, from a one-file fix to debugging, review, investigation, web research, and slices. Each run costs
 money, so run it only when you decide to.
 
 ```bash

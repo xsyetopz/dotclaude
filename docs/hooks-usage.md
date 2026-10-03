@@ -58,6 +58,17 @@ note comes at 100k and compaction at about 117k, and one step can use more than
 the 17k between them. Thus the handoff comes first.
 `COMPACTIONS_BEFORE_HANDOFF` in `hooks/lib/_budget.mjs` sets the count.
 
+The same option turns on a delegation note.
+After 12 read calls in the main conversation (`Read`, `Grep`, `Glob`, and
+Bash commands that read) since your last typed prompt, with no `Agent` call,
+one note tells Claude to give the rest of the reading to
+`dotclaude:investigator` and edits to `dotclaude:implementer`.
+An `Agent` call or a typed prompt starts the count again.
+Each tool result stays in the main context, and each later call reads it again.
+In 1,902 prompts from 2026-09-28 to 2026-10-04, the median was 1 read call
+and the 90th percentile was 18.
+`DELEGATION_NOTE_READS` in `hooks/lib/_budget.mjs` sets the count.
+
 ## Model Lock And Plan Awareness (`model_lock`, `model_plan`)
 
 See [Models](models.md).

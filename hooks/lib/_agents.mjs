@@ -36,6 +36,11 @@ export async function definition(io, agentType) {
   }
 }
 
+/** The model that a definition fixes, or "" for `inherit` or no definition. */
+export function pinnedModel(def) {
+  return def?.model && def.model !== "inherit" ? def.model : "";
+}
+
 /** Turns kept for the report: tool calls are refused once this many remain. */
 export function reserve(limit) {
   return Math.max(3, Math.round(limit / 20));

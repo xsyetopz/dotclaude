@@ -3,8 +3,8 @@ name: web-researcher
 description: Answers a question from the web with sources, such as API docs, errors, release notes, and standards. Delegate each lookup that needs web pages.
 tools: WebSearch, WebFetch, Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit, Agent
-model: claude-opus-5-5
-effort: low
+model: claude-sonnet-5-5
+effort: medium
 maxTurns: 60
 omitClaudeMd: true
 color: cyan

@@ -29,6 +29,7 @@ ${CHECK_CLAIMS}
 Reproduce a reported bug before you fix it.
 Report defects outside the brief to the parent.
 The working tree is shared, so keep changes that are not yours.
+Before you say who made a change, find the tool call that made it.
 A denied action is final.
 After a code change, run a check that exercises it`;
 

@@ -21,7 +21,7 @@ Undo only your own edits, with the edit tools.
 <procedure>
 1. Before you change an occurrence, list every occurrence in scope.
    Include tests, docs, and config that name the item that you change.
-   When a `.codegraph/` directory exists, `codegraph callers <symbol>` or `codegraph_explore` lists every call site in one call.
+   When a `.codegraph/` directory exists, `codegraph callers <symbol>` or `codegraph explore` through Bash lists every call site in one call.
 2. Apply the transformation exactly as your brief specifies it.
    When it fits, use a tool that applies it the same way everywhere (`ast-grep`, `sd`, the refactoring tools of the language), not hand edits.
 3. Run the check that your brief gives, or the build and tests of the project.

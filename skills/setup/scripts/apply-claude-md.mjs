@@ -108,6 +108,42 @@ function installedTools() {
     ? found.map((name) => `\`${name}\``).join(", ")
     : "none detected";
 }
+// Sections that earlier profiles wrote inside the block and later profiles removed.
+// 0.18.1 removed the compact section, because the compaction hook sends the same priorities.
+// A 0.19.0 session read the 0.18.0 section as the user's text,
+// and it moved the end marker above the section, so the section stayed outside the block.
+// Only an exact copy that ends at a heading or at the end of the file is removed,
+// so a section that the user changed stays.
+const RETIRED = [
+  `# Compact instructions
+
+<compaction_priorities>
+When you compact the conversation, keep these items:
+
+- the user's requests and constraints, in the user's own words
+- the decisions and the rejected approaches, with their reasons
+- the current state and the open items
+- exact paths, commands, errors, and numbers
+
+The next turn acts on these details, and a paraphrase loses them.
+</compaction_priorities>`,
+  `# Compact instructions
+
+When you compact, keep the user's requests and constraints in their own words, the decisions and rejected approaches with their reasons, the current state, and the open items. Keep exact paths, commands, errors, and numbers.`,
+];
+const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+let retired = 0;
+function dropRetired(text) {
+  let out = text;
+  for (const section of RETIRED) {
+    const re = new RegExp(`(^|\\n\\n)${literal(section)}\\s*(?=#{1,6} |$)`);
+    if (!re.test(out)) continue;
+    retired += 1;
+    out = out.replace(re, "$1").replace(/\n{2,}$/, "\n");
+  }
+  return out;
+}
+
 const current = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : "";
 
 let next;
@@ -122,6 +158,7 @@ if (remove) {
   const block = `${BEGIN}\n${body}\n${END}\n`;
   if (BLOCK.test(current)) next = withHeading(current.replace(BLOCK, block));
   else next = `${withHeading(current).replace(/\s*$/, "")}\n\n${block}`;
+  next = dropRetired(next);
 }
 
 console.log(`Target: ${target} (${scope} scope)`);
@@ -137,6 +174,12 @@ console.log(
       ? "Replaces the existing dotclaude section."
       : "Appends a dotclaude section; the rest of the file is unchanged.",
 );
+if (retired) {
+  console.log(
+    "Removes the `# Compact instructions` section that an earlier dotclaude version wrote and that now sits outside the block.\n" +
+      "The compaction hook sends the same priorities, so the section only repeats them.",
+  );
+}
 if (!remove && !/^\s*# /.test(current)) {
   console.log(`Adds the top-level heading \`${HEADING}\` at the start.`);
 }
@@ -144,6 +187,24 @@ if (!remove) {
   console.log(
     `\n----- section -----\n${next.match(BLOCK)[0]}-------------------`,
   );
+}
+// Only dotclaude writes inside the markers,
+// so a line that the new section drops is a rule that a later profile removed on purpose.
+// A 0.19.0 session read the dropped 0.18.0 `# Compact instructions` section as the user's text,
+// and it moved the end marker to keep it.
+if (!remove && had) {
+  const kept = new Set(next.match(BLOCK)[0].split("\n"));
+  const dropped = current
+    .match(BLOCK)[0]
+    .split("\n")
+    .filter((line) => line.trim() && !kept.has(line));
+  if (dropped.length) {
+    console.log(
+      `\nThe new section drops these lines of the old section:\n${dropped.join("\n")}\n` +
+        "The block holds only text that dotclaude wrote, so these lines are rules that a later dotclaude version removed on purpose.\n" +
+        "Do not move the markers to keep them.",
+    );
+  }
 }
 if (!apply) {
   console.log("\nDry run: nothing was written. Re-run with --apply to write.");

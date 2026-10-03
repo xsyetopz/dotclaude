@@ -34,3 +34,9 @@ usage *args:
 # Bump the version (major, minor, patch, or X.Y.Z) in both manifests and the CHANGELOG; add --dry-run to preview
 bump level *flags:
     bun scripts/bump-version.mjs "$@"
+
+# Run the investigator and web-researcher role cases with the agent at a model (opus or sonnet) and effort; this spends usage
+eval-agent model effort runs="10":
+    CLAUDE_CODE_SUBAGENT_MODEL=claude-{{ model }}-5-5 CLAUDE_CODE_EFFORT_LEVEL={{ effort }} claude plugin eval . --model opus --judge-model sonnet --runs {{ runs }} --ablation none --scaffold --allow-tools Bash WebFetch WebSearch --keep-temp --tag agent-role --json evals/results/agents-{{ model }}-{{ effort }}.json
+    bun evals/oracle.mjs evals/results/agents-{{ model }}-{{ effort }}.json
+    bun evals/report.mjs evals/results/agents-{{ model }}-{{ effort }}.json

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: t5-web-research
+description: "Tier 5, role. Find the default of `server.timeout` in the Node.js `http` docs. Older posts say 120 seconds, and the docs say 0 since v13.0.0. Claude should answer 0, cite nodejs.org, quote the page, and change nothing. This case depends on live pages: nodejs.org must be reachable and its `http` page must keep the sentence that the quote grader matches. Check the page before a run, and expect a failure when the page changes."
+tags: [tier-5, role, web-research, agent-role]
+context:
+  scaffold_script: fixture.sh

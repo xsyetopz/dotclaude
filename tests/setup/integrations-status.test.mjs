@@ -37,6 +37,7 @@ test("status reports MCP servers and index state", () => {
   expect(res.stdout).not.toMatch(/SECRET/);
   const status = JSON.parse(res.stdout);
   expect(status.codegraph.mcp).toBe("local");
+  expect(status.codegraph.mcp_finding).toContain("claude mcp remove codegraph");
   expect(status.codegraph.indexed).toBe(true);
 });
 

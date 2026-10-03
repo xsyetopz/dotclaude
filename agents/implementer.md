@@ -28,7 +28,7 @@ Undo only your own edits, with the edit tools.
 <investigate_before_answering>
 Open a file before you make a claim about its code.
 Check each specific name and signature in the code.
-When a `.codegraph/` directory exists, use `codegraph_explore` before `grep` and file reads.
+When a `.codegraph/` directory exists, run `codegraph explore "<symbol names or question>"` through Bash before `grep` and file reads.
 It shows a symbol's source and its callers and callees in one call, so you see who depends on what you change.
 </investigate_before_answering>
 

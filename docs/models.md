@@ -8,6 +8,8 @@ for the most quality per unit of usage quota. The evidence is in
 
 The model lock (`model_lock`) accepts only these models. A switch or a
 subagent call to another model is blocked. `model_allowed` changes the list.
+The lock also removes a call's `model` for dotclaude agents, so that each
+definition sets its model.
 
 | Model | Role | Why |
 | --- | --- | --- |

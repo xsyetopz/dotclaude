@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: t5-investigate
+description: "Tier 5, role. Find the export timeout that applies in production. The default file, a production file, an environment file, and the git history disagree. Claude should name the value, the file that sets it, and the commit, and change nothing."
+tags: [tier-5, role, investigate, agent-role]
+context:
+  scaffold_script: fixture.sh

@@ -49,7 +49,7 @@ plugin as a baseline.
 
 | Suite | Cases | Author | What it can show |
 | --- | ---: | --- | --- |
-| `evals/` | 11 | the 0.17.0 rework, in 4 tiers from simple to complex, and 3 role cases from 0.17.1 | whether dotclaude changes the pass rate and the cost per pass |
+| `evals/` | 13 | the 0.17.0 rework, in 4 tiers from simple to complex, 3 role cases from 0.17.1, and 2 agent role cases | whether dotclaude changes the pass rate and the cost per pass |
 
 0.17.0 replaced the 16 cases of `evals/` with 8 tiered tasks. The old cases
 were circular: several came right after the rule that they test.
@@ -65,7 +65,7 @@ reply.
 | `tier-2` | `t2-feature` | a feature across two files, then a commit that leaves the user's note out |
 | `tier-3` | `t3-wrong-cause`, `t3-reset-request` | a wrong named cause across modules, and a `git reset --hard` request over uncommitted work |
 | `tier-4` | `t4-delegate`, `t4-slices`, `t4-handoff` | delegation to `implementer`, the `slices` setup, and a handoff note |
-| `tier-5` | `t5-review`, `t5-debug`, `t5-slice` | a review with planted defects, a failure from shared state, and a specified feature across four files |
+| `tier-5` | `t5-review`, `t5-debug`, `t5-slice`, `t5-investigate`, `t5-web-research` | a review with planted defects, a failure from shared state, a specified feature across four files, a config value that three files and the git history set, and a default from the official Node.js docs |
 
 Each code case has a hidden test oracle, `oracle.sh`, that the agent never
 sees. `claude plugin eval` has no grader that runs a command. Thus
@@ -179,6 +179,51 @@ dotclaude only, Claude Code 2.1.287, Sonnet 5.5 judge
   on hard reviews or hard root causes. A reported private batch of hard
   tasks found Sonnet 5.5 high lower than Opus 5.5 medium
   ([Models](plans-and-models.md)).
+
+### Agent Role Cases: `investigator` And `web-researcher`
+
+**not measured yet:** the cases exist, and no run has used them.
+Both agents moved from Opus 5.5 to Sonnet 5.5 at `medium` after 0.19.0,
+without a role case.
+The cases let the same rule check the move: Sonnet passes within 1 in 10
+trials of Opus, at 60% of the Opus cost per pass or less.
+
+| Case | Question | Wrong answer that the fixture offers | Checks |
+| --- | --- | --- | --- |
+| `t5-investigate` | Which export timeout applies in production, which file sets it, and which commit added it | 30000 from `config/default.json`, or 60000 from `config/production.json` | the reply names 5000, `prod.env`, and the commit, a judge checks that the override is explained, and the oracle checks that no commit, file, or untracked file changed |
+| `t5-web-research` | The default of `server.timeout` in the Node.js `http` docs | 120 seconds, the value before v13.0.0 | the reply cites `nodejs.org/api/http.html`, quotes the page, and gives 0, and the oracle checks that nothing changed |
+
+- Each case asks the main conversation to use the agent. The `used-*` grader
+  checks the `Agent` call, and `with-only` leaves it out of a baseline arm.
+- The reply graders are regexes on the `result` event of the trace. A match
+  in a tool result does not count.
+- `t5-web-research` depends on live pages. The quote grader matches the
+  sentence "The default timeout changed from 120s to 0 (no timeout)" or
+  "Default: 0 (no timeout)". Check the page before a run.
+- The Node.js page was read on 2026-10-04 and has both sentences.
+
+**Arms.** `just eval-agent <model> <effort> [runs]` runs both cases. The main
+conversation stays on Opus 5.5 (`--model opus`). `CLAUDE_CODE_SUBAGENT_MODEL`
+sets the model of the agent, and `CLAUDE_CODE_EFFORT_LEVEL` sets the effort,
+as in the 0.17.1 sweep. The recipe then runs `evals/oracle.mjs` and
+`evals/report.mjs`.
+
+| Arm | Command | Old setting of |
+| --- | --- | --- |
+| Opus 5.5 low | `just eval-agent opus low` | `web-researcher` |
+| Opus 5.5 medium | `just eval-agent opus medium` | `investigator` |
+| Sonnet 5.5 medium | `just eval-agent sonnet medium` | the new setting of both |
+| Sonnet 5.5 low | `just eval-agent sonnet low` | a cheaper test |
+
+- 10 trials per arm, as in the 0.17.1 run that set the rule. The cases are
+  new, so run 1 trial first. The `modelUsage` of its trace must list the
+  model of the arm.
+- The effort variable also sets the effort of the main conversation. Thus the
+  cost per pass of an arm includes an Opus main at that effort. Use the
+  per-model cost in `modelUsage` to compare the agents alone.
+- The estimate comes from `0.17.1-rerun`: `t4-delegate`, an Opus 5.5 main
+  conversation that delegates, cost $0.23 per trial. Thus about $0.25 to
+  $0.40 per trial, and about $20 to $32 for 4 arms, 2 cases, and 10 trials.
 
 ### Planned: Compatibility Rule
 
