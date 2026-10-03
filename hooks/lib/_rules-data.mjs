@@ -23,7 +23,7 @@ export const DB_CLIENTS = [
 ];
 
 const DB_RESET =
-  /\b(dropdb|prisma\s+migrate\s+reset|prisma\s+db\s+push\s+.*--force-reset|db:drop|db:reset|migrate:fresh|migrate:reset|flush\s+--no-input)\b/;
+  /\b(dropdb|prisma\s+migrate\s+reset|prisma\s+db\s+push\s+.*--(force-reset|accept-data-loss)|drizzle-kit\s+push\s+.*--force|db:drop|db:reset|migrate:fresh|migrate:reset|flush\s+--no-input)\b/;
 
 export function db(cmd) {
   const text = `${cmd.args.join(" ")}\n${cmd.heredoc ?? ""}`;

@@ -56,6 +56,23 @@ const DENY = [
   "\\rm -rf /",
   "echo aGVsbG8= | base64 -d | bash",
   "bash <<EOF\nrm -rf /\nEOF",
+  'cat <<< "hi"\nrm -rf /',
+  'echo "<<EOF"\nrm -rf /\nEOF',
+  "echo \"it's $(rm -rf /)\" ; echo 'x'",
+  "cat > /tmp/f <<EOF\n$(rm -rf /)\nEOF",
+  "cat <<'EOF' | bash\nrm -rf /\nEOF",
+  "python3.12 -c \"import os; os.system('rm -rf /')\"",
+  // A shell command as an argument list, in each language.
+  "python3 -c \"import subprocess; subprocess.run(['rm', '-rf', '/'], check=True)\"",
+  "python3 -c \"import os; os.execvp('rm', ['rm', '-rf', '/'])\"",
+  'node -e \'require("child_process").spawnSync("rm", ["-rf", "/"])\'',
+  'perl -e \'system("rm", "-rf", "/")\'',
+  "perl -e 'system(qw(rm -rf /))'",
+  "perl -e 'my $x = qx{rm -rf /}'",
+  "ruby -e '`rm -rf /`'",
+  "ruby -e 'system(*%w[rm -rf /])'",
+  "ruby -e 'puts %x(rm -rf /)'",
+  "osascript -e 'do shell script \"rm -rf /\"'",
   "claude -p --settings '{\"fastMode\": true}' hi",
   "claude --model sonnet -p hi",
   "CLAUDE_CODE_DISABLE_FAST_MODE=0 claude",
@@ -69,6 +86,19 @@ const DENY = [
   "while true; do rm -rf ~; done",
   "S=/; rm -rf $S",
   'export T=/usr; rm -rf "$T"',
+  // `<<` inside arithmetic is a shift, not a heredoc that hides later lines.
+  "(( 1 << 2 ))\nrm -rf /",
+  "while (( i << 1 )); do rm -rf /; done",
+  "echo $(case x in a) rm -rf /;; esac)",
+  "$'\\x72\\x6d' -rf /",
+  "$'r\\155' -rf /",
+  "$'\\u0072m' -rf /",
+  "uv --directory x run rm -rf /",
+  "uv --directory x tool run rm -rf /",
+  "poetry --directory x run rm -rf /",
+  "bash -o pipefail -c 'rm -rf /'",
+  "bash -O extglob <<EOF\nrm -rf /\nEOF",
+  'env -S"rm -rf /"',
 ];
 
 const ASK = [
@@ -144,6 +174,11 @@ const ASK = [
   "T=$(mktemp -d /tmp/../srv/x.XXXX); rm -rf $T",
   "python3 - <<'EOF'\nopen('.claude/settings.json', 'w').write('{}')\nEOF",
   "cp x.json \\\n  .claude/settings.local.json",
+  // An unquoted brace after the command name is an argument, not a group.
+  "git push origin { --force",
+  "git reset { --hard",
+  // Nesting past the parse limit gets the raw-text scan.
+  "echo $(echo $(echo $(echo $(echo $(rm -rf /)))))",
 ];
 
 // Recoverable: asks outside auto mode, silent inside it (see hooks.test.mjs).
@@ -168,9 +203,25 @@ const WARN = [
   "node - <<'EOF'\nconst s = `${fs.rmSync(dir)}`;\nEOF",
   "node -e \"const u = 'http://x'; fs.rmSync(dir)\"",
   "perl -e 'my $n = $#ARGV; unlink($f)'",
+  "perl -p -e 'unlink($f)' x",
+  "ruby -r fileutils -e 'FileUtils.rm_rf(\"src\")'",
+  'node -r dotenv/config -e "fs.rmSync(dir)"',
+  "python3.12 -c \"import shutil; shutil.rmtree('build')\"",
+  "uv run python -c \"import shutil; shutil.rmtree('build')\"",
+  "uv run --with rich python3 -c \"import shutil; shutil.rmtree('build')\"",
+  "cat <<'EOF' | python3 -\nimport shutil\nshutil.rmtree('build')\nEOF",
+  'node -pe \'require("fs").rmSync("build", {recursive: true})\'',
 ];
 
 const PASS = [
+  "python3 -c \"import subprocess; subprocess.run(['git', 'status'], check=True)\"",
+  "ruby -e 'puts `git status`'",
+  "osascript -e 'do shell script \"ls\"'",
+  "(( n = 1 << 4 )); echo $n",
+  "echo $((1 << 2))",
+  "{ echo a; echo b; } > /dev/null",
+  "if true; then { echo a; }; fi",
+  "echo $(case x in a) echo a;; esac)",
   "git -c core.pager=cat log",
   "GIT_PAGER=cat git log",
   "GIT_EDITOR=true git rebase --continue",
@@ -406,6 +457,8 @@ describe("Bash writes get the Edit rules of their target path", () => {
     ["cat > tests/a.test.mjs <<'EOF'\ntest(\"a\", () => {});\nEOF", "ask"],
     ["cat > agents/x.md <<'EOF'\n---\ndescription: a: b\n---\nEOF", "deny"],
     ["sed -i '' 's/a/b/' package-lock.json", "warn"],
+    ["sed --in-place 's/a/b/' package-lock.json", "warn"],
+    ["gawk -i inplace '{print}' package-lock.json", "warn"],
     ["echo x | tee dist/app.min.js", "warn"],
     ["echo x >> package-lock.json", "warn"],
     // A new file under a build directory is build output, not an edit.
@@ -591,4 +644,15 @@ test("claude runs outside EFFORT_LEVELS are denied", async () => {
     "claude --effort high -p hi",
   ])
     expect(await level(command, c), command).not.toBe("deny");
+});
+
+test("a lease push names the lease, and a plain force does not", async () => {
+  const reason = async (command) => (await check(command, ctx))[0][1];
+  expect(await reason("git push --force-with-lease")).toContain(
+    "`git push --force-with-lease`",
+  );
+  expect(await reason("git push --force-with-lease --force")).toContain(
+    "`git push --force`",
+  );
+  expect(await reason("git push -f")).toContain("`git push --force`");
 });

@@ -244,14 +244,15 @@ export async function gitRule(cmd, ctx) {
   switch (sub) {
     case "push":
       if (
-        hasFlag(
-          args,
-          ["--force", "--force-with-lease", "--force-if-includes", "--mirror"],
-          "f",
-        ) ||
+        hasFlag(args, ["--force", "--mirror"], "f") ||
         pos.some((a) => a.startsWith("+"))
       ) {
         out.push(["ask", "`git push --force` rewrites remote history"]);
+      } else if (hasFlag(args, ["--force-with-lease", "--force-if-includes"])) {
+        out.push([
+          "ask",
+          "`git push --force-with-lease` rewrites remote history, but only while the remote branch is at the commit that you last fetched",
+        ]);
       }
       if (
         hasFlag(args, ["--delete"], "d") ||

@@ -89,7 +89,7 @@ function count(re, text) {
 
 // --- tests ------------------------------------------------------------------
 
-const TEST_PATH =
+export const TEST_PATH =
   /(^|\/)(tests?|__tests__|spec|specs|testing)\/|(^|\/)test_[^/]+\.py$|_test\.(py|go|rs|exs?|dart)$|\.(test|spec)\.[cm]?[jt]sx?$|Tests?\.(swift|kt|java|cs)$|_spec\.rb$|Test\.php$/;
 const ASSERT =
   /\bassert\w*\b|\bexpect\s*\(|XCTAssert\w*|#expect\b|#require\b|\bt\.(Error|Fatal|Fail)\w*\(|\brequire\.\w+\(|\.should\b|\bassert_(eq|ne)!|\bdebug_assert\w*!|\bAssert\.\w+\(|\bassertThat\(|\bverify\s*\(/;

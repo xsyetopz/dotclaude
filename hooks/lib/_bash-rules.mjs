@@ -1,14 +1,14 @@
 // Rules for the Bash guard.
 //
-// check(command, ctx) resolves to findings shaped [level, reason] with level
+// check(command, ctx) resolves to findings shaped [level, reason, kind?] with level
 // "deny", "ask", or "warn" (a recoverable action that asks only outside auto
 // mode; see decide() in _common.mjs). The guard never returns "allow": commands that match
 // nothing fall through to Claude Code's normal permission flow.
 
 import { CLAUDE_TRAILER } from "./_attribution.mjs";
-import { positional } from "./_bash-args.mjs";
 import { commandBase, expandHome, writeTargets } from "./_bash-writes.mjs";
 import { check as editCheck } from "./_edit-rules.mjs";
+import { inlineCode, language } from "./_interpreters.mjs";
 import { PROTECTED_REASON, protectedMatch, protectedUnder } from "./_loop.mjs";
 import { pathFor } from "./_path.mjs";
 import { contribution } from "./_rules-contrib.mjs";
@@ -24,6 +24,7 @@ import {
   secretRead,
 } from "./_rules-filesystem.mjs";
 import { gitRule, gitSplit, isGitCommit } from "./_rules-git.mjs";
+import { INFRA_HANDLERS, merge, tlsEnv, wrapped } from "./_rules-infra.mjs";
 import { claude, modelEnv, rawSettingsWrite } from "./_rules-model.mjs";
 import { curl, gh, PUBLISH, publish, wget } from "./_rules-remote.mjs";
 import { ignoredWalk } from "./_rules-search.mjs";
@@ -76,8 +77,14 @@ export async function check(command, ctx) {
 
 async function checkCommand(cmd, ctx) {
   const out = [];
-  const handler = mkfsName(cmd) ? disk : HANDLERS[cmd.name];
+  const handler = mkfsName(cmd)
+    ? disk
+    : Object.hasOwn(HANDLERS, cmd.name)
+      ? HANDLERS[cmd.name]
+      : undefined;
   if (handler) out.push(...(await handler(cmd, ctx)));
+  out.push(...tlsEnv(cmd));
+  if (language(cmd.name) === "python") out.push(...(await wrapped(cmd, ctx)));
   if (cmd.name === "gh" || cmd.name === "git")
     out.push(...(await contribution(cmd, ctx)));
   if (readsStdinScript(cmd) && cmd.pipedFrom) {
@@ -94,9 +101,7 @@ async function checkCommand(cmd, ctx) {
       ]);
     }
   }
-  if (INTERPRETERS.has(cmd.name)) {
-    out.push(...(await interpreterInline(cmd, ctx)));
-  }
+  if (language(cmd.name)) out.push(...(await interpreterInline(cmd, ctx)));
   out.push(...snapshotBless(cmd));
   if (ctx.editGuard) out.push(...(await fileWrites(cmd, ctx)));
   if (ctx.editGuard && ctx.oracle)
@@ -108,34 +113,11 @@ async function checkCommand(cmd, ctx) {
 
 // --- interpreters -----------------------------------------------------------
 
-const INTERPRETERS = new Set([
-  "python",
-  "python3",
-  "python2",
-  "node",
-  "bun",
-  "deno",
-  "perl",
-  "ruby",
-  "php",
-  "osascript",
-]);
-
-const INLINE_FLAGS = new Set([
-  "-c",
-  "-e",
-  "-E",
-  "-r",
-  "--eval",
-  "-p",
-  "--print",
-]);
-
 const DESTRUCTIVE_CODE =
   /(shutil\.rmtree|os\.(remove|unlink|rmdir|removedirs)|Path\([^)]*\)\.(unlink|rmdir)|\.rmSync|\.rmdirSync|\.unlinkSync|fs\.rm\(|fs\.promises\.rm|rimraf|FileUtils\.rm|File\.delete|unlink\s*\(|rmtree|Deno\.remove)/;
 
 const SHELL_OUT =
-  /(os\.system|subprocess|child_process|execSync|spawnSync|exec\(|system\(|popen|Bun\.\$|Deno\.Command)/;
+  /(os\.system|os\.exec|os\.spawn|subprocess|child_process|execSync|execFile|spawn|exec\(|system\(|popen|Open3|shell_exec|passthru|proc_open|qx|Bun\.\$|Deno\.Command|do shell script)/;
 
 // Backticks and `%x` run a shell only in these languages. In Python they are
 // plain text (often Markdown), and in JavaScript they are template literals.
@@ -143,14 +125,7 @@ const BACKTICK_SHELL = new Set(["perl", "ruby", "php"]);
 
 const STRING_LIT = /'([^'\\]*(?:\\.[^'\\]*)*)'|"([^"\\]*(?:\\.[^"\\]*)*)"/g;
 
-const HASH_COMMENTS = new Set([
-  "python",
-  "python3",
-  "python2",
-  "perl",
-  "ruby",
-  "php",
-]);
+const HASH_COMMENTS = new Set(["python", "perl", "ruby", "php"]);
 const SLASH_COMMENTS = new Set(["node", "bun", "deno", "php"]);
 const TEMPLATES = new Set(["node", "bun", "deno"]);
 
@@ -218,29 +193,84 @@ function codeOnly(code, lang) {
 }
 
 async function interpreterInline(cmd, ctx) {
-  let code;
-  for (let i = 0; i < cmd.args.length - 1; i += 1) {
-    if (INLINE_FLAGS.has(cmd.args[i])) {
-      code = cmd.args[i + 1];
-      break;
-    }
-  }
-  if (code === undefined && cmd.heredoc && positional(cmd.args).length === 0)
-    code = cmd.heredoc;
+  const code = inlineCode(cmd);
   if (!code) return [];
+  const lang = language(cmd.name);
   const out = [];
-  if (DESTRUCTIVE_CODE.test(codeOnly(code, cmd.name)))
+  if (DESTRUCTIVE_CODE.test(codeOnly(code, lang)))
     out.push(["warn", `inline \`${cmd.name}\` code deletes files`]);
-  if (
-    SHELL_OUT.test(code) ||
-    (BACKTICK_SHELL.has(cmd.name) && /`|%x/.test(code))
-  ) {
-    for (const match of code.matchAll(STRING_LIT)) {
-      const literal = match[1] ?? match[2] ?? "";
-      if (literal.includes(" ")) out.push(...(await check(literal, ctx)));
-    }
+  if (SHELL_OUT.test(code) || (BACKTICK_SHELL.has(lang) && /`|%x/.test(code))) {
+    for (const text of shellTexts(code, lang))
+      out.push(...(await check(text, ctx)));
   }
   return out;
+}
+
+/**
+ * The shell commands that inline code can start: each string literal with a
+ * space, each comma-separated run of string literals as one argument list
+ * (`['rm', '-rf', x]`, `"rm", ["-rf", x]`), backtick bodies, Perl `qx` and
+ * `qw`, and Ruby `%x` and `%w`.
+ */
+function shellTexts(code, lang) {
+  const texts = [];
+  let run = [];
+  let last = -1;
+  for (const match of code.matchAll(STRING_LIT)) {
+    const literal = match[1] ?? match[2] ?? "";
+    if (literal.includes(" ")) texts.push(literal);
+    if (
+      run.length &&
+      !/^[\s[\]]*,[\s[\]]*$/.test(code.slice(last, match.index))
+    )
+      run = flushRun(run, texts);
+    run.push(literal);
+    last = match.index + match[0].length;
+  }
+  flushRun(run, texts);
+  if (BACKTICK_SHELL.has(lang))
+    for (const match of code.matchAll(/`([^`]*)`/g)) texts.push(match[1]);
+  const quoteLike = {
+    perl: /(?<![\w$@%&])(qw|qx)\s*([^\w\s])/g,
+    ruby: /%([wWx])([^\w\s])/g,
+  }[lang];
+  for (const match of quoteLike ? code.matchAll(quoteLike) : []) {
+    const body = delimited(code, match.index + match[0].length, match[2]);
+    if (body === undefined) continue;
+    texts.push(
+      match[1].endsWith("x") ? body : argvText(body.trim().split(/\s+/)),
+    );
+  }
+  return texts;
+}
+
+function flushRun(run, texts) {
+  if (run.length > 1) texts.push(argvText(run));
+  return [];
+}
+
+// Shell text that gives each word as one argument.
+function argvText(words) {
+  return words
+    .map((w) =>
+      /^[\w@%+=:,./-]+$/.test(w) ? w : `'${w.replaceAll("'", "'\\''")}'`,
+    )
+    .join(" ");
+}
+
+const PAIRS = { "(": ")", "[": "]", "{": "}", "<": ">" };
+
+// The body of a quote-like form from `start` to the delimiter that closes
+// `open`, with nested pairs, or undefined when it does not close.
+function delimited(code, start, open) {
+  const close = PAIRS[open] ?? open;
+  let depth = 0;
+  for (let i = start; i < code.length; i += 1) {
+    if (code[i] === "\\") i += 1;
+    else if (code[i] === close && depth-- === 0) return code.slice(start, i);
+    else if (code[i] === open) depth += 1;
+  }
+  return undefined;
 }
 
 // --- file writes ------------------------------------------------------------
@@ -267,7 +297,7 @@ async function fileWrites(cmd, ctx) {
       content === undefined
         ? ["Edit", { file_path, old_string: "", new_string: "" }]
         : ["Write", { file_path, content }];
-    for (const [level, reason] of await editCheck(...input, {
+    for (const [level, reason, ...kind] of await editCheck(...input, {
       io,
       allowedModels: ctx.allowedModels,
       env: ctx.env,
@@ -275,7 +305,11 @@ async function fileWrites(cmd, ctx) {
       bashWrite: true,
       oracle: ctx.oracle,
     }))
-      out.push([level, `\`${cmd.name}\` writes \`${target}\`: ${reason}`]);
+      out.push([
+        level,
+        `\`${cmd.name}\` writes \`${target}\`: ${reason}`,
+        ...kind,
+      ]);
   }
   return out;
 }
@@ -461,31 +495,40 @@ function isDecoder(name, args) {
   }
 }
 
-const HANDLERS = {
-  rm,
-  shred: rm,
-  find,
-  fd,
-  dd: disk,
-  diskutil: disk,
-  wipefs: disk,
-  newfs: disk,
-  chmod,
-  chown: chmod,
-  git: gitRule,
-  gh,
-  curl,
-  wget,
-  claude,
-  yarn: publish,
-  dropdb: dbReset,
-  ...Object.fromEntries(Object.keys(PUBLISH).map((n) => [n, publish])),
-  ...Object.fromEntries(DB_CLIENTS.map((n) => [n, db])),
-  ...Object.fromEntries(READERS.map((n) => [n, secretRead])),
-  ...Object.fromEntries(
-    ["prisma", "npx", "bunx", "pnpx", "rails", "rake", "artisan"].map((n) => [
-      n,
-      dbReset,
-    ]),
-  ),
-};
+const HANDLERS = merge(
+  {
+    rm,
+    shred: rm,
+    find,
+    fd,
+    dd: disk,
+    diskutil: disk,
+    wipefs: disk,
+    newfs: disk,
+    chmod,
+    chown: chmod,
+    git: gitRule,
+    gh,
+    curl,
+    wget,
+    claude,
+    yarn: publish,
+    dropdb: dbReset,
+    ...Object.fromEntries(Object.keys(PUBLISH).map((n) => [n, publish])),
+    ...Object.fromEntries(DB_CLIENTS.map((n) => [n, db])),
+    ...Object.fromEntries(READERS.map((n) => [n, secretRead])),
+    ...Object.fromEntries(
+      [
+        "prisma",
+        "drizzle-kit",
+        "npx",
+        "bunx",
+        "pnpx",
+        "rails",
+        "rake",
+        "artisan",
+      ].map((n) => [n, dbReset]),
+    ),
+  },
+  INFRA_HANDLERS,
+);

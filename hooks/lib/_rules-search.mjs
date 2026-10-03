@@ -517,10 +517,19 @@ export async function ignoredWalk(cmd, ctx) {
     .map((d) => `\`${d}/\``)
     .join(", ");
   const more = list.length > 3 ? ` and ${list.length - 3} more` : "";
+  const walks = `this command walks ${shown}${more} (build output, dependencies, or caches)`;
+  // An ignore-bypass flag can be the intent, for example to search one gitignored directory.
+  if (walk.bypass)
+    return [
+      [
+        "deny",
+        `With its ignore-bypass flag, ${walks}. If you need the flag to search a gitignored directory, keep the flag, and do one of these: (1) Name the directories to search. (2) Exclude those directories. If you do not need the flag, remove it, because \`rg\`, \`fd\`, and \`git grep\` skip gitignored directories`,
+      ],
+    ];
   return [
     [
       "deny",
-      `\`${walk.tool}\` does not skip gitignored directories, so this command walks ${shown}${more} (build output, dependencies, or caches). Do one of these: (1) Use \`rg\`, \`fd\`, or \`git grep\` without ignore-bypass flags, because these tools skip gitignored directories. (2) Exclude those directories. (3) Name the directories to search`,
+      `\`${walk.tool}\` does not skip gitignored directories, so ${walks}. Do one of these: (1) Use \`rg\`, \`fd\`, or \`git grep\` without ignore-bypass flags, because these tools skip gitignored directories. (2) Exclude those directories. (3) Name the directories to search`,
     ],
   ];
 }

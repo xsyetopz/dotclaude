@@ -4,9 +4,9 @@
 // sends them through the Edit rules.
 
 import { positional } from "./_bash-args.mjs";
+import { inlineCode, language } from "./_interpreters.mjs";
 
-const IN_PLACE = /^(sed|gsed|perl)$/;
-const INTERPRETER = /^(python[0-9.]*|node|bun|deno|ruby|perl)$/;
+const IN_PLACE = /^(sed|gsed|perl|awk|gawk)$/;
 // Write calls in inline interpreter code whose first argument is a string
 // literal: `open('f', 'w')`, `Path('f').write_text(`, `writeFileSync('f'`.
 // The path argument: a plain, raw, or bytes string literal, or a variable that
@@ -16,7 +16,7 @@ const LITERAL = String.raw`\s*(?:[rRbBuU]?'([^'\\\n]*)'|[rRbBuU]?"([^"\\\n]*)"|(
 const ASSIGN =
   /(?:^|[\s;(])(?:const\s+|let\s+|var\s+)?([A-Za-z_]\w*)\s*=\s*[rRbBuU]?(?:'([^'\\\n]*)'|"([^"\\\n]*)")/gm;
 const WRITE_CALLS = [
-  [String.raw`\bopen\(`, String.raw`\s*,\s*(?:mode\s*=\s*)?["'][wax]`],
+  [String.raw`\bopen\(`, String.raw`\s*,\s*(?:mode\s*=\s*)?["'](?:[wax]|r\+)`],
   [String.raw`\bPath\(`, String.raw`\s*\)\.write_(?:text|bytes)\(`],
   [String.raw`\bwriteFileSync\(`, ""],
   [String.raw`\bfs\.(?:promises\.)?writeFile\(`, ""],
@@ -30,6 +30,7 @@ const PATH_ASSIGN =
   /(?:^|[\s;(])([A-Za-z_]\w*)\s*=\s*(?:pathlib\.)?Path\(\s*[rRbBuU]?(?:'([^'\\\n]*)'|"([^"\\\n]*)")\s*\)[ \t]*(?=[;\n#]|$)/gm;
 const PATH_WRITE = /\b([A-Za-z_]\w*)\.write_(?:text|bytes)\(/g;
 
+// Any write call, with any path argument.
 function inlineWrites(code) {
   const vars = new Map();
   for (const m of code.matchAll(ASSIGN)) vars.set(m[1], m[2] ?? m[3]);
@@ -83,11 +84,18 @@ export async function writeTargets(io, cmd, base, home, path) {
           : undefined,
     });
   const operands = cmd.args.filter((a) => a && !a.startsWith("-"));
-  if (IN_PLACE.test(cmd.name) && cmd.args.some((a) => /^-[a-zA-Z]*i/.test(a))) {
-    // `sed -i '' 's/a/b/' f` and `perl -pi -e '...' f`: the first operand is
-    // the script unless -e gave it, and only existing files count.
-    const scriptGiven = cmd.args.some((a) => /^-[a-zA-Z]*e$/.test(a));
-    for (const t of operands.slice(scriptGiven ? 0 : 1))
+  const inPlace = cmd.args.some(
+    (a) => /^-[a-zA-Z]*i/.test(a) || /^--in-place(=|$)/.test(a),
+  );
+  if (IN_PLACE.test(cmd.name) && inPlace) {
+    // `sed -i '' 's/a/b/' f`, `perl -pi -e '...' f`, and
+    // `awk -i inplace '...' f`: the first operand is the script unless -e
+    // gave it, and only existing files count.
+    const scriptGiven = cmd.args.some(
+      (a) => /^-[a-zA-Z]*e$/.test(a) || a === "--expression",
+    );
+    const files = operands.filter((a) => a !== "inplace");
+    for (const t of files.slice(scriptGiven ? 0 : 1))
       if (base && (await io.fs.exists(path.resolve(base, expandHome(t, home)))))
         out.push({ target: t });
   }
@@ -98,8 +106,9 @@ export async function writeTargets(io, cmd, base, home, path) {
       out.push({ target: t, content: whole ? cmd.heredoc : undefined });
   if (["mv", "cp", "install"].includes(cmd.name) && operands.length > 1)
     out.push({ target: operands.at(-1) });
-  if (INTERPRETER.test(cmd.name))
-    for (const t of inlineWrites([cmd.heredoc ?? "", ...cmd.args].join("\n")))
-      out.push({ target: t });
+  const code = language(cmd.name) ? inlineCode(cmd) : undefined;
+  if (code) {
+    for (const t of inlineWrites(code)) out.push({ target: t });
+  }
   return out;
 }

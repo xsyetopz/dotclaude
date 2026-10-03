@@ -211,4 +211,9 @@ test("an explicit ignore bypass over ignored notes passes, over build output it 
     expect(await level(command, c)).toBe("pass");
   expect(await level('rg -n -uu "Task" .', c)).toBe("deny");
   expect(await level("grep -rn Task docs", c)).toBe("deny");
+  // The flag can be the intent, so the reason keeps it and asks for a narrower walk.
+  const [[, reason]] = await check('rg -n -uu "Task" .', c);
+  expect(reason).toContain("`dist/`");
+  expect(reason).toContain("keep the flag");
+  expect(reason).not.toContain("without ignore-bypass flags");
 });
