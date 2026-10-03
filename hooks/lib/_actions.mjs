@@ -48,7 +48,6 @@ export const ACTIONS = {
     ["*", "stop/end-goal-loops.mjs"],
     ["*", "stop/check-open-tasks.mjs"],
     ["*", "stop/check-loop-reviews.mjs"],
-    ["*", "stop/finish-announced-work.mjs"],
   ],
   StopFailure: [["rate_limit", "stop-failure/notify-rate-limit.mjs"]],
   SubagentStop: [
