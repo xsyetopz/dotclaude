@@ -258,3 +258,148 @@ test("frontmatter-looking text outside Markdown files is not checked", async () 
     ),
   ).toStrictEqual([]);
 });
+
+const edit = (file, old_string, new_string) =>
+  check("Edit", { file_path: file, old_string, new_string }, ctx);
+
+test.each([
+  ["a.lean", "by simp", "by sorry"],
+  ["a.lean", "theorem t : P := by simp", "axiom t : P"],
+  ["a.lean", "by simp", "by native_decide"],
+  ["a.v", "Proof. auto. Qed.", "Proof. admit. Admitted."],
+  ["a.thy", "by simp", "sorry"],
+  ["a.agda", "foo = bar", "postulate foo : A"],
+  ["a.idr", "foo = bar", "foo = believe_me ()\npostulate foo : A"],
+])("adding a proof escape to %s asks", async (file, from, to) => {
+  expect(levels(await edit(`/repo/${file}`, from, to))).toStrictEqual(["ask"]);
+});
+
+test("a new proof file with sorry asks", async () => {
+  const f = await check(
+    "Write",
+    {
+      file_path: path.join(dir, "New.lean"),
+      content: "theorem t : P := sorry",
+    },
+    ctx,
+  );
+  expect(levels(f)).toStrictEqual(["ask"]);
+});
+
+test("removing or keeping a proof escape passes", async () => {
+  expect(await edit("/repo/a.lean", "by sorry", "by simp")).toStrictEqual([]);
+  expect(
+    await edit("/repo/a.lean", "by sorry", "by sorry -- later"),
+  ).toStrictEqual([]);
+});
+
+test("proof escapes in comments and identifiers pass", async () => {
+  expect(
+    await edit("/repo/a.lean", "x", "-- sorry\n/- admit -/ x"),
+  ).toStrictEqual([]);
+  expect(await edit("/repo/a.v", "x", "(* Admitted *) x")).toStrictEqual([]);
+  expect(await edit("/repo/a.thy", "x", "(* sorry *) x")).toStrictEqual([]);
+  expect(
+    await edit("/repo/a.agda", "x", "{- postulate -} x -- postulate"),
+  ).toStrictEqual([]);
+  expect(await edit("/repo/a.py", "x", "sorry = 1")).toStrictEqual([]);
+});
+
+test.each([
+  ["a.py", "requests.get(u, verify=False)"],
+  ["a.py", "httpx.get(u, verify = False)"],
+  ["a.py", "ctx = ssl._create_unverified_context()"],
+  ["a.ts", "new https.Agent({ rejectUnauthorized: false })"],
+  ["a.js", "opts.rejectUnauthorized = false"],
+  ["a.go", "&tls.Config{InsecureSkipVerify: true}"],
+  ["a.php", "curl_setopt($c, CURLOPT_SSL_VERIFYPEER, false)"],
+  ["a.php", "curl_setopt($c, CURLOPT_SSL_VERIFYPEER, 0)"],
+  ["a.php", "curl_setopt($c, CURLOPT_SSL_VERIFYPEER, FALSE)"],
+  ["a.js", 'process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"'],
+  ["a.js", "process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0"],
+  ["a.sh", "export NODE_TLS_REJECT_UNAUTHORIZED=0"],
+])("turning TLS verification off in %s asks", async (file, to) => {
+  expect(levels(await edit(`/repo/${file}`, "x", to))).toStrictEqual(["ask"]);
+});
+
+test("a new file with verify=False asks", async () => {
+  const f = await check(
+    "Write",
+    { file_path: path.join(dir, "new.py"), content: "get(u, verify=False)\n" },
+    ctx,
+  );
+  expect(levels(f)).toStrictEqual(["ask"]);
+});
+
+test("TLS edits that keep verification on or the count equal pass", async () => {
+  expect(
+    await edit("/repo/a.py", "x", "requests.get(u, verify=True)"),
+  ).toStrictEqual([]);
+  expect(
+    await edit("/repo/a.py", "get(u, verify=False)", "get(u)"),
+  ).toStrictEqual([]);
+  expect(
+    await edit("/repo/a.py", "get(a, verify=False)", "get(b, verify=False)"),
+  ).toStrictEqual([]);
+  expect(
+    await edit("/repo/a.js", "x", "{ rejectUnauthorized: true }"),
+  ).toStrictEqual([]);
+  expect(
+    await edit("/repo/a.js", "x", 'env.NODE_TLS_REJECT_UNAUTHORIZED = "1"'),
+  ).toStrictEqual([]);
+  expect(
+    await edit("/repo/a.go", "x", "InsecureSkipVerify: false"),
+  ).toStrictEqual([]);
+});
+
+test("a plain `verify = false` boolean outside Python passes", async () => {
+  expect(await edit("/repo/a.ts", "x", "let verify = false;")).toStrictEqual(
+    [],
+  );
+  expect(await edit("/repo/a.rb", "x", "verify = False")).toStrictEqual([]);
+});
+
+test.each([
+  ["a.rb", "http.verify_mode = OpenSSL::SSL::VERIFY_NONE"],
+  ["a.rs", "Client::builder().danger_accept_invalid_certs(true)"],
+  ["a.rs", "b.danger_accept_invalid_hostnames(true)"],
+  ["a.py", "ctx.verify_mode = ssl.CERT_NONE"],
+  ["a.py", "ctx.check_hostname = False"],
+  ["a.php", "curl_setopt($c, CURLOPT_SSL_VERIFYHOST, 0)"],
+  ["a.php", "curl_setopt($c, CURLOPT_SSL_VERIFYHOST, false)"],
+  ["Dockerfile", "ENV NODE_TLS_REJECT_UNAUTHORIZED=0"],
+  ["Dockerfile", "ENV NODE_TLS_REJECT_UNAUTHORIZED 0"],
+  ["ci.yml", "NODE_TLS_REJECT_UNAUTHORIZED: 0"],
+])("more TLS forms in %s ask", async (file, to) => {
+  expect(levels(await edit(`/repo/${file}`, "x", to))).toStrictEqual(["ask"]);
+});
+
+test("safe TLS values pass", async () => {
+  expect(
+    await edit("/repo/a.php", "x", "CURLOPT_SSL_VERIFYHOST, 2"),
+  ).toStrictEqual([]);
+  expect(
+    await edit("/repo/a.rs", "x", "danger_accept_invalid_certs(false)"),
+  ).toStrictEqual([]);
+  expect(
+    await edit("/repo/a.py", "x", "ctx.check_hostname = True"),
+  ).toStrictEqual([]);
+  expect(await edit("/repo/a.ts", "x", "check_hostname = False")).toStrictEqual(
+    [],
+  );
+});
+
+test.each([
+  ["a.v", "Axiom foo : P."],
+  ["a.thy", "oops"],
+  ["a.lean", "exact sorryAx _"],
+])("more proof escapes in %s ask", async (file, to) => {
+  expect(levels(await edit(`/repo/${file}`, "x", to))).toStrictEqual(["ask"]);
+});
+
+test("Coq `Parameter` and Verilog comments pass", async () => {
+  expect(await edit("/repo/a.v", "x", "Parameter n : nat.")).toStrictEqual([]);
+  expect(
+    await edit("/repo/a.v", "x", "// axiom\n/* admit */ wire a;"),
+  ).toStrictEqual([]);
+});

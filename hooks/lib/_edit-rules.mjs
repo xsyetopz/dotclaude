@@ -40,6 +40,8 @@ export async function check(toolName, toolInput, ctx) {
   if (TEST_PATH.test(posix)) out.push(...testWeakening(before, after));
   if (!c.bashWrite || (await io.fs.exists(filePath)))
     out.push(...(await generated(io, filePath, posix)));
+  out.push(...proofEscapes(posix, before, after));
+  if (CODE_PATH.test(posix)) out.push(...tlsOff(posix, before, after));
   out.push(...(await frontmatter(io, toolName, toolInput, filePath, posix)));
   if (toolName === "Write" && before !== null)
     out.push(...shrink(before, after));
@@ -116,6 +118,92 @@ function testWeakening(before, after) {
       "test-edit",
     ]);
   return out;
+}
+
+// --- proof escapes ----------------------------------------------------------
+
+// A token that closes a proof goal without a proof. Word boundaries match whole
+// tokens only, so `my_axiom` is not counted. `sorryAx` is counted, because it is
+// the term that `sorry` becomes. `Axiom` is the Coq form of `axiom`. `oops`
+// abandons an Isabelle proof. `Parameter` is not counted, because Coq code uses
+// it in sections for legitimate declarations. A new file counts from zero.
+const PROOF_ESCAPE =
+  /\b(sorry|sorryAx|admit|Admitted|axiom|Axiom|postulate|native_decide|oops)\b/;
+const DASH_COMMENT = /--.*$/gm;
+// Comments are removed with simple non-nested patterns. A nested block comment
+// or a comment marker inside a string can make the count wrong. An Edit
+// fragment that sits inside a multi-line block comment also can miscount,
+// because the fragment does not show the opening marker.
+// `.v` is Coq or Verilog. Coq has no `//` or `/* */` comments, so removing them
+// makes a Verilog comment such as `// axiom` pass. The trade-off is that the
+// ssreflect `//` tactic hides a token that follows it on the same line.
+const PROOF_COMMENT = {
+  lean: [/\/-[\s\S]*?-\//g, DASH_COMMENT],
+  agda: [/\{-[\s\S]*?-\}/g, DASH_COMMENT],
+  idr: [/\{-[\s\S]*?-\}/g, DASH_COMMENT],
+  v: [/\(\*[\s\S]*?\*\)/g, /\/\*[\s\S]*?\*\//g, /\/\/.*$/gm],
+  thy: [/\(\*[\s\S]*?\*\)/g],
+};
+
+function proofEscapes(posix, before, after) {
+  const comments = PROOF_COMMENT[posix.match(/\.(lean|v|thy|agda|idr)$/)?.[1]];
+  if (!comments) return [];
+  const bare = (text) =>
+    comments.reduce((t, re) => t.replace(re, ""), text ?? "");
+  const added =
+    count(PROOF_ESCAPE, bare(after)) - count(PROOF_ESCAPE, bare(before));
+  return added > 0
+    ? [
+        [
+          "ask",
+          `the edit adds ${added} proof escape(s) such as \`sorry\`, \`admit\`, \`axiom\`, or \`native_decide\` to a proof file. These tokens prove nothing, so the proof is not complete. Finish the proof, or tell the user which step stays open`,
+        ],
+      ]
+    : [];
+}
+
+// --- TLS verification -------------------------------------------------------
+
+const CODE_PATH =
+  /\.(py|pyi|js|jsx|mjs|cjs|ts|tsx|mts|cts|go|rs|rb|php|java|kt|kts|scala|swift|cs|c|h|cc|cpp|hpp|m|mm|dart|ex|exs|lua|pl|sh|bash|zsh|ps1|dockerfile|ya?ml|env)$|(^|\/)(Dockerfile[^/]*|\.env[^/]*)$/;
+const PYTHON_PATH = /\.pyi?$/;
+// Each pattern is case-sensitive and names a setting, not a plain word, so that
+// a boolean named `verify` in another language does not match.
+// `CURLOPT_SSL_VERIFYHOST` is off at 0 or false. The value 2 keeps it on.
+const TLS_OFF = new RegExp(
+  [
+    String.raw`\brejectUnauthorized\s*[:=]\s*false\b`,
+    String.raw`\bInsecureSkipVerify\s*:\s*true\b`,
+    String.raw`\bCURLOPT_SSL_VERIFY(PEER|HOST)["']?\s*(,|=>|=|:)\s*(0|false|FALSE)\b`,
+    // Also the Dockerfile form `ENV NODE_TLS_REJECT_UNAUTHORIZED 0`.
+    String.raw`\bNODE_TLS_REJECT_UNAUTHORIZED["'\]]*(\s*[=:]\s*|\s+)["']?0\b`,
+    String.raw`\bOpenSSL::SSL::VERIFY_NONE\b`,
+    String.raw`\bdanger_accept_invalid_(certs|hostnames)\s*\(\s*true\s*\)`,
+  ].join("|"),
+);
+// Python only: `verify=False` is a plain boolean in other languages.
+const TLS_OFF_PYTHON = new RegExp(
+  [
+    String.raw`\bverify\s*=\s*False\b`,
+    String.raw`\bssl\._create_unverified_context\b`,
+    String.raw`\bssl\.CERT_NONE\b`,
+    String.raw`\bcheck_hostname\s*=\s*False\b`,
+  ].join("|"),
+);
+
+function tlsOff(posix, before, after) {
+  const python = PYTHON_PATH.test(posix);
+  const tally = (text) =>
+    count(TLS_OFF, text) + (python ? count(TLS_OFF_PYTHON, text) : 0);
+  const added = tally(after) - tally(before ?? "");
+  return added > 0
+    ? [
+        [
+          "ask",
+          `the edit turns off TLS certificate checks in ${added} place(s), for example \`verify=False\` or \`rejectUnauthorized: false\`. Without the check, an attacker on the network can read and change the traffic. Keep the check on, or trust the correct certificate. Tell the user if the check must stay off`,
+        ],
+      ]
+    : [];
 }
 
 // --- Markdown frontmatter ---------------------------------------------------
