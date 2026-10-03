@@ -33,7 +33,8 @@ A denied action is final.
 After a code change, run a check that exercises it`;
 
 export const GUIDANCE_END = `.
-Fix a failing test at its cause.
+Fix a failing check at its cause, and do not loosen a test, timeout, or permission to make it pass.
+Label a mock, stub, or fallback in the code and the report.
 Claude Code refuses a subagent's write to a \`.md\` file named \`report*\`, \`summary*\`, \`findings*\`, or \`analysis*\` (#44657).
 Use another name.
 ${REPORT}`;
