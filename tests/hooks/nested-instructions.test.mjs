@@ -72,6 +72,28 @@ test("instruction files run from below the root down to the file's directory", a
   ).toEqual([]);
 });
 
+test("a worktree of the project is a root, and a submodule is not", async () => {
+  // `git worktree add` writes a `.git` file that points into the project's `.git/worktrees/`.
+  const wt = ".claude/worktrees/wt";
+  put(`${wt}/.git`, `gitdir: ${path.join(repo, ".git/worktrees/wt")}\n`);
+  put(`${wt}/CLAUDE.md`, "root rules");
+  put(`${wt}/pkg/CLAUDE.md`, "pkg rules");
+  put(`${wt}/pkg/a.ts`, "export {}");
+  // A submodule's `.git` file points into `.git/modules/`, and its rules are its own.
+  put("vendor/lib/.git", "gitdir: ../../.git/modules/lib\n");
+  put("vendor/lib/CLAUDE.md", "lib rules");
+  put("vendor/lib/a.ts", "export {}");
+  const rel = async (file) =>
+    (await instructionFiles(nodeIo(), path.join(repo, file), repo)).map((f) =>
+      path.relative(repo, f).split(path.sep).join("/"),
+    );
+  expect(await rel(`${wt}/pkg/a.ts`)).toEqual([`${wt}/pkg/CLAUDE.md`]);
+  expect(await rel(`${wt}/CLAUDE.md`)).toEqual([]);
+  expect(await rel("vendor/lib/a.ts")).toEqual(["vendor/lib/CLAUDE.md"]);
+  fs.rmSync(path.join(repo, ".claude"), { recursive: true });
+  fs.rmSync(path.join(repo, "vendor"), { recursive: true });
+});
+
 test("a file past the size bound is named for the Read tool", async () => {
   const big = put("big/CLAUDE.md", "x".repeat(NESTED_INSTRUCTIONS_CHARS + 1));
   const text = await contextFor(

@@ -51,9 +51,34 @@ export async function readPaths(io, command, cwd, root) {
 }
 
 /**
+ * True when `dir` is a git worktree of the project at `root`.
+ * Its `.git` file then points into the project's `.git/worktrees/`.
+ * A submodule's `.git` file points into `.git/modules/`.
+ */
+async function worktreeOf(io, dir, root) {
+  const path = pathFor(io.platform);
+  let text;
+  try {
+    text = await io.fs.read(path.join(dir, ".git"));
+  } catch {
+    return false;
+  }
+  const gitdir = /^gitdir: (.+)$/m.exec(text)?.[1].trim();
+  return (
+    !!gitdir &&
+    inside(
+      path,
+      path.join(root, ".git", "worktrees"),
+      path.resolve(dir, gitdir),
+    )
+  );
+}
+
+/**
  * Instruction files in the directories from below `root` down to `target`
  * (its directory when it is a file). The root's own files load at session
  * start, so they are not included.
+ * A worktree of the project is a checkout of the same files, so it is a root too.
  */
 export async function instructionFiles(io, target, root) {
   const path = pathFor(io.platform);
@@ -64,7 +89,10 @@ export async function instructionFiles(io, target, root) {
     return [];
   }
   const dirs = [];
-  for (; inside(path, root, dir); dir = path.dirname(dir)) dirs.unshift(dir);
+  for (; inside(path, root, dir); dir = path.dirname(dir)) {
+    if (await worktreeOf(io, dir, root)) break;
+    dirs.unshift(dir);
+  }
   const files = [];
   for (const d of dirs)
     for (const name of NAMES) {
