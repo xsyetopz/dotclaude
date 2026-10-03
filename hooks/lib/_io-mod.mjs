@@ -22,6 +22,7 @@ import { stateDir } from "./_core.mjs";
 import { pathFor } from "./_path.mjs";
 import {
   promptsFromText,
+  skillStartedInText,
   stoppedAtLimitInText,
   turnsFromText,
 } from "./_transcript-parse.mjs";
@@ -268,6 +269,30 @@ export const turnsOf = (rows) => turnsFromText(linesOf(rows));
 export function stoppedAtLimitOf(rows, id) {
   const text = rows.map((row) => row.text ?? "").join("\n");
   return stoppedAtLimitInText(text, String(id)) ? true : null;
+}
+
+/**
+ * True when the rows show that the skill `name` started. Else null, not false:
+ * `$.session.messages()` drops meta rows, so no start is no evidence.
+ */
+export function skillStartedOf(rows, name) {
+  const lines = rows.map((row) =>
+    JSON.stringify(
+      row.role === "assistant"
+        ? {
+            type: "assistant",
+            message: {
+              content: (row.toolUses ?? []).map((use) => ({
+                type: "tool_use",
+                name: use.tool,
+                input: use.input,
+              })),
+            },
+          }
+        : { type: "user", message: { content: row.text ?? "" } },
+    ),
+  );
+  return skillStartedInText(lines.join("\n"), name) ? true : null;
 }
 
 /** An id as a part of a file name. */

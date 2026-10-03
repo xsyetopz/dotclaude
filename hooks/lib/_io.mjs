@@ -107,6 +107,10 @@
  *   True when a task notification shows that the agent `agentId` stopped at
  *   its turn limit. Null when not known. The caller then sends the message
  *   to the agent without a change, which is fail-open.
+ * @property {(name: string) => Promise<boolean | null>} skillStarted True
+ *   when the user started the skill `name` with its slash command, or Claude
+ *   called the `Skill` tool for it. Null when not known. The caller then asks
+ *   the user, which is fail-closed.
  */
 
 /**

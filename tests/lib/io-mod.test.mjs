@@ -570,3 +570,30 @@ test("projectDirOf gives the worktree of a subagent, and the root otherwise", ()
     projectDirOf("win32", "C:\\p", "C:\\p\\.claude\\worktrees\\w\\src", "a1"),
   ).toBe("C:\\p\\.claude\\worktrees\\w");
 });
+
+test("skillStarted reads the prompts and the `Skill` calls in the rows", async () => {
+  const use = {
+    tool_use_id: "t1",
+    tool: "Skill",
+    input: { skill: "design-sync" },
+  };
+  const called = await modIo(
+    fake({
+      mainRows: [
+        row("user", "sync"),
+        row("assistant", "", { toolUses: [use] }),
+      ],
+    }).$,
+  );
+  expect(await called.session.skillStarted("design-sync")).toBe(true);
+  const typed = await modIo(
+    fake({
+      mainRows: [row("user", "<command-name>/design-sync</command-name>")],
+    }).$,
+  );
+  expect(await typed.session.skillStarted("design-sync")).toBe(true);
+  // No start is no evidence: `messages()` drops meta rows.
+  expect(await typed.session.skillStarted("handoff")).toBeNull();
+  const refused = await modIo(fake({ mainRows: new Error("refused") }).$);
+  expect(await refused.session.skillStarted("design-sync")).toBeNull();
+});

@@ -223,3 +223,45 @@ export function stoppedAtLimitInText(text, id) {
   }
   return false;
 }
+
+/** A skill name without a `/` or a `plugin:` prefix. */
+const bareSkill = (name) =>
+  String(name ?? "")
+    .replace(/^\//, "")
+    .replace(/^[\w-]+:/, "");
+
+/**
+ * True when the user started the skill `name` with its slash command,
+ * or when Claude called the `Skill` tool for it.
+ */
+export function skillStartedInText(text, name) {
+  const started = (s) =>
+    [...String(s).matchAll(/<command-name>([^<]*)<\/command-name>/g)].some(
+      (m) => bareSkill(m[1]) === name,
+    );
+  for (const line of text.split("\n")) {
+    if (!line.includes(name)) continue;
+    const entry = entryOf(line);
+    const content = entry?.message?.content;
+    if (entry?.type === "user") {
+      if (typeof content === "string" && started(content)) return true;
+      if (
+        Array.isArray(content) &&
+        content.some((b) => b?.type === "text" && started(b.text))
+      )
+        return true;
+    }
+    if (
+      entry?.type === "assistant" &&
+      Array.isArray(content) &&
+      content.some(
+        (b) =>
+          b?.type === "tool_use" &&
+          b.name === "Skill" &&
+          bareSkill(b.input?.skill) === name,
+      )
+    )
+      return true;
+  }
+  return false;
+}

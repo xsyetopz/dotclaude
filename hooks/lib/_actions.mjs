@@ -32,6 +32,7 @@ export const ACTIONS = {
     ["Agent", "pre-tool-use/restrict-subagent-models.mjs"],
     ["Agent", "pre-tool-use/prefer-dotclaude-agents.mjs"],
     ["SendMessage", "pre-tool-use/hand-off-capped-agents.mjs"],
+    ["DesignSync", "pre-tool-use/confirm-design-uploads.mjs"],
     ["*", "pre-tool-use/enforce-agent-budget.mjs"],
   ],
   PostToolUse: [

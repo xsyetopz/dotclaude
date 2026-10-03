@@ -29,6 +29,7 @@ import {
   recentPromptsOf,
   runRequest,
   runResult,
+  skillStartedOf,
   statOf,
   stoppedAtLimitOf,
   tmpOf,
@@ -44,6 +45,7 @@ import redactSecrets from "./post-tool-use/redact-secrets.mjs";
 import showClosestLines from "./post-tool-use-failure/show-closest-lines.mjs";
 import saveRecentPrompts from "./pre-compact/save-recent-prompts.mjs";
 import blockDestructiveCommands from "./pre-tool-use/block-destructive-commands.mjs";
+import confirmDesignUploads from "./pre-tool-use/confirm-design-uploads.mjs";
 import confirmRiskyEdits from "./pre-tool-use/confirm-risky-edits.mjs";
 import enforceAgentBudget from "./pre-tool-use/enforce-agent-budget.mjs";
 import handOffCappedAgents from "./pre-tool-use/hand-off-capped-agents.mjs";
@@ -63,6 +65,7 @@ const RUNS = new Map([
   ["pre-tool-use/restrict-subagent-models.mjs", restrictSubagentModels],
   ["pre-tool-use/prefer-dotclaude-agents.mjs", preferDotclaudeAgents],
   ["pre-tool-use/hand-off-capped-agents.mjs", handOffCappedAgents],
+  ["pre-tool-use/confirm-design-uploads.mjs", confirmDesignUploads],
   ["pre-tool-use/enforce-agent-budget.mjs", enforceAgentBudget],
   ["post-tool-use/record-edits-and-checks.mjs", recordEditsAndChecks],
   ["post-tool-use/load-nested-instructions.mjs", loadNestedInstructions],
@@ -222,6 +225,10 @@ function modSession($, data, io) {
     agentStoppedAtLimit: known(null, async (id) => {
       const rows = await mainRows();
       return rows ? stoppedAtLimitOf(rows, id) : null;
+    }),
+    skillStarted: known(null, async (name) => {
+      const rows = await mainRows();
+      return rows ? skillStartedOf(rows, String(name)) : null;
     }),
   };
 }

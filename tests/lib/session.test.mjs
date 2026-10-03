@@ -11,6 +11,7 @@ import {
   mainContextFromText,
   nestedFromText,
   promptsFromText,
+  skillStartedInText,
   stoppedAtLimitInText,
   turnsFromText,
 } from "../../hooks/lib/_transcript-parse.mjs";
@@ -89,6 +90,7 @@ test("each fact gives its do-not-know value without a transcript", async () => {
   expect(await facts.mainContextTokens()).toBe(null);
   expect(await facts.compactions()).toBe(null);
   expect(await facts.agentStoppedAtLimit("a1")).toBe(null);
+  expect(await facts.skillStarted("design-sync")).toBe(null);
   const missing = {
     session_id: "s1",
     agent_id: "a1",
@@ -249,4 +251,31 @@ test("agentStoppedAtLimit reads the task notifications of the agent", async () =
   expect(await facts.agentStoppedAtLimit("a2")).toBe(false);
   expect(await facts.agentStoppedAtLimit("a3")).toBe(false);
   expect(stoppedAtLimitInText("", "a1")).toBe(false);
+});
+
+test("skillStarted reads a slash command or a `Skill` call", async () => {
+  const called = {
+    type: "assistant",
+    message: {
+      role: "assistant",
+      content: [
+        {
+          type: "tool_use",
+          name: "Skill",
+          input: { skill: "dotclaude:handoff" },
+        },
+      ],
+    },
+  };
+  const { data } = session(
+    jsonl(prompt("<command-name>/design-sync</command-name>"), called),
+  );
+  const facts = nodeIo(data).session;
+  expect(await facts.skillStarted("design-sync")).toBe(true);
+  expect(await facts.skillStarted("handoff")).toBe(true);
+  expect(await facts.skillStarted("design-login")).toBe(false);
+  // A prompt that only names the skill does not start it.
+  const named = jsonl(prompt("there is no /design-sync skill"));
+  expect(skillStartedInText(named, "design-sync")).toBe(false);
+  expect(skillStartedInText("", "design-sync")).toBe(false);
 });

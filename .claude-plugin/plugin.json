@@ -20,7 +20,7 @@
     "guard_bash": {
       "type": "boolean",
       "title": "Bash guard",
-      "description": "Ask before destructive git/filesystem/database commands, hook bypasses, and public side effects (publish, gh writes); deny recursive searches that walk gitignored build output.",
+      "description": "Ask before destructive git/filesystem/database commands, hook bypasses, and public side effects (publish, gh writes, Claude Design writes outside /design-sync); deny recursive searches that walk gitignored build output.",
       "default": true
     },
     "guard_ask_in_auto": {

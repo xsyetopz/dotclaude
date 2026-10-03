@@ -14,6 +14,7 @@ import {
   mainContextFromText,
   nestedFromText,
   promptsFromText,
+  skillStartedInText,
   stoppedAtLimitInText,
   turnsFromText,
 } from "./_transcript-parse.mjs";
@@ -301,6 +302,11 @@ function nodeSession(data) {
       // reads all of it.
       const text = transcript ? readText(transcript) : null;
       return text === null ? null : stoppedAtLimitInText(text, String(id));
+    }),
+    skillStarted: known(null, (name) => {
+      // A skill can start anywhere in the transcript, so this fact reads all of it.
+      const text = transcript ? readText(transcript) : null;
+      return text === null ? null : skillStartedInText(text, String(name));
     }),
   };
 }
