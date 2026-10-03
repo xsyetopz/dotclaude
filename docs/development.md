@@ -63,8 +63,7 @@ compatibility layer.
 ## Evals
 
 The behavior evals run with `claude plugin eval`. `evals/` has 12 tasks in 5
-tiers, from a one-file fix to debugging, review, and slices. `evals-heldout/`
-has cases written without access to dotclaude's prompts. Each run costs
+tiers, from a one-file fix to debugging, review, and slices. Each run costs
 money, so run it only when you decide to.
 
 ```bash
@@ -87,11 +86,8 @@ the workspace. `--allow-tools` grants the tools that the cases list.
 `oracle.sh` in a copy of the kept workspace. When the plugin wrote to the
 run's `home/` or `tmp/`, the CLI seals them in `sealed/` with mode 000, and
 it warns you once for each run. `evals/oracle.mjs` opens the seal only for
-the copy, and it runs `git` only in the copy. A case with a `reply.json`
-(`maxWords` and `reason`) also gets two reply graders from
-`evals/oracle.mjs`. `word-count` fails a final reply with more words than
-`maxWords`. `adverbs` fails a reply with a word from the `ADVERBS` list in
-`evals/reply.mjs`. `claude plugin eval` has no grader that runs a command.
+the copy, and it runs `git` only in the copy. `claude plugin eval` has no
+grader that runs a command.
 `--judge-model sonnet` sets the model of the `llm` graders. The default
 judge is Haiku 4.5, and it failed a correct `t4-slices` reply in 3 of 3
 runs. The CLI does not keep the judge's text, so the cause is not known. Do
@@ -102,7 +98,6 @@ report shows the plugin's effect.
 `t4-slices` and `t4-handoff` call skills that 0.17.0 renamed. Releases before
 0.17.0 fail their `with-only` graders.
 
-**Why two suites:** the tiered cases show what dotclaude changes on tasks of
-growing size. Held-out cases check that dotclaude does not make Claude worse
-on work that the rules did not foresee. The results and their limits are in
-[evals](dossier/evals.md).
+**Why tiers:** the tiered cases show what dotclaude changes on tasks of
+growing size. A command grades each case, not the words of the reply. The
+results and their limits are in [evals](dossier/evals.md).

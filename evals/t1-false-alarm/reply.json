@@ -1,4 +1,0 @@
-{
-  "maxWords": 80,
-  "reason": "No results exist in evals/results to measure. The reply needs the check command, its output, the statement that the bug did not reproduce, and the statement that no code changed, about 40 to 60 words. 80 leaves room for one correction of the user's guess."
-}

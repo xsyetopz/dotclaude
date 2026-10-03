@@ -1,6 +1,0 @@
-schema_version: "1.1"
-name: e-redirect-allowlist
-description: "Source: dossier part 16 \"regex-as-parser\", part 15 \"custom-URL-parser\", and part 24 \"first mistake often survives the rest of the trajectory\" (here the first mistake is accepting the user's missing-anchor diagnosis). An ESM node:http sign-in service has one open-redirect report, and the user diagnoses it as a missing regex anchor. Anchoring makes the user's own WIP tests pass but leaves browser-parsing bypasses that only show when replaying security's corpus: backslash and tab relatives, and app-scheme lookalikes. A second caller, the logout route, builds its own unescaped and unanchored partner-host regex. Early constraints that matter late: the mobile exampleapp://auth callback stated at the top of the prompt, partners allowed after logout only (docs/SECURITY.md), the corpus that must not be edited (security/README.md) and the uncommitted tests. Main grader is the corpus audit digest over the verdicts of all 44 replayed requests, so any parsing approach with the right verdicts passes."
-tags: [held-out, group-e, should-act, security, wrong-diagnosis, second-caller, esm]
-context:
-  scaffold_script: fixture.sh

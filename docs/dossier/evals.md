@@ -41,19 +41,20 @@ the whole conversation without the cache (**reported**). The 200k
 
 ## 7. Behavior Evals
 
-Both suites run with `claude plugin eval`, which repeats each case without the
+The suite runs with `claude plugin eval`, which repeats each case without the
 plugin as a baseline.
 
 | Suite | Cases | Author | What it can show |
 | --- | ---: | --- | --- |
 | `evals/` | 11 | the 0.17.0 rework, in 4 tiers from simple to complex, and 3 role cases from 0.17.1 | whether dotclaude changes the pass rate and the cost per pass |
-| `evals-heldout/` | 50 | five safe-mode sessions without dotclaude's prompts, groups `d` and `e` with harder cases from 0.17.1 | whether dotclaude reduces reported failures |
 
 0.17.0 replaced the 16 cases of `evals/` with 8 tiered tasks. The old cases
 were circular: several came right after the rule that they test.
-`evals-heldout/` has no such loop. Its authors saw only failure reports. Every
-case cites its source, a third reward action over caution, and the suite was
-frozen before any run.
+0.18.1 deleted `evals-heldout/` and the reply graders (`word-count` and
+`adverbs`). Their regex graders came from the failure reports, and the
+reports are not an acceptance suite.
+A case that remains is graded by a command result, not by the words of the
+reply.
 
 | Tier | Cases | Task |
 | --- | --- | --- |
@@ -89,7 +90,7 @@ agent and judge.
 - **`evals/`, 3 trials per arm:** paired difference +18%, 95% CI −2% to
   +38%. The largest gains were `question-confirmed-bug` (3/3 against 0/3)
   and `scope-follow-up` (2/3 against 0/3).
-- **`evals-heldout/`, 5 trials per arm:** 95% of trials passed with
+- **`evals-heldout/` (deleted in 0.18.1), 5 trials per arm:** 95% of trials passed with
   dotclaude. The paired difference was −1%, 95% CI −4% to +1%. 27 of 30 cases
   passed every trial in both arms.
 - The one regression was an edit-guard bug, which 0.4.0 fixed.
@@ -182,14 +183,11 @@ dotclaude only, Claude Code 2.1.287, Sonnet 5.5 judge
   behaves well. dotclaude neither helps nor hurts measurably.
 - The measured gains come from cases written with the rules. They show that
   Claude follows the rules, not that the rules matter on real work.
-- The held-out groups `a` to `c` are at their ceiling. They are a regression
-  check, not a measure of benefit. 0.17.1 adds groups `d` and `e`: 20 cases in
-  larger repositories with interacting traps and up to 80 turns. Group `e`
-  uses dossier parts that no earlier case cites. No agent has run groups `d`
-  and `e` yet.
-- Neither suite covers long sessions, compaction, corrections over several
-  turns, or large repositories. A held-out run of 30 cases, 5 trials, and
-  both arms cost about $54 and took 32 minutes.
+- The deleted held-out groups `a` to `c` were at their ceiling, a regression
+  check and not a measure of benefit.
+- The suite does not cover long sessions, compaction, corrections over
+  several turns, or large repositories. A held-out run of 30 cases, 5 trials,
+  and both arms cost about $54 and took 32 minutes.
 
 ## 8. Compactions Before A Handoff
 
