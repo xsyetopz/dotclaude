@@ -10,6 +10,20 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.20.3] - 2026-10-04
+
+### Changed
+
+- A status line group of one part shares its row with the next group.
+  Thus the model does not stand alone on the first row when the context and the cache are not known yet.
+- The status line code is in modules with one job each: `paint.mjs` (icons, colors, bars), `format.mjs` (model names, times, money), `parts.mjs` (one function for each part), `layout.mjs` (rows), and `render.mjs` (both status lines).
+  `shared.mjs` is gone.
+
+### Fixed
+
+- The status line stubs that `/dotclaude:setup` writes run the newest plugin version in the plugin cache.
+  Before, they ran the version that was current at setup, so a plugin update did not change the status line until setup ran again.
+
 ## [0.20.2] - 2026-10-04
 
 ### Changed
@@ -163,4 +177,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.2...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.3...HEAD

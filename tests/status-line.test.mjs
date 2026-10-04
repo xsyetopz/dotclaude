@@ -8,7 +8,7 @@ import {
   STATUS_REFRESH_SECONDS,
   USAGE_LEVELS,
 } from "../hooks/lib/_budget.mjs";
-import { renderMain, renderTask } from "../status-line/shared.mjs";
+import { renderMain, renderTask } from "../status-line/render.mjs";
 import { cached, compactions, loopProgress } from "../status-line/sources.mjs";
 
 const root = join(import.meta.dir, "..");
@@ -50,6 +50,16 @@ test("the core row has model, context bar, and cache expiry, and the next row th
   expect(quota.split(" · ")).toEqual([
     expect.stringMatching(/^5h ████░ {2}82% ▲\d+%→\S+ ↻\d/),
     expect.stringMatching(/^7d ██░░░ {2}31% ▼\d+% ↻/),
+  ]);
+});
+
+test("a group of one part shares its row with the next group, and a longer group does not", () => {
+  const { context_window: _, prompt_cache: __, ...modelOnly } = simple;
+  const data = { ...modelOnly, workspace: { current_dir: "/a" } };
+  expect(rows(data, { columns: 80 })).toEqual([
+    expect.stringMatching(/^Opus 5\.5 high · 5h ████░ {2}82% /),
+    expect.stringMatching(/^7d ██░░░ {2}31% /),
+    "a",
   ]);
 });
 

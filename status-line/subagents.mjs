@@ -3,7 +3,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { renderTask } from "./shared.mjs";
+import { renderTask } from "./render.mjs";
 
 /**
  * An agent's type without its plugin prefix. Claude Code's row input has no

@@ -79,7 +79,6 @@ claude plugin update dotclaude@dotclaude
    Before 1.0, a release can change or remove behavior without a compatibility layer.
 1. Run `/dotclaude:setup` again.
    It shows each change.
-   It also writes the status line stubs again, because they point to the plugin version.
 
 0.20.0 removed many 0.19 parts.
 See its changelog entry for the list.

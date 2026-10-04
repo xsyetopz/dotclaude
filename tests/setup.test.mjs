@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
 import {
+  cpSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -142,6 +144,38 @@ test("--apply wires both status lines through stubs that run the plugin scripts"
     ),
   ).toContain("62k/100k");
   expect(run("settings.mjs", dir).out).toContain("match the profile");
+});
+
+test("a stub in the plugin cache runs the newest version that is not orphaned", () => {
+  const dir = mkdtempSync(join(tmpdir(), "setup-cache-"));
+  const versions = join(dir, "cache", "dotclaude", "dotclaude");
+  const repo = join(SCRIPTS, "..", "..", "..");
+  for (const part of ["hooks/lib", "skills/setup", "status-line"])
+    cpSync(join(repo, part), join(versions, "0.9.0", part), {
+      recursive: true,
+    });
+  const fake = (version, text) => {
+    mkdirSync(join(versions, version, "status-line"), { recursive: true });
+    writeFileSync(
+      join(versions, version, "status-line", "main.mjs"),
+      `console.log(${JSON.stringify(text)});`,
+    );
+  };
+  fake("0.10.0", "newest");
+  fake("0.11.0", "orphaned");
+  writeFileSync(join(versions, "0.11.0", ".orphaned_at"), "1");
+  const settings = join(versions, "0.9.0", "skills/setup/scripts/settings.mjs");
+  Bun.spawnSync(["bun", settings, "--apply"], {
+    env: { ...process.env, CLAUDE_CONFIG_DIR: dir },
+  });
+  const stub = join(dir, "dotclaude", "statusline.mjs");
+  const out = () =>
+    Bun.spawnSync(["bun", stub], { stdin: Buffer.from("{}") })
+      .stdout.toString()
+      .trim();
+  expect(out()).toBe("newest");
+  rmSync(join(versions, "0.10.0"), { recursive: true });
+  expect(out()).not.toBe("orphaned");
 });
 
 test("the preview shows the detected plan, and --plan overrides it", () => {

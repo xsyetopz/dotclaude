@@ -11,8 +11,8 @@
 // A status line command gets an empty `${CLAUDE_PLUGIN_ROOT}`, so --apply also
 // writes two stubs in `<config dir>/dotclaude/` that import this plugin's
 // `status-line/main.mjs` and `subagents.mjs`, and sets `statusLine` and
-// `subagentStatusLine` to run them. Re-run it after a plugin update, because
-// the plugin directory changes with each version.
+// `subagentStatusLine` to run them. A stub finds the newest version in the
+// plugin cache when it runs, so a plugin update needs no new stubs.
 //
 // Without --apply, it prints what differs and writes nothing. That is also the
 // status. With --apply, it backs the file up next to itself, then writes.
@@ -24,7 +24,6 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import {
   accountFrom,
   claudeJsonPath,
@@ -167,14 +166,38 @@ const STATUS_LINES = [
   },
 }));
 
-/** A stub's text. It prints nothing when the plugin is gone. */
-const stubText = (
-  script,
-) => `// Managed by dotclaude. Run the setup skill again after a plugin update.
+/**
+ * A stub's text. In the plugin cache, each version has a folder, so the stub
+ * runs the script of the newest version that Claude Code did not orphan.
+ * Then a plugin update takes effect without setup. Elsewhere (a checkout),
+ * it runs the script of this plugin. It prints nothing when the plugin is gone.
+ */
+function stubText(script) {
+  const root = path.resolve(path.dirname(script), "..");
+  const versions = /^\d+\.\d+\.\d+$/.test(path.basename(root))
+    ? path.dirname(root)
+    : null;
+  const rel = path.relative(root, script).replaceAll("\\", "/");
+  return `// Managed by dotclaude. It runs the newest installed plugin version.
+import fs from "node:fs";
+import { pathToFileURL } from "node:url";
+const versions = ${JSON.stringify(versions)};
+let script = ${JSON.stringify(script)};
 try {
-  await import(${JSON.stringify(pathToFileURL(script).href)});
+  const newest = fs
+    .readdirSync(versions)
+    .filter((v) => /^\\d+\\.\\d+\\.\\d+$/.test(v))
+    .filter((v) => !fs.existsSync(\`\${versions}/\${v}/.orphaned_at\`))
+    .filter((v) => fs.existsSync(\`\${versions}/\${v}/${rel}\`))
+    .sort((a, b) => a.localeCompare(b, "en", { numeric: true }))
+    .pop();
+  if (newest) script = \`\${versions}/\${newest}/${rel}\`;
+} catch {}
+try {
+  await import(pathToFileURL(script).href);
 } catch {}
 `;
+}
 
 const profileFile = readJson(profilePath, null);
 if (!isObject(profileFile)) {

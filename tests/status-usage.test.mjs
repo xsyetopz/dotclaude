@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { renderMain } from "../status-line/shared.mjs";
+import { renderMain } from "../status-line/render.mjs";
 import { parseUsage, usageCopy } from "../status-line/sources.mjs";
 
 // Fixtures in the shape of `cachedUsageUtilization.utilization` from Claude

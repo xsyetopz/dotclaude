@@ -32,6 +32,7 @@ The two classic hooks are `hooks/session-start/context.mjs` and `hooks/stop/veri
 | `status-line/subagents.mjs` | `subagentStatusLine` | `SUBAGENT_CONTEXT_TOKENS`, `REVIEWER_CONTEXT_TOKENS` | See the model and context of each running agent. |
 
 `/dotclaude:setup` writes two stubs that run these scripts, because a status line command gets an empty `${CLAUDE_PLUGIN_ROOT}`.
+Each stub runs the newest plugin version in the plugin cache, so a plugin update needs no new stubs.
 
 ## Agents, skills, and style
 

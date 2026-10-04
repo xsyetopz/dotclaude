@@ -4,7 +4,7 @@
 // go through `cached` in `sources.mjs`.
 
 import fs from "node:fs";
-import { renderMain } from "./shared.mjs";
+import { renderMain } from "./render.mjs";
 import { compactions, gitState, loopProgress, usageCopy } from "./sources.mjs";
 
 try {
