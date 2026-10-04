@@ -40,14 +40,16 @@ const simple = {
   },
 };
 
-test("the core row has model, context bar, cache expiry, and limits in order", () => {
-  const [core] = rows(simple);
+test("the core row has model, context bar, and cache expiry, and the next row the limits", () => {
+  const [core, quota] = rows(simple);
   expect(core.split(" · ")).toEqual([
     "Opus 5.5 high",
     "◧ ████░ 87k/117k",
     "◷ 40m",
-    expect.stringMatching(/^5h ████░ {2}82% ↻\d/),
-    expect.stringMatching(/^7d ██░░░ {2}31% ↻/),
+  ]);
+  expect(quota.split(" · ")).toEqual([
+    expect.stringMatching(/^5h ████░ {2}82% ▲\d+%→\S+ ↻\d/),
+    expect.stringMatching(/^7d ██░░░ {2}31% ▼\d+% ↻/),
   ]);
 });
 
@@ -117,12 +119,14 @@ test("blinks one warning glyph for handoff, cache expiry, and a limit", () => {
     "7d": () => ({ rate_limits: { seven_day: { used_percentage: 95 } } }),
   };
   for (const [part, make] of Object.entries(cases)) {
-    const on = rows(make(EVEN), { now: EVEN })[0];
-    const off = rows(make(ODD), { now: ODD })[0];
-    expect(on).toStartWith("⚠ ");
-    expect(on).toContain(part);
-    expect(off).not.toContain("⚠");
-    expect(off.length).toBe(on.length);
+    const on = renderMain(make(EVEN), { now: EVEN });
+    const off = renderMain(make(ODD), { now: ODD });
+    expect(strip(on)).toStartWith("⚠ ");
+    expect(strip(on)).toContain(part);
+    // Red when on, and dim when off, so that no gap opens.
+    expect(on).toContain("\x1b[31m⚠");
+    expect(off).toContain("\x1b[2m⚠");
+    expect(strip(off)).toBe(strip(on));
   }
   expect(rows(simple)[0]).not.toContain("⚠");
   expect(STATUS_REFRESH_SECONDS).toBeLessThanOrEqual(1);
@@ -168,7 +172,7 @@ test("the folder reads the same with either path separator", () => {
   );
 });
 
-test("the detail row has hit ratio, misses, pace, cost, lines, and time", () => {
+test("each window shows its pace, and the detail row has hit ratio, misses, cost, lines, and time", () => {
   const data = {
     ...simple,
     prompt_cache: {
@@ -191,15 +195,10 @@ test("the detail row has hit ratio, misses, pace, cost, lines, and time", () => 
       total_duration_ms: 65 * 60_000,
     },
   };
-  const [core, detail] = rows(data);
+  const [core, quota, detail] = rows(data);
   expect(core).toContain("Opus 5.5 high FAST");
-  expect(detail.split(" · ")).toEqual([
-    "◷ 93% ✘2 tools",
-    expect.stringMatching(/^5h ▲22%→\d/),
-    "7d ▼d+%".length ? expect.stringMatching(/^7d ▼\d+%$/) : "",
-    "+156 -23",
-    "1h5m",
-  ]);
+  expect(quota).toMatch(/^5h .* 82% ▲22%→\S+ ↻\S+ · 7d .* 10% ▼\d+% ↻/);
+  expect(detail.split(" · ")).toEqual(["hit 93% ✘2 tools", "+156 -23", "1h5m"]);
   // A subscriber sees limits, and anyone else sees the cost.
   expect(rows({ ...data, rate_limits: undefined }).at(-1)).toContain("$1.50");
 });
@@ -239,7 +238,7 @@ test("wraps past the columns and drops the lowest priority part first", () => {
   expect(narrow.join("\n")).not.toContain("name");
 });
 
-test("the pace of a window past the first level stays when parts drop", () => {
+test("a pace drops only with its window, and a window past the first level stays", () => {
   const data = {
     model: { id: "claude-opus-5-5" },
     context_window: { total_input_tokens: 50_000 },
@@ -251,7 +250,9 @@ test("the pace of a window past the first level stays when parts drop", () => {
     workspace: { current_dir: "/a" },
     cost: { total_duration_ms: 600_000 },
   };
-  expect(main(data, { columns: 80 })).toMatch(/7d ▲16%→/);
+  const narrow = main(data, { columns: 50 });
+  expect(narrow).toMatch(/7d █+ +99% ▲16%→/);
+  expect(narrow).not.toContain("5h");
 });
 
 test("sources: `cached` reuses a result for the cache time, and counts compactions", () => {
@@ -296,7 +297,9 @@ test("subagent rows give name, model, effort, context, time, and description", (
   expect(row(null, EVEN)).toBe(
     "worker Haiku 4.5 low ⚠ · ⚠ ◧ █████ 95k/100k · 5m · Fix the failing test",
   );
-  expect(row(null, ODD)).toContain("  ◧ █████ 95k/100k");
+  // The off frame keeps the glyph, dim, so the text is the same.
+  expect(row(null, ODD)).toBe(row(null, EVEN));
+  expect(renderTask(task, null, { now: ODD })).toContain("\x1b[2m⚠");
   expect(row("reviewer", EVEN)).toContain("◧ ███░░ 95k/150k");
   expect(strip(renderTask({ id: "x" }, null))).toBe("agent");
 });

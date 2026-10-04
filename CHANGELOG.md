@@ -12,13 +12,25 @@ steps after each update.
 
 ## [0.20.2] - 2026-10-04
 
+### Changed
+
+- The status line has one row for each topic.
+  The first row is the session: model, context, and cache expiry.
+  The second row is the usage: each window, limit resets, and extra usage.
+  The third row is the place, and then the detail: cache hit ratio, cost, lines, and time.
+- Each usage window shows its deficit or reserve in its own part, as `7d █████  99% ▲16%→3:41am ↻Oct 5 at 7am`.
+  A pace thus never shows without its window, and it drops only with its window.
+- The cache hit ratio reads as `hit 96%`.
+  Before, it had the `◷` icon of the cache expiry.
+- A blinking `⚠` shows dim in its off frame.
+  Before, a blank space showed, and it looked like a gap after the separator.
+
 ### Fixed
 
 - A date and time in the status line read as `Oct 12 at 4am` on all systems.
   Some ICU versions, as on Linux and Windows, joined them as `Oct 12, 4am`, and the test failed there.
-- The 7d deficit or reserve, as `7d ▲16%→3:41am`, did not show in a narrow terminal.
-  When the parts did not fit, the 7d pace dropped first, also while the 7d window was past the first usage level.
-  The pace of a window now has the same rank as the window itself.
+- The 7d deficit or reserve did not show in a narrow terminal, also while the 7d window was past the first usage level.
+  The 5h pace could also show without its window.
 
 ## [0.20.1] - 2026-10-04
 

@@ -67,9 +67,12 @@ export function levelColor(pct) {
 /** True in the "on" half of each second. The caller passes the clock. */
 export const blinkOn = (now) => Math.floor(now / 1000) % 2 === 0;
 
-/** A red `⚠` that blinks while `urgent`. A space keeps the width when off. */
+/**
+ * A `⚠` that blinks red and dim while `urgent`. A dim glyph, not a space,
+ * shows when off, so that no gap opens after a separator.
+ */
 export const alarm = (urgent, now) =>
-  urgent ? `${blinkOn(now) ? C.red(ICON.warn) : " "} ` : "";
+  urgent ? `${(blinkOn(now) ? C.red : C.dim)(ICON.warn)} ` : "";
 
 /** The one bar: five cells, filled by `pct`, colored by the scale. */
 export function bar(pct, cells = 5) {
@@ -178,7 +181,7 @@ function cacheDetail(cache) {
     (c) => c !== "model_changed" && !c.startsWith("ttl_expired"),
   );
   return [
-    hit !== null && levelColor(100 - hit)(`${hit}%`),
+    hit !== null && `${C.dim("hit")} ${levelColor(100 - hit)(`${hit}%`)}`,
     misses > 0 &&
       C.yellow(
         `${ICON.miss}${misses}${last ? ` ${last.replace(/_changed$/, "")}` : ""}`,
@@ -188,9 +191,14 @@ function cacheDetail(cache) {
     .join(" ");
 }
 
-/** One usage window: `5h █░░░░  23% ↻3pm`, with `⚠` from the second level. */
-function limitPart(label, window, now) {
+/**
+ * One usage window of `span` seconds: `5h █░░░░  23% ▼10% ↻3pm`, with its
+ * pace, and with `⚠` from the second level. The pace is in the part, so that
+ * it never shows apart from its window.
+ */
+function limitPart(label, window, now, span) {
   const pct = Math.round(window.used_percentage);
+  const pace = span ? pacePart(window, now, span) : null;
   const reset =
     window.resets_at * 1000 > now
       ? C.dim(` ${ICON.reset}${clock(window.resets_at, now)}`)
@@ -198,6 +206,7 @@ function limitPart(label, window, now) {
   return (
     alarm(pct >= USAGE_LEVELS[1], now) +
     meter(C.dim(label), pct, percent(pct)) +
+    (pace ? ` ${pace}` : "") +
     reset
   );
 }
@@ -285,17 +294,18 @@ function pack(groups, columns) {
 }
 
 /**
- * The main status line, in three groups. `core` is what a simple session
- * needs: model, context, cache, limits, limit resets, and extra usage. `place` is where it works.
- * `detail` is for power users: cache hit ratio and misses, limit pace, and
- * cost. Parts carry a priority, and past `MAX_ROWS` rows the lowest go first.
+ * The main status line, in three groups. `core` is the session: model,
+ * context, and cache. `quota` is the usage: each window with its pace and
+ * reset, limit resets, and extra usage. `place` is where it works, and then
+ * the `detail` for power users: cache hit ratio and misses, cost, lines, and
+ * time. Parts carry a priority, and past `MAX_ROWS` rows the lowest go first.
  * `o` has the clock `now`, `columns`, and what `sources.mjs` read: `git`,
  * `loop`, `compactions`, and `usage` (windows for a status JSON without
  * them, `resets`, and `extra`).
  */
 export function renderMain(data, o = {}) {
   const { now = Date.now(), columns = 120 } = o;
-  const [core, place, detail] = [[], [], []];
+  const [core, quota, place, detail] = [[], [], [], []];
   const add = (group, priority, text) => {
     if (text) group.push({ priority, text });
   };
@@ -320,11 +330,7 @@ export function renderMain(data, o = {}) {
   const cache = data.prompt_cache;
   if (cache?.caching_observed) {
     add(core, 7, cacheExpiry(cache, now));
-    add(
-      detail,
-      5,
-      cacheDetail(cache) && `${C.dim(ICON.warm)} ${cacheDetail(cache)}`,
-    );
+    add(detail, 5, cacheDetail(cache));
   }
 
   const { resets, extra, ...copied } = o.usage ?? {};
@@ -336,12 +342,9 @@ export function renderMain(data, o = {}) {
   ]) {
     const window = limits[key];
     if (!Number.isFinite(window?.used_percentage)) continue;
-    // A limit past the first level outranks all but the context. Its pace
-    // has the same rank, so that it does not drop before a calm window's.
-    const rank = window.used_percentage >= USAGE_LEVELS[0] ? 9 : priority;
-    add(core, rank, limitPart(label, window, now));
-    const pace = span && pacePart(window, now, span);
-    add(detail, rank, pace && `${C.dim(label)} ${pace}`);
+    // A limit past the first level outranks all but the context.
+    const urgent = window.used_percentage >= USAGE_LEVELS[0];
+    add(quota, urgent ? 9 : priority, limitPart(label, window, now, span));
   }
   if (resets) {
     // A reset refills a window at its limit, so there it outranks the window.
@@ -349,13 +352,13 @@ export function renderMain(data, o = {}) {
       (w) => w?.used_percentage >= USAGE_LEVELS[1],
     );
     add(
-      core,
+      quota,
       atLimit ? 9 : 4,
       C.green(`${ICON.credit}${resets.left}`) +
         (resets.until ? C.dim(` by ${clock(resets.until, now)}`) : ""),
     );
   }
-  add(core, 4, extra && extraPart(extra));
+  add(quota, 4, extra && extraPart(extra));
   // Subscribers see limits. Others pay per token, so they see the estimate.
   if (!Object.values(limits).some(Boolean) && data.cost?.total_cost_usd >= 0)
     add(detail, 3, C.dim(`$${data.cost.total_cost_usd.toFixed(2)}`));
@@ -394,7 +397,7 @@ export function renderMain(data, o = {}) {
   if (name)
     add(place, 1, C.dim(name.length > 32 ? `${name.slice(0, 31)}…` : name));
 
-  const groups = [core, place, detail];
+  const groups = [core, quota, place.concat(detail)];
   let rows = pack(groups, columns);
   while (rows.length > MAX_ROWS && groups.flat().length > 1) {
     const lowest = groups
