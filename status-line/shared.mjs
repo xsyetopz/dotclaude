@@ -25,6 +25,7 @@ export const ICON = {
   deficit: "▲",
   reserve: "▼",
   reset: "↻",
+  credit: "⟳",
   branch: "⎇",
   worktree: "⊞",
   dirty: "±",
@@ -218,6 +219,31 @@ function pacePart(window, now, span) {
   );
 }
 
+/** "$12" or "$12.50", or "12.50 XYZ" for a code that `Intl` does not know. */
+function money(amount, currency) {
+  const digits = Number.isInteger(amount) ? 0 : 2;
+  try {
+    return amount.toLocaleString("en-US", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+  } catch {
+    return `${amount.toFixed(digits)} ${currency}`;
+  }
+}
+
+/** Extra usage spend: `extra █░░░░ $12/$50`, or `extra $12` with no limit. */
+function extraPart({ used, limit, pct, currency }) {
+  if (!limit) return `${C.dim("extra")} ${money(used, currency)}`;
+  return meter(
+    C.dim("extra"),
+    pct,
+    `${money(used, currency)}/${money(limit, currency)}`,
+  );
+}
+
 const REVIEW = { approved: C.green, changes_requested: C.red, draft: C.dim };
 
 /** The folder, as `project/subdir` when the session moved below its project. */
@@ -258,11 +284,12 @@ function pack(groups, columns) {
 
 /**
  * The main status line, in three groups. `core` is what a simple session
- * needs: model, context, cache, and limits. `place` is where it works.
+ * needs: model, context, cache, limits, limit resets, and extra usage. `place` is where it works.
  * `detail` is for power users: cache hit ratio and misses, limit pace, and
  * cost. Parts carry a priority, and past `MAX_ROWS` rows the lowest go first.
  * `o` has the clock `now`, `columns`, and what `sources.mjs` read: `git`,
- * `loop`, `compactions`, and `usage` (windows for a status JSON without any).
+ * `loop`, `compactions`, and `usage` (windows for a status JSON without
+ * them, `resets`, and `extra`).
  */
 export function renderMain(data, o = {}) {
   const { now = Date.now(), columns = 120 } = o;
@@ -298,7 +325,8 @@ export function renderMain(data, o = {}) {
     );
   }
 
-  const limits = { ...o.usage, ...data.rate_limits };
+  const { resets, extra, ...copied } = o.usage ?? {};
+  const limits = { ...copied, ...data.rate_limits };
   for (const [key, label, priority, span] of [
     ["five_hour", "5h", 5, 5 * 3600],
     ["seven_day", "7d", 4, 7 * 86_400],
@@ -312,6 +340,19 @@ export function renderMain(data, o = {}) {
     const pace = span && pacePart(window, now, span);
     add(detail, priority, pace && `${C.dim(label)} ${pace}`);
   }
+  if (resets) {
+    // A reset refills a window at its limit, so there it outranks the window.
+    const atLimit = Object.values(limits).some(
+      (w) => w?.used_percentage >= USAGE_LEVELS[1],
+    );
+    add(
+      core,
+      atLimit ? 9 : 4,
+      C.green(`${ICON.credit}${resets.left}`) +
+        (resets.until ? C.dim(` by ${clock(resets.until, now)}`) : ""),
+    );
+  }
+  add(core, 4, extra && extraPart(extra));
   // Subscribers see limits. Others pay per token, so they see the estimate.
   if (!Object.values(limits).some(Boolean) && data.cost?.total_cost_usd >= 0)
     add(detail, 3, C.dim(`$${data.cost.total_cost_usd.toFixed(2)}`));

@@ -111,8 +111,9 @@ export function loopProgress(root) {
 }
 
 /**
- * The usage windows from the `/usage` copy that Claude Code keeps in
- * `.claude.json`, in the shape of the status JSON's `rate_limits`. Claude
+ * The `/usage` copy that Claude Code keeps in `.claude.json`: the usage
+ * windows in the shape of the status JSON's `rate_limits`, the limit resets
+ * (`cedar_ember`) that the user can spend, and the extra usage spend. Claude
  * Code sends the status JSON's windows only after the first API response, and
  * treats the copy as stale after an hour.
  */
@@ -126,19 +127,80 @@ export function usageCopy(env = process.env, now = Date.now()) {
           fs.readFileSync(file, "utf8"),
         ).cachedUsageUtilization;
         if (!(now - copy.fetchedAtMs < 3_600_000)) return null;
-        const window = (w) =>
-          Number.isFinite(w?.utilization) && Date.parse(w.resets_at) > now
-            ? {
-                used_percentage: w.utilization,
-                resets_at: Date.parse(w.resets_at) / 1000,
-              }
-            : undefined;
-        const { five_hour, seven_day } = copy.utilization;
-        return { five_hour: window(five_hour), seven_day: window(seven_day) };
+        return parseUsage(copy.utilization, now);
       } catch {
         return null;
       }
     },
     now,
   );
+}
+
+/** `usageCopy` without the file and the cache. Each part is undefined when absent. */
+export function parseUsage(usage, now) {
+  const window = (w) =>
+    Number.isFinite(w?.utilization) && Date.parse(w.resets_at) > now
+      ? {
+          used_percentage: w.utilization,
+          resets_at: Date.parse(w.resets_at) / 1000,
+        }
+      : undefined;
+  return {
+    five_hour: window(usage?.five_hour),
+    seven_day: window(usage?.seven_day),
+    resets: limitResets(usage?.cedar_ember, now),
+    extra: extraUsage(usage?.extra_usage),
+  };
+}
+
+/**
+ * `{left, until}`: the resets that the user can spend now, and the earliest
+ * expiry in seconds (null when none expires). The rules are those of Claude
+ * Code and CodexBar: a grant counts when it is not paused, has resets left,
+ * and `now` is in its open `starts_at` to `ends_at` span.
+ */
+function limitResets(block, now) {
+  if (block?.eligible !== true || !Array.isArray(block.grants))
+    return undefined;
+  let left = 0;
+  let until = null;
+  for (const g of block.grants) {
+    const start = g?.starts_at == null ? -Infinity : Date.parse(g.starts_at);
+    const end = g?.ends_at == null ? Infinity : Date.parse(g.ends_at);
+    if (
+      g?.paused !== false ||
+      !(Number.isInteger(g.resets_left) && g.resets_left > 0)
+    )
+      continue;
+    if (!(start <= now && end > now)) continue;
+    left += g.resets_left;
+    if (Number.isFinite(end) && (until === null || end / 1000 < until))
+      until = end / 1000;
+  }
+  return left ? { left, until } : undefined;
+}
+
+/**
+ * `{used, limit, pct, currency}` of the extra usage spend while it is on.
+ * The copy gives amounts in minor units (cents for USD), and `limit` is null
+ * when the plan sets no monthly limit.
+ */
+function extraUsage(extra) {
+  if (extra?.is_enabled !== true || !Number.isFinite(extra.used_credits))
+    return undefined;
+  const scale =
+    10 ** (Number.isInteger(extra.decimal_places) ? extra.decimal_places : 2);
+  const limit =
+    Number.isFinite(extra.monthly_limit) && extra.monthly_limit > 0
+      ? extra.monthly_limit / scale
+      : null;
+  const used = extra.used_credits / scale;
+  return {
+    used,
+    limit,
+    pct: Number.isFinite(extra.utilization)
+      ? extra.utilization
+      : limit && (used / limit) * 100,
+    currency: extra.currency || "USD",
+  };
 }

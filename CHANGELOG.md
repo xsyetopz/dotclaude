@@ -10,6 +10,22 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-10-04
+
+### Added
+
+- The status line shows the limit resets that you can use, as `⟳2 by Oct 12 at 4am`: the count and the earliest expiry.
+  It reads them from the `cedar_ember` block of the `/usage` copy that Claude Code keeps in `.claude.json`, so it makes no network call.
+  A grant counts when it is not paused, has resets left, and is in its start to end span, as in Claude Code and CodexBar.
+  While a usage window is at its limit, the reset part outranks the other parts.
+- The status line shows the extra usage spend while extra usage is on, as `extra █░░░░ $12.50/$50`, or `extra $12.50` with no monthly limit.
+  It reads `extra_usage` from the same copy.
+
+### Changed
+
+- The status line reads the `/usage` copy on each run, not only when the status JSON has no usage windows.
+  The windows of the status JSON still have priority.
+
 ## [0.20.0] - 2026-10-04
 
 0.20.0 is a full reset on Claude Code 2.1.289.
@@ -275,4 +291,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.1...HEAD

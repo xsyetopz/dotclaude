@@ -12,7 +12,6 @@ try {
   const data = parsed && typeof parsed === "object" ? parsed : {};
   const now = Date.now();
   const dir = data.workspace?.current_dir || data.cwd || process.cwd();
-  const limits = data.rate_limits;
   console.log(
     renderMain(data, {
       now,
@@ -20,11 +19,9 @@ try {
       git: gitState(dir, now),
       loop: loopProgress(data.workspace?.project_dir || dir),
       compactions: compactions(data.transcript_path, now),
-      // The `/usage` copy fills a window that the status JSON does not have yet.
-      usage:
-        limits?.five_hour && limits?.seven_day
-          ? null
-          : usageCopy(process.env, now),
+      // The `/usage` copy fills a window that the status JSON does not have
+      // yet, and it is the only source of limit resets and extra usage.
+      usage: usageCopy(process.env, now),
     }),
   );
 } catch {
