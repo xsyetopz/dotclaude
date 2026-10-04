@@ -6,7 +6,7 @@ implementation.
 
 | Project | Idea | dotclaude part |
 | --- | --- | --- |
-| [DensePack](https://github.com/Fabian-Galvez/DensePack) by Fabian-Galvez | `plugin/scripts/edit_gate.py`: when an `Edit` fails, show the lines that are closest to `old_string` | `hooks/post-tool-use-failure/show-closest-lines.mjs`, see [Hooks](hooks.md) |
+| [DensePack](https://github.com/Fabian-Galvez/DensePack) by Fabian-Galvez | `plugin/scripts/edit_gate.py`: when an `Edit` fails, show the lines that are closest to `old_string` | none: 0.20.0 removed `show-closest-lines.mjs`, the part that reimplemented it |
 | [agent-skills](https://github.com/addyosmani/agent-skills) by Addy Osmani | a skill description that says what the skill does and when to use it | the "Use" part of each skill and agent description, and a "Not for" part where a neighbor can match the same request |
 
 dotclaude adopts none of the workflow skills of these projects. The

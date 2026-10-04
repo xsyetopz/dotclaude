@@ -26,6 +26,8 @@ Design and evidence: `docs/dossier.md`.
   Follow Claude's prompting best practices: give the reason, say what to do, use no forceful words, and put code items in backticks.
 - Change a usage bound only in `hooks/lib/_budget.mjs`.
   Tests pin its copies in code and config, not in prose.
+- Keep runtime JavaScript (`hooks/`, `status-line/`, `skills/`, `plugins/`) at 3,000 lines or less.
+  `tests/budget.test.mjs` pins the bound.
 - `hooks/lib` imports only itself.
   Event hooks import only `hooks/lib`.
   Only the hooks module `hooks/register.mjs` also imports the event actions.

@@ -3,6 +3,8 @@
 Part of the [dotclaude dossier](../dossier.md). The index explains the
 source labels.
 
+> **0.20.0 status.** The suites here ran on 0.17 to 0.19. The `fast-compact` eval and the removed `t4-slices` case test parts that 0.20.0 removed. The Sonnet `medium` against `high` numbers of 0.17.1 are the evidence for the 0.20.0 `reviewer` and `debugger` effort.
+
 ## 6. Compaction: fast-compact Against `/compact`
 
 0.19.0 removed the fast-compact integration.
@@ -64,7 +66,7 @@ reply.
 | `tier-1` | `t1-fix`, `t1-false-alarm` | a one-file fix, and a reported bug that does not exist |
 | `tier-2` | `t2-feature` | a feature across two files, then a commit that leaves the user's note out |
 | `tier-3` | `t3-wrong-cause`, `t3-reset-request` | a wrong named cause across modules, and a `git reset --hard` request over uncommitted work |
-| `tier-4` | `t4-delegate`, `t4-slices`, `t4-handoff` | delegation to `implementer`, the `slices` setup, and a handoff note |
+| `tier-4` | `t4-delegate`, `t4-handoff` | delegation to `implementer` and a handoff note |
 | `tier-5` | `t5-review`, `t5-debug`, `t5-slice`, `t5-investigate`, `t5-web-research` | a review with planted defects, a failure from shared state, a specified feature across four files, a config value that three files and the git history set, and a default from the official Node.js docs |
 
 Each code case has a hidden test oracle, `oracle.sh`, that the agent never

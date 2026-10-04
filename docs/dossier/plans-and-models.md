@@ -3,6 +3,8 @@
 Part of the [dotclaude dossier](../dossier.md). The index explains the
 source labels.
 
+> **0.20.0 status.** This section records the 0.19 model policy, with Fable 5.1, plan detection, and the model lock. 0.20.0 removed Fable from `availableModels`, plan detection, and the model lock. The rules now are in [Parts](../parts.md#model-and-effort-rules).
+
 ## 4. Plans And Models
 
 ### The Fable Limit

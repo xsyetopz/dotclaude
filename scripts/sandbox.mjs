@@ -12,7 +12,7 @@
 // `home/`, the HOME of claude, so that setup scripts that change shell startup
 // files change only the sandbox. The
 // config skips onboarding and trusts the project, and has the dotclaude
-// status line installed.
+// setup profile and status line applied.
 //
 // Login: the sandbox uses CLAUDE_CODE_OAUTH_TOKEN when it is set. If not, it
 // reads your own login token (the macOS Keychain entry, or
@@ -142,12 +142,16 @@ function setUp() {
       hasTrustDialogAccepted: true,
     };
   fs.writeFileSync(state, JSON.stringify(json, null, 2));
-  if (!fs.existsSync(path.join(config, "dotclaude", "statusline.mjs")))
-    spawnSync(
+  // The setup profile and the status-line stubs, as the `setup` skill
+  // applies them for a user.
+  if (!fs.existsSync(path.join(config, "dotclaude", "statusline.mjs"))) {
+    const setup = spawnSync(
       "bun",
-      [path.join(REPO, "skills/setup/scripts/apply-statusline.mjs"), "--apply"],
-      { env: { ...process.env, CLAUDE_CONFIG_DIR: config }, stdio: "ignore" },
+      [path.join(REPO, "skills/setup/scripts/settings.mjs"), "--apply"],
+      { env: { ...process.env, CLAUDE_CONFIG_DIR: config }, stdio: "inherit" },
     );
+    if (setup.status !== 0) process.exit(setup.status ?? 1);
+  }
 }
 
 setUp();

@@ -3,6 +3,8 @@
 Part of the [dotclaude dossier](../dossier.md). The index explains the
 source labels.
 
+> **0.20.0 status.** This section describes the hooks module of Claude Code 2.1.288. dotclaude 0.20.0 uses it in `hooks/register.mjs` for `tool.call`, `agent.spawn`, `prompt.submit`, `turn.complete`, `session.compact`, and `tool.check`. It no longer uses the module for model-switch, config-change, or session-ledger hooks.
+
 ## 10. Claude Mods
 
 Claude Code 2.1.287 and later can load a plugin "hooks module". Anthropic calls a plugin

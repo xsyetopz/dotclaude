@@ -60,8 +60,8 @@ In `config/.claude.json` the script sets these keys:
   for trust. On macOS, `/tmp` and `/var` resolve to `/private`, and Claude
   Code uses the resolved path. The script sets both paths.
 
-It also installs the dotclaude status line in `config/settings.json`, and
-session start writes the subagent status line stub to `config/dotclaude/`.
+To see the status line, run `/dotclaude:setup` in the sandbox. It writes the
+status line settings and the two stubs in `config/dotclaude/`.
 Put more settings in `config/settings.json` when a test needs them.
 
 ## Login
@@ -133,7 +133,7 @@ To test a status line script without a session, give it input on stdin:
 
 ```sh
 echo '{"columns":100,"tasks":[{"id":"a1","model":"claude-sonnet-5-5",
-  "tokenCount":5000}]}' | bun hooks/status-line/subagents.mjs
+  "tokenCount":5000}]}' | bun status-line/subagents.mjs
 ```
 
 Claude Code does not log a status line command that works. To see the input

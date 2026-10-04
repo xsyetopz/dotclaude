@@ -33,8 +33,12 @@ dependencies at run time.
 - **One owner for each number.** `hooks/lib/_budget.mjs` holds every usage
   bound. Tests fail when the output style, the settings profile, or the option
   text disagrees with it.
+- **A line budget.** Runtime JavaScript (`hooks/`, `status-line/`, `skills/`,
+  and `plugins/`) stays within `RUNTIME_JS_LINES`, 3,000 lines.
+  `tests/budget.test.mjs` fails above it.
 - **Layered imports.** Event hooks import only `hooks/lib`. `hooks/lib`
-  imports only itself. Skill scripts may import `hooks/lib`.
+  imports only itself. Only the module `hooks/register.mjs` also imports the
+  event actions.
 - **Guards get strings.** The tests give commands to the guards as strings,
   and never run a guarded command.
 
@@ -62,9 +66,9 @@ compatibility layer.
 
 ## Evals
 
-The behavior evals run with `claude plugin eval`. `evals/` has 14 tasks in 5
-tiers, from a one-file fix to debugging, review, investigation, web research, and slices. Each run costs
-money, so run it only when you decide to.
+The behavior evals run with `claude plugin eval`. `evals/` has 13 tasks in 5
+tiers, from a one-file fix to debugging, review, investigation, and web
+research. Each run costs money, so run it only when you decide to.
 
 ```bash
 claude plugin eval . --model haiku --judge-model sonnet --runs 3 --scaffold \
@@ -89,14 +93,14 @@ it warns you once for each run. `evals/oracle.mjs` opens the seal only for
 the copy, and it runs `git` only in the copy. `claude plugin eval` has no
 grader that runs a command.
 `--judge-model sonnet` sets the model of the `llm` graders. The default
-judge is Haiku 4.5, and it failed a correct `t4-slices` reply in 3 of 3
-runs. The CLI does not keep the judge's text, so the cause is not known. Do
+judge is Haiku 4.5, and it failed a correct reply of the removed `t4-slices`
+case in 3 of 3 runs. The CLI does not keep the judge's text, so the cause is not known. Do
 not use the agent's model as the judge, because a model prefers its own
 output. The default ablation also runs each case without the plugin, so the
 report shows the plugin's effect.
 
-`t4-slices` and `t4-handoff` call skills that 0.17.0 renamed. Releases before
-0.17.0 fail their `with-only` graders.
+`t4-handoff` calls a skill that 0.17.0 renamed. Releases before 0.17.0 fail
+its `with-only` grader.
 
 **Why tiers:** the tiered cases show what dotclaude changes on tasks of
 growing size. A command grades each case, not the words of the reply. The

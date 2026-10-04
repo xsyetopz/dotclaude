@@ -10,19 +10,84 @@ steps after each update.
 
 ## [Unreleased]
 
+0.20.0 is a full reset on Claude Code 2.1.289.
+It keeps the parts that serve a need that Claude Code does not cover, and it removes the rest.
+Runtime JavaScript goes from 18,935 lines in 0.19.1 to 1,495 lines, and `tests/budget.test.mjs` bounds it at 3,000.
+Run `/dotclaude:setup` again after you update.
+
 ### Added
 
-- The plugin options `guard_agents` and `compaction_handoff`, which `hooks/register.mjs` already read.
-- `/dotclaude:setup` writes two stubs in the config directory and sets `statusLine` and `subagentStatusLine` to run them, because a status line command gets an empty `${CLAUDE_PLUGIN_ROOT}`.
+- `docs/parts.md`, a page that lists each part, its event, its bound, and the need that it serves.
+- The rule that runtime JavaScript (`hooks/`, `status-line/`, `skills/`, `plugins/`) stays within `RUNTIME_JS_LINES` (3,000) in `hooks/lib/_budget.mjs`.
+  0.19.1 had no bound on it, and its runtime JavaScript grew to 18,935 lines, much of it a copy of what Claude Code 2.1.287 to 2.1.289 does itself.
+- The plugin options `guard_agents` and `compaction_handoff`.
+  `guard_agents` turns off the spawn rules, and `compaction_handoff` turns off the handoff fork.
+- A Stop verify gate.
+  It sends Claude back once when a turn edited files and no check ran after the last edit, because the usage evidence shows that a rule in a prompt does not hold and a hook does.
+  It finds the check from the `justfile`, `package.json`, or `Makefile` of the project.
+- A compaction instruction.
+  The summary says that an unapproved plan or an open question stays open, because the default summary text tells Claude to continue without asking, and a model then acted on a plan that the user had not approved.
+- A handoff fork on compaction.
+  Before a compaction of the main conversation, a fork writes a handoff note to `.claude/handoffs/` and adds it to the compacted conversation, because users report that a handoff note beats a compaction.
+  If the fork gives no note in 60 seconds, the compaction runs without it.
+- Cold-cache notes.
+  A resumed session with an expired prompt cache, and a prompt that comes more than 1 hour after the last turn, give Claude the cost advice, because 1.6% of the turns, those after more than 1 hour idle, caused 80% of the cache writes.
+- A status line that shows the model and effort, the context against the compaction point, the cache expiry, and the 5-hour and weekly limits, with a warning when the effort is above the rule for the model.
+  A second script shows the model and context of each running agent.
+  `/dotclaude:setup` writes two stubs in the config directory and sets `statusLine` and `subagentStatusLine` to run them, because a status line command gets an empty `${CLAUDE_PLUGIN_ROOT}`.
+- The `backend` option of `dotclaude-browser`, which defaults to `agent-browser`.
+  The value `cloakbrowser` runs `agent-browser` with the CloakBrowser binary through `--executable-path`, for sites with bot detection.
 
 ### Changed
 
+- **Model and effort rules.**
+  Opus 5.5 takes `low`, `medium`, and `high`, Sonnet 5.5 takes `low` and `medium`, and Haiku 4.5 takes no effort.
+  `agent.spawn` denies a spawn that breaks the table, and `tests/agents.test.mjs` keeps the agent files in step with it.
+  The status line warns about the main session, because no hook event fires when its effort changes.
+- `reviewer` and `debugger` run at `medium`, from `high`.
+  In the 0.17.1 eval rerun, Sonnet 5.5 at `medium` passed 109 of 110 at $0.10 for each pass, and at `high` it passed 107 of 110 at $0.12.
+- The settings profile sets `maxEffortLevel` to `high`, from `xhigh`, because the rules above allow no effort over `high`.
+- The Bash, Edit, and secret guards are small.
+  They are 3 files with 367 lines in place of 14 files with 4,428 lines, and they keep the asks for hard-to-undo commands, test deletion, generated files, and settings files, and the Betterleaks redaction.
+  The large rule sets (infrastructure, search, TLS, dependencies, proof escapes, and AI policy) go, because the auto-mode classifier and the permission rules of Claude Code cover them.
+- The working rules in `hooks/session-start/rules.md` are 1,442 bytes, from 4,300 bytes in 0.19.1, and a test bounds them at 2,000.
+  A standing prompt costs on every turn.
+- `/dotclaude:setup` applies one profile (`recommended.json`) with one script, `settings.mjs`, in place of the 0.19 profiles and scripts.
+  The preview shows each setting that differs, and a second run changes nothing.
+- The only output style is `Concise`, because Claude Code has the other styles built in.
+- `drive-web-browser` uses `agent-browser` by default, because it needs no extra binary, and CloakBrowser is an opt-in for sites with bot detection.
 - The status line bounds live only in `hooks/lib/_budget.mjs`, and `status-line/shared.mjs` imports them.
 - `scripts/usage-report.mjs` runs again with its own helpers in `scripts/_usage-lib.mjs`.
+- Each agent file has `maxTurns` (20 to 80), in place of the 0.19 budget hooks, because the setting bounds an agent with no hook.
+  `implementer` takes the bulk changes of `mechanical-worker`.
 
 ### Removed
 
-- `scripts/count-tokens.mjs` and `scripts/update-ai-policies.mjs`, which served features that 0.20.0 removed.
+- The delegation gate and note, because users report cost blow-ups from subagents and `maxTurns` bounds an agent without it.
+- The agent budget hooks (`enforce-agent-budget`, `hand-off-capped-agents`, and the report caps), because the `maxTurns` of an agent file does the same job.
+- The model-switch, `ConfigChange`, `StopFailure`, and `TaskCompleted` hooks, because `availableModels` and `CLAUDE_CODE_DISABLE_FAST_MODE` do the same job.
+- The options `model_lock`, `model_plan`, `model_allowed`, and `usage_notes`, and the other 0.19 options except the guard options, because the hooks that they controlled are gone.
+- Fable 5.1 from `availableModels` and from the `Agent(model:fable*)` deny rule, because the user chose to remove it, and a subagent never runs on it.
+- Nested instructions (`load-nested-instructions`), because Claude Code 2.1.288 loads rules on Write and Edit.
+  A Bash read of a directory does not load its `CLAUDE.md` yet.
+- The restore after a compaction, the check for line breaks, and the scratchpad pruning, because the 0.20.0 review found no need for them that Claude Code does not cover.
+- `warn-instruction-size`, because `/doctor` audits the instruction files.
+- The skills `slices`, `explain`, and `polish`, because `/goal` covers a large change, and the 0.20.0 review found no need for the other two.
+- The agent `mechanical-worker`, because `implementer` does its work.
+- The output styles `Explanatory`, `Learning`, and `Proactive`, because Claude Code has built-in styles of those names.
+- The `recognize-captcha` skill and the CloakBrowser launcher, because CloakBrowser keeps most CAPTCHAs away and `agent-browser --executable-path` runs its binary.
+- The AI policy catalog and its update script `scripts/update-ai-policies.mjs`, and `scripts/count-tokens.mjs`, which served features that 0.20.0 removed.
+  The `contribute` skill still reads the policy of the project.
+- The eval case `t4-slices`, because it tests the removed `slices` skill.
+- The 0.19 profile `optional.json`, the setup scripts for migration and the managed lock, and the public docs pages for the removed parts.
+
+### Fixed
+
+- A model strip defect: `prefer-dotclaude-agents` removed the `model` that a spawn call gave, so the agent ran on another model than the call asked for.
+  `agent.spawn` now denies a `model` that is not the one that the agent file fixes, and the reason names the fixed model.
+- `scripts/usage-report.mjs` runs again.
+- `just sandbox` applies the setup profile and the status line again.
+  It ran the deleted `apply-statusline.mjs` and hid the error.
 
 ## [0.19.1] - 2026-10-03
 

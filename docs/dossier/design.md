@@ -3,6 +3,8 @@
 Part of the [dotclaude dossier](../dossier.md). The index explains the
 source labels.
 
+> **0.20.0 status.** Sections 1 and 2 describe the 0.19 design. 0.20.0 removed the turn-limit handoff, the agent loop, the routing rule, and the usage-bound hooks that these sections name. The principles and the rejected alternatives still hold.
+
 ## 1. Design Principles
 
 - **Mechanisms over prose.** A bound that Claude Code enforces holds. A bound

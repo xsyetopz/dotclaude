@@ -31,24 +31,16 @@ optimize for speed or for the volume of output.
 
 | Page | What and why |
 | --- | --- |
-| [Hooks](hooks.md) | each guard, gate, and note, the reason for it, and its option |
-| [Hooks Module](mods.md) | where each hook runs, and the built-ins that dotclaude replaces |
-| [Guard Asks](hooks-asks.md) | the 0.19.0 Bash and Edit guard asks: infrastructure, new dependencies, TLS, test deletion, and proof escapes |
-| [Context Hooks](hooks-context.md) | nested instructions, session files, compaction carry-over, handoff pointer, and the line-break check |
-| [Usage Hooks](hooks-usage.md) | usage bounds, usage notes, model lock, and scratchpad pruning |
-| [Usage Habits](usage-habits.md) | habits that keep the context small and need no code |
-| [Models](models.md) | the model lock, fast mode, Fable, effort, and plan detection |
-| [Agents And Skills](agents-and-skills.md) | each agent's model and effort, and each skill |
-| [Working Rules](working-rules.md) | the working rules and output styles, and the reason for each |
-| [Contributions](contributions.md) | the AI policy catalog, the contribution guard, and drafts for other projects |
-| [Settings Profile](settings-profile.md) | each setting that the profile writes, and the managed lock |
-| [Organizations](organizations.md) | managed rollout, skill permissions, budgets, and Windows limits |
-| [Status Line](status-line.md) | what each part of the status line shows, and why |
+| [Parts](parts.md) | each part of 0.20.0, its event, its bound, and the need that it serves |
+| [Contributions](contributions.md) | the `contribute` skill and drafts for other projects |
 | [Development](development.md) | commands, tests, evals, and release steps |
 | [Sandbox](sandbox.md) | how to test a checkout in a separate Claude Code config |
 | [Attributions](attributions.md) | the projects whose ideas dotclaude reimplements |
 | [Dossier](dossier.md) | the measurements, sources, and rejected alternatives behind the choices |
 | [Changelog](../CHANGELOG.md), [older releases](changelog/) | what changed in each release, and why |
+
+0.20.0 removed the 0.19 pages for hooks, models, working rules, agents and skills, settings profile, status line, and organizations.
+The [older releases](changelog/) and the [dossier](dossier.md) keep the 0.19 text as history.
 
 ## Source Labels
 

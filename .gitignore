@@ -11,20 +11,9 @@ evals-heldout/results/
 !/docs/changelog/
 !/docs/sandbox.md
 !/docs/README.md
-!/docs/hooks.md
-!/docs/hooks-asks.md
-!/docs/hooks-context.md
-!/docs/hooks-usage.md
-!/docs/usage-habits.md
-!/docs/mods.md
-!/docs/models.md
-!/docs/agents-and-skills.md
-!/docs/working-rules.md
-!/docs/settings-profile.md
-!/docs/status-line.md
+!/docs/parts.md
 !/docs/development.md
 !/docs/contributions.md
-!/docs/organizations.md
 !/docs/attributions.md
 
 /letters/

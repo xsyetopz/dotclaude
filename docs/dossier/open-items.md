@@ -3,6 +3,8 @@
 Part of the [dotclaude dossier](../dossier.md). The index explains the
 source labels.
 
+> **0.20.0 status.** These items date from 0.19. 0.20.0 removed the parts that some of them name (nested instructions, `hand-off-capped-agents.mjs`, the session ledger, the delegation note, `model_plan`, and the 0.19 usage bounds). Treat an item about a removed part as closed.
+
 ## 8. Open Items
 
 - Re-run `bun scripts/usage-report.mjs --days 7` after a full week on

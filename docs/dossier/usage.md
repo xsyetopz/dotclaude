@@ -3,6 +3,8 @@
 Part of the [dotclaude dossier](../dossier.md). The index explains the
 source labels.
 
+> **0.20.0 status.** These measurements are the evidence for 0.20.0. The delegation share and the hooks that they led to, such as the delegation note, are 0.19 history.
+
 ## 3. Usage Evidence
 
 ### The Measured Week

@@ -3,6 +3,8 @@
 Part of the [dotclaude dossier](../dossier.md). The index explains the
 source labels.
 
+> **0.20.0 status.** The working rules in this section are the 0.19 text in `add-working-rules.mjs`, which 0.20.0 replaced with `hooks/session-start/rules.md`. The output styles `Explanatory`, `Learning`, and `Proactive` are removed, and only `Concise` stays.
+
 ## 5. Claude Code Prompt Surface
 
 ### What A Request Contains
