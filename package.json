@@ -2,7 +2,7 @@
   "name": "dotclaude",
   "version": "0.20.3",
   "private": true,
-  "description": "Claude Code plugin: mechanical guardrails and settings profile.",
+  "description": "A very opinionated Claude Code plugin designed by a Rustacean",
   "type": "module",
   "scripts": {
     "test": "bun test ./tests/",
