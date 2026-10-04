@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -93,4 +99,42 @@ test("the CLAUDE.md block is added once and replaced in place", () => {
   const text = readFileSync(join(dir, "CLAUDE.md"), "utf8");
   expect(text.startsWith("# Mine\n")).toBe(true);
   expect(text.match(/dotclaude:begin/g)).toHaveLength(1);
+});
+
+test("--apply wires both status lines through stubs that run the plugin scripts", () => {
+  const dir = mkdtempSync(join(tmpdir(), "setup-"));
+  expect(run("settings.mjs", dir).out).toContain("statusline.mjs");
+  expect(existsSync(join(dir, "dotclaude"))).toBe(false);
+  run("settings.mjs", dir, "--apply");
+  const merged = settingsOf(dir);
+  const main = join(dir, "dotclaude", "statusline.mjs");
+  const sub = join(dir, "dotclaude", "subagent-statusline.mjs");
+  expect(merged.statusLine).toEqual({
+    type: "command",
+    command: `bun ${JSON.stringify(main)}`,
+    padding: 0,
+    refreshInterval: 60,
+  });
+  expect(merged.subagentStatusLine.command).toBe(`bun ${JSON.stringify(sub)}`);
+  const stubOut = (file, input) =>
+    Bun.spawnSync(["bun", file], {
+      stdin: Buffer.from(input),
+    }).stdout.toString();
+  expect(
+    Bun.stripANSI(
+      stubOut(
+        main,
+        JSON.stringify({ context_window: { total_input_tokens: 87_000 } }),
+      ),
+    ),
+  ).toContain("87k/117k");
+  expect(
+    Bun.stripANSI(
+      stubOut(
+        sub,
+        JSON.stringify({ tasks: [{ id: "a", name: "w", tokenCount: 62_000 }] }),
+      ),
+    ),
+  ).toContain("62k/100k");
+  expect(run("settings.mjs", dir).out).toContain("match the profile");
 });

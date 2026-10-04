@@ -1,4 +1,20 @@
-// Helpers that both status lines use. Self-contained: it imports nothing.
+// Helpers that both status lines use. It imports only the bounds in `hooks/lib/_budget.mjs`.
+
+import {
+  AUTO_COMPACT_TOKENS,
+  k,
+  REVIEWER_CONTEXT_TOKENS,
+  SUBAGENT_CONTEXT_TOKENS,
+  USAGE_LEVELS,
+} from "../hooks/lib/_budget.mjs";
+
+export {
+  AUTO_COMPACT_TOKENS,
+  k,
+  REVIEWER_CONTEXT_TOKENS,
+  SUBAGENT_CONTEXT_TOKENS,
+  USAGE_LEVELS,
+};
 
 const paint = (code) => (text) => `\x1b[${code}m${text}\x1b[0m`;
 export const C = {
@@ -9,16 +25,6 @@ export const C = {
   yellow: paint("33"),
 };
 export const SEP = C.dim(" · ");
-
-/** Tokens at which Claude Code compacts: `autoCompactWindow` 150k, minus 20k output, minus a 13k buffer. */
-export const AUTO_COMPACT_TOKENS = 150_000 - 33_000;
-/** Context bounds of a subagent, and of the `reviewer`. */
-export const SUBAGENT_CONTEXT_TOKENS = 100_000;
-export const REVIEWER_CONTEXT_TOKENS = 150_000;
-/** Usage percent where a value turns yellow, then red. */
-export const USAGE_LEVELS = [75, 90];
-
-export const k = (n) => `${Math.round(n / 1000)}k`;
 
 /** "claude-opus-5-5" -> "Opus 5.5", "claude-haiku-4-5-20251001" -> "Haiku 4.5". */
 export function shortModel(id) {

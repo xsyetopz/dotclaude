@@ -30,9 +30,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { agentFile, parseDefinition, reserve } from "../hooks/lib/_agents.mjs";
-import { k, MAIN_CONTEXT_TOKENS, tokens } from "../hooks/lib/_budget.mjs";
-import { turnsFromText } from "../hooks/lib/_transcript-parse.mjs";
+import { k, MAIN_CONTEXT_TOKENS } from "../hooks/lib/_budget.mjs";
+import { maxTurns, reserve, tokens, turnsFromText } from "./_usage-lib.mjs";
 
 // $ per million tokens: input, output, cache read, 5m write, 1h write.
 const PRICES = {
@@ -175,18 +174,6 @@ function verdictCounts(file, since) {
     counts.set(key, c);
   }
   return [...counts.values()].sort((a, b) => b.count - a.count);
-}
-
-/** `maxTurns` of a dotclaude agent, read with `fs` so that `report` stays sync. */
-function maxTurns(agentType) {
-  const name = agentFile(agentType);
-  if (!name) return null;
-  try {
-    const file = path.join(import.meta.dir, "..", "agents", name);
-    return parseDefinition(fs.readFileSync(file, "utf8")).maxTurns;
-  } catch {
-    return null;
-  }
 }
 
 export function report(root, since, verdictsFile = null, runLimit = 20) {

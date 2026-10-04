@@ -41,6 +41,7 @@ Each script writes nothing without `--apply`, so run its preview first.
    | Subagents | `env.CLAUDE_CODE_FORK_SUBAGENT=0`, `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=5`, `env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS=5`, `workflowSizeGuideline`, `Agent(general-purpose)` deny |
    | Feedback off | `env.DISABLE_FEEDBACK_COMMAND`, `env.CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `env.DISABLE_ERROR_REPORTING` |
    | Safety | `Read(...)` deny rules for secret files, `disableBypassPermissionsMode`, `enableAllProjectMcpServers: false`, `workflowKeywordTriggerEnabled: false`, `permissions.ask` rules for public `gh` writes |
+   | Status lines | `statusLine`, `subagentStatusLine`, and two stubs in `<config dir>/dotclaude/` that run this plugin's `status-line` scripts (`${CLAUDE_PLUGIN_ROOT}` is empty in a status line command, so run setup again after a plugin update) |
    | Other | `includeGitInstructions: false`, `env.CLAUDE_CODE_ENABLE_TODO_TOOLS`, `env.CLAUDE_CODE_GLOB_NO_IGNORE=false` |
 
    The merge adds keys and rules.

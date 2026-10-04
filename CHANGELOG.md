@@ -10,6 +10,20 @@ steps after each update.
 
 ## [Unreleased]
 
+### Added
+
+- The plugin options `guard_agents` and `compaction_handoff`, which `hooks/register.mjs` already read.
+- `/dotclaude:setup` writes two stubs in the config directory and sets `statusLine` and `subagentStatusLine` to run them, because a status line command gets an empty `${CLAUDE_PLUGIN_ROOT}`.
+
+### Changed
+
+- The status line bounds live only in `hooks/lib/_budget.mjs`, and `status-line/shared.mjs` imports them.
+- `scripts/usage-report.mjs` runs again with its own helpers in `scripts/_usage-lib.mjs`.
+
+### Removed
+
+- `scripts/count-tokens.mjs` and `scripts/update-ai-policies.mjs`, which served features that 0.20.0 removed.
+
 ## [0.19.1] - 2026-10-03
 
 ### Added

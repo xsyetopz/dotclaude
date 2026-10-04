@@ -33,6 +33,18 @@
       "title": "Secret redaction",
       "description": "Scan every tool output with Betterleaks and replace each secret it finds with [REDACTED:<rule>] before the model sees it. Needs betterleaks on PATH. Without it, output passes through and session start says so.",
       "default": true
+    },
+    "guard_agents": {
+      "type": "boolean",
+      "title": "Subagent guard",
+      "description": "Deny a subagent spawn that breaks the model and effort rules, with the reason.",
+      "default": true
+    },
+    "compaction_handoff": {
+      "type": "boolean",
+      "title": "Compaction handoff",
+      "description": "Before a compaction of the main conversation, fork a handoff note so the next part keeps the task state.",
+      "default": true
     }
   }
 }

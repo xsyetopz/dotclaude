@@ -30,7 +30,7 @@ jobs:
           bun-version: 1.4.2
       - run: git config --global user.email ci@example.com && git config --global user.name ci
       # Lint, format, and import order in one read-only pass.
-      - run: bunx @biomejs/biome@2.5.13 ci hooks tests skills scripts
+      - run: bunx @biomejs/biome@2.5.13 ci hooks status-line tests skills scripts
       - run: bun test ./tests/
 
   # The one check to require in branch protection: it fails unless every

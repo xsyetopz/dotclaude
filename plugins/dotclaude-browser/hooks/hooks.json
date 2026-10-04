@@ -1,0 +1,17 @@
+{
+  "description": "dotclaude-browser: tell Claude to load the browser skill, and name a non-default backend, at session start",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/add-browser-notes.mjs"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

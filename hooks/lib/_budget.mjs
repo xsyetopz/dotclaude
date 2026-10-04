@@ -41,3 +41,22 @@ export const CACHE_TTL_MS = 60 * 60_000;
 
 /** Time that the handoff fork of a compaction can take. */
 export const HANDOFF_FORK_TIMEOUT_MS = 60_000;
+
+/** Main-conversation context: the `autoCompactWindow` of the settings profile. */
+export const MAIN_CONTEXT_TOKENS = 150_000;
+
+/**
+ * Tokens at which Claude Code compacts with `autoCompactWindow` at
+ * MAIN_CONTEXT_TOKENS: the window, minus 20k for output, minus a 13k buffer.
+ */
+export const AUTO_COMPACT_TOKENS = MAIN_CONTEXT_TOKENS - 33_000;
+
+/** Context bounds of a subagent, and of the `reviewer`. */
+export const SUBAGENT_CONTEXT_TOKENS = 100_000;
+export const REVIEWER_CONTEXT_TOKENS = 150_000;
+
+/** Usage percent where a value turns yellow, then red. */
+export const USAGE_LEVELS = [75, 90];
+
+/** `200k` style label for prose. */
+export const k = (n) => `${Math.round(n / 1000)}k`;

@@ -4,6 +4,12 @@
 //
 //   bun settings.mjs [--scope user|project|local] [--profile file] [--apply]
 //
+// A status line command gets an empty `${CLAUDE_PLUGIN_ROOT}`, so --apply also
+// writes two stubs in `<config dir>/dotclaude/` that import this plugin's
+// `status-line/main.mjs` and `subagents.mjs`, and sets `statusLine` and
+// `subagentStatusLine` to run them. Re-run it after a plugin update, because
+// the plugin directory changes with each version.
+//
 // Without --apply, it prints what differs and writes nothing. That is also the
 // status. With --apply, it backs the file up next to itself, then writes.
 // Merge rules: objects merge key by key, arrays gain missing entries, and
@@ -14,6 +20,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -108,12 +115,63 @@ function removeCodegraphHook(settings) {
   return Object.keys(hooks).length ? { ...rest, hooks } : rest;
 }
 
+const STUB_DIR = path.join(configDir, "dotclaude");
+const STATUS_LINES = [
+  [
+    "statusLine",
+    "statusline.mjs",
+    "main.mjs",
+    { padding: 0, refreshInterval: 60 },
+  ],
+  ["subagentStatusLine", "subagent-statusline.mjs", "subagents.mjs", {}],
+].map(([key, stub, script, extra]) => ({
+  key,
+  stub: path.join(STUB_DIR, stub),
+  script: path.join(
+    import.meta.dirname,
+    "..",
+    "..",
+    "..",
+    "status-line",
+    script,
+  ),
+  setting: {
+    type: "command",
+    command: `bun ${JSON.stringify(path.join(STUB_DIR, stub))}`,
+    ...extra,
+  },
+}));
+
+/** A stub's text. It prints nothing when the plugin is gone. */
+const stubText = (
+  script,
+) => `// Managed by dotclaude. Run the setup skill again after a plugin update.
+try {
+  await import(${JSON.stringify(pathToFileURL(script).href)});
+} catch {}
+`;
+
 const profile = readJson(profilePath, null);
 if (!isObject(profile)) {
   console.error(`Profile ${profilePath} not found or not an object.`);
   process.exit(1);
 }
-const merged = removeCodegraphHook(merge(readJson(target, {}), profile, ""));
+const merged = removeCodegraphHook(
+  merge(
+    readJson(target, {}),
+    {
+      ...profile,
+      ...Object.fromEntries(STATUS_LINES.map((l) => [l.key, l.setting])),
+    },
+    "",
+  ),
+);
+const staleStubs = STATUS_LINES.filter((l) => {
+  const text = stubText(l.script);
+  const had = fs.existsSync(l.stub) && fs.readFileSync(l.stub, "utf8") === text;
+  if (!had) changes.push(`write ${l.stub}`);
+  return !had;
+});
 
 const claudeJson = process.env.CLAUDE_CONFIG_DIR
   ? path.join(configDir, ".claude.json")
@@ -142,6 +200,10 @@ if (fs.existsSync(target)) {
   const backup = `${target}.dotclaude-backup-${new Date().toISOString().replace(/[:.]/g, "-")}`;
   fs.copyFileSync(target, backup);
   console.log(`\nBackup: ${backup}`);
+}
+for (const l of staleStubs) {
+  fs.mkdirSync(STUB_DIR, { recursive: true });
+  fs.writeFileSync(l.stub, stubText(l.script));
 }
 fs.writeFileSync(target, `${JSON.stringify(merged, null, 2)}\n`);
 console.log(
