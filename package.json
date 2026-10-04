@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "bun test ./tests/",
-    "validate": "claude plugin validate --strict . && claude plugin validate --strict .claude-plugin/plugin.json",
-    "lint": "biome ci hooks tests"
+    "validate": "claude plugin validate --strict . && claude plugin validate --strict .claude-plugin/plugin.json && claude plugin validate --strict skills",
+    "lint": "biome ci hooks skills tests"
   },
   "license": "MIT",
   "engines": {

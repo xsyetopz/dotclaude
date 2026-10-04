@@ -16,3 +16,28 @@ export const SECRET_SCAN_MAX_BYTES = 64 * 1024 * 1024;
 
 /** Characters of a command part that an ask reason shows. */
 export const COMMAND_PART_CHARS = 80;
+
+/**
+ * The effort levels that a subagent model allows, by model key (see
+ * `modelKey` in `_agent-rules.mjs`). Haiku 4.5 takes no effort. Fable 5.1 has
+ * no entry, because a subagent never runs on it.
+ * `tests/agents.test.mjs` keeps the agent files in step with this table.
+ */
+export const SUBAGENT_EFFORTS = {
+  "opus-5-5": ["low", "medium", "high"],
+  "sonnet-5-5": ["low", "medium"],
+  "haiku-4-5": [],
+};
+
+/** Bytes of `hooks/session-start/rules.md`. A test fails above this number. */
+export const RULES_MAX_BYTES = 2000;
+
+/**
+ * Time after the last turn at which the prompt cache has expired. The cache
+ * lives 1 hour on a subscription and 5 minutes otherwise. dotclaude does not
+ * detect the plan, so it uses the longer time and warns less often.
+ */
+export const CACHE_TTL_MS = 60 * 60_000;
+
+/** Time that the handoff fork of a compaction can take. */
+export const HANDOFF_FORK_TIMEOUT_MS = 60_000;

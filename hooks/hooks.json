@@ -1,4 +1,30 @@
 {
-  "description": "dotclaude hooks: register.mjs runs the Bash guard, the Edit and Write guard, and secret redaction on tool calls",
-  "modules": ["./register.mjs"]
+  "description": "dotclaude hooks: register.mjs runs the guards, the subagent rules, and the prompt and compaction notes. SessionStart adds the working rules, and Stop runs the verify gate",
+  "modules": ["./register.mjs"],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/session-start/context.mjs"],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/stop/verify.mjs"],
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
 }
