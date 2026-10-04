@@ -239,6 +239,21 @@ test("wraps past the columns and drops the lowest priority part first", () => {
   expect(narrow.join("\n")).not.toContain("name");
 });
 
+test("the pace of a window past the first level stays when parts drop", () => {
+  const data = {
+    model: { id: "claude-opus-5-5" },
+    context_window: { total_input_tokens: 50_000 },
+    rate_limits: {
+      five_hour: { used_percentage: 9, resets_at: sec(3600) },
+      // 83% of the window is gone, so 99% used is a deficit of 16 points.
+      seven_day: { used_percentage: 99, resets_at: sec(1.2 * 86_400) },
+    },
+    workspace: { current_dir: "/a" },
+    cost: { total_duration_ms: 600_000 },
+  };
+  expect(main(data, { columns: 80 })).toMatch(/7d ▲16%→/);
+});
+
 test("sources: `cached` reuses a result for the cache time, and counts compactions", () => {
   const key = `test ${Math.random()}`;
   let calls = 0;

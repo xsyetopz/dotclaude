@@ -1,6 +1,6 @@
 {
   "name": "dotclaude-browser",
-  "version": "0.20.1",
+  "version": "0.20.2",
   "description": "Drives a browser with agent-browser, or with CloakBrowser on sites with bot detection.",
   "author": {
     "name": "xsyetopz"

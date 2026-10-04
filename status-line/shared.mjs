@@ -114,13 +114,15 @@ export function clock(sec, now) {
     minute: d.getMinutes() === 0 ? undefined : "2-digit",
     hour12: true,
   };
-  let text;
-  if (sec * 1000 - now > 24 * 3600_000) {
-    Object.assign(opts, { month: "short", day: "numeric" });
-    if (d.getFullYear() !== new Date(now).getFullYear()) opts.year = "numeric";
-    text = d.toLocaleString("en-US", opts);
-  } else text = d.toLocaleTimeString("en-US", opts);
-  return text.replace(/[  ]([AP]M)/i, (_, m) => m.toLowerCase());
+  const time = d
+    .toLocaleTimeString("en-US", opts)
+    .replace(/[  ]([AP]M)/i, (_, m) => m.toLowerCase());
+  if (sec * 1000 - now <= 24 * 3600_000) return time;
+  // The date and the time are formatted apart, because ICU versions join
+  // them with " at " or with ", ".
+  const date = { month: "short", day: "numeric" };
+  if (d.getFullYear() !== new Date(now).getFullYear()) date.year = "numeric";
+  return `${d.toLocaleDateString("en-US", date)} at ${time}`;
 }
 
 /** The effort levels that the rules allow for a model, or undefined. */
@@ -334,11 +336,12 @@ export function renderMain(data, o = {}) {
   ]) {
     const window = limits[key];
     if (!Number.isFinite(window?.used_percentage)) continue;
-    // A limit past the first level outranks all but the context.
-    const urgent = window.used_percentage >= USAGE_LEVELS[0];
-    add(core, urgent ? 9 : priority, limitPart(label, window, now));
+    // A limit past the first level outranks all but the context. Its pace
+    // has the same rank, so that it does not drop before a calm window's.
+    const rank = window.used_percentage >= USAGE_LEVELS[0] ? 9 : priority;
+    add(core, rank, limitPart(label, window, now));
     const pace = span && pacePart(window, now, span);
-    add(detail, priority, pace && `${C.dim(label)} ${pace}`);
+    add(detail, rank, pace && `${C.dim(label)} ${pace}`);
   }
   if (resets) {
     // A reset refills a window at its limit, so there it outranks the window.
