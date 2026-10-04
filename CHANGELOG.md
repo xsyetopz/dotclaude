@@ -10,6 +10,8 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-04
+
 0.20.0 is a full reset on Claude Code 2.1.289.
 It keeps the parts that serve a need that Claude Code does not cover, and it removes the rest.
 Runtime JavaScript goes from 18,935 lines in 0.19.1 to 1,495 lines, and `tests/budget.test.mjs` bounds it at 3,000.
@@ -263,4 +265,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.19.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.0...HEAD
