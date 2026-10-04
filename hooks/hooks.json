@@ -1,0 +1,4 @@
+{
+  "description": "dotclaude hooks: register.mjs runs the Bash guard, the Edit and Write guard, and secret redaction on tool calls",
+  "modules": ["./register.mjs"]
+}
