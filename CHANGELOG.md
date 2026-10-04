@@ -10,34 +10,11 @@ steps after each update.
 
 ## [Unreleased]
 
-### Changed
-
-- The status line has every 0.19 part again, in less code, and each part has one shape: icon, bar, number.
-  One bar renderer, one icon set, and one color scale (`USAGE_LEVELS`) serve every percentage.
-  The rows are `core` (model, context, cache, limits), `place` (folder, branch, worktree, PR, loop), and `detail` (cache hit ratio and misses, limit pace, cost).
-  A `⚠` blinks for a handoff due (context at 90% of the compaction point), a cache that expires in two minutes or less, and a limit at 90%.
-  `⚠` also marks an effort that the rules do not allow for the model.
-- `refreshInterval` is now `STATUS_REFRESH_SECONDS` (1) in `hooks/lib/_budget.mjs`.
-  Slow reads (`git status`, the compaction count, the `/usage` copy) run once per `STATUS_CACHE_MS` (5 s) and not on each run, where 0.19 ran them on each run.
-  Run `/dotclaude:setup` again to update the setting.
-
-### Added
-
-- Plan detection from the account in `.claude.json`, in `hooks/lib/_plan.mjs`.
-  The cold-cache note uses a 5 minute cache time on the `api` plan and 1 hour on other plans.
-  A new or cleared session on the `api` plan gets a plan note.
-  `skills/setup/scripts/settings.mjs` shows the plan, takes `--plan <id>`, and applies the profile's per-plan `plans` overrides.
-
-### Fixed
-
-- On Windows, the status line shows the `project/subdir` folder for paths with `\` or `/`.
-- The setup tests run the scripts from a file path, not a URL path, so they pass on Windows.
-
 ## [0.20.0] - 2026-10-04
 
 0.20.0 is a full reset on Claude Code 2.1.289.
 It keeps the parts that serve a need that Claude Code does not cover, and it removes the rest.
-Runtime JavaScript goes from 18,935 lines in 0.19.1 to 1,495 lines, and `tests/budget.test.mjs` bounds it at 3,000.
+Runtime JavaScript goes from 18,935 lines in 0.19.1 to 2,118 lines, and `tests/budget.test.mjs` bounds it at 3,000.
 Run `/dotclaude:setup` again after you update.
 
 ### Added
@@ -57,7 +34,15 @@ Run `/dotclaude:setup` again after you update.
   If the fork gives no note in 60 seconds, the compaction runs without it.
 - Cold-cache notes.
   A resumed session with an expired prompt cache, and a prompt that comes more than 1 hour after the last turn, give Claude the cost advice, because 1.6% of the turns, those after more than 1 hour idle, caused 80% of the cache writes.
-- A status line that shows the model and effort, the context against the compaction point, the cache expiry, and the 5-hour and weekly limits, with a warning when the effort is above the rule for the model.
+- Plan detection from the account in `.claude.json`, in `hooks/lib/_plan.mjs`.
+  The cold-cache note uses a 5 minute cache time on the `api` plan and 1 hour on other plans.
+  A new or cleared session on the `api` plan gets a plan note.
+  `skills/setup/scripts/settings.mjs` shows the plan, takes `--plan <id>`, and applies the profile's per-plan `plans` overrides.
+- A status line with every 0.19 part, in less code, where each part has one shape: icon, bar, number.
+  One bar renderer, one icon set, and one color scale (`USAGE_LEVELS`) serve every percentage.
+  The rows are `core` (model, context, cache, limits), `place` (folder, branch, worktree, PR, loop), and `detail` (cache hit ratio and misses, limit pace, cost).
+  A `⚠` blinks for a handoff due (context at 90% of the compaction point), a cache that expires in two minutes or less, and a limit at 90%.
+  `⚠` also marks an effort that the rules do not allow for the model.
   A second script shows the model and context of each running agent.
   `/dotclaude:setup` writes two stubs in the config directory and sets `statusLine` and `subagentStatusLine` to run them, because a status line command gets an empty `${CLAUDE_PLUGIN_ROOT}`.
 - The `backend` option of `dotclaude-browser`, which defaults to `agent-browser`.
@@ -82,6 +67,8 @@ Run `/dotclaude:setup` again after you update.
 - The only output style is `Concise`, because Claude Code has the other styles built in.
 - `drive-web-browser` uses `agent-browser` by default, because it needs no extra binary, and CloakBrowser is an opt-in for sites with bot detection.
 - The status line bounds live only in `hooks/lib/_budget.mjs`, and `status-line/shared.mjs` imports them.
+- `refreshInterval` is `STATUS_REFRESH_SECONDS` (1) in `hooks/lib/_budget.mjs`.
+  Slow reads (`git status`, the compaction count, the `/usage` copy) run once per `STATUS_CACHE_MS` (5 s) and not on each run, where 0.19 ran them on each run.
 - `scripts/usage-report.mjs` runs again with its own helpers in `scripts/_usage-lib.mjs`.
 - Each agent file has `maxTurns` (20 to 80), in place of the 0.19 budget hooks, because the setting bounds an agent with no hook.
   `implementer` takes the bulk changes of `mechanical-worker`.
