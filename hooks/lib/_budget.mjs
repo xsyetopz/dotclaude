@@ -33,11 +33,13 @@ export const SUBAGENT_EFFORTS = {
 export const RULES_MAX_BYTES = 2000;
 
 /**
- * Time after the last turn at which the prompt cache has expired. The cache
- * lives 1 hour on a subscription and 5 minutes otherwise. dotclaude does not
- * detect the plan, so it uses the longer time and warns less often.
+ * Time after the last turn at which the main prompt cache has expired. The
+ * cache lives 1 hour on a subscription and 5 minutes on an API key, a cloud
+ * provider, or usage credits (`docs/dossier/plans-and-models.md`).
+ * `hooks/lib/_plan.mjs` picks one by plan.
  */
 export const CACHE_TTL_MS = 60 * 60_000;
+export const API_CACHE_TTL_MS = 5 * 60_000;
 
 /** Time that the handoff fork of a compaction can take. */
 export const HANDOFF_FORK_TIMEOUT_MS = 60_000;
@@ -57,6 +59,20 @@ export const REVIEWER_CONTEXT_TOKENS = 150_000;
 
 /** Usage percent where a value turns yellow, then red. */
 export const USAGE_LEVELS = [75, 90];
+
+/**
+ * Seconds between forced status line runs (`refreshInterval`, minimum 1).
+ * The warning glyphs blink once per second, so a slower interval skips frames.
+ * `skills/setup/scripts/settings.mjs` holds a copy, and a test pins it.
+ */
+export const STATUS_REFRESH_SECONDS = 1;
+
+/**
+ * Time that the status line reuses a slow result (`git status`, the compaction
+ * count, the usage copy). It runs every `STATUS_REFRESH_SECONDS`, so each of
+ * those runs once per this time and not on each run.
+ */
+export const STATUS_CACHE_MS = 5000;
 
 /** `200k` style label for prose. */
 export const k = (n) => `${Math.round(n / 1000)}k`;

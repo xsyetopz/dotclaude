@@ -4,9 +4,20 @@
 // handoff note.
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { resumeNote } from "../lib/_cache.mjs";
 import { newestOpen, pointer } from "../lib/_handoff.mjs";
+import { accountFrom, claudeJsonPath, detectPlan } from "../lib/_plan.mjs";
+
+/** The plan from the environment and the account in `.claude.json`. */
+function localPlan(env = { HOME: os.homedir(), ...process.env }) {
+  let text = "";
+  try {
+    text = fs.readFileSync(claudeJsonPath(env), "utf8");
+  } catch {}
+  return detectPlan(env, accountFrom(text));
+}
 
 const RULES = path.join(import.meta.dirname, "rules.md");
 
@@ -24,14 +35,19 @@ function notesIn(dir) {
   }
 }
 
+// Only the API plan changes a decision: its prompt cache lives 5 minutes.
+const API_NOTE =
+  "<claude_plan>\nThe plan is pay-per-token API, so the prompt cache lives 5 minutes.\nA pause of more than 5 minutes makes the next prompt write the whole context again.\nBefore a long wait, finish the step or write a handoff note.\n</claude_plan>";
+
 /** The context parts for the SessionStart input `data`. */
-export function contextFor(data, root) {
+export function contextFor(data, root, plan = localPlan()) {
   if (data.source === "resume")
     return data.prompt_cache_likely_expired === true ? [resumeNote(data)] : [];
   if (!["startup", "clear", "compact"].includes(data.source)) return [];
   const parts = [
     `<working_rules>\n${fs.readFileSync(RULES, "utf8").trim()}\n</working_rules>`,
   ];
+  if (plan === "api") parts.push(API_NOTE);
   const open =
     data.source === "compact"
       ? undefined

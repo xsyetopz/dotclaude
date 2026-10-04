@@ -13,7 +13,6 @@ import {
 } from "./lib/_agent-rules.mjs";
 import { askFor } from "./lib/_bash-rules.mjs";
 import {
-  CACHE_TTL_MS,
   HANDOFF_FORK_TIMEOUT_MS,
   SECRET_SCAN_MAX_BYTES,
   SECRET_SCAN_TIMEOUT_MS,
@@ -28,6 +27,12 @@ import {
 } from "./lib/_compact.mjs";
 import { editReasons } from "./lib/_edit-rules.mjs";
 import {
+  accountFrom,
+  cacheTtlMs,
+  claudeJsonPath,
+  detectPlan,
+} from "./lib/_plan.mjs";
+import {
   findingsOf,
   redact,
   redactionNote,
@@ -36,6 +41,33 @@ import {
 } from "./lib/_secrets.mjs";
 
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
+
+let plan;
+/** The plan of the user, read once for each session. */
+async function sessionPlan($) {
+  if (plan) return plan;
+  // Each name is a literal, so that `claude plugin validate` lists it.
+  const [HOME, CLAUDE_CONFIG_DIR, ANTHROPIC_API_KEY, BEDROCK, VERTEX, FOUNDRY] =
+    await Promise.all([
+      $.env.get("HOME"),
+      $.env.get("CLAUDE_CONFIG_DIR"),
+      $.env.get("ANTHROPIC_API_KEY"),
+      $.env.get("CLAUDE_CODE_USE_BEDROCK"),
+      $.env.get("CLAUDE_CODE_USE_VERTEX"),
+      $.env.get("CLAUDE_CODE_USE_FOUNDRY"),
+    ]);
+  const env = {
+    HOME,
+    CLAUDE_CONFIG_DIR,
+    ANTHROPIC_API_KEY,
+    CLAUDE_CODE_USE_BEDROCK: BEDROCK,
+    CLAUDE_CODE_USE_VERTEX: VERTEX,
+    CLAUDE_CODE_USE_FOUNDRY: FOUNDRY,
+  };
+  const text = await $.fs.read(claudeJsonPath(env)).catch(() => "");
+  plan = detectPlan(env, accountFrom(text));
+  return plan;
+}
 
 /** A plugin option is on unless the user turned it off. */
 const enabled = (options, name) =>
@@ -189,7 +221,12 @@ export function register(on, options) {
   on("prompt.submit", async ($, e, next) => {
     const last = Number(await $.store.get("last-turn-ms").catch(() => 0));
     const idle = Date.now() - last;
-    if (e.turnId !== undefined || !last || idle <= CACHE_TTL_MS) return next(e);
+    if (
+      e.turnId !== undefined ||
+      !last ||
+      idle <= cacheTtlMs(await sessionPlan($))
+    )
+      return next(e);
     return next({ ...e, context: [...(e.context ?? []), idleNote(idle)] });
   });
 

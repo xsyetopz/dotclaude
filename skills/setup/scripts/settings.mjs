@@ -2,7 +2,11 @@
 // Merge profiles/recommended.json into a Claude Code settings file, and remove
 // CodeGraph's `prompt-hook` entry.
 //
-//   bun settings.mjs [--scope user|project|local] [--profile file] [--apply]
+//   bun settings.mjs [--scope user|project|local] [--profile file] [--plan id] [--apply]
+//
+// The profile's `plans` object holds per-plan overrides, by plan id (see
+// `hooks/lib/_plan.mjs`). They merge over the base values. The script detects
+// the plan from the account in `.claude.json`, and `--plan` overrides that.
 //
 // A status line command gets an empty `${CLAUDE_PLUGIN_ROOT}`, so --apply also
 // writes two stubs in `<config dir>/dotclaude/` that import this plugin's
@@ -21,6 +25,22 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  accountFrom,
+  claudeJsonPath,
+  detectPlan,
+  PLANS,
+  planLabel,
+} from "../../../hooks/lib/_plan.mjs";
+
+/** The plan from the environment and the account in `.claude.json`. */
+function localPlan(env = { HOME: os.homedir(), ...process.env }) {
+  let text = "";
+  try {
+    text = fs.readFileSync(claudeJsonPath(env), "utf8");
+  } catch {}
+  return detectPlan(env, accountFrom(text));
+}
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -35,6 +55,11 @@ const profilePath = path.resolve(
   ),
 );
 const apply = args.includes("--apply");
+const planFlag = flag("--plan");
+if (planFlag && !PLANS.includes(planFlag)) {
+  console.error(`Unknown plan "${planFlag}". Use ${PLANS.join(", ")}.`);
+  process.exit(2);
+}
 const configDir =
   process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
 const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -121,7 +146,7 @@ const STATUS_LINES = [
     "statusLine",
     "statusline.mjs",
     "main.mjs",
-    { padding: 0, refreshInterval: 60 },
+    { padding: 0, refreshInterval: 1 },
   ],
   ["subagentStatusLine", "subagent-statusline.mjs", "subagents.mjs", {}],
 ].map(([key, stub, script, extra]) => ({
@@ -151,11 +176,25 @@ try {
 } catch {}
 `;
 
-const profile = readJson(profilePath, null);
-if (!isObject(profile)) {
+const profileFile = readJson(profilePath, null);
+if (!isObject(profileFile)) {
   console.error(`Profile ${profilePath} not found or not an object.`);
   process.exit(1);
 }
+const plan = planFlag ?? localPlan();
+const { plans, ...base } = profileFile;
+
+/** `over` laid over `under`: objects merge, other values come from `over`. */
+const overlay = (under, over) =>
+  Object.fromEntries(
+    [...new Set([...Object.keys(under), ...Object.keys(over)])].map((key) => [
+      key,
+      isObject(under[key]) && isObject(over[key])
+        ? overlay(under[key], over[key])
+        : (over[key] ?? under[key]),
+    ]),
+  );
+const profile = overlay(base, isObject(plans?.[plan]) ? plans[plan] : {});
 const merged = removeCodegraphHook(
   merge(
     readJson(target, {}),
@@ -180,6 +219,9 @@ const mcp = readJson(claudeJson, {}).mcpServers;
 const codegraphMcp = isObject(mcp) && Object.hasOwn(mcp, "codegraph");
 
 console.log(`Target: ${target} (${scope} scope)`);
+console.log(
+  `Plan: ${planLabel(plan)} (${plan}, ${planFlag ? "from --plan" : "detected"})`,
+);
 console.log(
   changes.length
     ? `${changes.length} change(s):`

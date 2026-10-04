@@ -15,6 +15,10 @@ function engine({ fork = { isAnswered: true, text: "## Goal\nx" } } = {}) {
     $: {
       plugin: { root: ROOT },
       session: { root: async () => "/work/app" },
+      // A fake environment with no account, so the plan is `unknown`.
+      env: {
+        get: async (name) => (name === "HOME" ? "/nonexistent" : undefined),
+      },
       fs: {
         read: async (path) => Bun.file(path).text(),
         write: async (path, text) => {

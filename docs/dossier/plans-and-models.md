@@ -4,6 +4,8 @@ Part of the [dotclaude dossier](../dossier.md). The index explains the
 source labels.
 
 > **0.20.0 status.** This section records the 0.19 model policy, with Fable 5.1, plan detection, and the model lock. 0.20.0 removed Fable from `availableModels`, plan detection, and the model lock. The rules now are in [Parts](../parts.md#model-and-effort-rules).
+>
+> Plan detection came back in a smaller form: `hooks/lib/_plan.mjs` reads `oauthAccount` in `.claude.json` and returns `api`, `pro`, `max5`, `max20`, `team`, `enterprise`, or `unknown`. It sets the cache time (**official**: 5 minutes on `api`, 1 hour on a subscription) and adds a SessionStart note on `api`. `skills/setup/profiles/recommended.json` has a `plans` object for per-plan overrides. It is empty, because the usage bounds are sized for Pro on every plan (see [design](design.md)) and no evidence supports a plan-specific value. An override needs a cited difference here first.
 
 ## 4. Plans And Models
 

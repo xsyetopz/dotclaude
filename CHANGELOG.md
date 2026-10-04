@@ -10,6 +10,24 @@ steps after each update.
 
 ## [Unreleased]
 
+### Changed
+
+- The status line has every 0.19 part again, in less code, and each part has one shape: icon, bar, number.
+  One bar renderer, one icon set, and one color scale (`USAGE_LEVELS`) serve every percentage.
+  The rows are `core` (model, context, cache, limits), `place` (folder, branch, worktree, PR, loop), and `detail` (cache hit ratio and misses, limit pace, cost).
+  A `⚠` blinks for a handoff due (context at 90% of the compaction point), a cache that expires in two minutes or less, and a limit at 90%.
+  `⚠` also marks an effort that the rules do not allow for the model.
+- `refreshInterval` is now `STATUS_REFRESH_SECONDS` (1) in `hooks/lib/_budget.mjs`.
+  Slow reads (`git status`, the compaction count, the `/usage` copy) run once per `STATUS_CACHE_MS` (5 s) and not on each run, where 0.19 ran them on each run.
+  Run `/dotclaude:setup` again to update the setting.
+
+### Added
+
+- Plan detection from the account in `.claude.json`, in `hooks/lib/_plan.mjs`.
+  The cold-cache note uses a 5 minute cache time on the `api` plan and 1 hour on other plans.
+  A new or cleared session on the `api` plan gets a plan note.
+  `skills/setup/scripts/settings.mjs` shows the plan, takes `--plan <id>`, and applies the profile's per-plan `plans` overrides.
+
 ## [0.20.0] - 2026-10-04
 
 0.20.0 is a full reset on Claude Code 2.1.289.

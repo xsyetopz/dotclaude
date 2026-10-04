@@ -4,10 +4,12 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { STATUS_REFRESH_SECONDS } from "../hooks/lib/_budget.mjs";
 
 const SCRIPTS = new URL("../skills/setup/scripts/", import.meta.url).pathname;
 const PROFILE = JSON.parse(
@@ -113,7 +115,7 @@ test("--apply wires both status lines through stubs that run the plugin scripts"
     type: "command",
     command: `bun ${JSON.stringify(main)}`,
     padding: 0,
-    refreshInterval: 60,
+    refreshInterval: STATUS_REFRESH_SECONDS,
   });
   expect(merged.subagentStatusLine.command).toBe(`bun ${JSON.stringify(sub)}`);
   const stubOut = (file, input) =>
@@ -137,4 +139,51 @@ test("--apply wires both status lines through stubs that run the plugin scripts"
     ),
   ).toContain("62k/100k");
   expect(run("settings.mjs", dir).out).toContain("match the profile");
+});
+
+test("the preview shows the detected plan, and --plan overrides it", () => {
+  const dir = mkdtempSync(join(tmpdir(), "setup-plan-"));
+  writeFileSync(
+    join(dir, ".claude.json"),
+    JSON.stringify({
+      oauthAccount: {
+        organizationType: "claude_max",
+        organizationRateLimitTier: "default_claude_max_20x",
+      },
+    }),
+  );
+  expect(run("settings.mjs", dir).out).toContain(
+    "Plan: Claude Max 20x (max20, detected)",
+  );
+  expect(run("settings.mjs", dir, "--plan", "pro").out).toContain(
+    "Plan: Claude Pro (pro, from --plan)",
+  );
+  expect(run("settings.mjs", dir, "--plan", "nope").code).toBe(2);
+});
+
+test("a profile's plan overrides apply only to that plan", () => {
+  const dir = mkdtempSync(join(tmpdir(), "setup-over-"));
+  const profile = join(dir, "profile.json");
+  writeFileSync(
+    profile,
+    JSON.stringify({
+      autoCompactWindow: 150000,
+      env: { A: "1" },
+      plans: { pro: { autoCompactWindow: 100000, env: { B: "2" } } },
+    }),
+  );
+  const own = (plan) => {
+    run("settings.mjs", dir, "--profile", profile, "--plan", plan, "--apply");
+    const s = settingsOf(dir);
+    rmSync(join(dir, "settings.json"));
+    return s;
+  };
+  expect(own("pro")).toMatchObject({
+    autoCompactWindow: 100000,
+    env: { A: "1", B: "2" },
+  });
+  const max = own("max20");
+  expect(max.autoCompactWindow).toBe(150000);
+  expect(max.plans).toBeUndefined();
+  expect(max.env.B).toBeUndefined();
 });

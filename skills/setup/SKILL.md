@@ -30,6 +30,8 @@ Each script writes nothing without `--apply`, so run its preview first.
    ```
 
    Show the user the list.
+   The `Plan:` line shows the detected plan.
+   `--plan <id>` sets another plan, with `api`, `pro`, `max5`, `max20`, `team`, or `enterprise`.
    The profile sets these groups:
 
    | Group | Keys |
