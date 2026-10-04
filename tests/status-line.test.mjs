@@ -155,6 +155,19 @@ test("the place row has folder, branch, changes, worktree, PR, loop, and session
   ]);
 });
 
+test("the folder reads the same with either path separator", () => {
+  for (const [project_dir, current_dir] of [
+    ["C:\\work\\app", "C:\\work\\app\\src\\lib"],
+    ["C:/work/app", "C:/work/app/src/lib"],
+  ])
+    expect(rows({ workspace: { project_dir, current_dir } })[0]).toBe(
+      "app/src/lib",
+    );
+  expect(rows({ workspace: { current_dir: "C:\\work\\app\\" } })[0]).toBe(
+    "app",
+  );
+});
+
 test("the detail row has hit ratio, misses, pace, cost, lines, and time", () => {
   const data = {
     ...simple,

@@ -6,7 +6,6 @@
 // terminals and one in others, and the row packing counts columns.
 // It imports only the bounds in `hooks/lib/_budget.mjs`.
 
-import path from "node:path";
 import {
   AUTO_COMPACT_TOKENS,
   k,
@@ -223,10 +222,13 @@ const REVIEW = { approved: C.green, changes_requested: C.red, draft: C.dim };
 
 /** The folder, as `project/subdir` when the session moved below its project. */
 function folderPart(workspace, dir) {
-  const project = workspace?.project_dir;
-  let name = path.basename(dir) || dir;
-  if (project && dir.startsWith(project + path.sep))
-    name = `${path.basename(project)}/${path.relative(project, dir).split(path.sep).join("/")}`;
+  // Windows sends either separator, so compare with `/` only.
+  const slash = (p) => p.replaceAll("\\", "/").replace(/\/+$/, "");
+  const cwd = slash(dir);
+  const project = workspace?.project_dir && slash(workspace.project_dir);
+  let name = cwd.split("/").pop() || dir;
+  if (project && cwd.startsWith(`${project}/`))
+    name = `${project.split("/").pop()}/${cwd.slice(project.length + 1)}`;
   const added = workspace?.added_dirs?.length;
   return C.bold(C.blue(name)) + (added ? C.dim(` +${added}`) : "");
 }

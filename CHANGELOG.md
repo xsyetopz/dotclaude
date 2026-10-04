@@ -28,6 +28,11 @@ steps after each update.
   A new or cleared session on the `api` plan gets a plan note.
   `skills/setup/scripts/settings.mjs` shows the plan, takes `--plan <id>`, and applies the profile's per-plan `plans` overrides.
 
+### Fixed
+
+- On Windows, the status line shows the `project/subdir` folder for paths with `\` or `/`.
+- The setup tests run the scripts from a file path, not a URL path, so they pass on Windows.
+
 ## [0.20.0] - 2026-10-04
 
 0.20.0 is a full reset on Claude Code 2.1.289.

@@ -9,9 +9,12 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { STATUS_REFRESH_SECONDS } from "../hooks/lib/_budget.mjs";
 
-const SCRIPTS = new URL("../skills/setup/scripts/", import.meta.url).pathname;
+const SCRIPTS = fileURLToPath(
+  new URL("../skills/setup/scripts/", import.meta.url),
+);
 const PROFILE = JSON.parse(
   readFileSync(
     new URL("../skills/setup/profiles/recommended.json", import.meta.url),
