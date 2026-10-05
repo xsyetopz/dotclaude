@@ -79,9 +79,10 @@ The rejected alternatives still hold.
 
 The profile rows need `/dotclaude:setup`.
 The `maxTurns` and spawn rows need only the plugin.
-The status line shows the subagent context against `SUBAGENT_CONTEXT_TOKENS` (100k) and `REVIEWER_CONTEXT_TOKENS` (150k).
-No hook enforces these two bounds.
-0.19 enforced them with a hook, and 0.20.0 removed it.
+The status line shows the subagent context against `AUTO_COMPACT_TOKENS` (117k), because a subagent compacts at the same point as the main conversation.
+**measured** (914 subagent runs, 2026-09-28 to 2026-10-05): the peak context of a run stopped at about 117k, and 1 run reached 162k.
+78 of 457 `implementer` runs passed 100k, so the earlier 100k bound showed a warning for normal runs.
+0.19 enforced a 100k bound (150k for the `reviewer`) with a hook, and 0.20.0 removed it.
 
 Fork mode (`CLAUDE_CODE_FORK_SUBAGENT`) forces every subagent into the background.
 A foreground agent returns its report in the turn that spawned it, so it causes no wake turn.

@@ -12,6 +12,7 @@
       "!!**/.agents",
       "!!**/node_modules",
       "!!**/dist",
+      "!plugins/dotclaude/evals/t*-*",
       "!!**/*.generated.{js,jsx,mjs,cjs,ts,tsx,mts,cts}"
     ],
     "ignoreUnknown": true

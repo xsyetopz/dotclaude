@@ -10,6 +10,31 @@ steps after each update.
 
 ## [Unreleased]
 
+### Added
+
+- At startup, the user gets a notice when the user settings, the `CLAUDE.md` block, or the status line launchers differ from the setup profile.
+  The notice recommends `/dotclaude:setup`, and it shows once for each plugin version, so a value that the user keeps on purpose does not show at each start.
+  The notice goes to the user only, and adds nothing to the context of Claude.
+- A session in a git repository without a CodeGraph index tells Claude to run `codegraph init -y`.
+  The Bash guard asks the user before `codegraph init` and `codegraph uninit`.
+  This is clause 12 of the Terms of Use, `CodeGraph index`.
+  The `codegraph` option turns the note off.
+- The `CLAUDE.md` block has a CodeGraph rule: use `codegraph explore` before `grep` or a file read in a repository with an index.
+  Setup removes the `CODEGRAPH_START` section of `codegraph install`, after a backup.
+
+### Changed
+
+- The CodeGraph augment builds an index in an old format again with `codegraph index` before a lookup, as it runs `codegraph sync` for changed files.
+  The new bound `CODEGRAPH_INDEX_TIMEOUT_MS` is 30 s, because 1,296 files took 5 s.
+
+- The subagent status line shows the context against the compaction point (117k), not against 100k or 150k.
+  A subagent compacts at the same point as the main conversation.
+  In 914 subagent runs of 7 days, the peak context stopped at about 117k, and 78 of 457 `implementer` runs showed a false warning past 100k.
+  `SUBAGENT_CONTEXT_TOKENS` and `REVIEWER_CONTEXT_TOKENS` are removed.
+- A status line launcher in the plugin cache has the same text for each plugin version.
+  The launcher of 0.21.0 and older also has the script of one version as a fallback, so `/dotclaude:setup` writes it again one time.
+  The launchers of 0.21.0 and older also run the status line of 0.22.0, because `status-line/` is at the same place in the plugin folder.
+
 ## [0.21.0] - 2026-10-05
 
 ### Added

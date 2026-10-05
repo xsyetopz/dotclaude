@@ -19,6 +19,7 @@ Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-
 | Working rules | `SessionStart` | `RULES_MAX_BYTES` | Give Claude the few rules that have a stated incident, in at most 2,000 bytes. |
 | Git attribution | `SessionStart` | none | Put back the `Co-Authored-By` trailer and the pull request footer that `includeGitInstructions: false` removes. A repository with a remote of another owner gets no lines, because the AI policy of that project decides. The owners are the `gh` login and the organizations where it has the owner role. |
 | Line breaks (`sembr`) | `tool.call` | `SEMBR_MIN_TOKENS`, `SEMBR_MAX_TOKENS`, `SEMBR_TIMEOUT_MS`, `LINE_BREAK_NOTE_MAX_BLOCKS` | Keep semantic line breaks in the prose that Claude writes. `sembr` rewraps the message of a `git commit`, `gh pr`, or `gh issue` command before it runs. After a `Write` or `Edit` of Markdown or code comments that break at a column, the result gets the `sembr` text. |
+| Stale-setup notice | `SessionStart` (startup) | none | Tell the user, not Claude, that the user settings or the `CLAUDE.md` block differ from the setup profile, and recommend `/dotclaude:setup`. The notice shows once for each plugin version, and `<config dir>/dotclaude/setup-noticed` records the version. |
 | Handoff pointer | `SessionStart` | none | Point a new or cleared session to the newest handoff note with `status: in-progress`. |
 
 The module `hooks/register.mjs` runs the first six rows through the Claude Code hooks module, so a tool call starts no process.
@@ -30,7 +31,7 @@ The one classic hook is `hooks/session-start/context.mjs`.
 | Part | Event | Bound in `_budget.mjs` | User need |
 | --- | --- | --- | --- |
 | `status-line/main.mjs` | `statusLine` | `MAIN_CONTEXT_TOKENS`, `AUTO_COMPACT_TOKENS`, `USAGE_LEVELS` | See the model and effort, the context against the compaction point, the cache expiry, and the 5-hour and weekly limits. It warns when the effort is above the rule of the model. |
-| `status-line/subagents.mjs` | `subagentStatusLine` | `SUBAGENT_CONTEXT_TOKENS`, `REVIEWER_CONTEXT_TOKENS` | See the model and context of each running agent. |
+| `status-line/subagents.mjs` | `subagentStatusLine` | `AUTO_COMPACT_TOKENS` | See the model and context of each running agent, against the compaction point. |
 
 `/dotclaude:setup` writes two stubs that run these scripts, because a status line command gets an empty `${CLAUDE_PLUGIN_ROOT}`.
 Each stub runs the newest plugin version in the plugin cache, so a plugin update needs no new stubs.

@@ -1,0 +1,16 @@
+<git_state>
+Before you do git work, read the current branch and `git status` yourself.
+Do not rely on the git snapshot from session start, because the user and other sessions change the repository after it.
+</git_state>
+
+<codegraph>
+In a repository with a `.codegraph/` folder at the root, use CodeGraph before `grep`, `find`, or a file read when you look for code or try to understand it, because CodeGraph also follows the calls that a text search cannot find, such as dynamic dispatch.
+Run `codegraph explore "<symbol names or question>"`.
+It gives the source of the related symbols with line numbers, and the call paths between them.
+In a repository without `.codegraph/`, run `codegraph init -y` only when a dotclaude note tells you to.
+</codegraph>
+
+<project_commands>
+The `CLAUDE.md`, `README.md`, and build files of a repository define its commands.
+When a repository has no test or build command, say so in the report.
+</project_commands>

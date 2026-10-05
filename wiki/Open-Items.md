@@ -16,7 +16,7 @@ Labels: **reported** means a claim from a user.
   The data covers less than 2 days.
   A lower bound saves more per call but compacts more often.
   Compare the cost and the number of compactions with 2026-09-28 to 2026-09-29.
-  The 100k subagent bound only shows in the status line since 0.20.0, so it needs no measure.
+  Subagents compact at the same point, so a lower bound also changes the cost of long subagent runs.
 - Measure the line-break hook for a week.
   Count the `line_breaks` notes, the notes that Claude applies, and the notes on text with correct breaks.
   The 15 to 30 token bounds of `sembr` come from a trial on 3 samples only.
