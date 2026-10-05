@@ -40,7 +40,7 @@ Each script writes nothing without `--apply`, so run its preview first.
    | --- | --- |
    | Models | `model`, `availableModels` (Opus 5.5, Sonnet 5.5, Haiku 4.5), `advisorModel`, `env.CLAUDE_CODE_SUBAGENT_MODEL`, `env.ANTHROPIC_DEFAULT_HAIKU_MODEL` |
    | Effort | `maxEffortLevel: high`, which blocks `xhigh` and `max` because of their usage |
-   | Context | `autoCompactWindow: 150000`, `env.CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`, `enableArtifact: false`, `disableBundledSkills: true`, `promptSuggestionEnabled`, `awaySummaryEnabled`, `crossSessionInbound: hold` |
+   | Context | `autoCompactWindow: 150000`, `env.CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`, `enableArtifact: false`, `disableBundledSkills: true`, `skillOverrides` (the claude.ai skills `docs`, `docx`, `pdf`, `pptx`, and `xlsx` off, the claude.ai connectors stay), `promptSuggestionEnabled`, `awaySummaryEnabled`, `crossSessionInbound: hold` |
    | Fast mode off | `fastMode`, `fastModePerSessionOptIn`, `env.CLAUDE_CODE_DISABLE_FAST_MODE` |
    | Subagents | `env.CLAUDE_CODE_FORK_SUBAGENT=0`, `env.CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1` (the built-in Explore agent runs on the main model), `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=5`, `env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS=5`, `workflowSizeGuideline`, `Agent(general-purpose)` deny |
    | Feedback off | `env.DISABLE_FEEDBACK_COMMAND`, `env.CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `env.DISABLE_ERROR_REPORTING` |

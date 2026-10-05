@@ -23,6 +23,13 @@
   "cleanupPeriodDays": 14,
   "enableArtifact": false,
   "disableBundledSkills": true,
+  "skillOverrides": {
+    "anthropic-skills:docs": "off",
+    "anthropic-skills:docx": "off",
+    "anthropic-skills:pdf": "off",
+    "anthropic-skills:pptx": "off",
+    "anthropic-skills:xlsx": "off"
+  },
   "promptSuggestionEnabled": false,
   "awaySummaryEnabled": false,
   "crossSessionInbound": "hold",

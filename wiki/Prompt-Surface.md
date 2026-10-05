@@ -128,7 +128,10 @@ Settings keys that change the skill listing (**binary**, 2.1.288):
 | `skillListingBudgetFraction` | the share of the context window for the whole listing |
 
 Skills synced from a claude.ai account have names of the form `anthropic-skills:<name>`, and `skillOverrides` matches that name.
+The setup profile sets `anthropic-skills:docs`, `docx`, `pdf`, `pptx`, and `xlsx` to `off` (**binary**, 2.1.289).
+`disableBundledSkills` does not remove these skills, because they come from claude.ai and do not ship with Claude Code.
 `disableClaudeAiConnectors` removes the MCP connectors of a claude.ai account.
+The profile does not set it, so connectors such as Claude Docs and alphaXiv stay.
 A `true` value in any settings source wins.
 A project can turn the connectors off, but a project `false` cannot turn them on again after a user `true`.
 So the maintainer turns them off only for this repository, in `.claude/settings.local.json`.

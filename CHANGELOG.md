@@ -10,6 +10,8 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.20.6] - 2026-10-05
+
 ### Changed
 
 - The documentation moved to the [GitHub wiki](https://github.com/xsyetopz/dotclaude/wiki).
@@ -17,6 +19,9 @@ steps after each update.
   `docs/README.md` now only links to the wiki pages.
 - The release archive of 0.1 to 0.19 is now one consolidated wiki page for each release line, with [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History) as its index.
 - The external sources of the old `docs/external/` are now in `external/`, which git ignores.
+- The `/dotclaude:setup` profile sets the claude.ai skills `docs`, `docx`, `pdf`, `pptx`, and `xlsx` to `off` in `skillOverrides`.
+  `disableBundledSkills` does not remove them, because they come from the claude.ai account.
+  The claude.ai connectors, such as Claude Docs and alphaXiv, stay on.
 
 ## [0.20.5] - 2026-10-05
 
@@ -249,4 +254,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.5...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.6...HEAD

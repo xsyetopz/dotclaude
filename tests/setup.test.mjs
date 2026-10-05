@@ -46,6 +46,16 @@ test("profile keeps the decided values", () => {
   expect(PROFILE.subagentPromptCacheTtl).toBeUndefined();
   expect(PROFILE.enableArtifact).toBe(false);
   expect(PROFILE.disableBundledSkills).toBe(true);
+  // claude.ai skills are off, but the claude.ai connectors (Claude Docs, alphaXiv) stay.
+  expect(PROFILE.skillOverrides).toEqual(
+    Object.fromEntries(
+      ["docs", "docx", "pdf", "pptx", "xlsx"].map((s) => [
+        `anthropic-skills:${s}`,
+        "off",
+      ]),
+    ),
+  );
+  expect(PROFILE.disableClaudeAiConnectors).toBeUndefined();
   expect(PROFILE.env.CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS).toBe("1");
   expect(JSON.stringify(PROFILE)).not.toMatch(/fable|opusplan/i);
 });
