@@ -10,6 +10,23 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-10-05
+
+### Fixed
+
+- A subagent fetched the code of a project whose AI policy forbids AI tools.
+  The main agent knew the policy, but nothing gave it to the subagent, and nothing checked the policy before a read or a fetch.
+  Clause 14 of the Terms of Use, `Project AI policy`, now tells the main agent and each subagent to read the `CLAUDE.md`, `AGENTS.md`, and `AI_POLICY.md` of a project of another owner before it reads, clones, fetches, or runs its code.
+  A new `SubagentStart` hook gives the clause to each subagent.
+- The policy guard (`guard_policy`) asks the user before the first call of a session that reaches a project of another owner with a policy file, and the prompt shows the policy.
+  A reach is a GitHub fetch (`git clone`, `gh repo clone`, `gh api`, `curl`, `wget`, or `WebFetch`) or a path in a local clone outside the project.
+  The ask comes before the call, so the user sees the policy before any code arrives.
+  The guard asks and does not deny.
+  It does not cover hosts other than GitHub, for which only the clause applies.
+  After a GitHub fetch, Claude also gets the policy text.
+- On Windows, the startup note did not name an old or missing status line launcher.
+  Setup writes the launcher path as JSON with doubled backslashes, and the check looked for the path with single backslashes.
+
 ## [0.22.0] - 2026-10-05
 
 ### Added
@@ -409,4 +426,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.22.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.22.1...HEAD

@@ -13,6 +13,7 @@ Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-
 | Bash guard (`guard_bash`) | `tool.call` | `COMMAND_PART_CHARS` | Ask before a forced push, a hard reset, a `git checkout` or `git restore` of files, a recursive removal outside the project, `sudo`, or a write to a device. The reason shows the command part. Deny a Claude `Co-Authored-By` line in a commit when the settings leave it out, and ask before a Claude attribution line in a repository of another owner. |
 | Edit guard (`guard_edit`) | `tool.call` | none | Ask before an edit that removes test assertions, adds a skip marker, writes a `[REDACTED:` marker, or changes a generated file, a lockfile, or a Claude Code settings file. |
 | Secret redaction (`guard_secrets`) | `tool.call` | `SECRET_SCAN_TIMEOUT_MS`, `SECRET_SCAN_MAX_BYTES` | Keep a secret in a tool result out of the context. Betterleaks finds it, and the result shows `[REDACTED:<rule>]`. |
+| Project AI policy guard (`guard_policy`) | `PreToolUse`, `tool.call`, `SessionStart`, `SubagentStart` | `POLICY_FETCH_TIMEOUT_MS`, `POLICY_FILE_MAX_CHARS`, `POLICY_REASON_MAX_CHARS`, `POLICY_PATHS_MAX` | Respect a project that forbids AI tools. Before the first call of a session that reaches a project of another owner with a `CLAUDE.md`, `AGENTS.md`, or `AI_POLICY.md` file, ask the user and show the policy. A reach is a GitHub fetch (`git clone`, `gh repo clone`, `gh api`, `curl`, `wget`, or `WebFetch`) or a path in a local clone outside the project. After a GitHub fetch, show the policy to Claude. Give clause 14 to the main agent and to each subagent. A subagent once fetched the code of a project whose policy forbids AI tools. Other hosts get only the clause. |
 | Spawn rules (`guard_agents`) | `agent.spawn` | `SUBAGENT_EFFORTS` | Keep the subagent model and effort within the [rules](#model-and-effort-rules). The hook denies a call that asks for another model than the agent file fixes, and gives the reason. |
 | Cold-cache note | `SessionStart` (resume), `prompt.submit` | `CACHE_TTL_MS` | Tell Claude that the prompt cache expired, so that it says what a handoff note and `/clear` can save. |
 | Compaction | `session.compact` | `HANDOFF_FORK_TIMEOUT_MS` | Keep an unapproved plan or an open question open after a compaction, and keep the task state in a handoff note (`compaction_handoff`) before an automatic compaction. Then Claude stops and tells the user to run `/clear`. |
@@ -31,7 +32,9 @@ The classic hooks are in one folder for each event:
 
 - `plugins/dotclaude/hooks/session-start/add-session-context.mjs` adds the `SessionStart` rows, and its `setupNotice` shows the stale-setup notice.
 - `plugins/dotclaude/hooks/pre-tool-use/ask-guarded-calls.mjs` gives the asks of the Bash and edit guards again, because in auto mode the classifier can allow a call that the module asks about ([Claude mods](Claude-Mods)).
-  It starts one process for each `Bash`, `Edit`, and `Write` call.
+  It also gives the ask of the project AI policy guard.
+  It starts one process for each `Bash`, `Edit`, `Write`, `WebFetch`, `Read`, `Grep`, and `Glob` call.
+- `plugins/dotclaude/hooks/subagent-start/add-subagent-context.mjs` gives each subagent the project AI policy clause, because a subagent does not get the `SessionStart` context.
 
 `plugins/dotclaude/lib/setup/diff.mjs` compares the user setup with the profile for that notice.
 

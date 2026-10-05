@@ -55,7 +55,7 @@ async function call(handlers, $, e, result = { result: "ok" }) {
   return { r, verdict };
 }
 
-test("hooks.json names the module, PreToolUse, and SessionStart", () => {
+test("hooks.json names the module, PreToolUse, SessionStart, and SubagentStart", () => {
   const json = JSON.parse(
     readFileSync(
       join(import.meta.dir, "../../plugins/dotclaude/hooks/hooks.json"),
@@ -63,7 +63,11 @@ test("hooks.json names the module, PreToolUse, and SessionStart", () => {
     ),
   );
   expect(json.modules).toEqual(["./module/index.mjs"]);
-  expect(Object.keys(json.hooks)).toEqual(["PreToolUse", "SessionStart"]);
+  expect(Object.keys(json.hooks)).toEqual([
+    "PreToolUse",
+    "SessionStart",
+    "SubagentStart",
+  ]);
   for (const [event, [entry]] of Object.entries(json.hooks)) {
     const script = entry.hooks[0].args[0];
     expect(script).toStartWith(`\${CLAUDE_PLUGIN_ROOT}/hooks/`);
@@ -74,7 +78,7 @@ test("hooks.json names the module, PreToolUse, and SessionStart", () => {
     expect(existsSync(file), event).toBe(true);
   }
   expect(json.hooks.PreToolUse[0].matcher).toBe(
-    "Bash|Edit|Write|MultiEdit|NotebookEdit",
+    "Bash|Edit|Write|MultiEdit|NotebookEdit|WebFetch|Read|Grep|Glob",
   );
   expect(typeof json.description).toBe("string");
 });

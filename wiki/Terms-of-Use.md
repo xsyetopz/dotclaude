@@ -22,6 +22,7 @@ An enforced clause has a hook that denies, asks about, or changes a call that br
 | 11 | Line breaks | `line_breaks`, after a commit, `gh` message, `Write`, or `Edit` with prose that breaks at a column | The sembr hook: it rewraps the message of a command, and gives the fixed text of an edit |
 | 12 | CodeGraph index | `codegraph_index`, at session start in a git repository without a CodeGraph index, unless the `codegraph` option is off | The Bash guard: an ask before `codegraph init` or `codegraph uninit` |
 | 13 | Long runs | `long_runs`, at session start | Not enforced |
+| 14 | Project AI policy | `project_ai_policy`, at session start and at the start of each subagent, and after a fetch from a GitHub repository with a policy file, unless the `guard_policy` option is off | The policy guard: an ask before the first call of a session that reaches a project of another owner with a policy file. The ask comes before the call, so the user sees the policy before any code arrives. It covers GitHub fetches and local clones, not other hosts, and it does not deny |
 
 A deny reason of an enforced clause names the clause.
 A clause that is not enforced has no hook that can see a break of it, such as code that is larger than it needs to be.

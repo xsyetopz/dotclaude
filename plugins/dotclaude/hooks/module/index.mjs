@@ -12,6 +12,7 @@ import {
   CODEGRAPH_TIMEOUT_MS,
   HANDOFF_FORK_TIMEOUT_MS,
   HANDOFF_SESSIONS_MAX,
+  POLICY_FETCH_TIMEOUT_MS,
   SECRET_SCAN_MAX_BYTES,
   SECRET_SCAN_TIMEOUT_MS,
   SEMBR_TIMEOUT_MS,
@@ -36,6 +37,12 @@ import {
 } from "../../lib/guards/attribution.mjs";
 import { askFor, isCommit } from "../../lib/guards/bash.mjs";
 import { editReasons } from "../../lib/guards/edit.mjs";
+import {
+  fetchedRepos,
+  POLICY_FILES,
+  policyCommand,
+  policyNote,
+} from "../../lib/guards/policy.mjs";
 import {
   findingsOf,
   redact,
@@ -315,6 +322,37 @@ async function graphNotes($, e, graph) {
   return note ? [...notes, note] : notes;
 }
 
+/**
+ * The AI policy notes after a call fetched from a GitHub repository: once
+ * for each repository in each context. A repository with no policy file, or
+ * a failed `gh`, gives nothing.
+ */
+async function policyNotes($, e, seen) {
+  const input = { command: e.command, url: e.url };
+  const repos = fetchedRepos(e.tool, input).filter((repo) => {
+    const key = `${e.agentId ?? "main"}\n${repo}`;
+    return !seen.has(key) && seen.add(key);
+  });
+  if (!repos.length) return [];
+  const root = await $.session.root();
+  const read = (argv) =>
+    $.process
+      .run(argv, { cwd: root, timeoutMs: POLICY_FETCH_TIMEOUT_MS })
+      .then((r) => (r.exitCode === 0 ? r.stdout : null))
+      .catch(() => null);
+  const notes = await Promise.all(
+    repos.map(async (repo) =>
+      policyNote(
+        repo,
+        await Promise.all(
+          POLICY_FILES.map((name) => read(policyCommand(repo, name))),
+        ),
+      ),
+    ),
+  );
+  return notes.filter(Boolean);
+}
+
 /** The agent file of a `dotclaude:` agent, parsed, or undefined. */
 async function agentDefinition($, subagentType) {
   const name = /^dotclaude:([a-z0-9-]+)$/.exec(String(subagentType))?.[1];
@@ -386,6 +424,7 @@ export function register(on, options) {
     failed: new Set(),
     warned: new Set(),
   };
+  const policySeen = new Set();
 
   on("tool.call", async ($, e, next) => {
     const id = e.tool_use_id;
@@ -432,6 +471,9 @@ export function register(on, options) {
       await lineBreaks($, e, options).catch(() => undefined),
       ...(enabled(options, "codegraph")
         ? await graphNotes($, e, graph).catch(() => [])
+        : []),
+      ...(enabled(options, "guard_policy")
+        ? await policyNotes($, e, policySeen).catch(() => [])
         : []),
     ].filter(Boolean);
     return notes.length

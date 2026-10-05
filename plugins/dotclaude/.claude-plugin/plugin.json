@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.22.0",
+  "version": "0.22.1",
   "description": "A small Claude Code plugin with guards, model and effort rules, compaction and cache notes, and role agents.",
   "author": {
     "name": "xsyetopz"
@@ -26,6 +26,12 @@
       "type": "boolean",
       "title": "Secret redaction",
       "description": "Scan every tool output with Betterleaks and replace each secret it finds with `[REDACTED:<rule>]` before the model sees it. Needs `betterleaks` on `PATH`. Without it, output passes through and session start says so.",
+      "default": true
+    },
+    "guard_policy": {
+      "type": "boolean",
+      "title": "Project AI policy guard",
+      "description": "Ask before the first call of a session that reaches a project of another owner with an AI policy file (`CLAUDE.md`, `AGENTS.md`, or `AI_POLICY.md`): a fetch from a GitHub repository, or a path in a local clone outside the project. The prompt shows the policy. After a fetch from such a repository, show the policy to Claude. Needs `gh` for GitHub fetches.",
       "default": true
     },
     "guard_agents": {

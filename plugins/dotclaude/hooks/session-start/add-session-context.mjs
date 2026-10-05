@@ -1,6 +1,6 @@
 // SessionStart: adds context. A resumed session with an expired prompt cache
 // and a large context gets the cost advice. A new, cleared, or compacted session gets the working
-// rules, the long-run rules, and the minimal code rules, and a new or cleared one also gets the
+// rules, the long-run rules, the project AI policy, and the minimal code rules, and a new or cleared one also gets the
 // pointer to the newest open handoff note. A session in a git repository also
 // gets the git attribution note, and the CodeGraph init note when the
 // repository has no index. At startup, the user gets a note when the
@@ -21,6 +21,7 @@ import {
   ownRepo,
   settingsPaths,
 } from "../../lib/guards/attribution.mjs";
+import { POLICY_CLAUSE } from "../../lib/guards/policy.mjs";
 import { resumeNote } from "../../lib/notes/cache.mjs";
 import { initNote } from "../../lib/notes/codegraph.mjs";
 import { newestOpen, pointer } from "../../lib/notes/handoff.mjs";
@@ -131,6 +132,7 @@ export function contextFor(
       `<long_runs>\n${fs.readFileSync(LONG_RUNS, "utf8").trim()}\n</long_runs>`,
     ),
   );
+  parts.push(POLICY_CLAUSE);
   if (ponytail !== "false")
     parts.push(
       clause(
@@ -189,9 +191,11 @@ export function setupNotice(
     const claudeMd = fs.existsSync(claudeMdFile) ? read(claudeMdFile) : "";
     const body = read(path.join(TEMPLATES, "CLAUDE.md.block"));
     // A status line of another tool does not run a launcher in `stubs`.
+    // Setup quotes the path as JSON, so a Windows path has doubled `\`.
     const stubs = path.join(configDir, "dotclaude");
+    const quoted = JSON.stringify(stubs).slice(1, -1);
     const launchers = LAUNCHERS.filter(([key, stub, script]) => {
-      if (!String(settings[key]?.command ?? "").includes(stubs)) return false;
+      if (!String(settings[key]?.command ?? "").includes(quoted)) return false;
       const file = path.join(stubs, stub);
       const text = launcherText(path.join(PLUGIN_ROOT, "status-line", script));
       return !fs.existsSync(file) || read(file) !== text;

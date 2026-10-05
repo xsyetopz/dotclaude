@@ -38,6 +38,11 @@ export const TERMS = [
     enforcedBy: "the Bash guard",
   },
   { id: "long-runs", title: "Long runs" },
+  {
+    id: "project-ai-policy",
+    title: "Project AI policy",
+    enforcedBy: "the policy guard",
+  },
 ];
 
 /** The opening tag of the clause `id`. */

@@ -45,7 +45,7 @@ It also sets the status line and the subagent status line.
 | Skills | `/dotclaude:setup`, `/dotclaude:handoff`, `/dotclaude:contribute`. |
 | Style | `Concise`. |
 
-You can turn off each part in `/config` under dotclaude with the options `guard_bash`, `guard_edit`, `guard_secrets`, `guard_agents`, `codegraph`, `ponytail`, `compaction_handoff`, and `sembr`.
+You can turn off each part in `/config` under dotclaude with the options `guard_bash`, `guard_edit`, `guard_secrets`, `guard_policy`, `guard_agents`, `codegraph`, `ponytail`, `compaction_handoff`, and `sembr`.
 The guards run in a hooks module.
 Where Claude Code does not load modules, such as with `--bare`, no guard runs.
 

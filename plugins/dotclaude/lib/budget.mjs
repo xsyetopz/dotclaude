@@ -33,6 +33,16 @@ export const LINE_BREAK_NOTE_MAX_BLOCKS = 5;
 export const CODEGRAPH_NEIGHBOURS = 3;
 export const CODEGRAPH_NOTE_MAX_CHARS = 1500;
 
+/**
+ * The project AI policy guard: time for one `gh api` read of a policy file
+ * (a read takes about 0.5 s), characters of each file in the note and in the
+ * ask reason, and paths of a Bash command that the guard checks.
+ */
+export const POLICY_FETCH_TIMEOUT_MS = 3000;
+export const POLICY_FILE_MAX_CHARS = 4000;
+export const POLICY_REASON_MAX_CHARS = 1000;
+export const POLICY_PATHS_MAX = 4;
+
 /** Characters of a command part that an ask reason shows. */
 export const COMMAND_PART_CHARS = 80;
 

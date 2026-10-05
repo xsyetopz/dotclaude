@@ -44,6 +44,7 @@ test("plugin manifest keeps only the guard, CodeGraph, handoff, and sembr option
     "guard_bash",
     "guard_edit",
     "guard_secrets",
+    "guard_policy",
     "guard_agents",
     "codegraph",
     "ponytail",
