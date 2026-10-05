@@ -20,6 +20,7 @@ steps after each update.
   - A publish of a package or an image: `npm`, `pnpm`, `yarn`, or `bun` `publish`, `unpublish`, or `deprecate`, `cargo publish` or `yank`, `gem push` or `yank`, `twine upload`, `poetry`, `uv`, `vsce`, or `ovsx` `publish`, `docker` or `podman` `push`, and `dotnet nuget push`.
     A command with `--dry-run` passes.
   - A `gh` write: a verb that does not only read in a group such as `pr`, `issue`, `release`, or `repo`, and `gh api` with a method other than `GET` or with fields.
+    A `gh api graphql` query passes, and a mutation or a query from a file asks.
   - A database delete: `DROP`, `TRUNCATE`, `DELETE FROM`, `FLUSHALL`, or `FLUSHDB` in a database client command, `dropdb`, `mysqladmin drop`, `prisma migrate reset`, `prisma db push --force-reset`, `rails` or `rake` `db:drop`, `db:reset`, or `db:schema:load`, and `manage.py flush`.
   - The guard also reads the tool that `npx`, `bunx`, or `python manage.py` runs.
 

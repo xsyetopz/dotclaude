@@ -235,6 +235,12 @@ const GH_WRITE =
 function ghReason(args) {
   const [sub, verb] = args.filter((a) => !a.startsWith("-"));
   if (sub === "api") {
+    // A GraphQL query is sent as a POST field but only reads,
+    // so only a mutation, or a query from a file or stdin that the guard cannot read, asks.
+    if (args.includes("graphql"))
+      return args.some((a) => /\bmutation\b|^query=@|^--input/.test(a))
+        ? GH_WRITE
+        : undefined;
     const i = args.findIndex((a) => /^(-X|--method)$/.test(a));
     const inline = args.find((a) => /^(-X.|--method=)/.test(a));
     const method = (
