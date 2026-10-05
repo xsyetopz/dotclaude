@@ -4,7 +4,7 @@ This page answers one question: what does Claude Code let a plugin hooks module 
 It is the evidence for the hooks module.
 Labels: **official** (Anthropic docs and files), **binary** (the Claude Code bundle), **measured** (a run on this machine).
 It describes the hooks module of Claude Code 2.1.288.
-dotclaude 0.20.0 uses the module in `hooks/register.mjs` for `tool.call`, `agent.spawn`, `prompt.submit`, `turn.complete`, `session.compact`, and `tool.check`.
+dotclaude 0.20.0 uses the module in `plugins/dotclaude/hooks/module/index.mjs` for `tool.call`, `agent.spawn`, `prompt.submit`, `turn.complete`, `session.compact`, and `tool.check`.
 It no longer uses the module for model-switch, config-change, or session-ledger hooks.
 The rows and gaps that name other events are 0.19 evidence, and each says so.
 
@@ -56,11 +56,12 @@ dotclaude has run most of its hooks in a module since 0.18.
 | Work | Event | Evidence |
 | --- | --- | --- |
 | Guards, secret redaction, CodeGraph notes | `tool.call` | A failed call returns `{ isError, result, text, ref, context }`, and `text` is what the model reads (**binary**). |
-| Keep an ask of the guards | `tool.check` | The hook returns the ask of the guard unless the engine denies (`hooks/register.mjs`). |
-| Spawn rules | `agent.spawn` | A `{ deny }` result refuses the spawn with a reason (`hooks/register.mjs`). |
+| Keep an ask of the guards | `tool.check` | The hook returns the ask of the guard unless the engine denies (`plugins/dotclaude/hooks/module/index.mjs`). |
+| Spawn rules | `agent.spawn` | A `{ deny }` result refuses the spawn with a reason (`plugins/dotclaude/hooks/module/index.mjs`). |
 | Cold-cache note | `prompt.submit`, `turn.complete` | A hook attaches context "on the way down", in the input to `next` (**official**, d.ts). `turn.complete` stores the time of the last turn. |
 | Compaction instruction and handoff fork | `session.compact` | A `precompute` installs nothing, and the real compaction fires the event again (**official**, d.ts). The fork runs before `next`, so it sees the whole conversation. |
 
+The guards also have a classic `PreToolUse` hook, because a module ask does not hold in auto mode (see [Gaps](#gaps)).
 `SessionStart` stays a classic command hook, because `session.start` does not fire after `/clear`, `/resume`, or a compaction, and it cannot add context (**official**, d.ts).
 
 ## Events that 0.19 used
@@ -84,13 +85,20 @@ No native event exists for the first five.
 - The module gets no permission mode.
   No field on `tool.call` or `tool.check` has it, and `/config` has only the default mode (**official**, d.ts).
   So in 0.19, `find . -name '*.log' -delete` gave an ask in the module and nothing in the classic hook in auto mode (**measured**).
-  0.20.0 has no classic guard, and the module guards decide alone.
+- In 2.1.289, the auto-mode classifier decides an ask of `tool.check`, and it can allow the call.
+  The d.ts says that `ask` "puts it to the mode's decider (the dialog, the auto-mode classifier, a headless host)" (**official**).
+  In auto mode, `codegraph init -y` and `git branch -D old` ran with no prompt, and the transcript said "Allowed by auto mode classifier" (**measured**).
+  An ask of a classic `PreToolUse` hook sets a floor: "a classifier allow re-surfaces as this ask" (**binary**, `hookAskFloor`).
+  No module field reaches that floor.
+  So 0.22.0 gives the asks of the Bash and edit guards again from `plugins/dotclaude/hooks/pre-tool-use/ask-guarded-calls.mjs`.
+  With `-p --permission-mode auto`, that hook made `codegraph init -y` a denial, and `git status` ran (**measured**).
+  The attribution ask of the Bash guard is still in the module only.
 - A classic `allow` is dropped, so the engine rules decide.
   This matters only for `Agent` and `SendMessage`, which no permission rule gates.
 - An action that throws is skipped, and its error is not logged.
   The module has no stderr.
   A rethrow would make the engine skip all of dotclaude for the event and count the failure toward a runaway (**binary**, `hookFailed`).
-  So `hooks/register.mjs` catches the errors of the calls that can fail.
+  So `plugins/dotclaude/hooks/module/index.mjs` catches the errors of the calls that can fail.
   0.19 had a `DOTCLAUDE_DEBUG` switch that rethrew, and 0.20.0 has none.
 - In 0.19, the running marker was written after `next` of `agent.spawn`, so two spawns in one message could both pass the concurrency check.
   0.20.0 has no such check.

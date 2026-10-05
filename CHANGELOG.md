@@ -10,6 +10,8 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-05
+
 ### Added
 
 - At startup, the user gets a notice when the user settings, the `CLAUDE.md` block, or the status line launchers differ from the setup profile.
@@ -21,8 +23,25 @@ steps after each update.
   The `codegraph` option turns the note off.
 - The `CLAUDE.md` block has a CodeGraph rule: use `codegraph explore` before `grep` or a file read in a repository with an index.
   Setup removes the `CODEGRAPH_START` section of `codegraph install`, after a backup.
+- Clause 13 of the Terms of Use, `Long runs`: before a loop over a step of unknown speed, time one run, give each run its own `timeout`, and run long work in the background.
+  A foreground loop of slow runs once blocked a session.
 
 ### Changed
+
+- The repository has a new layout.
+  The core plugin is in `plugins/dotclaude/`, next to `dotclaude-browser` and `dotclaude-jev`.
+  Pure rules are in `lib/` (`guards/`, `notes/`, `setup/`), and the setup files are in `templates/` (`CLAUDE.md.block`, `settings.json`, `context/`).
+  The tests are in one folder for each plugin, and the repository scripts are in `tools/`.
+- In each plugin, `hooks/` has one folder for each hook event, and each script name tells what the script does.
+  The hooks module of a plugin is `hooks/module/index.mjs`.
+  The core plugin has `hooks/session-start/add-session-context.mjs` and `hooks/pre-tool-use/ask-guarded-calls.mjs`.
+  `dotclaude-browser` has `hooks/session-start/add-browser-notes.mjs`, and `dotclaude-jev` has `hooks/session-start/second-opinion.md`.
+- At a task boundary with open work, Claude writes or updates a handoff note, and gives `/clear` and a continuation prompt in the same reply.
+  Before, Claude only said that it was a good time to run `/clear`.
+  No hook enforces this, because only the reply text shows a break, and 0.18.1 removed the reply-text Stop gates.
+- A prompt that Claude suggests names each file as `@` and its absolute path, so that Claude Code reads the file at once.
+  After an automatic compaction, Claude writes the continuation prompt for the task, with `@` and the path of the note, in place of a fixed text.
+- `RULES_MAX_BYTES` is 2,200, up from 2,000, for the handoff and prompt rules.
 
 - The CodeGraph augment builds an index in an old format again with `codegraph index` before a lookup, as it runs `codegraph sync` for changed files.
   The new bound `CODEGRAPH_INDEX_TIMEOUT_MS` is 30 s, because 1,296 files took 5 s.
@@ -34,6 +53,14 @@ steps after each update.
 - A status line launcher in the plugin cache has the same text for each plugin version.
   The launcher of 0.21.0 and older also has the script of one version as a fallback, so `/dotclaude:setup` writes it again one time.
   The launchers of 0.21.0 and older also run the status line of 0.22.0, because `status-line/` is at the same place in the plugin folder.
+
+### Fixed
+
+- In auto mode, the Bash and edit guards ask the user again.
+  Before, the auto-mode classifier got the ask of the hooks module and allowed the call, so `codegraph init -y` and `git branch -D` ran with no prompt.
+  A classic `PreToolUse` hook, `hooks/pre-tool-use/ask-guarded-calls.mjs`, now gives the same ask, and the classifier cannot allow a call that a classic hook asks about.
+  The options `guard_bash` and `guard_edit` also turn this hook off.
+  The attribution ask of the Bash guard is still in the module only, so auto mode does not show it.
 
 ## [0.21.0] - 2026-10-05
 
@@ -373,4 +400,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.21.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.22.0...HEAD

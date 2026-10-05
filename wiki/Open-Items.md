@@ -8,7 +8,7 @@ Labels: **reported** means a claim from a user.
 
 ## Open measures
 
-- Re-run `bun scripts/usage-report.mjs --days 7` after a full week on 0.12.0.
+- Re-run `bun tools/usage-report.mjs --days 7` after a full week on 0.12.0.
   Compare it with [Usage evidence](Usage-Evidence).
   The guard verdict table shows only 0.19 rows, because no 0.20 hook writes `verdicts.jsonl`.
 - Measure a week with compaction at 150k.
@@ -31,7 +31,7 @@ Labels: **reported** means a claim from a user.
 - A Bash read of a directory does not load its `CLAUDE.md` or its path-scoped `.claude/rules` files ([#90450](https://github.com/anthropics/claude-code/issues/90450)).
   0.20.0 removed `load-nested-instructions`, because Claude Code 2.1.288 loads rules on Write and Edit.
 - The compaction handoff (`compaction_handoff`) is on by default.
-  Measure it with `scripts/compaction-report.mjs` after use.
+  Measure it with `tools/compaction-report.mjs` after use.
   The baseline is 42% to 57% retention (see [Evals](Evals#compactions-before-a-handoff)).
   The first 5 sessions with a handoff note kept 46% to 54%, inside the baseline.
   On 2026-10-05, Claude wrote 21 handoff notes and continued in the compacted context after each one.
@@ -42,7 +42,7 @@ Closed by 0.20.0:
 
 - the session ledger race
 - the check of a foreground agent at its turn limit
-- the move of injected texts into files (`rules.md` and `minimal-code.md` now hold them)
+- the move of injected texts into files (`rules.md` and `minimal-code.md` held them, now in `plugins/dotclaude/templates/context/`)
 - the measure of the 0.19.0 working rules
 
 Closed by the transcripts of 2026-10-04:
@@ -56,7 +56,7 @@ Closed by the transcripts of 2026-10-04:
 - **Two Max 5x plans against one Max 20x.**
   One user reports that Max 20x gives about 1.7 times the weekly usage of Max 5x.
   Anthropic does not state a weekly ratio.
-  dotclaude reads one plan (`hooks/lib/_plan.mjs`).
+  dotclaude reads one plan (`plugins/dotclaude/lib/plan.mjs`).
 - **Auto mode's classifier sends the whole transcript on every Bash call.**
   Not checked in the binary.
 - **A Haiku ping keeps the cache warm.**

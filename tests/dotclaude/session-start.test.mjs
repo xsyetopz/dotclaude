@@ -12,7 +12,7 @@ import {
   contextFor,
   needsIndex,
   setupNotice,
-} from "../../plugins/dotclaude/hooks/session-start.mjs";
+} from "../../plugins/dotclaude/hooks/session-start/add-session-context.mjs";
 import {
   COLD_RESUME_MIN_TOKENS,
   MINIMAL_CODE_MAX_BYTES,
@@ -53,8 +53,12 @@ test("working-rules.md asks for semantic line breaks, not column breaks", () => 
 
 test("startup, clear, and compact add the rules", () => {
   const root = project({});
-  for (const source of ["startup", "clear", "compact"])
-    expect(contextFor({ source }, root)[0]).toContain("<working_rules>");
+  for (const source of ["startup", "clear", "compact"]) {
+    const [rules, longRuns] = contextFor({ source }, root);
+    expect(rules).toContain("<working_rules>");
+    expect(longRuns).toContain("<long_runs>");
+    expect(longRuns).toContain("time one run of the step");
+  }
   expect(contextFor({ source: "resume" }, root)).toEqual([]);
 });
 
@@ -69,10 +73,10 @@ test("startup and clear point at the newest in-progress note only", () => {
   expect(pointer).toContain(
     "`done` only when each item in its **Open** section is done",
   );
-  expect(contextFor({ source: "compact" }, root)).toHaveLength(2);
+  expect(contextFor({ source: "compact" }, root)).toHaveLength(3);
   expect(
     contextFor({ source: "startup" }, project({ "a.md": "done" })),
-  ).toHaveLength(2);
+  ).toHaveLength(3);
 });
 
 test("the minimal code rules are on unless the plugin option is false", () => {

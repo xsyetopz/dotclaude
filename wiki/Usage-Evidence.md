@@ -40,7 +40,7 @@ Model choice is not one of them.
 
 ## The delegation share
 
-`bun scripts/usage-report.mjs --days 7` repeats this scan on any machine.
+`bun tools/usage-report.mjs --days 7` repeats this scan on any machine.
 It also counts the sessions by entrypoint, the usage-limit hits, and the skill calls.
 It reads guard verdicts per rule from a `verdicts.jsonl` file.
 No 0.20 hook writes that file, so the table shows only rows from 0.19 and earlier.

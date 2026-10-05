@@ -143,8 +143,11 @@ test("the session hook prints the note that sends decisions through Jev", () => 
   );
   const hooks = JSON.parse(readFileSync(path.join(dir, "hooks.json"), "utf8"));
   const [cmd] = hooks.hooks.SessionStart[0].hooks;
-  expect(cmd.args[0]).toEndWith("/hooks/second-opinion.md");
-  const note = readFileSync(path.join(dir, "second-opinion.md"), "utf8");
+  expect(cmd.args[0]).toEndWith("/hooks/session-start/second-opinion.md");
+  const note = readFileSync(
+    path.join(dir, "session-start", "second-opinion.md"),
+    "utf8",
+  );
   expect(note).toContain("`dotclaude-jev:second-opinion`");
   expect(note).toContain(
     "ask the user about goals, preferences, and approvals",

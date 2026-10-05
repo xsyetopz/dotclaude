@@ -8,10 +8,10 @@ This page records the 0.19 model policy, with Fable 5.1, plan detection, and the
 The current rules are in [Parts](Parts#model-and-effort-rules).
 
 Plan detection came back in a smaller form.
-`hooks/lib/_plan.mjs` reads `oauthAccount` in `.claude.json`.
+`plugins/dotclaude/lib/plan.mjs` reads `oauthAccount` in `.claude.json`.
 It returns `api`, `pro`, `max5`, `max20`, `team`, `enterprise`, or `unknown`.
 It sets the cache time (**official**: 5 minutes on `api`, 1 hour on a subscription) and adds a SessionStart note on `api`.
-`skills/setup/profiles/recommended.json` has a `plans` object for per-plan overrides.
+`plugins/dotclaude/templates/settings.json` has a `plans` object for per-plan overrides.
 The object is empty, because the usage bounds are sized for Pro on every plan ([Design](Design)).
 No evidence supports a plan-specific value.
 An override needs a cited difference on this page first.
@@ -35,7 +35,7 @@ Every model has at most the remaining 18%, and Fable spends it faster.
 
 ## Plan detection
 
-`hooks/lib/_plan.mjs` reads `~/.claude.json` and its `oauthAccount` field.
+`plugins/dotclaude/lib/plan.mjs` reads `~/.claude.json` and its `oauthAccount` field.
 It does not use the keychain token.
 0.19 chose the policy below with the option `model_plan: auto`, which 0.20.0 removed.
 
@@ -55,7 +55,7 @@ The status line receives only the first two.
 
 The model lock, the profile, and the session note of 0.19 applied the policy below.
 0.20.0 removed all three uses.
-`hooks/lib/_plan.mjs` now picks only the cache time and the `api` note.
+`plugins/dotclaude/lib/plan.mjs` now picks only the cache time and the `api` note.
 Fable is never a subagent model.
 
 | Plan | Fable | Session note |
@@ -95,7 +95,7 @@ API list prices per million tokens (**official**):
   Subagents use 5 minutes.
   A prompt after the TTL, and a `/compact` after it, write the whole context again.
   dotclaude tells Claude, and so the user, when a resumed session has an expired cache.
-  It also tells them when a prompt comes after the cache time of the plan (`hooks/lib/_cache.mjs`).
+  It also tells them when a prompt comes after the cache time of the plan (`plugins/dotclaude/lib/cache.mjs`).
 - **binary:** From Claude Code 2.1.287, the SessionStart input for `resume` and `fork` has `seconds_since_last_response`, `context_tokens`, `prompt_cache_likely_expired`, and `estimated_cache_write_usd`.
   dotclaude uses them on `resume` to tell the user before the first prompt.
 - **reported:** One user found that turns more than 1 hour after the last turn were 1.6% of turns and 80% of cache writes.
@@ -205,7 +205,7 @@ It supports no effort setting.
 - `maxEffortLevel: "high"` blocks `xhigh` and `max`.
   0.19 set `xhigh`, which blocked only `max`.
   The claude.ai effort picker warns that `max` uses about 5.5x the usage on Opus 5.5 and 3.5x on Fable 5.1.
-- `SUBAGENT_EFFORTS` in `hooks/lib/_budget.mjs` lists the supported levels: Opus 5.5 `low` to `high`, Sonnet 5.5 `low` and `medium`, Haiku 4.5 none.
+- `SUBAGENT_EFFORTS` in `plugins/dotclaude/lib/budget.mjs` lists the supported levels: Opus 5.5 `low` to `high`, Sonnet 5.5 `low` and `medium`, Haiku 4.5 none.
   `agent.spawn` denies a spawn that breaks the table.
   **binary:** no hook event fires on an effort change, so the main session is not covered.
   The status line warns about it.

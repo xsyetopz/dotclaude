@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { register } from "../../plugins/dotclaude/hooks/index.mjs";
+import { register } from "../../plugins/dotclaude/hooks/module/index.mjs";
 
 const SECRET = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -55,15 +55,27 @@ async function call(handlers, $, e, result = { result: "ok" }) {
   return { r, verdict };
 }
 
-test("hooks.json names the module and SessionStart", () => {
+test("hooks.json names the module, PreToolUse, and SessionStart", () => {
   const json = JSON.parse(
     readFileSync(
       join(import.meta.dir, "../../plugins/dotclaude/hooks/hooks.json"),
       "utf8",
     ),
   );
-  expect(json.modules).toEqual(["./index.mjs"]);
-  expect(Object.keys(json.hooks)).toEqual(["SessionStart"]);
+  expect(json.modules).toEqual(["./module/index.mjs"]);
+  expect(Object.keys(json.hooks)).toEqual(["PreToolUse", "SessionStart"]);
+  for (const [event, [entry]] of Object.entries(json.hooks)) {
+    const script = entry.hooks[0].args[0];
+    expect(script).toStartWith(`\${CLAUDE_PLUGIN_ROOT}/hooks/`);
+    const file = script.replace(
+      "${CLAUDE_PLUGIN_ROOT}",
+      join(import.meta.dir, "../../plugins/dotclaude"),
+    );
+    expect(existsSync(file), event).toBe(true);
+  }
+  expect(json.hooks.PreToolUse[0].matcher).toBe(
+    "Bash|Edit|Write|MultiEdit|NotebookEdit",
+  );
   expect(typeof json.description).toBe("string");
 });
 

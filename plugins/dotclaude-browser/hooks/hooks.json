@@ -7,7 +7,9 @@
           {
             "type": "command",
             "command": "bun",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/add-browser-notes.mjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/add-browser-notes.mjs"
+            ],
             "timeout": 10
           }
         ]

@@ -53,7 +53,9 @@ Skip a section only when it has no content:
 Keep the note under about 80 lines.
 Give file paths, not pasted file contents.
 Tell the user the path.
-Tell them that a new session can start with `Read <path>, check it against the repository, and continue`.
+Then give a short prompt for the new session, in the same reply.
+The prompt names the next step and the note as `@` and its absolute path, so that Claude Code reads the note at once.
+Write the prompt for this task, and do not copy a fixed text.
 A handoff note describes one session, so it stays out of the project history.
 When the note path is not ignored by git (`git check-ignore -q <path>` exits 1), add the path to `.git/info/exclude`.
 Use that file and not `.gitignore`, because `.gitignore` is a tracked project file.

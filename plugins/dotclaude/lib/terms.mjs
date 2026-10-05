@@ -37,6 +37,7 @@ export const TERMS = [
     title: "CodeGraph index",
     enforcedBy: "the Bash guard",
   },
+  { id: "long-runs", title: "Long runs" },
 ];
 
 /** The opening tag of the clause `id`. */

@@ -4,7 +4,7 @@ This page answers one question: what does a Claude Code request contain, and whe
 Source labels (official, binary, capture, measured, reported, inference, tested) are in [Home](Home).
 
 The working rules below are the 0.19 text in `add-working-rules.mjs`.
-0.20.0 replaced it with `hooks/session-start/rules.md`.
+0.20.0 replaced it with a file, now `plugins/dotclaude/templates/context/working-rules.md`.
 The output styles `Explanatory`, `Learning`, and `Proactive` are removed, and only `Concise` stays.
 
 ## What a request contains
@@ -52,9 +52,9 @@ The profile turns on the lean prompt, and dotclaude adds its engineering, git, a
 The 0.18 rules were about 7 KB (`LIMITS.workingRulesBytes`).
 The 0.16 prompt and style took about 4.9k tokens.
 
-Since 0.20.0, `hooks/session-start/context.mjs` adds `hooks/session-start/rules.md`.
-The file has 1,942 bytes against the bound `RULES_MAX_BYTES` (2,000).
-The hook also adds `minimal-code.md` unless the option `ponytail` is `false`.
+Since 0.20.0, `plugins/dotclaude/hooks/session-start/add-session-context.mjs` adds `plugins/dotclaude/templates/context/working-rules.md`.
+The file has 2,185 bytes against the bound `RULES_MAX_BYTES` (2,200).
+The hook also adds `minimal-code.md` from the same folder unless the option `ponytail` is `false`.
 
 - The 2.1.287 prompt has the `<pasted_content>` rule, the `/<skill-name>` and `! <command>` guidance, and the rule on hard-to-reverse actions (**binary**).
   So the rules keep only the parts of the approval rule that are dotclaude's own.
@@ -182,4 +182,4 @@ The request bodies contain the `CLAUDE.md` of the user, so this page reports onl
 
 `scripts/count-tokens.mjs` counted the tokens of the working rules, the output styles, and the agent prompts.
 0.20.0 removed it, because the features that it served are gone.
-`tests/session-start.test.mjs` bounds the working rules in bytes.
+`tests/dotclaude/session-start.test.mjs` bounds the working rules in bytes.

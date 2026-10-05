@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
-import { register } from "../../plugins/dotclaude/hooks/index.mjs";
+import { register } from "../../plugins/dotclaude/hooks/module/index.mjs";
 import { CACHE_TTL_MS } from "../../plugins/dotclaude/lib/budget.mjs";
 
 const ROOT = join(import.meta.dir, "../../plugins/dotclaude");
@@ -127,9 +127,8 @@ test("the compaction adds the open-request instruction and a handoff note", asyn
   expect(row).toContain(path);
   expect(row).toContain("Do not continue the task");
   expect(row).toContain("run `/clear`");
-  expect(row).toContain(
-    `Continue from the handoff note at \`.claude/handoffs/${path.split("/").pop()}\`.`,
-  );
+  expect(row).toContain(`\`@${path}\``);
+  expect(row).not.toContain("Continue from the handoff note");
 });
 
 test("a second compaction supersedes the earlier note of the session", async () => {

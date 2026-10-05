@@ -49,7 +49,7 @@ export const SUBAGENT_EFFORTS = {
 };
 
 /** Bytes of `templates/context/working-rules.md`. A test fails above this number. */
-export const RULES_MAX_BYTES = 2000;
+export const RULES_MAX_BYTES = 2200;
 
 /** Bytes of `templates/context/minimal-code.md`. A test fails above this. */
 export const MINIMAL_CODE_MAX_BYTES = 800;

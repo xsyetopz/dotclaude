@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { contextFor } from "../../plugins/dotclaude/hooks/session-start.mjs";
+import { contextFor } from "../../plugins/dotclaude/hooks/session-start/add-session-context.mjs";
 import {
   API_CACHE_TTL_MS,
   CACHE_TTL_MS,

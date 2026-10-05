@@ -15,12 +15,12 @@ import {
   SECRET_SCAN_MAX_BYTES,
   SECRET_SCAN_TIMEOUT_MS,
   SEMBR_TIMEOUT_MS,
-} from "../lib/budget.mjs";
+} from "../../lib/budget.mjs";
 import {
   parseDefinition,
   pinnedModel,
   spawnDenial,
-} from "../lib/guards/agents.mjs";
+} from "../../lib/guards/agents.mjs";
 import {
   CLAUDE_TRAILER,
   hasClaudeAttribution,
@@ -33,17 +33,17 @@ import {
   settingsPaths,
   TRAILER_OFF_REASON,
   trailerOff,
-} from "../lib/guards/attribution.mjs";
-import { askFor, isCommit } from "../lib/guards/bash.mjs";
-import { editReasons } from "../lib/guards/edit.mjs";
+} from "../../lib/guards/attribution.mjs";
+import { askFor, isCommit } from "../../lib/guards/bash.mjs";
+import { editReasons } from "../../lib/guards/edit.mjs";
 import {
   findingsOf,
   redact,
   redactionNote,
   SCAN_ARGS,
   strings,
-} from "../lib/guards/secrets.mjs";
-import { idleNote } from "../lib/notes/cache.mjs";
+} from "../../lib/guards/secrets.mjs";
+import { idleNote } from "../../lib/notes/cache.mjs";
 import {
   definitionOf,
   graphCommands,
@@ -54,7 +54,7 @@ import {
   STATUS_COMMAND,
   SYNC_COMMAND,
   searchSymbol,
-} from "../lib/notes/codegraph.mjs";
+} from "../../lib/notes/codegraph.mjs";
 import {
   COMPACT_TEXT,
   HANDOFF_PROMPT,
@@ -62,7 +62,7 @@ import {
   handoffPath,
   handoffRow,
   supersede,
-} from "../lib/notes/compact.mjs";
+} from "../../lib/notes/compact.mjs";
 import {
   COMMAND_NOTE,
   GH_MESSAGE,
@@ -70,13 +70,13 @@ import {
   lineBreakNote,
   proseKind,
   rewrapCommand,
-} from "../lib/notes/sembr.mjs";
+} from "../../lib/notes/sembr.mjs";
 import {
   accountFrom,
   cacheTtlMs,
   claudeJsonPath,
   detectPlan,
-} from "../lib/plan.mjs";
+} from "../../lib/plan.mjs";
 
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 

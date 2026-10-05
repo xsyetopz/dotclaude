@@ -17,10 +17,10 @@ The rejected alternatives still hold.
 - **Sized for Pro.**
   One set of usage bounds applies on every plan.
   Larger plans reach their limits later.
-  The only plan-specific value is the cache time, which `hooks/lib/_plan.mjs` picks by plan.
+  The only plan-specific value is the cache time, which `plugins/dotclaude/lib/plan.mjs` picks by plan.
   The `plans` object of the settings profile is empty ([Plans and models](Plans-and-Models#plan-detection)).
 - **One owner for each number.**
-  `hooks/lib/_budget.mjs` holds the bounds.
+  `plugins/dotclaude/lib/budget.mjs` holds the bounds.
   Tests pin its copies in code and config, not in prose.
 - **No banned-phrase lists.**
   Claude routes around them with synonyms.
@@ -50,32 +50,31 @@ The rejected alternatives still hold.
   A bug in a guard must not stop the work of the user.
   The guards are a best-effort parser, not a sandbox.
 - **One module for the tool hooks.**
-  `hooks.json` loads `hooks/register.mjs` as a hooks module.
+  `hooks.json` loads `plugins/dotclaude/hooks/module/index.mjs` as a hooks module.
   The module handles `tool.call`, `agent.spawn`, `prompt.submit`, `turn.complete`, `session.compact`, and `tool.check`.
-  A tool call therefore starts no process.
-  One classic command hook remains: `hooks/session-start/context.mjs` ([Claude mods](Claude-Mods)).
+  Two classic command hooks remain ([Claude mods](Claude-Mods)):
+  `plugins/dotclaude/hooks/session-start/add-session-context.mjs`, and `plugins/dotclaude/hooks/pre-tool-use/ask-guarded-calls.mjs`, which keeps the asks of the guards in auto mode.
+  So only a `Bash`, `Edit`, or `Write` call starts a process.
   0.19 started `hooks/dispatch.mjs` once for each event.
   **measured** (2026-09-29, 0.19, 50 `Bash` calls): 7 hook processes per call became 2.
   CPU time fell from about 164 ms to 86 ms per call.
   A bare `bun` start takes 5 ms.
 - **Layered imports.**
-  Event hooks import only `hooks/lib`.
-  `hooks/lib` imports only itself.
-  Only the module `hooks/register.mjs` also imports the event actions.
-  Skill scripts may import `hooks/lib`.
+  `plugins/dotclaude/lib/` imports only itself.
+  `hooks/`, `status-line/`, and the skill scripts import only `lib/` and their own folder.
 
 ## Enforced bounds
 
 | Scenario | Bound | Mechanism | Check |
 | --- | --- | --- | --- |
-| A subagent works a long task | `maxTurns` in the agent file: 20 for `test-runner`, 40 for `investigator`, 60 for the others, 80 for `implementer` | Claude Code ends the agent at the limit | `tests/agents.test.mjs` |
-| A subagent model and effort | Opus 5.5 `low` to `high`, Sonnet 5.5 `low` and `medium`, Haiku 4.5 none | `agent.spawn` denial from `SUBAGENT_EFFORTS` (`guard_agents`) | `tests/agents.test.mjs`, `tests/module-notes.test.mjs` |
-| The main conversation grows | Compaction at 150k | `autoCompactWindow` in the profile | `tests/setup.test.mjs` |
-| Claude spawns `general-purpose` | Refused | `Agent(general-purpose)` deny rule in the profile | `tests/setup.test.mjs` |
+| A subagent works a long task | `maxTurns` in the agent file: 20 for `test-runner`, 40 for `investigator`, 60 for the others, 80 for `implementer` | Claude Code ends the agent at the limit | `tests/dotclaude/agents.test.mjs` |
+| A subagent model and effort | Opus 5.5 `low` to `high`, Sonnet 5.5 `low` and `medium`, Haiku 4.5 none | `agent.spawn` denial from `SUBAGENT_EFFORTS` (`guard_agents`) | `tests/dotclaude/agents.test.mjs`, `tests/dotclaude/module-notes.test.mjs` |
+| The main conversation grows | Compaction at 150k | `autoCompactWindow` in the profile | `tests/dotclaude/setup.test.mjs` |
+| Claude spawns `general-purpose` | Refused | `Agent(general-purpose)` deny rule in the profile | `tests/dotclaude/setup.test.mjs` |
 | Fan-out | 5 subagents, and 5 agents per workflow, at once | profile env | none |
 | A subagent runs in the background | It runs in the foreground and causes no wake turns | `CLAUDE_CODE_FORK_SUBAGENT=0` in the profile | none |
-| Text of dotclaude on every request | `rules.md` at most 2,000 bytes | `RULES_MAX_BYTES` | `tests/session-start.test.mjs` |
-| Weekly review | The usage shares in [Usage evidence](Usage-Evidence) are reproducible | `scripts/usage-report.mjs` | none |
+| Text of dotclaude on every request | `working-rules.md` at most 2,200 bytes | `RULES_MAX_BYTES` | `tests/dotclaude/session-start.test.mjs` |
+| Weekly review | The usage shares in [Usage evidence](Usage-Evidence) are reproducible | `tools/usage-report.mjs` | none |
 
 The profile rows need `/dotclaude:setup`.
 The `maxTurns` and spawn rows need only the plugin.
@@ -151,7 +150,7 @@ dotclaude added no guard for this, because the refusal already stops the command
 ## The routing rule (0.19 history)
 
 0.20.0 removed the routing rule and the delegation note, because users report cost blow-ups from subagents.
-`scripts/usage-report.mjs` still reports the delegation share.
+`tools/usage-report.mjs` still reports the delegation share.
 
 0.19.0 replaced the subagent rule "Work in the main conversation, and use a subagent only for …" with a routing rule.
 The routing rule tells Claude to delegate work whose tool results it does not need later.

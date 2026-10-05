@@ -3,7 +3,7 @@
 // trailer check of the Bash guard.
 
 import { expect, test } from "bun:test";
-import { gitNote } from "../../plugins/dotclaude/hooks/session-start.mjs";
+import { gitNote } from "../../plugins/dotclaude/hooks/session-start/add-session-context.mjs";
 import {
   attributionNote,
   hasClaudeAttribution,

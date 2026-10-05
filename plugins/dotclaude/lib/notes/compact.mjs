@@ -76,8 +76,9 @@ Do not continue the task in this context, because each turn reads the whole comp
 Do not use a tool.
 Send one short reply to the user, then stop.
 In the reply, tell the user that the note is at \`.claude/handoffs/${name}\`.
-Tell the user to run \`/clear\` and then to send this prompt:
-Continue from the handoff note at \`.claude/handoffs/${name}\`.
+Tell the user to run \`/clear\` and then to send a prompt that you write.
+Write a short prompt that names the next step of the task and the note as \`@${path}\`.
+The \`@\` and the absolute path make Claude Code read the note into the fresh session.
 </compaction_handoff>`,
     ),
     toolUses: [],

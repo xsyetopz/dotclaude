@@ -1,6 +1,6 @@
 // SessionStart: adds context. A resumed session with an expired prompt cache
 // and a large context gets the cost advice. A new, cleared, or compacted session gets the working
-// rules and the minimal code rules, and a new or cleared one also gets the
+// rules, the long-run rules, and the minimal code rules, and a new or cleared one also gets the
 // pointer to the newest open handoff note. A session in a git repository also
 // gets the git attribution note, and the CodeGraph init note when the
 // repository has no index. At startup, the user gets a note when the
@@ -10,7 +10,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { COLD_RESUME_MIN_TOKENS } from "../lib/budget.mjs";
+import { COLD_RESUME_MIN_TOKENS } from "../../lib/budget.mjs";
 import {
   attributionNote,
   LOGIN_ARGV,
@@ -20,11 +20,11 @@ import {
   OTHER_OWNER_NOTE,
   ownRepo,
   settingsPaths,
-} from "../lib/guards/attribution.mjs";
-import { resumeNote } from "../lib/notes/cache.mjs";
-import { initNote } from "../lib/notes/codegraph.mjs";
-import { newestOpen, pointer } from "../lib/notes/handoff.mjs";
-import { accountFrom, claudeJsonPath, detectPlan } from "../lib/plan.mjs";
+} from "../../lib/guards/attribution.mjs";
+import { resumeNote } from "../../lib/notes/cache.mjs";
+import { initNote } from "../../lib/notes/codegraph.mjs";
+import { newestOpen, pointer } from "../../lib/notes/handoff.mjs";
+import { accountFrom, claudeJsonPath, detectPlan } from "../../lib/plan.mjs";
 import {
   LAUNCHERS,
   launcherText,
@@ -32,8 +32,8 @@ import {
   profileFor,
   staleSetupNote,
   withClaudeMdBlock,
-} from "../lib/setup/diff.mjs";
-import { clause, TERMS_OF_USE } from "../lib/terms.mjs";
+} from "../../lib/setup/diff.mjs";
+import { clause, TERMS_OF_USE } from "../../lib/terms.mjs";
 
 /** The plan from the environment and the account in `.claude.json`. */
 function localPlan(env = { HOME: os.homedir(), ...process.env }) {
@@ -76,11 +76,12 @@ export function gitNote(model, root, exec = run, env = process.env) {
   return attributionNote(model, mergeSettings(texts));
 }
 
-const PLUGIN_ROOT = path.join(import.meta.dirname, "..");
+const PLUGIN_ROOT = path.join(import.meta.dirname, "..", "..");
 const TEMPLATES = path.join(PLUGIN_ROOT, "templates");
 const RULES = path.join(TEMPLATES, "context", "working-rules.md");
 // The idea of Ponytail (github.com/DietrichGebert/ponytail, MIT) in our words.
 const MINIMAL_CODE = path.join(TEMPLATES, "context", "minimal-code.md");
+const LONG_RUNS = path.join(TEMPLATES, "context", "long-runs.md");
 
 function notesIn(dir) {
   try {
@@ -124,6 +125,12 @@ export function contextFor(
   const parts = [
     `${TERMS_OF_USE}\n\n${clause("working-rules", `<working_rules>\n${fs.readFileSync(RULES, "utf8").trim()}\n</working_rules>`)}`,
   ];
+  parts.push(
+    clause(
+      "long-runs",
+      `<long_runs>\n${fs.readFileSync(LONG_RUNS, "utf8").trim()}\n</long_runs>`,
+    ),
+  );
   if (ponytail !== "false")
     parts.push(
       clause(

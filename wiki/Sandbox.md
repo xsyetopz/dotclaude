@@ -6,7 +6,7 @@ Use it to see a hook, the status line, or an agent work in a real session before
 
 ## Why a sandbox
 
-`claude --plugin-dir .` in your own setup loads the checkout next to your installed dotclaude, your settings, and your sessions.
+`claude --plugin-dir plugins/dotclaude` in your own setup loads the checkout next to your installed dotclaude, your settings, and your sessions.
 A test there can change your settings files and write to your session history.
 The sandbox has its own `CLAUDE_CONFIG_DIR` and `HOME`, so the test changes only the sandbox.
 That includes the shell startup files that `/dotclaude:setup` changes.
@@ -24,7 +24,7 @@ just sandbox-clean                 # remove the sandbox
 
 Arguments after `just sandbox` go to `claude`.
 The script loads the checkout and each plugin in `plugins/`, such as `dotclaude-browser` and `dotclaude-jev`.
-`scripts/sandbox.mjs` does the work, and `bun scripts/sandbox.mjs` is the same without `just`.
+`tools/sandbox.mjs` does the work, and `bun tools/sandbox.mjs` is the same without `just`.
 
 | Variable | Default | Use |
 | --- | --- | --- |
@@ -124,7 +124,7 @@ tmux kill-session -t sandbox
 - Wait some seconds after the start and after each prompt before you read the screen.
 - Send the text with `-l` and `Enter` in a second command.
   If you do not, tmux can read words of the text as key names.
-- If `just` in the pane stops with "failed to get current directory", run `bun <repo>/scripts/sandbox.mjs` in the pane instead.
+- If `just` in the pane stops with "failed to get current directory", run `bun <repo>/tools/sandbox.mjs` in the pane instead.
 - Subagent rows show under the prompt when a background agent runs.
   Ask for an agent with `run_in_background` to see them.
 
@@ -134,7 +134,7 @@ To test a status line script without a session, give it input on stdin:
 
 ```sh
 echo '{"columns":100,"tasks":[{"id":"a1","model":"claude-sonnet-5-5",
-  "tokenCount":5000}]}' | bun status-line/subagents.mjs
+  "tokenCount":5000}]}' | bun plugins/dotclaude/status-line/subagents.mjs
 ```
 
 Claude Code does not log a status line command that works.

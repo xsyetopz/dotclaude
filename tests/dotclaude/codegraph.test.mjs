@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { register } from "../../plugins/dotclaude/hooks/index.mjs";
+import { register } from "../../plugins/dotclaude/hooks/module/index.mjs";
 import {
   CODEGRAPH_INDEX_TIMEOUT_MS,
   CODEGRAPH_SYNC_TIMEOUT_MS,

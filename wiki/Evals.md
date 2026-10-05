@@ -49,7 +49,7 @@ The 0.20.0 profile sets 150k.
 ## Compactions before a handoff
 
 **Measured** on 2026-09-30 from local transcripts, with no Claude usage.
-`bun scripts/compaction-report.mjs --max-pre 135000` gives these numbers.
+`bun tools/compaction-report.mjs --max-pre 135000` gives these numbers.
 It splits each compacted main session into parts at its compactions.
 A needed token is one that a tool result of an earlier part introduced.
 Claude used it in the first 40 tool calls of a later part.
@@ -83,7 +83,7 @@ The data are 14 sessions with the 150k `autoCompactWindow`, with up to 27 compac
 
 ## Behavior evals
 
-The suite `evals/` runs with `claude plugin eval`.
+The suite `plugins/dotclaude/evals/` runs with `claude plugin eval`.
 The command repeats each case without the plugin as a baseline.
 The suite has 13 cases:
 
@@ -110,11 +110,11 @@ The case `t4-slices` of the old layout tested a part that 0.20.0 removed.
 
 Each code case has a hidden test oracle, `oracle.sh`, that the agent never sees.
 `claude plugin eval` has no grader that runs a command.
-Thus `bun evals/oracle.mjs <result.json>` runs each oracle after the eval, in a copy of the kept workspace, and adds an `oracle` grader.
+Thus `bun plugins/dotclaude/evals/oracle.mjs <result.json>` runs each oracle after the eval, in a copy of the kept workspace, and adds an `oracle` grader.
 Graders marked `arm: with-only` check that a dotclaude part fired.
 The baseline arm does not score them.
 
-`bun evals/report.mjs <result.json>` reports each case as trials passed out of trials run.
+`bun plugins/dotclaude/evals/report.mjs <result.json>` reports each case as trials passed out of trials run.
 It adds a 95% Wilson interval and pass^k.
 The suite mean uses standard errors clustered by case.
 The effect of the plugin is the paired per-case difference.
@@ -240,7 +240,7 @@ The cases let the same rule check the move.
 `just eval-agent <model> <effort> [runs]` runs both cases.
 The main conversation stays on Opus 5.5 (`--model opus`).
 `CLAUDE_CODE_SUBAGENT_MODEL` sets the model of the agent, and `CLAUDE_CODE_EFFORT_LEVEL` sets the effort, as in the 0.17.1 sweep.
-The recipe then runs `evals/oracle.mjs` and `evals/report.mjs`.
+The recipe then runs `plugins/dotclaude/evals/oracle.mjs` and `plugins/dotclaude/evals/report.mjs`.
 
 | Arm | Command | Old setting of |
 | --- | --- | --- |

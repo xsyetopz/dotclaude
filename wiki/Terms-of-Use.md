@@ -5,7 +5,7 @@ The user installs dotclaude, and with it accepts these terms for each session.
 At session start, the agent gets the `dotclaude_terms_of_use` block, which says that each clause is a rule of the user.
 Each note comes in a `dotclaude_terms` tag with the number and the title of its clause.
 An enforced clause has a hook that denies, asks about, or changes a call that breaks the clause.
-`hooks/lib/_terms.mjs` holds the list, and a test compares this page with it.
+`plugins/dotclaude/lib/terms.mjs` holds the list, and a test compares this page with it.
 
 | Clause | Title | Note | Enforced by |
 | --- | --- | --- | --- |
@@ -21,6 +21,7 @@ An enforced clause has a hook that denies, asks about, or changes a call that br
 | 10 | Second opinion (dotclaude-jev) | `second_opinion`, at session start | The hooks module of the plugin: when `TYPESAFE_API_KEY` is set, it asks Jev about each `AskUserQuestion` question, and adds the pick of Jev to a question that facts decide |
 | 11 | Line breaks | `line_breaks`, after a commit, `gh` message, `Write`, or `Edit` with prose that breaks at a column | The sembr hook: it rewraps the message of a command, and gives the fixed text of an edit |
 | 12 | CodeGraph index | `codegraph_index`, at session start in a git repository without a CodeGraph index, unless the `codegraph` option is off | The Bash guard: an ask before `codegraph init` or `codegraph uninit` |
+| 13 | Long runs | `long_runs`, at session start | Not enforced |
 
 A deny reason of an enforced clause names the clause.
 A clause that is not enforced has no hook that can see a break of it, such as code that is larger than it needs to be.

@@ -7,7 +7,7 @@ import path from "node:path";
 
 const SCRIPT = path.join(
   import.meta.dirname,
-  "../../plugins/dotclaude-browser/hooks/add-browser-notes.mjs",
+  "../../plugins/dotclaude-browser/hooks/session-start/add-browser-notes.mjs",
 );
 
 function notes(env) {

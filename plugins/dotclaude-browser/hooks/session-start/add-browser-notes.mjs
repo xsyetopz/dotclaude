@@ -10,7 +10,7 @@ const CLOAKBROWSER_NOTE =
   "Use CloakBrowser as the browser backend, not plain `agent-browser`. Follow the skill's CloakBrowser section.";
 
 // Clause 9 of the dotclaude Terms of Use. A test compares the tag with
-// `hooks/lib/_terms.mjs`, which this plugin cannot import.
+// `plugins/dotclaude/lib/terms.mjs`, which this plugin cannot import.
 export const CLAUSE_TAG =
   '<dotclaude_terms clause="9" title="Web browser (dotclaude-browser)">';
 

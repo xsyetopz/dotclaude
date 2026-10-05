@@ -10,7 +10,7 @@ just lint                    # biome ci (lint and format)
 just validate                # claude plugin validate --strict
 just check                   # all three
 just bump minor --dry-run    # preview a version bump
-claude --plugin-dir . plugin details dotclaude  # inventory and token cost
+claude --plugin-dir plugins/dotclaude plugin details dotclaude  # inventory and token cost
 just usage --days 7          # where your usage went
 just sandbox                 # Claude Code with this checkout, own config
 just sandbox-clean           # remove the sandbox
@@ -32,15 +32,14 @@ The plugin uses Bun ESM with no dependencies at run time.
 ## Layout rules
 
 - *One owner for each number.*
-  `hooks/lib/_budget.mjs` holds every usage bound.
+  `plugins/dotclaude/lib/budget.mjs` holds every usage bound.
   Tests fail when the output style, the settings profile, or the option text disagrees with it.
 - *No copy of Claude Code.*
-  Runtime JavaScript (`hooks/`, `status-line/`, `skills/`, and `plugins/`) does only the work that the latest Claude Code does not do.
+  Runtime JavaScript (`plugins/`) does only the work that the latest Claude Code does not do.
   When Claude Code has a setting, a hook, or another extension point for a need, use it.
 - *Layered imports.*
-  Event hooks import only `hooks/lib`.
-  `hooks/lib` imports only itself.
-  Only the module `hooks/register.mjs` also imports the event actions.
+  `plugins/dotclaude/lib/` imports only itself.
+  `hooks/`, `status-line/`, and the skill scripts import only `lib/` and their own folder.
 - *Guards get strings.*
   The tests give commands to the guards as strings, and never run a guarded command.
 
@@ -55,44 +54,44 @@ See the design principles on the [Design](Design) page.
 `just sandbox` runs Claude Code with the checkout as its plugin in a separate config directory.
 A test then does not change your own setup.
 [Sandbox](Sandbox) tells how to test in it, for people and for AI agents.
-To try a checkout in your own config, run `claude --plugin-dir /path/to/dotclaude`.
+To try a checkout in your own config, run `claude --plugin-dir /path/to/dotclaude/plugins/dotclaude`.
 
 ## Releases
 
-`just bump` sets one version in `.claude-plugin/plugin.json` and `package.json`.
+`just bump` sets one version in `package.json` and in the `plugin.json` of each plugin under `plugins/`.
 It also moves the `[Unreleased]` CHANGELOG entries under a dated heading.
 Before 1.0, a release can change or remove behavior without a compatibility layer.
 
 ## Evals
 
 The behavior evals run with `claude plugin eval`.
-`evals/` has 13 tasks in 5 tiers, from a one-file fix to debugging, review, investigation, and web research.
+`plugins/dotclaude/evals/` has 13 tasks in 5 tiers, from a one-file fix to debugging, review, investigation, and web research.
 Each run costs money, so run it only when you decide to.
 
 ```bash
-claude plugin eval . --model haiku --judge-model sonnet --runs 3 --scaffold \
-  --allow-tools Bash Write Edit --keep-temp --json evals/results/run.json
-bun evals/oracle.mjs evals/results/run.json   # hidden test oracles, tokens
-bun evals/report.mjs evals/results/run.json   # pass rate, pass^k, cost per pass
+claude plugin eval plugins/dotclaude --model haiku --judge-model sonnet --runs 3 --scaffold \
+  --allow-tools Bash Write Edit --keep-temp --json plugins/dotclaude/evals/results/run.json
+bun plugins/dotclaude/evals/oracle.mjs plugins/dotclaude/evals/results/run.json   # hidden test oracles, tokens
+bun plugins/dotclaude/evals/report.mjs plugins/dotclaude/evals/results/run.json   # pass rate, pass^k, cost per pass
 ```
 
 1. Write and change cases on Haiku 4.5 (`--model haiku`), because it is the cheapest model.
    Use `--tag tier-1` or `--case <name>` to run a part.
 1. Gate a release on Opus 5.5 (`--model opus`) with 3 or more runs.
 1. To compare with an earlier release, put the release in a worktree, copy the cases into it, and run the same command there.
-   Then give both results to `bun evals/report.mjs <new.json> --before <old.json>`.
+   Then give both results to `bun plugins/dotclaude/evals/report.mjs <new.json> --before <old.json>`.
 
 *Why the flags:*
 
 - `--scaffold` runs the `fixture.sh` of each case, which builds the workspace.
 - `--allow-tools` grants the tools that the cases list.
-- `evals/oracle.mjs` needs `--keep-temp`, because it runs each hidden `oracle.sh` in a copy of the kept workspace.
+- `plugins/dotclaude/evals/oracle.mjs` needs `--keep-temp`, because it runs each hidden `oracle.sh` in a copy of the kept workspace.
 - `claude plugin eval` has no grader that runs a command.
 - `--judge-model sonnet` sets the model of the `llm` graders.
 
 When the plugin wrote to the `home/` or `tmp/` of a run, the CLI seals them in `sealed/` with mode 000.
 It warns you once for each run.
-`evals/oracle.mjs` opens the seal only for the copy, and it runs `git` only in the copy.
+`plugins/dotclaude/evals/oracle.mjs` opens the seal only for the copy, and it runs `git` only in the copy.
 
 The default judge is Haiku 4.5.
 It failed a right reply of the removed `t4-slices` case in 3 of 3 runs.

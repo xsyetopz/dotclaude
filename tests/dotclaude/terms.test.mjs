@@ -20,8 +20,8 @@ import {
   TERMS,
   TERMS_OF_USE,
 } from "../../plugins/dotclaude/lib/terms.mjs";
-import { CLAUSE_TAG } from "../../plugins/dotclaude-browser/hooks/add-browser-notes.mjs";
-import { register } from "../../plugins/dotclaude-jev/hooks/register.mjs";
+import { CLAUSE_TAG } from "../../plugins/dotclaude-browser/hooks/session-start/add-browser-notes.mjs";
+import { register } from "../../plugins/dotclaude-jev/hooks/module/index.mjs";
 
 const root = join(import.meta.dir, "..", "..");
 const read = (file) => readFileSync(join(root, file), "utf8");
@@ -48,9 +48,9 @@ test("each note of dotclaude is a clause", () => {
 
 test("the plugins use the tags of the clause list", () => {
   expect(CLAUSE_TAG).toBe(clauseTag("browser"));
-  expect(read("plugins/dotclaude-jev/hooks/second-opinion.md")).toStartWith(
-    clauseTag("second-opinion"),
-  );
+  expect(
+    read("plugins/dotclaude-jev/hooks/session-start/second-opinion.md"),
+  ).toStartWith(clauseTag("second-opinion"));
 });
 
 test("the wiki lists each clause with its number", () => {

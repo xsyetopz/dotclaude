@@ -35,7 +35,9 @@ It also sets the status line and the subagent status line.
 | Spawn rules | Deny a subagent spawn that breaks the model and effort rules. |
 | Compaction | Keep an unapproved plan open, fork a handoff note, and tell the user to run `/clear`. |
 | Cache notes | Tell Claude when the prompt cache expired. |
-| CodeGraph | Add the callers and callees of a function, method, or class to a search for its name, in a project with a CodeGraph index. |
+| CodeGraph | Add the callers and callees of a function, method, or class to a search for its name, in a project with a CodeGraph index. In a git repository with no index, tell Claude to run `codegraph init -y`, and ask the user before `codegraph init` and `codegraph uninit`. |
+| Long runs | Tell Claude to time one run of a step of unknown speed, and to run long work in the background. |
+| Setup notice | Tell the user once for each plugin version when the user setup differs from the profile, and recommend `/dotclaude:setup`. |
 | Line breaks | Rewrap commit and `gh` messages with semantic line breaks by `sembr`, and give Claude the `sembr` text for prose that it wrote with breaks at a column. |
 | Minimal code | Tell Claude to build the minimum, with the idea of Ponytail. |
 | Status line | Model, effort, context against the compaction point, cache expiry, and usage limits. |
@@ -115,7 +117,7 @@ claude plugin update dotclaude@dotclaude
 
 0.20.0 removed many 0.19 parts.
 See its changelog entry for the list.
-To try an unreleased checkout, run `claude --plugin-dir /path/to/dotclaude`.
+To try an unreleased checkout, run `claude --plugin-dir /path/to/dotclaude/plugins/dotclaude`.
 
 ## Development
 
