@@ -8,7 +8,7 @@ export const TERMS = [
   {
     id: "working-rules",
     title: "Working rules",
-    enforcedBy: "the guards and the `verify` Stop hook",
+    enforcedBy: "the guards",
   },
   { id: "minimal-code", title: "Minimal code" },
   {
@@ -26,6 +26,11 @@ export const TERMS = [
     id: "second-opinion",
     title: "Second opinion (dotclaude-jev)",
     enforcedBy: "a hook that adds the Jev pick to `AskUserQuestion`",
+  },
+  {
+    id: "line-breaks",
+    title: "Line breaks",
+    enforcedBy: "the sembr hook",
   },
 ];
 

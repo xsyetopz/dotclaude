@@ -32,12 +32,15 @@ import {
   HANDOFF_SESSIONS_MAX,
   SECRET_SCAN_MAX_BYTES,
   SECRET_SCAN_TIMEOUT_MS,
+  SEMBR_TIMEOUT_MS,
 } from "./lib/_budget.mjs";
 import { idleNote } from "./lib/_cache.mjs";
 import {
+  definitionOf,
   graphCommands,
   graphNote,
   indexState,
+  queryCommand,
   STATUS_COMMAND,
   SYNC_COMMAND,
   searchSymbol,
@@ -64,6 +67,14 @@ import {
   SCAN_ARGS,
   strings,
 } from "./lib/_secrets.mjs";
+import {
+  COMMAND_NOTE,
+  GH_MESSAGE,
+  lineBreakFixes,
+  lineBreakNote,
+  proseKind,
+  rewrapCommand,
+} from "./lib/_sembr.mjs";
 
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 
@@ -170,6 +181,56 @@ async function trailerVerdict($, e, options) {
     : undefined;
 }
 
+/** `run(argv, stdin)` for `sembr`, in the temporary folder. */
+const sembrRun = ($) => async (argv, stdin) =>
+  $.process.run(argv, {
+    cwd: (await $.env.get("TMPDIR")) || "/tmp",
+    stdin,
+    timeoutMs: SEMBR_TIMEOUT_MS,
+  });
+
+/**
+ * The command of a commit or a `gh` message with semantic line breaks, or
+ * undefined when it stays the same.
+ */
+async function messageCommand($, e, options) {
+  if (e.tool !== "Bash" || !enabled(options, "sembr")) return undefined;
+  const command = String(e.command ?? "");
+  const commit = isCommit(command);
+  if (!commit && !GH_MESSAGE.test(command)) return undefined;
+  const out = await rewrapCommand(sembrRun($), command, commit);
+  return out === command ? undefined : out;
+}
+
+/** The new text of an edit, or undefined for another tool. */
+function editText(e) {
+  switch (e.tool) {
+    case "Edit":
+      return e.new_string;
+    case "MultiEdit":
+      return Array.isArray(e.edits)
+        ? e.edits.map((x) => x.new_string ?? "").join("\n\n")
+        : undefined;
+    case "Write":
+      return e.content;
+    default:
+      return undefined;
+  }
+}
+
+/** The note about prose that an edit wrote with column breaks, or undefined. */
+async function lineBreaks($, e, options) {
+  if (!enabled(options, "sembr")) return undefined;
+  const text = editText(e);
+  const file = String(e.file_path ?? "");
+  const kind = proseKind(file);
+  if (typeof text !== "string" || !kind) return undefined;
+  const fixes = await lineBreakFixes(sembrRun($), text, kind);
+  return fixes?.length
+    ? lineBreakNote(file.split("/").pop(), fixes)
+    : undefined;
+}
+
 /**
  * The secrets that Betterleaks finds in `text`, or null when it is missing,
  * fails, or gives a report that is not valid.
@@ -240,10 +301,13 @@ async function graphNotes($, e, graph) {
     graph.warned.add(root);
     notes.push(index.note);
   }
+  const query = await run(queryCommand(symbol)).catch(() => null);
+  const definition = definitionOf(query?.stdout, symbol);
+  if (!definition) return notes;
   const [callers, callees] = await Promise.all(
     graphCommands(symbol).map((argv) => run(argv).catch(() => null)),
   );
-  const note = graphNote(symbol, callers?.stdout, callees?.stdout);
+  const note = graphNote(definition, callers?.stdout, callees?.stdout);
   return note ? [...notes, note] : notes;
 }
 
@@ -321,9 +385,10 @@ export function register(on, options) {
 
   on("tool.call", async ($, e, next) => {
     const id = e.tool_use_id;
-    const [reason, trailer] = await Promise.all([
+    const [reason, trailer, command] = await Promise.all([
       askReason($, e, options).catch(() => undefined),
       trailerVerdict($, e, options).catch(() => undefined),
+      messageCommand($, e, options).catch(() => undefined),
     ]);
     // A deny wins, and the reasons of two asks are joined.
     const verdict =
@@ -339,7 +404,7 @@ export function register(on, options) {
     if (keep) asks.set(id, verdict);
     let r;
     try {
-      r = await next(e);
+      r = await next(command ? { ...e, command } : e);
     } finally {
       if (keep) asks.delete(id);
     }
@@ -358,8 +423,13 @@ export function register(on, options) {
           context: [...(r.context ?? []), redactionNote(count, findings)],
         };
     }
-    if (!enabled(options, "codegraph")) return out;
-    const notes = await graphNotes($, e, graph).catch(() => []);
+    const notes = [
+      command && COMMAND_NOTE,
+      await lineBreaks($, e, options).catch(() => undefined),
+      ...(enabled(options, "codegraph")
+        ? await graphNotes($, e, graph).catch(() => [])
+        : []),
+    ].filter(Boolean);
     return notes.length
       ? { ...out, context: [...(out.context ?? []), ...notes] }
       : out;
@@ -409,8 +479,11 @@ export function register(on, options) {
   // nothing, and a subagent gets no note. The compaction always continues.
   on("session.compact", async ($, e, next) => {
     if (e.trigger === "precompute") return next(e);
+    // A manual `/compact` is a choice to continue in this session.
     const handoff =
-      !e.agentId && enabled(options, "compaction_handoff")
+      !e.agentId &&
+      e.trigger !== "manual" &&
+      enabled(options, "compaction_handoff")
         ? await forkHandoff($)
         : null;
     const r = await next({
@@ -420,7 +493,7 @@ export function register(on, options) {
     return handoff && r?.messages
       ? {
           ...r,
-          messages: [...r.messages, handoffRow(handoff.text, handoff.path)],
+          messages: [...r.messages, handoffRow(handoff.path)],
         }
       : r;
   });

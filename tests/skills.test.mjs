@@ -28,7 +28,7 @@ test("setup ships one profile", () => {
   expect(existsSync(new URL("optional.json", dir))).toBe(false);
 });
 
-test("plugin manifest keeps only the guard, CodeGraph, and handoff options", () => {
+test("plugin manifest keeps only the guard, CodeGraph, handoff, and sembr options", () => {
   const manifest = JSON.parse(
     readFileSync(new URL("../.claude-plugin/plugin.json", import.meta.url)),
   );
@@ -40,5 +40,6 @@ test("plugin manifest keeps only the guard, CodeGraph, and handoff options", () 
     "codegraph",
     "ponytail",
     "compaction_handoff",
+    "sembr",
   ]);
 });

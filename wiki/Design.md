@@ -53,7 +53,7 @@ The rejected alternatives still hold.
   `hooks.json` loads `hooks/register.mjs` as a hooks module.
   The module handles `tool.call`, `agent.spawn`, `prompt.submit`, `turn.complete`, `session.compact`, and `tool.check`.
   A tool call therefore starts no process.
-  Two classic command hooks remain: `hooks/session-start/context.mjs` and `hooks/stop/verify.mjs` ([Claude mods](Claude-Mods)).
+  One classic command hook remains: `hooks/session-start/context.mjs` ([Claude mods](Claude-Mods)).
   0.19 started `hooks/dispatch.mjs` once for each event.
   **measured** (2026-09-29, 0.19, 50 `Bash` calls): 7 hook processes per call became 2.
   CPU time fell from about 164 ms to 86 ms per call.

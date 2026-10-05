@@ -61,10 +61,7 @@ dotclaude has run most of its hooks in a module since 0.18.
 | Cold-cache note | `prompt.submit`, `turn.complete` | A hook attaches context "on the way down", in the input to `next` (**official**, d.ts). `turn.complete` stores the time of the last turn. |
 | Compaction instruction and handoff fork | `session.compact` | A `precompute` installs nothing, and the real compaction fires the event again (**official**, d.ts). The fork runs before `next`, so it sees the whole conversation. |
 
-These stay classic command hooks:
-
-- `SessionStart`: `session.start` does not fire after `/clear`, `/resume`, or a compaction, and it cannot add context (**official**, d.ts).
-- `Stop`: `turn.complete` cannot block (**official**, d.ts).
+`SessionStart` stays a classic command hook, because `session.start` does not fire after `/clear`, `/resume`, or a compaction, and it cannot add context (**official**, d.ts).
 
 ## Events that 0.19 used
 

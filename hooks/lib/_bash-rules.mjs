@@ -29,15 +29,25 @@ export function tokenize(command) {
         i += 1;
         word += command[i];
       } else word += c;
-    } else if (c === "'" || c === '"') {
-      quote = c;
-      word ??= "";
-    } else if (c === "\\") {
-      i += 1;
-      word = (word ?? "") + (command[i] ?? "");
-    } else if (c === " " || c === "\t") endWord();
-    else if (";|&\n()`".includes(c)) endPart();
-    else word = (word ?? "") + c;
+    } else
+      switch (c) {
+        case "'":
+        case '"':
+          quote = c;
+          word ??= "";
+          break;
+        case "\\":
+          i += 1;
+          word = (word ?? "") + (command[i] ?? "");
+          break;
+        case " ":
+        case "\t":
+          endWord();
+          break;
+        default:
+          if (";|&\n()`".includes(c)) endPart();
+          else word = (word ?? "") + c;
+      }
   }
   endPart();
   return parts;
@@ -183,19 +193,26 @@ const isSecretFile = (word) =>
 function reasonFor(words, ctx) {
   const name = base(words[0]);
   const args = words.slice(1);
-  if (name === "git") return gitReason(words);
-  if (name === "rm" && hasFlag(args, "--recursive", "rR"))
-    return rmReason(args, ctx);
-  if (name === "dd" && args.some((a) => a.startsWith("of=/dev/")))
-    return "This command writes straight to a device.";
+  switch (name) {
+    case "git":
+      return gitReason(words);
+    case "rm":
+      if (hasFlag(args, "--recursive", "rR")) return rmReason(args, ctx);
+      break;
+    case "dd":
+      if (args.some((a) => a.startsWith("of=/dev/")))
+        return "This command writes straight to a device.";
+      break;
+    case "chmod":
+      if (
+        hasFlag(args, "--recursive", "R") &&
+        args.some((a) => /^(0?777|a\+rwx|ugo\+rwx)$/.test(a))
+      )
+        return "This command makes a whole tree writable for all users.";
+      break;
+  }
   if (name === "mkfs" || name.startsWith("mkfs."))
     return "This command erases the data of a device.";
-  if (
-    name === "chmod" &&
-    hasFlag(args, "--recursive", "R") &&
-    args.some((a) => /^(0?777|a\+rwx|ugo\+rwx)$/.test(a))
-  )
-    return "This command makes a whole tree writable for all users.";
   if (READERS.has(name) && args.some(isSecretFile))
     return "This command reads a file that can hold secrets.";
   return undefined;

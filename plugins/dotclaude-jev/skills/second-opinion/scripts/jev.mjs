@@ -49,9 +49,14 @@ export function parseArgs(argv) {
 
 /** The state text: stdin for `-`, a file when the path exists, else the text itself. */
 export function readState(arg, stdin) {
-  if (arg === undefined) return "";
-  if (arg === "-") return stdin();
-  return existsSync(arg) ? readFileSync(arg, "utf8") : arg;
+  switch (arg) {
+    case undefined:
+      return "";
+    case "-":
+      return stdin();
+    default:
+      return existsSync(arg) ? readFileSync(arg, "utf8") : arg;
+  }
 }
 
 /** The request body for the parsed arguments. */
@@ -77,23 +82,28 @@ export function buildBody({ kind, words, state }, stdin) {
   const [question, ...items] = words;
   if (!question) throw new UsageError(`Give the question. ${USAGE}`);
   const q = { type: kind, instructions: question };
-  if (kind === "choice") {
-    if (items.length < 2 || items.length > 255)
-      throw new UsageError(
-        "`pick` needs 2 to 255 options, each as `key` or `key=description`.",
+  switch (kind) {
+    case "choice":
+      if (items.length < 2 || items.length > 255)
+        throw new UsageError(
+          "`pick` needs 2 to 255 options, each as `key` or `key=description`.",
+        );
+      q.criteria = Object.fromEntries(
+        items.map((item) => {
+          const at = item.indexOf("=");
+          return at > 0
+            ? [item.slice(0, at), item.slice(at + 1)]
+            : [item, null];
+        }),
       );
-    q.criteria = Object.fromEntries(
-      items.map((item) => {
-        const at = item.indexOf("=");
-        return at > 0 ? [item.slice(0, at), item.slice(at + 1)] : [item, null];
-      }),
-    );
-  } else if (kind === "score") {
-    if (items.length < 2 || items.length > 10)
-      throw new UsageError(
-        "`rate` needs 2 to 10 levels, from the lowest to the highest.",
-      );
-    q.criteria = items;
+      break;
+    case "score":
+      if (items.length < 2 || items.length > 10)
+        throw new UsageError(
+          "`rate` needs 2 to 10 levels, from the lowest to the highest.",
+        );
+      q.criteria = items;
+      break;
   }
   return { state: readState(state, stdin), model: MODEL, questions: { q } };
 }

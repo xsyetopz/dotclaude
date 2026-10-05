@@ -1,7 +1,7 @@
 # dotclaude
 
 dotclaude is a small Claude Code plugin for software engineering.
-It keeps only the parts that Claude Code does not cover: guards, model and effort rules, compaction and cold-cache notes, a verify gate, a status line, and role agents.
+It keeps only the parts that Claude Code does not cover: guards, model and effort rules, compaction and cold-cache notes, a status line, and role agents.
 It optimizes for the most quality per unit of usage quota, not for speed.
 
 [The wiki](https://github.com/xsyetopz/dotclaude/wiki) tells what each part does and why.
@@ -31,19 +31,19 @@ It also sets the status line and the subagent status line.
 
 | Part | What it does |
 | --- | --- |
-| Guards | Ask before destructive commands and before edits that remove test assertions or change generated files. Redact secrets from tool output. |
+| Guards | Ask before destructive commands and before edits that remove test assertions, change generated files, or write a redaction marker. Redact secrets from tool output. |
 | Spawn rules | Deny a subagent spawn that breaks the model and effort rules. |
-| Compaction | Keep an unapproved plan open, and fork a handoff note. |
+| Compaction | Keep an unapproved plan open, fork a handoff note, and tell the user to run `/clear`. |
 | Cache notes | Tell Claude when the prompt cache expired. |
-| CodeGraph | Add the callers and callees of a symbol to a search for it, in a project with a CodeGraph index. |
+| CodeGraph | Add the callers and callees of a function, method, or class to a search for its name, in a project with a CodeGraph index. |
+| Line breaks | Rewrap commit and `gh` messages with semantic line breaks by `sembr`, and give Claude the `sembr` text for prose that it wrote with breaks at a column. |
 | Minimal code | Tell Claude to build the minimum, with the idea of Ponytail. |
-| Verify gate | Send Claude back once when it stops after an edit with no check. |
 | Status line | Model, effort, context against the compaction point, cache expiry, and usage limits. |
 | Agents | `investigator`, `web-researcher`, `implementer`, `reviewer`, `debugger`, `test-runner`, `reverse-engineer`. |
 | Skills | `/dotclaude:setup`, `/dotclaude:handoff`, `/dotclaude:contribute`. |
 | Style | `Concise`. |
 
-You can turn off each part in `/config` under dotclaude with the options `guard_bash`, `guard_edit`, `guard_secrets`, `guard_agents`, `codegraph`, `ponytail`, and `compaction_handoff`.
+You can turn off each part in `/config` under dotclaude with the options `guard_bash`, `guard_edit`, `guard_secrets`, `guard_agents`, `codegraph`, `ponytail`, `compaction_handoff`, and `sembr`.
 The guards run in a hooks module.
 Where Claude Code does not load modules, such as with `--bare`, no guard runs.
 

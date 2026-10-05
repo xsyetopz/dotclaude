@@ -123,8 +123,13 @@ test("the compaction adds the open-request instruction and a handoff note", asyn
     /^\/work\/app\/\.claude\/handoffs\/\d{4}-\d{2}-\d{2}-\d{4}-compaction\.md$/,
   );
   expect(files[path]).toContain("status: in-progress");
-  expect(r.messages.at(-1).text).toContain(path);
-  expect(r.messages.at(-1).text).toContain("keep the status `in-progress`");
+  const row = r.messages.at(-1).text;
+  expect(row).toContain(path);
+  expect(row).toContain("Do not continue the task");
+  expect(row).toContain("run `/clear`");
+  expect(row).toContain(
+    `Continue from the handoff note at \`.claude/handoffs/${path.split("/").pop()}\`.`,
+  );
 });
 
 test("a second compaction supersedes the earlier note of the session", async () => {
@@ -148,7 +153,7 @@ test("a second compaction supersedes the earlier note of the session", async () 
   expect(Object.keys(store["handoff-notes"])).toEqual(["s2", "s1"]);
 });
 
-test("a failed fork, a subagent, and a precompute compact without a note", async () => {
+test("a failed fork, a subagent, a precompute, and a manual compact without a note", async () => {
   const none = engine({ fork: { isAnswered: false } });
   const h = load();
   const next = async () => ({ messages: [] });
@@ -158,6 +163,7 @@ test("a failed fork, a subagent, and a precompute compact without a note", async
   const sub = engine();
   await h["session.compact"](sub.$, { trigger: "auto", agentId: "a1" }, next);
   await h["session.compact"](sub.$, { trigger: "precompute" }, next);
+  await h["session.compact"](sub.$, { trigger: "manual" }, next);
   expect(Object.keys(sub.files)).toEqual([]);
 });
 

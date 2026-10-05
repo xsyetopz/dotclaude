@@ -55,12 +55,12 @@ async function call(handlers, $, e, result = { result: "ok" }) {
   return { r, verdict };
 }
 
-test("hooks.json names the module, SessionStart, and Stop", () => {
+test("hooks.json names the module and SessionStart", () => {
   const json = JSON.parse(
     readFileSync(join(import.meta.dir, "../hooks/hooks.json"), "utf8"),
   );
   expect(json.modules).toEqual(["./register.mjs"]);
-  expect(Object.keys(json.hooks).sort()).toEqual(["SessionStart", "Stop"]);
+  expect(Object.keys(json.hooks)).toEqual(["SessionStart"]);
   expect(typeof json.description).toBe("string");
 });
 

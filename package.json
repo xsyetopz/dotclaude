@@ -1,6 +1,6 @@
 {
   "name": "dotclaude",
-  "version": "0.20.8",
+  "version": "0.21.0",
   "private": true,
   "description": "A very opinionated Claude Code plugin designed by a Rustacean",
   "type": "module",

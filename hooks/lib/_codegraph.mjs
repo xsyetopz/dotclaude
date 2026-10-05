@@ -3,7 +3,11 @@
 // The design follows the GitNexus hooks (`wiki/Usage-Evidence.md`).
 // The code is our own.
 
-import { CODEGRAPH_NEIGHBOURS, CODEGRAPH_NOTE_MAX_CHARS } from "./_budget.mjs";
+import {
+  CODEGRAPH_NEIGHBOURS,
+  CODEGRAPH_NOTE_MAX_CHARS,
+  CODEGRAPH_QUERY_LIMIT,
+} from "./_budget.mjs";
 import { clause } from "./_terms.mjs";
 
 const IDENTIFIER = /^[A-Za-z_$][\w$]{2,}$/;
@@ -56,9 +60,51 @@ function bashPattern(command) {
  * or undefined when the search is a regex, a phrase, or no search.
  */
 export function searchSymbol(e) {
-  if (e.tool === "Grep") return symbolOf(e.pattern);
-  if (e.tool === "Bash") return symbolOf(bashPattern(e.command ?? ""));
-  return undefined;
+  switch (e.tool) {
+    case "Grep":
+      return symbolOf(e.pattern);
+    case "Bash":
+      return symbolOf(bashPattern(e.command ?? ""));
+    default:
+      return undefined;
+  }
+}
+
+// The node kinds that have call edges. A search for another name, such as a
+// constant or a word in a comment, gets no note.
+const DEFINITION_KINDS = new Set([
+  "function",
+  "method",
+  "class",
+  "struct",
+  "interface",
+  "trait",
+  "protocol",
+  "component",
+]);
+
+/** The command that finds the index nodes for `symbol`. */
+export const queryCommand = (symbol) => [
+  "codegraph",
+  "query",
+  symbol,
+  "-j",
+  "-l",
+  String(CODEGRAPH_QUERY_LIMIT),
+];
+
+/**
+ * The node from `query -j` output whose name is `symbol` and that can have
+ * call edges, or undefined. `callers` and `callees` fall back to a text
+ * search for a name that is not a symbol, so the hook asks for them only
+ * after this check.
+ */
+export function definitionOf(queryText, symbol) {
+  const results = json(queryText);
+  if (!Array.isArray(results)) return undefined;
+  return results
+    .map((r) => r?.node)
+    .find((n) => n?.name === symbol && DEFINITION_KINDS.has(n.kind));
 }
 
 /** The commands to run for `symbol`, in the order of `graphNote`. */
@@ -78,22 +124,26 @@ function json(text) {
   }
 }
 
+const place = (n) => `${n.name} (${n.filePath}:${n.startLine})`;
+
 const list = (nodes) =>
   (Array.isArray(nodes) ? nodes : [])
     .filter((n) => n?.name && n.kind !== "file" && n.kind !== "import")
-    .map((n) => `${n.name} (${n.filePath}:${n.startLine})`)
+    .map(place)
     .join(", ");
 
 /**
- * The note for the search result, from the `callers -j` and `callees -j` output,
- * or undefined when the index has no edge for the symbol.
+ * The note for the search result, from the definition node of the symbol and
+ * the `callers -j` and `callees -j` output, or undefined when the index has
+ * no edge for the symbol.
  */
-export function graphNote(symbol, callersText, calleesText) {
+export function graphNote(definition, callersText, calleesText) {
   const callers = list(json(callersText)?.callers);
   const callees = list(json(calleesText)?.callees);
   if (!callers && !callees) return undefined;
+  const symbol = definition.name;
   const text = [
-    `The CodeGraph index gives these call paths of \`${symbol}\`. Use them to choose which code to read next.`,
+    `The CodeGraph index gives these call paths of the ${definition.kind} ${place(definition)}. Use them to choose which code to read next.`,
     callers && `Called by: ${callers}`,
     callees && `Calls: ${callees}`,
     "CodeGraph can link a call to a different function with the same name, such as a local helper. Before you rely on a link, read the call in the source.",
@@ -112,6 +162,7 @@ export function graphNote(symbol, callersText, calleesText) {
 /**
  * The state of the index from `codegraph status --json`: `none` when the project has no index, `stale` with a note, or `ok`.
  * `pending` is true when `codegraph sync` can make a stale index current.
+ * `codegraph sync` does not clear `reindexRecommended`, so that note names `codegraph index`.
  */
 export function indexState(statusText) {
   const s = json(statusText);
@@ -119,12 +170,8 @@ export function indexState(statusText) {
   const p = s.pendingChanges ?? {};
   const pending = (p.added ?? 0) + (p.modified ?? 0) + (p.removed ?? 0);
   if (!pending && !s.index?.reindexRecommended) return { state: "ok" };
-  const why = pending
-    ? `${pending} changed file(s) that it does not include`
-    : "a format from an earlier CodeGraph version";
-  return {
-    state: "stale",
-    pending: pending > 0,
-    note: `The CodeGraph index of this project has ${why}, so its call paths can be out of date. Run \`codegraph sync\` to update the index before you rely on them.`,
-  };
+  const note = pending
+    ? `The CodeGraph index of this project has ${pending} changed file(s) that it does not include, so its call paths can be out of date. Run \`codegraph sync\` to update the index before you rely on them.`
+    : "The CodeGraph index of this project has a format from an earlier CodeGraph version, so its call paths can be incomplete. Tell the user that `codegraph index` builds the index again.";
+  return { state: "stale", pending: pending > 0, note };
 }

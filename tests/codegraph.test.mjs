@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { CODEGRAPH_SYNC_TIMEOUT_MS } from "../hooks/lib/_budget.mjs";
 import {
+  definitionOf,
   graphNote,
   indexState,
   searchSymbol,
@@ -30,10 +31,25 @@ const CALLEES = JSON.stringify({
   ],
 });
 
+const DEFINITION = {
+  name: "parseConfig",
+  kind: "function",
+  filePath: "src/config.ts",
+  startLine: 12,
+};
+// `callers` of a name that is not a symbol gives the hits of a text search.
+const TEXT_HITS = JSON.stringify({
+  callers: [
+    { name: "main", kind: "function", filePath: "src/main.ts", startLine: 4 },
+  ],
+});
+const query = (...nodes) => JSON.stringify(nodes.map((node) => ({ node })));
+
 /**
  * A fake of the engine's `import { expect, test } from "bun:test";
 import { CODEGRAPH_SYNC_TIMEOUT_MS } from "../hooks/lib/_budget.mjs";
 import {
+  definitionOf,
   graphNote,
   indexState,
   searchSymbol,
@@ -74,9 +90,17 @@ function engine({
 } = {}) {
   const calls = [];
   const answer = ([, sub, symbol]) => {
-    if (sub === "status") return status;
-    if (sub === "sync") return "Synced";
-    if (!symbols.includes(symbol)) return `ℹ Symbol "${symbol}" not found`;
+    switch (sub) {
+      case "status":
+        return status;
+      case "sync":
+        return "Synced";
+      case "query":
+        return symbols.includes(symbol)
+          ? query({ ...DEFINITION, name: symbol })
+          : query({ ...DEFINITION, name: `${symbol}s`, kind: "constant" });
+    }
+    if (!symbols.includes(symbol)) return TEXT_HITS;
     return sub === "callers" ? CALLERS : CALLEES;
   };
   return {
@@ -139,12 +163,26 @@ test("the symbol of a search is a single name, and nothing else", () => {
   );
 });
 
-test("the note names callers and callees and leaves out file nodes", () => {
-  const note = graphNote("parseConfig", CALLERS, CALLEES);
+test("the definition is a node with the same name and call edges", () => {
+  expect(definitionOf(query(DEFINITION), "parseConfig")).toEqual(DEFINITION);
+  const others = query(
+    { ...DEFINITION, name: "parseConfigs" },
+    { ...DEFINITION, kind: "constant" },
+    { ...DEFINITION, kind: "file" },
+  );
+  expect(definitionOf(others, "parseConfig")).toBe(undefined);
+  expect(definitionOf("[]", "parseConfig")).toBe(undefined);
+  expect(definitionOf("not json", "parseConfig")).toBe(undefined);
+  expect(definitionOf(undefined, "parseConfig")).toBe(undefined);
+});
+
+test("the note names the definition, callers, and callees, and leaves out file nodes", () => {
+  const note = graphNote(DEFINITION, CALLERS, CALLEES);
+  expect(note).toContain("the function parseConfig (src/config.ts:12)");
   expect(note).toContain("Called by: main (src/main.ts:4)");
   expect(note).toContain("Calls: readFile (src/io.ts:9)");
   expect(note).not.toContain("src/cli.ts");
-  expect(graphNote("x", 'ℹ Symbol "x" not found', "")).toBe(undefined);
+  expect(graphNote(DEFINITION, 'ℹ Symbol "x" not found', "")).toBe(undefined);
 });
 
 test("the index state reads the CodeGraph status", () => {
@@ -160,6 +198,7 @@ test("the index state reads the CodeGraph status", () => {
   );
   expect(old.state).toBe("stale");
   expect(old.pending).toBe(false);
+  expect(old.note).toContain("`codegraph index`");
 });
 
 test("a search for a symbol gets its call paths once", async () => {
@@ -226,6 +265,7 @@ test("nothing is added without an index, a CLI, a symbol, or the option", async 
     [engine({ status: JSON.stringify({ initialized: false }) }), {}],
     [engine({ status: null }), {}],
     [engine({ symbols: [] }), {}],
+    [engine({ symbols: ["other"] }), {}],
     [engine(), { codegraph: false }],
   ];
   for (const [{ $ }, options] of cases) {
@@ -238,6 +278,12 @@ test("nothing is added without an index, a CLI, a symbol, or the option", async 
   const { $, calls } = engine();
   await search(load(), $, { tool: "Grep", pattern: "parse.*Config" });
   expect(graphCalls(calls)).toHaveLength(0);
+  const words = engine({ symbols: [] });
+  const onCall = load();
+  for (const pattern of ["delet", "REDACTED", "delet"])
+    await search(onCall, words.$, { tool: "Grep", pattern });
+  expect(subcommands(words.calls, "query")).toHaveLength(2);
+  expect(subcommands(words.calls, "callers")).toHaveLength(0);
   const failed = { result: "error", isError: true };
   const r = await search(
     load(),

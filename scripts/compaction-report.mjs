@@ -51,16 +51,20 @@ function entryTokens(entry) {
     for (const t of tokens(text)) set.add(t);
   };
   const content = entry.message?.content;
-  if (entry.type === "user") {
-    if (typeof content === "string") add(out.context, content);
-    else
-      for (const b of content ?? [])
-        add(b.type === "tool_result" ? out.result : out.context, textOf(b));
-  } else if (entry.type === "assistant") {
-    for (const b of Array.isArray(content) ? content : [])
-      if (b.type === "tool_use") out.use.push(tokens(textOf(b.input)));
-  } else if (entry.type === "attachment") {
-    add(out.context, textOf(entry.attachment));
+  switch (entry.type) {
+    case "user":
+      if (typeof content === "string") add(out.context, content);
+      else
+        for (const b of content ?? [])
+          add(b.type === "tool_result" ? out.result : out.context, textOf(b));
+      break;
+    case "assistant":
+      for (const b of Array.isArray(content) ? content : [])
+        if (b.type === "tool_use") out.use.push(tokens(textOf(b.input)));
+      break;
+    case "attachment":
+      add(out.context, textOf(entry.attachment));
+      break;
   }
   return out;
 }

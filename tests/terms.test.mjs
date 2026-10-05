@@ -19,12 +19,14 @@ const read = (file) => readFileSync(join(root, file), "utf8");
 test("each note of dotclaude is a clause", () => {
   const notes = {
     "cold-cache": [idleNote(400_000), resumeNote({})],
-    handoff: [
-      pointer({ name: "n.md", meta: {} }),
-      handoffRow("x", "/p/n.md").text,
-    ],
+    handoff: [pointer({ name: "n.md", meta: {} }), handoffRow("/p/n.md").text],
     compaction: [COMPACT_TEXT],
-    codegraph: [graphNote("f", '{"callers":[{"name":"g","kind":"function"}]}')],
+    codegraph: [
+      graphNote(
+        { name: "f", kind: "function", filePath: "a.mjs", startLine: 1 },
+        '{"callers":[{"name":"g","kind":"function"}]}',
+      ),
+    ],
   };
   for (const [id, texts] of Object.entries(notes))
     for (const text of texts) {

@@ -75,7 +75,8 @@ The data are 14 sessions with the 150k `autoCompactWindow`, with up to 27 compac
 - Thus 0.19 set `COMPACTIONS_BEFORE_HANDOFF` to 4.
   A fifth compaction costs the same as a handoff, but it keeps fewer of the facts that Claude uses next.
   0.20.0 removed that constant.
-  The option `compaction_handoff` forks a handoff note at each compaction of the main conversation.
+  The option `compaction_handoff` forks a handoff note at each automatic compaction of the main conversation.
+  Since the change after 0.20.8, Claude then stops and tells the user to run `/clear`.
 - The sample is small: 7 sessions in 3 projects.
   The kept share is a proxy for quality, not a measure of task success.
   The compactions ran without a handoff rule, so the measure does not show how a handoff note compares.

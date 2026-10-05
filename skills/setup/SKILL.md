@@ -57,6 +57,7 @@ Each script writes nothing without `--apply`, so run its preview first.
 1. Ask one `AskUserQuestion` call: apply the profile (recommended), or drop some groups.
    Add a question for the global `CLAUDE.md` block, which `bun "${CLAUDE_SKILL_DIR}/scripts/claude-md.mjs"` previews.
    Add a question to remove the CodeGraph MCP entry when the preview reports one.
+   Add a question to install `sembr` when `command -v sembr` finds nothing, because the line-break hook does nothing without it.
 
 1. Run the apply command of each item that the user picked:
 
@@ -64,8 +65,10 @@ Each script writes nothing without `--apply`, so run its preview first.
    bun "${CLAUDE_SKILL_DIR}/scripts/settings.mjs" --scope <scope> --apply
    bun "${CLAUDE_SKILL_DIR}/scripts/claude-md.mjs" --apply
    claude mcp remove codegraph -s user
+   uv tool install "sembr[<extra>]"
    ```
 
+   For the `sembr` extra, read the sembr section of `${CLAUDE_SKILL_DIR}/references/integrations.md`.
    Each script backs the file up next to itself before it writes, and keeps the newest three backups.
    A second run changes nothing.
    The permission prompt of each command is the approval of the write, so do not ask a second time.
@@ -89,5 +92,5 @@ Each script writes nothing without `--apply`, so run its preview first.
 
 1. Tell the user the files that changed and the backup paths.
    Tell them to restart Claude Code.
-   For LSP, CodeGraph, and context7 install steps, read `${CLAUDE_SKILL_DIR}/references/integrations.md`.
+   For LSP, CodeGraph, sembr, and context7 install steps, read `${CLAUDE_SKILL_DIR}/references/integrations.md`.
 </procedure>

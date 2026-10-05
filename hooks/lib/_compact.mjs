@@ -1,6 +1,5 @@
 // The text and the note file of a compaction.
 
-import { CLOSE_RULE } from "./_handoff.mjs";
 import { clause, clauseTag } from "./_terms.mjs";
 
 // The default summary text says to continue without asking. A model then
@@ -15,7 +14,8 @@ The user did not approve a plan that the conversation only describes, so the nex
 
 export const HANDOFF_PROMPT = `<handoff_request>
 Write a handoff note for a fresh session that continues this task.
-The conversation is about to be compacted, and the next part starts from this note.
+The conversation is about to be compacted.
+The user then runs \`/clear\`, and a fresh session starts from this note.
 Write only what you verified or what the user said.
 Mark each item that you are not sure of as \`unverified\`.
 Use these sections in this order:
@@ -59,12 +59,27 @@ export const supersede = (text) =>
     "$1status: superseded",
   );
 
-/** The user row that carries the note into the compacted conversation. */
-export const handoffRow = (text, path) => ({
-  role: "user",
-  text: clause(
-    "handoff",
-    `<compaction_handoff_note path="${path}">\n${text.trim()}\n</compaction_handoff_note>\n${CLOSE_RULE}`,
-  ),
-  toolUses: [],
-});
+/**
+ * The user row after the compaction: stop, and send the user to `/clear`.
+ * Claude once wrote 21 notes in one day and continued in the compacted
+ * context each time, so no note started a small context.
+ */
+export const handoffRow = (path) => {
+  const name = path.split("/").pop();
+  return {
+    role: "user",
+    text: clause(
+      "handoff",
+      `<compaction_handoff path="${path}">
+The conversation was compacted, and a handoff note for this task is at \`.claude/handoffs/${name}\`.
+Do not continue the task in this context, because each turn reads the whole compacted context again, and a fresh session after \`/clear\` starts small.
+Do not use a tool.
+Send one short reply to the user, then stop.
+In the reply, tell the user that the note is at \`.claude/handoffs/${name}\`.
+Tell the user to run \`/clear\` and then to send this prompt:
+Continue from the handoff note at \`.claude/handoffs/${name}\`.
+</compaction_handoff>`,
+    ),
+    toolUses: [],
+  };
+};

@@ -43,7 +43,7 @@ Model choice is not one of them.
 `bun scripts/usage-report.mjs --days 7` repeats this scan on any machine.
 It also counts the sessions by entrypoint, the usage-limit hits, and the skill calls.
 It reads guard verdicts per rule from a `verdicts.jsonl` file.
-No 0.20 hook writes that file, so the table is empty.
+No 0.20 hook writes that file, so the table shows only rows from 0.19 and earlier.
 The report also shows the delegation share.
 This is the number of subagent runs per 100 main turns, by agent type.
 It also shows the median and p90 of tool-result tokens per main session.
@@ -120,5 +120,10 @@ The MCP server sends its tools and instructions on every turn.
 Its `prompt-hook` adds up to about 15 KB to each prompt.
 The hook of dotclaude adds about 300 to 600 bytes, once for each symbol in each context.
 It acts only on a search for one symbol name.
+`codegraph callers` falls back to a text search for a name that is not a symbol.
+In the sessions of 2026-10-04 and 2026-10-05, about 34 notes came for words such as `token`, `delet`, and `REDACTED` (**measured**).
+Thus the hook now runs `codegraph query` first.
+It adds a note only when the index has a function, method, class, or a similar definition with exactly that name.
+The note names the file and line of the definition.
 CodeGraph can link a call to a different function with the same name.
 The note therefore tells Claude to read a call in the source before it relies on the link.

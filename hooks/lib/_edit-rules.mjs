@@ -13,20 +13,28 @@ const ASSERT =
 const SKIP =
   /\b(it|test|describe)\.(skip|todo|only)\b|\b(xit|xdescribe|xtest|fit|fdescribe)\s*\(|@pytest\.mark\.(skip|xfail)|pytest\.skip\(|#\[ignore\]|\bt\.Skip(Now|f)?\(/g;
 
+const REDACTED = /\[REDACTED:/g;
+
 const count = (re, text) => (text.match(re) ?? []).length;
 
 /** The old and new text of an edit, or null for old text of a new file. */
 function beforeAfter(tool, input, existing) {
-  if (tool === "Edit")
-    return { before: input.old_string ?? "", after: input.new_string ?? "" };
-  if (tool === "MultiEdit") {
-    const edits = Array.isArray(input.edits) ? input.edits : [];
-    return {
-      before: edits.map((e) => e.old_string ?? "").join("\n"),
-      after: edits.map((e) => e.new_string ?? "").join("\n"),
-    };
+  switch (tool) {
+    case "Edit":
+      return { before: input.old_string ?? "", after: input.new_string ?? "" };
+    case "MultiEdit": {
+      const edits = Array.isArray(input.edits) ? input.edits : [];
+      return {
+        before: edits.map((e) => e.old_string ?? "").join("\n"),
+        after: edits.map((e) => e.new_string ?? "").join("\n"),
+      };
+    }
+    default:
+      return {
+        before: existing,
+        after: input.content ?? input.new_source ?? "",
+      };
   }
-  return { before: existing, after: input.content ?? input.new_source ?? "" };
 }
 
 export function editReasons(tool, input, existing = null) {
@@ -42,8 +50,13 @@ export function editReasons(tool, input, existing = null) {
     out.push(
       `${name} is generated, vendored, or a lockfile. Edit its source or run the generator instead.`,
     );
+  const { before, after } = beforeAfter(tool, input, existing);
+  // The secret redaction (`_secrets.mjs`) writes this marker into tool output.
+  if (count(REDACTED, after) > count(REDACTED, before ?? ""))
+    out.push(
+      `The edit writes a \`[REDACTED:\` marker into ${name}. The secret redaction put this marker in a tool output in place of a value, so the edit can replace the real value in the file.`,
+    );
   if (TEST_PATH.test(file)) {
-    const { before, after } = beforeAfter(tool, input, existing);
     // A new test file weakens no test.
     if (before !== null) {
       const removed = count(ASSERT, before) - count(ASSERT, after);

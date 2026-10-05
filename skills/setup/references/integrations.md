@@ -14,6 +14,7 @@ The `prompt-hook` adds up to about 15 KB of CodeGraph output to every prompt, an
 Claude seldom runs `codegraph` when a rule only tells it to.
 Thus the dotclaude hooks module adds the graph to the searches that Claude already runs.
 When a `Grep` call or a Bash `rg` or `grep` searches for one symbol name, the result gets the callers and callees of that symbol.
+The hook first runs `codegraph query`, and it adds the graph only when the index has a function, method, or class with exactly that name.
 Each symbol gets this once in each context.
 Without the MCP server, the index does not update itself.
 Thus, before each lookup, the hook runs `codegraph status`, and it runs `codegraph sync` when files changed since the last index.
@@ -41,6 +42,32 @@ It lists each plugin whose language server is on `PATH` but that is not enabled 
 For a plugin that is not installed, it gives `/plugin install <plugin>@claude-plugins-official`.
 For a plugin that is installed but disabled, it gives `/plugin enable <plugin>@claude-plugins-official`.
 A plugin that declares its servers only in its own repository, such as `liquid-lsp`, is not in the list.
+
+## sembr
+
+[sembr](https://github.com/admk/sembr) puts semantic line breaks in prose with a small language model.
+The rule in the Terms of Use alone did not stop Claude from breaking prose at a column.
+Thus the dotclaude hooks module runs `sembr` on the prose that Claude writes:
+
+- Before a `git commit`, `gh pr`, or `gh issue` command runs, the hook rewraps its message and tells Claude.
+- After a `Write` or `Edit` of Markdown or code comments that break lines at a column, the result gets the `sembr` text.
+  The hook never rewrites a file, because a changed file makes the next `old_string` of Claude fail to match.
+
+The hook sends each prose block as one line, and it uses a result only when the text, without whitespace, stays the same.
+One run with MLX takes about 1 second.
+The hook does nothing when `sembr` is not on `PATH`.
+The plugin option `sembr` turns it off.
+
+Install the CLI with the extra for the hardware:
+
+| Hardware | Command |
+| --- | --- |
+| Apple Silicon | `uv tool install "sembr[mlx]"` |
+| NVIDIA GPU with CUDA | `uv tool install "sembr[cuda]"` |
+| Other | `uv tool install "sembr[cpu]"` |
+
+The first run downloads the model.
+The hook passes its settings with `-c`, so `sembr` needs no config file.
 
 ## context7
 

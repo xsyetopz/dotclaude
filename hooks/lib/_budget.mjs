@@ -10,10 +10,23 @@ export const SECRET_SCAN_MAX_BYTES = 64 * 1024 * 1024;
 /**
  * The CodeGraph augment of a search: time for one `codegraph` call (a call
  * takes about 250 ms), time for one `codegraph sync` (12 changed files took
- * 0.6 s), callers and callees for each symbol, and characters of the note.
+ * 0.6 s), index matches that the hook reads to find the definition of a
+ * name, callers and callees for each symbol, and characters of the note.
  */
 export const CODEGRAPH_TIMEOUT_MS = 3000;
 export const CODEGRAPH_SYNC_TIMEOUT_MS = 10000;
+export const CODEGRAPH_QUERY_LIMIT = 5;
+
+/**
+ * The preferred tokens per line of `sembr`. Its defaults (8 and 10) break at
+ * each phrase, and a semantic line break is at a sentence or a clause.
+ * The first run of `sembr` loads its model, so the timeout is long.
+ * The line-break note shows at most this many blocks.
+ */
+export const SEMBR_MIN_TOKENS = 15;
+export const SEMBR_MAX_TOKENS = 30;
+export const SEMBR_TIMEOUT_MS = 15000;
+export const LINE_BREAK_NOTE_MAX_BLOCKS = 5;
 export const CODEGRAPH_NEIGHBOURS = 3;
 export const CODEGRAPH_NOTE_MAX_CHARS = 1500;
 

@@ -56,3 +56,14 @@ test("a normal source edit and a test edit that keeps its assertions pass", () =
     }),
   ).toEqual([]);
 });
+
+test("an edit that adds a redaction marker asks", () => {
+  const marker = "key = [REDACTED:generic-api-key]";
+  const edit = (old_string, new_string) =>
+    editReasons("Edit", { file_path: "/p/a.swift", old_string, new_string });
+  expect(edit('key = "x"', marker)[0]).toContain("`[REDACTED:`");
+  expect(edit(`${marker}\nb`, `${marker}\nc`)).toHaveLength(0);
+  const write = { file_path: "/p/a.swift", content: marker };
+  expect(editReasons("Write", write, null)).toHaveLength(1);
+  expect(editReasons("Write", write, marker)).toHaveLength(0);
+});

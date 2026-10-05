@@ -11,19 +11,19 @@ Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-
 | Part | Event | Bound in `_budget.mjs` | User need |
 | --- | --- | --- | --- |
 | Bash guard (`guard_bash`) | `tool.call` | `COMMAND_PART_CHARS` | Ask before a forced push, a hard reset, a recursive removal outside the project, `sudo`, or a write to a device. The reason shows the command part. Deny a Claude `Co-Authored-By` line in a commit when the settings leave it out, and ask before a Claude attribution line in a repository of another owner. |
-| Edit guard (`guard_edit`) | `tool.call` | none | Ask before an edit that removes test assertions, adds a skip marker, or changes a generated file, a lockfile, or a Claude Code settings file. |
+| Edit guard (`guard_edit`) | `tool.call` | none | Ask before an edit that removes test assertions, adds a skip marker, writes a `[REDACTED:` marker, or changes a generated file, a lockfile, or a Claude Code settings file. |
 | Secret redaction (`guard_secrets`) | `tool.call` | `SECRET_SCAN_TIMEOUT_MS`, `SECRET_SCAN_MAX_BYTES` | Keep a secret in a tool result out of the context. Betterleaks finds it, and the result shows `[REDACTED:<rule>]`. |
 | Spawn rules (`guard_agents`) | `agent.spawn` | `SUBAGENT_EFFORTS` | Keep the subagent model and effort within the [rules](#model-and-effort-rules). The hook denies a call that asks for another model than the agent file fixes, and gives the reason. |
 | Cold-cache note | `SessionStart` (resume), `prompt.submit` | `CACHE_TTL_MS` | Tell Claude that the prompt cache expired, so that it says what a handoff note and `/clear` can save. |
-| Compaction | `session.compact` | `HANDOFF_FORK_TIMEOUT_MS` | Keep an unapproved plan or an open question open after a compaction, and keep the task state in a handoff note (`compaction_handoff`). |
+| Compaction | `session.compact` | `HANDOFF_FORK_TIMEOUT_MS` | Keep an unapproved plan or an open question open after a compaction, and keep the task state in a handoff note (`compaction_handoff`) before an automatic compaction. Then Claude stops and tells the user to run `/clear`. |
 | Working rules | `SessionStart` | `RULES_MAX_BYTES` | Give Claude the few rules that have a stated incident, in at most 2,000 bytes. |
 | Git attribution | `SessionStart` | none | Put back the `Co-Authored-By` trailer and the pull request footer that `includeGitInstructions: false` removes. A repository with a remote of another owner gets no lines, because the AI policy of that project decides. The owners are the `gh` login and the organizations where it has the owner role. |
+| Line breaks (`sembr`) | `tool.call` | `SEMBR_MIN_TOKENS`, `SEMBR_MAX_TOKENS`, `SEMBR_TIMEOUT_MS`, `LINE_BREAK_NOTE_MAX_BLOCKS` | Keep semantic line breaks in the prose that Claude writes. `sembr` rewraps the message of a `git commit`, `gh pr`, or `gh issue` command before it runs. After a `Write` or `Edit` of Markdown or code comments that break at a column, the result gets the `sembr` text. |
 | Handoff pointer | `SessionStart` | none | Point a new or cleared session to the newest handoff note with `status: in-progress`. |
-| `verify` gate | `Stop` | none | Send Claude back once when a turn edited files and no check ran after the last edit. |
 
 The module `hooks/register.mjs` runs the first six rows through the Claude Code hooks module, so a tool call starts no process.
 Where Claude Code does not load modules, such as with `--bare`, no guard runs.
-The two classic hooks are `hooks/session-start/context.mjs` and `hooks/stop/verify.mjs`.
+The one classic hook is `hooks/session-start/context.mjs`.
 
 ## Status line
 

@@ -1,5 +1,5 @@
 {
-  "description": "dotclaude hooks: register.mjs runs the guards, the subagent rules, and the prompt and compaction notes. SessionStart adds the working rules, and Stop runs the verify gate",
+  "description": "dotclaude hooks: register.mjs runs the guards, the subagent rules, and the prompt and compaction notes. SessionStart adds the working rules",
   "modules": ["./register.mjs"],
   "hooks": {
     "SessionStart": [
@@ -9,18 +9,6 @@
             "type": "command",
             "command": "bun",
             "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/session-start/context.mjs"],
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/stop/verify.mjs"],
             "timeout": 30
           }
         ]

@@ -268,78 +268,73 @@ export function report(root, since, verdictsFile = null, runLimit = 20) {
         entrypoint = entry.entrypoint;
         entrypoints[entrypoint] = (entrypoints[entrypoint] ?? 0) + 1;
       }
-      if (
-        entry.type === "assistant" &&
-        entry.error === "rate_limit" &&
-        new Date(entry.timestamp) >= since
-      )
-        limitHits += 1;
-      if (
-        entry.attachment?.type === "hook_additional_context" &&
-        entry.type === "attachment" &&
-        entry.attachment?.type === "hook_additional_context" &&
-        entry.attachment.hookEvent !== "SessionStart"
-      )
-        hookContext = true;
-      if (entry.type === "system" && entry.subtype === "compact_boundary")
-        compacted = true;
-      if (type === "main" && entry.type === "user") {
-        const content = entry.message?.content;
-        if (new Date(entry.timestamp) >= since)
-          for (const b of Array.isArray(content) ? content : []) {
-            if (b.type !== "tool_result") continue;
-            const text = resultText(b.content);
-            // Estimate with the shared token estimate, from content length.
-            resultTokens += tokens(text);
-            const call = agentCalls.get(b.tool_use_id);
-            if (call) {
-              call.handback = firstLine(text);
-              call.agentId =
-                entry.toolUseResult?.agentId ??
-                text.match(/agentId: (\w+)/)?.[1];
-            }
-          }
-        const toolResult =
-          Array.isArray(content) &&
-          content.some((b) => b.type === "tool_result");
-        // Meta reminders without an origin continue the current turn.
-        if (!toolResult && !(entry.isMeta && !entry.origin)) {
-          const kind = entry.origin?.kind;
-          wake = kind === "peer" || kind === "task-notification";
-          firstPending = true;
-          if (new Date(entry.timestamp) >= since) {
-            turns[wake ? "wake" : "other"] += 1;
-            const ep = entrypoint ?? "unknown";
-            if (wake) wakes[ep] = (wakes[ep] ?? 0) + 1;
-          }
-        }
-        continue;
-      }
       const m = entry.message;
-      // One API message can span several entries, one per content block,
-      // so a tool call is counted by its own id and not by the message id.
-      if (entry.type === "assistant" && new Date(entry.timestamp) >= since)
-        for (const b of Array.isArray(m?.content) ? m.content : [])
-          if (
-            b.type === "tool_use" &&
-            b.name === "Skill" &&
-            b.input?.skill &&
-            !seen.has(b.id)
-          ) {
-            seen.add(b.id);
-            skills[b.input.skill] = (skills[b.input.skill] ?? 0) + 1;
+      switch (entry.type) {
+        case "assistant":
+          if (new Date(entry.timestamp) < since) break;
+          if (entry.error === "rate_limit") limitHits += 1;
+          // One API message can span several entries, one per content block,
+          // so a tool call is counted by its own id and not by the message id.
+          for (const b of Array.isArray(m?.content) ? m.content : []) {
+            if (b.type !== "tool_use") continue;
+            if (b.name === "Skill" && b.input?.skill && !seen.has(b.id)) {
+              seen.add(b.id);
+              skills[b.input.skill] = (skills[b.input.skill] ?? 0) + 1;
+            }
+            if (type === "main" && (b.name === "Agent" || b.name === "Task"))
+              agentCalls.set(b.id, {
+                description: b.input?.description ?? "",
+                handback: "",
+              });
+            if (type !== "main" && b.name === "SubagentHandback")
+              handback = firstLine(b.input?.message);
           }
-      if (entry.type === "assistant" && new Date(entry.timestamp) >= since)
-        for (const b of Array.isArray(m?.content) ? m.content : []) {
-          if (b.type !== "tool_use") continue;
-          if (type === "main" && (b.name === "Agent" || b.name === "Task"))
-            agentCalls.set(b.id, {
-              description: b.input?.description ?? "",
-              handback: "",
-            });
-          if (type !== "main" && b.name === "SubagentHandback")
-            handback = firstLine(b.input?.message);
-        }
+          break;
+        case "attachment":
+          if (
+            entry.attachment?.type === "hook_additional_context" &&
+            entry.attachment.hookEvent !== "SessionStart"
+          )
+            hookContext = true;
+          break;
+        case "system":
+          if (entry.subtype === "compact_boundary") compacted = true;
+          break;
+        case "user":
+          if (type === "main") {
+            const content = m?.content;
+            if (new Date(entry.timestamp) >= since)
+              for (const b of Array.isArray(content) ? content : []) {
+                if (b.type !== "tool_result") continue;
+                const text = resultText(b.content);
+                // Estimate with the shared token estimate, from content length.
+                resultTokens += tokens(text);
+                const call = agentCalls.get(b.tool_use_id);
+                if (call) {
+                  call.handback = firstLine(text);
+                  call.agentId =
+                    entry.toolUseResult?.agentId ??
+                    text.match(/agentId: (\w+)/)?.[1];
+                }
+              }
+            const toolResult =
+              Array.isArray(content) &&
+              content.some((b) => b.type === "tool_result");
+            // Meta reminders without an origin continue the current turn.
+            if (!toolResult && !(entry.isMeta && !entry.origin)) {
+              const kind = entry.origin?.kind;
+              wake = kind === "peer" || kind === "task-notification";
+              firstPending = true;
+              if (new Date(entry.timestamp) >= since) {
+                turns[wake ? "wake" : "other"] += 1;
+                const ep = entrypoint ?? "unknown";
+                if (wake) wakes[ep] = (wakes[ep] ?? 0) + 1;
+              }
+            }
+            continue;
+          }
+          break;
+      }
       if (entry.type !== "assistant" || !m?.usage) continue;
       if (new Date(entry.timestamp) < since || seen.has(m.id)) continue;
       seen.add(m.id);

@@ -49,17 +49,23 @@ export function turnsFromText(text) {
   for (let i = lines.length - 1; i >= 0; i -= 1) {
     const entry = lines[i] && entryOf(lines[i]);
     if (!entry) continue;
-    if (entry.type === "assistant" && entry.message?.id)
-      ids.add(entry.message.id);
-    if (entry.type === "user") {
-      const content = entry.message?.content;
-      const toolResult =
-        Array.isArray(content) &&
-        content.some((b) => b?.type === "tool_result");
-      const kind = entry.origin?.kind;
-      const restart =
-        !entry.isMeta || kind === "task-notification" || kind === "coordinator";
-      if (!toolResult && restart) break;
+    switch (entry.type) {
+      case "assistant":
+        if (entry.message?.id) ids.add(entry.message.id);
+        break;
+      case "user": {
+        const content = entry.message?.content;
+        const toolResult =
+          Array.isArray(content) &&
+          content.some((b) => b?.type === "tool_result");
+        const kind = entry.origin?.kind;
+        const restart =
+          !entry.isMeta ||
+          kind === "task-notification" ||
+          kind === "coordinator";
+        if (!toolResult && restart) return ids.size;
+        break;
+      }
     }
   }
   return ids.size;

@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.20.8",
+  "version": "0.21.0",
   "description": "A small Claude Code plugin with guards, model and effort rules, compaction and cache notes, and role agents.",
   "author": {
     "name": "xsyetopz"
@@ -37,7 +37,7 @@
     "codegraph": {
       "type": "boolean",
       "title": "CodeGraph augment",
-      "description": "When a `Grep` call or a Bash `rg` or `grep` search looks for one symbol name in a project with a CodeGraph index, run `codegraph sync` if files changed since the last index, then add the callers and callees of that symbol to the search result. Needs `codegraph` on `PATH`. Never builds an index.",
+      "description": "When a `Grep` call or a Bash `rg` or `grep` search looks for one symbol name in a project with a CodeGraph index, run `codegraph sync` if files changed since the last index, then add the callers and callees of that symbol to the search result. Adds nothing when the index has no function, method, or class with exactly that name. Needs `codegraph` on `PATH`. Never builds an index.",
       "default": true
     },
     "ponytail": {
@@ -49,7 +49,13 @@
     "compaction_handoff": {
       "type": "boolean",
       "title": "Compaction handoff",
-      "description": "Before a compaction of the main conversation, fork a handoff note so the next part keeps the task state.",
+      "description": "Before an automatic compaction of the main conversation, fork a handoff note, then stop and tell the user to run `/clear` and continue from the note.",
+      "default": true
+    },
+    "sembr": {
+      "type": "boolean",
+      "title": "Semantic line breaks",
+      "description": "Rewrap the prose of commit messages and `gh pr` or `gh issue` bodies with semantic line breaks before the command runs. After a `Write` or `Edit` of Markdown or code comments that break lines at a column, add the `sembr` text to the result. Needs `sembr` on `PATH`. Never rewrites a file.",
       "default": true
     }
   }
