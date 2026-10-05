@@ -1,10 +1,16 @@
 # Attributions
 
-dotclaude uses ideas from the projects below.
-dotclaude copies no code from them.
+dotclaude uses ideas from the projects below and copies no code from them.
 Each part below is a new implementation.
-DensePack, agent-skills, Ponytail, and the `jev` CLI use the MIT license.
-GitNexus uses the PolyForm Noncommercial license, so dotclaude uses only its design and no code or text.
+
+## Licenses
+
+| Project | License | What dotclaude uses |
+| --- | --- | --- |
+| DensePack, agent-skills, Ponytail, `jev` CLI | MIT | ideas only |
+| GitNexus | PolyForm Noncommercial | its design only, no code or text |
+
+## Projects
 
 | Project | Idea | dotclaude part |
 | --- | --- | --- |
@@ -16,3 +22,9 @@ GitNexus uses the PolyForm Noncommercial license, so dotclaude uses only its des
 
 dotclaude adopts none of the workflow skills of these projects.
 The [xsyetopz/skills](https://github.com/xsyetopz/skills) collection already covers those workflows.
+
+## Related pages
+
+- [Parts](Parts): each part, its event, and its bound.
+- [Second opinion](Second-Opinion): the part that uses the `jev` verbs.
+- [Home](Home): the overview.

@@ -1,6 +1,6 @@
 # Release History
 
-The current release line (0.20 and later) is in [CHANGELOG.md](https://github.com/xsyetopz/dotclaude/blob/main/CHANGELOG.md).
+The current release line (0.20 and later) is in [CHANGELOG.md](https://github.com/xsyetopz/dotclaude/blob/main/CHANGELOG.md), newest first.
 These pages hold the older lines, one page for each release line, with the changes of all patch versions merged.
 
 | Page | Dates | Summary |

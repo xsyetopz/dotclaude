@@ -1,21 +1,30 @@
-- Start
-  - [Home](Home)
-- Use
-  - [Parts](Parts)
-  - [Terms of Use](Terms-of-Use)
+- Get started
+  - [Overview](Home)
+  - [Install](Install)
+  - [Quickstart](Quickstart)
+- Guides
+  - [Guards](Guards)
+  - [Handoffs](Handoffs)
+  - [Browser](Browser)
+  - [Second opinion](Second-Opinion)
   - [Contributions](Contributions)
+- Reference
+  - [Parts](Parts)
+  - [Options](Options)
+  - [Terms of Use](Terms-of-Use)
+  - [Claude mods](Claude-Mods)
 - Develop
   - [Development](Development)
   - [Sandbox](Sandbox)
-- Evidence
+- Concepts and evidence
   - [Design](Design)
-  - [Usage evidence](Usage-Evidence)
-  - [Plans and models](Plans-and-Models)
   - [Prompt surface](Prompt-Surface)
+  - [Plans and models](Plans-and-Models)
+  - [Usage evidence](Usage-Evidence)
   - [Evals](Evals)
-  - [Claude mods](Claude-Mods)
+  - [Eval history](Evals-History)
   - [Open items](Open-Items)
-- History
+- Changelog
   - [Release history](Release-History)
 - Other
   - [Attributions](Attributions)

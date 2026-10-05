@@ -1,9 +1,18 @@
 # Usage evidence
 
-This page answers one question: where did the usage of one heavy week go, and what does that mean for dotclaude?
+This page shows where the usage of one heavy week went and what it means for dotclaude.
 These measurements are the evidence for 0.20.0.
-The delegation share and the hooks that it led to, such as the delegation note, are 0.19 history.
-Source labels (official, binary, capture, measured, reported, inference) are in [Home](Home).
+Source labels (official, binary, capture, measured, reported, inference, tested) are in [Home](Home).
+
+## Summary
+
+- One Max 20x week reached 100% of the weekly limit at $1,854 (**measured**).
+- Three things drive the limit: context per turn, subagent fan-out, and `general-purpose` agents.
+  Model choice is not one of them.
+- The delegation share and the hooks that it led to, such as the delegation note, are 0.19 history.
+- Turns set the cost, not tool calls.
+- Of the community tips, one set is true, one is false, and some tools are not used.
+- The hook of dotclaude adds a CodeGraph note only for a search of one symbol name.
 
 ## The measured week
 
@@ -41,13 +50,14 @@ Model choice is not one of them.
 ## The delegation share
 
 `bun tools/usage-report.mjs --days 7` repeats this scan on any machine.
-It also counts the sessions by entrypoint, the usage-limit hits, and the skill calls.
-It reads guard verdicts per rule from a `verdicts.jsonl` file.
-No 0.20 hook writes that file, so the table shows only rows from 0.19 and earlier.
-The report also shows the delegation share.
-This is the number of subagent runs per 100 main turns, by agent type.
-It also shows the median and p90 of tool-result tokens per main session.
-`--runs N` sets how many of the latest subagent runs the table lists, with the cost and the first line of the hand-back.
+
+| Output | Note |
+| --- | --- |
+| Sessions by entrypoint, usage-limit hits, skill calls | Counted by the scan. |
+| Guard verdicts per rule | Read from a `verdicts.jsonl` file. No 0.20 hook writes that file, so the table shows only rows from 0.19 and earlier. |
+| Delegation share | Subagent runs per 100 main turns, by agent type. |
+| Tool-result tokens per main session | Median and p90. |
+| Latest subagent runs | `--runs N` sets how many the table lists, with the cost and the first line of the hand-back. |
 
 **measured** (2026-10-03, 7 days): 976 subagent runs in 25578 main turns, which is 3.8 per 100 turns.
 Tool-result tokens per main session: median 19169, p90 167675 (253 sessions).
@@ -80,7 +90,7 @@ Each model turn reads the context again, so the number of turns sets the cost.
 Users share tips to save weekly usage.
 dotclaude 0.20.4 checked each tip against the Claude Code docs or a measurement on this machine.
 
-True:
+### True
 
 - `/compact` reads the whole conversation to write its summary.
   On a large context it is an expensive request (**official**: costs, prompt caching).
@@ -93,37 +103,56 @@ True:
   It loads at every start and in every subagent that does not set `omitClaudeMd`.
 - Subagents keep large reads out of the main context.
 
-False:
+### False
 
 - Old `.jsonl` transcripts in `~/.claude/projects/` do not go into the context.
   Only `/resume` loads one.
   A remove saves disk space only, and this machine had 1.9 GB of them.
   The profile sets `cleanupPeriodDays` to 14, so Claude Code removes them.
 
-Tools that dotclaude does not use:
+### Tools that dotclaude does not use
 
-- RTK: JetBrains measured 7.6% more cost.
-- Graphify: it fails on large repositories.
-- grepai: it needs embeddings from Ollama or OpenAI, and it has no measurement.
-- Ponytail: JetBrains measured 10.3% less cost with no change in quality, but only when a SessionStart hook added its text.
-  dotclaude adds its own short version of the idea at session start, with the `ponytail` option.
+| Tool | Reason |
+| --- | --- |
+| RTK | JetBrains measured 7.6% more cost. |
+| Graphify | It fails on large repositories. |
+| grepai | It needs embeddings from Ollama or OpenAI, and it has no measurement. |
+| Ponytail | JetBrains measured 10.3% less cost with no change in quality, but only when a SessionStart hook added its text. dotclaude adds its own short version of the idea at session start, with the `ponytail` option. |
 
 ## Code search
 
 **measured:** The transcripts of this machine include subagents.
-In them, shell `rg`, `grep`, and `find` calls outnumber `codegraph` calls (CLI and MCP) by about 14 to 1 in OpenJoystickDriver (7,717 to 543).
-In dotclaude the ratio is 10 to 1 (4,176 to 406).
+Shell `rg`, `grep`, and `find` calls outnumber `codegraph` calls (CLI and MCP):
+
+| Project | Ratio | Calls |
+| --- | --- | --- |
+| OpenJoystickDriver | about 14 to 1 | 7,717 to 543 |
+| dotclaude | 10 to 1 | 4,176 to 406 |
+
 The MCP server was installed for part of this time, so its instructions did not change the habit.
 A rule that names a tool does not change it either.
 Thus 0.20.4 adds the graph to the search result, as the GitNexus hooks do, and keeps the CodeGraph MCP server off.
-The MCP server sends its tools and instructions on every turn.
-Its `prompt-hook` adds up to about 15 KB to each prompt.
-The hook of dotclaude adds about 300 to 600 bytes, once for each symbol in each context.
-It acts only on a search for one symbol name.
-`codegraph callers` falls back to a text search for a name that is not a symbol.
-In the sessions of 2026-10-04 and 2026-10-05, about 34 notes came for words such as `token`, `delet`, and `REDACTED` (**measured**).
-Thus the hook now runs `codegraph query` first.
-It adds a note only when the index has a function, method, class, or a similar definition with exactly that name.
-The note names the file and line of the definition.
-CodeGraph can link a call to a different function with the same name.
-The note therefore tells Claude to read a call in the source before it relies on the link.
+
+- The MCP server sends its tools and instructions on every turn.
+  Its `prompt-hook` adds up to about 15 KB to each prompt.
+- The hook of dotclaude adds about 300 to 600 bytes, once for each symbol in each context.
+  It acts only on a search for one symbol name.
+
+<details>
+<summary>Why the hook runs codegraph query first</summary>
+
+- `codegraph callers` falls back to a text search for a name that is not a symbol.
+- In the sessions of 2026-10-04 and 2026-10-05, about 34 notes came for words such as `token`, `delet`, and `REDACTED` (**measured**).
+- Thus the hook now runs `codegraph query` first.
+  It adds a note only when the index has a function, method, class, or a similar definition with exactly that name.
+- The note names the file and line of the definition.
+- CodeGraph can link a call to a different function with the same name.
+  The note therefore tells Claude to read a call in the source before it relies on the link.
+
+</details>
+
+## Related pages
+
+- [Design](Design)
+- [Plans and models](Plans-and-Models)
+- [Evals](Evals)
