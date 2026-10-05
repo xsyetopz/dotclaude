@@ -1,6 +1,6 @@
 // SessionStart: adds context. A resumed session with an expired prompt cache
 // and a large context gets the cost advice. A new, cleared, or compacted session gets the working
-// rules, the long-run rules, the project AI policy, and the minimal code rules, and a new or cleared one also gets the
+// rules, the long-run rules, the project AI policy, the subagent progress rules, and the minimal code rules, and a new or cleared one also gets the
 // pointer to the newest open handoff note. A session in a git repository also
 // gets the git attribution note, and the CodeGraph init note when the
 // repository has no index. At startup, the user gets a note when the
@@ -25,6 +25,7 @@ import { POLICY_CLAUSE } from "../../lib/guards/policy.mjs";
 import { resumeNote } from "../../lib/notes/cache.mjs";
 import { initNote } from "../../lib/notes/codegraph.mjs";
 import { newestOpen, pointer } from "../../lib/notes/handoff.mjs";
+import { MAIN_PROGRESS } from "../../lib/notes/progress.mjs";
 import { accountFrom, claudeJsonPath, detectPlan } from "../../lib/plan.mjs";
 import {
   LAUNCHERS,
@@ -132,7 +133,7 @@ export function contextFor(
       `<long_runs>\n${fs.readFileSync(LONG_RUNS, "utf8").trim()}\n</long_runs>`,
     ),
   );
-  parts.push(POLICY_CLAUSE);
+  parts.push(POLICY_CLAUSE, MAIN_PROGRESS);
   if (ponytail !== "false")
     parts.push(
       clause(

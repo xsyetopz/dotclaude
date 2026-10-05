@@ -73,7 +73,6 @@ Fix a failing check at its cause, and do not loosen a test, timeout, or permissi
 Label a mock, stub, or fallback in the code and the report.
 You have at most 60 turns, and a run that reaches the limit delivers no report.
 Plan to finish before then.
-Write in your report, as you go, what is done and what is next, so that the work survives a turn cap or a usage limit.
 If work remains at the end, make the report a handoff: what is done and how you checked it, the files you changed, anything half-edited, and what is left in order.
 Every turn reads your whole context again, so read files by line range and keep command output short.
 Do not write a `.md` file named `report*`, `summary*`, `findings*`, or `analysis*`, because Claude Code refuses it (#44657).

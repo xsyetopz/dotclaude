@@ -19,6 +19,7 @@ Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-
 | Compaction | `session.compact` | `HANDOFF_FORK_TIMEOUT_MS` | Keep an unapproved plan or an open question open after a compaction, and keep the task state in a handoff note (`compaction_handoff`) before an automatic compaction. Then Claude stops and tells the user to run `/clear`. |
 | Working rules | `SessionStart` | `RULES_MAX_BYTES` | Give Claude the few rules that have a stated incident, in at most 2,200 bytes. |
 | Long runs | `SessionStart` | none | Tell Claude to time one run of a step of unknown speed, give each run a `timeout`, and run long work in the background. Clause 13 of the [Terms of Use](Terms-of-Use) is not enforced. |
+| Subagent progress | `SessionStart`, `SubagentStart` | none | Keep the work of a subagent that stops at its turn limit, because Claude Code delivers no report from it. Each subagent adds a line after each step to `dotclaude-progress/<agent ID>.md` in the temporary folder. The main agent reads the file and continues the agent with `SendMessage`. Clause 15 of the [Terms of Use](Terms-of-Use) is not enforced. |
 | CodeGraph call paths (`codegraph`) | `tool.call` | `CODEGRAPH_TIMEOUT_MS`, `CODEGRAPH_QUERY_LIMIT`, `CODEGRAPH_NEIGHBOURS`, `CODEGRAPH_NOTE_MAX_CHARS` | Add the callers and callees of a symbol to a search for its name. Before the search, the module runs `codegraph index -q` when the index has an old format, and `codegraph sync` when files changed (`CODEGRAPH_INDEX_TIMEOUT_MS`, `CODEGRAPH_SYNC_TIMEOUT_MS`). |
 | CodeGraph index (`codegraph`) | `SessionStart` | none | In a git repository with no `.codegraph/` and with `codegraph` on `PATH`, tell Claude (clause 12, `codegraph_index`) to run `codegraph init -y`. The Bash guard asks the user before `codegraph init` and `codegraph uninit`. The option `codegraph` turns the note off. |
 | Git attribution | `SessionStart` | none | Put back the `Co-Authored-By` trailer and the pull request footer that `includeGitInstructions: false` removes. A repository with a remote of another owner gets no lines, because the AI policy of that project decides. The owners are the `gh` login and the organizations where it has the owner role. |
@@ -34,7 +35,7 @@ The classic hooks are in one folder for each event:
 - `plugins/dotclaude/hooks/pre-tool-use/ask-guarded-calls.mjs` gives the asks of the Bash and edit guards again, because in auto mode the classifier can allow a call that the module asks about ([Claude mods](Claude-Mods)).
   It also gives the ask of the project AI policy guard.
   It starts one process for each `Bash`, `Edit`, `Write`, `WebFetch`, `Read`, `Grep`, and `Glob` call.
-- `plugins/dotclaude/hooks/subagent-start/add-subagent-context.mjs` gives each subagent the project AI policy clause, because a subagent does not get the `SessionStart` context.
+- `plugins/dotclaude/hooks/subagent-start/add-subagent-context.mjs` gives each subagent the project AI policy clause and its progress file, because a subagent does not get the `SessionStart` context.
 
 `plugins/dotclaude/lib/setup/diff.mjs` compares the user setup with the profile for that notice.
 

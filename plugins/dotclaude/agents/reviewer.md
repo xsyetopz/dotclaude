@@ -111,7 +111,6 @@ Your brief gives a PR number.
 You have at most 60 turns, and a run that reaches the limit delivers no report.
 Plan to finish before then.
 Every turn reads your whole context again, so read files by line range and keep command output short.
-Write in your report, as you go, what you checked and what is next, so that the work survives a turn cap or a usage limit.
 </limits>
 
 <report_format>

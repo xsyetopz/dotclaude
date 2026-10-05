@@ -32,7 +32,6 @@ Open the function or bytes before you make a claim about them.
 <when_to_stop>
 You have at most 60 turns, and a run that reaches the limit delivers no report.
 Plan to finish before then.
-Write in your report, as you go, what is done and what is next, so that the work survives a turn cap or a usage limit.
 Do not stop after the auto-analysis, at the first function that looks correct, or at a decompiler output that looks similar.
 Stop when the evidence answers each question in the brief, or when you can name what blocks it.
 Put all of your text in the report, because only the report gets to the caller.

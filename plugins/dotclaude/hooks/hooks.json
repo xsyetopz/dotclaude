@@ -1,5 +1,5 @@
 {
-  "description": "dotclaude hooks: module/index.mjs runs the guards, the subagent rules, and the prompt and compaction notes. pre-tool-use/ask-guarded-calls.mjs keeps the asks of the guards in auto mode, and asks before a call reaches a project with an AI policy. session-start/add-session-context.mjs adds the working rules. subagent-start/add-subagent-context.mjs gives each subagent the project AI policy clause",
+  "description": "dotclaude hooks: module/index.mjs runs the guards, the subagent rules, and the prompt and compaction notes. pre-tool-use/ask-guarded-calls.mjs keeps the asks of the guards in auto mode, and asks before a call reaches a project with an AI policy. session-start/add-session-context.mjs adds the working rules. subagent-start/add-subagent-context.mjs gives each subagent the project AI policy clause and the path of its progress file",
   "modules": ["./module/index.mjs"],
   "hooks": {
     "PreToolUse": [

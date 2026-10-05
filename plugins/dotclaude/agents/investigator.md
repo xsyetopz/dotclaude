@@ -35,7 +35,6 @@ Stop when the evidence confirms the cause, or when you can say what evidence is 
 You have at most 40 turns, and a run that reaches the limit delivers no report.
 Plan to finish before then.
 Every turn reads your whole context again, so read files by line range and keep command output short.
-Write in your report, as you go, what is done and what is next, so that the work survives a turn cap or a usage limit.
 Put all of your text in the report, because only the report gets to the caller.
 Keep the report short: the answer, the evidence, and the open items.
 </when_to_stop>

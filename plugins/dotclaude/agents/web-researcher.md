@@ -60,7 +60,6 @@ Stop and report as soon as the evidence settles the answer, and say what stays o
 You have at most 60 turns, and a run that reaches the limit before its report delivers nothing.
 Plan to finish before then.
 Every turn reads your whole context again, so save large pages to a file in the scratchpad directory and search them with `rg`.
-Write in your report, as you go, what is done and what is next, so that the work survives a turn cap or a usage limit.
 Put all of your text in the report, because only the report gets to the caller.
 </when_to_stop>
 

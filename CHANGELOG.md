@@ -10,6 +10,22 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.22.2] - 2026-10-05
+
+### Fixed
+
+- In one week, five subagents stopped at their turn limit, and Claude Code delivered no report from them, so all of their work was lost.
+  Clause 15 of the Terms of Use, `Subagent progress`, now gives each subagent a progress file in the temporary folder, named by its agent ID.
+  The subagent adds one line to the file after each step.
+  This replaces the line in each agent file that told the agent to write its report as it went.
+- When an agent stops at its turn limit, the main agent reads the progress file and continues the agent with `SendMessage`, and does not run the done steps again.
+  The main agent also gives each agent a task that fits in its turn limit, and gives one subject to each research agent.
+- The `test-runner` agent used one `Bash` call for each command of a batch, and three of them stopped at their 20-turn limit.
+  It now runs a batch in one `Bash` call, with one log for each command, and reads all failed logs in one more call.
+- The Bash guard gave the reason of only the first flagged target of an `rm -r` command.
+  In `rm -rf /tmp/a.sh "${TMPDIR}"tmp.*`, the ask said only that the target is outside the project, and the approved command deleted the temporary folders of all programs.
+  The ask now gives the reason of each flagged target.
+
 ## [0.22.1] - 2026-10-05
 
 ### Fixed
@@ -426,4 +442,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.22.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.22.2...HEAD

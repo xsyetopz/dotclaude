@@ -84,6 +84,13 @@ test("a reason names the command part and the cause", () => {
   expect(found.reason).toContain("hard reset");
 });
 
+test("each flagged rm target has its own reason", () => {
+  const [found] = askFor(`rm -rf /tmp/a.sh "\${TMPDIR}"tmp.* build`, ctx);
+  expect(found.reason).toBe(
+    `\`/tmp/a.sh\`: The target is outside the project. \`\${TMPDIR}tmp.*\`: The target is known only at run time.`,
+  );
+});
+
 test("an rm target inside the project is allowed when the project is unknown only for others", () => {
   expect(askFor("rm -rf build", { ...ctx, project: "" })).toHaveLength(1);
 });

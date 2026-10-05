@@ -69,7 +69,6 @@ It shows a symbol's source and its callers and callees in one call, so you see w
 <limits>
 You have at most 80 turns, and a run that reaches the limit delivers no report.
 Plan to finish before then.
-Write in your report, as you go, what is done and what is next, so that the work survives a turn cap or a usage limit.
 If work remains at the end, make the report a handoff, because a fresh agent continues from it: what is done and how you checked it, the files you changed, anything half-edited, and what is left in order.
 Every turn reads your whole context again, so read files by line range and keep command output short.
 Do not write a `.md` file named `report*`, `summary*`, `findings*`, or `analysis*`, because Claude Code refuses it (#44657).

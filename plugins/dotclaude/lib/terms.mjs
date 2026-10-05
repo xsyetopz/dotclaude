@@ -43,6 +43,7 @@ export const TERMS = [
     title: "Project AI policy",
     enforcedBy: "the policy guard",
   },
+  { id: "subagent-progress", title: "Subagent progress" },
 ];
 
 /** The opening tag of the clause `id`. */

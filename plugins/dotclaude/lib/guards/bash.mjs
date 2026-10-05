@@ -247,12 +247,15 @@ function reasonFor(words, ctx) {
   return undefined;
 }
 
+// Each flagged target gets its own reason, because a harmless first target
+// once hid a `"${TMPDIR}"tmp.*` target that deleted the temporary folders of other programs.
 function rmReason(args, ctx) {
-  for (const target of args.filter((a) => !a.startsWith("-"))) {
-    const reason = removeReason(target, ctx);
-    if (reason) return reason;
-  }
-  return undefined;
+  const found = args
+    .filter((a) => !a.startsWith("-"))
+    .map((target) => [target, removeReason(target, ctx)])
+    .filter(([, reason]) => reason);
+  if (found.length < 2) return found[0]?.[1];
+  return found.map(([target, reason]) => `\`${target}\`: ${reason}`).join(" ");
 }
 
 /**
