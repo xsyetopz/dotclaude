@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Writes a handoff note so a fresh session can continue the task. Use when the user wants to hand off, pause, or save progress before clear or compact.
+description: Writes a handoff note so a fresh session can continue the task. Use when the user wants to hand off, pause, or save progress before `/clear` or `/compact`.
 argument-hint: "[output path, default .claude/handoffs/<YYYY-MM-DD-HHMM>-<topic>.md]"
 ---
 

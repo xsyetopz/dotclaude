@@ -4,7 +4,7 @@
   "owner": {
     "name": "xsyetopz"
   },
-  "description": "Lists the dotclaude plugin and its optional browser plugin.",
+  "description": "Lists the dotclaude plugin and its optional browser and Jev plugins.",
   "plugins": [
     {
       "name": "dotclaude",
@@ -15,7 +15,13 @@
     {
       "name": "dotclaude-browser",
       "source": "./plugins/dotclaude-browser",
-      "description": "Drives a browser with agent-browser, or with CloakBrowser on sites with bot detection, and reads text CAPTCHAs with offline ddddocr-rs OCR.",
+      "description": "Drives a browser with `agent-browser`, or with CloakBrowser on sites with bot detection, and reads text CAPTCHAs with offline `ddddocr-rs` OCR.",
+      "category": "productivity"
+    },
+    {
+      "name": "dotclaude-jev",
+      "source": "./plugins/dotclaude-jev",
+      "description": "Gets a second opinion from TypeSafe Jev, a decision model, for a yes or no check, a pick from options, or a rating. Needs `TYPESAFE_API_KEY`.",
       "category": "productivity"
     }
   ]

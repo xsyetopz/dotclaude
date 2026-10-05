@@ -29,7 +29,11 @@ if (!data.stop_hook_active && data.transcript_path) {
     packageJson: read(path.join(root, "package.json")),
     makefile: read(path.join(root, "Makefile")),
   });
-  const reason = verifyReason(lastTurn(read(data.transcript_path)), commands);
+  const reason = verifyReason(
+    lastTurn(read(data.transcript_path)),
+    commands,
+    root,
+  );
   if (reason)
     process.stdout.write(JSON.stringify({ decision: "block", reason }));
 }

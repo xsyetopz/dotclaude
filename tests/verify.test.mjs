@@ -59,6 +59,33 @@ test("a word match does not accept a longer name", () => {
   ).toBeDefined();
 });
 
+test("an edit outside the project root, such as a plan file, does not count", () => {
+  const turn = (file) =>
+    lastTurn([prompt, use("Write", { file_path: file })].join("\n"));
+  expect(
+    verifyReason(turn("/home/u/.claude/plans/p.md"), COMMANDS, "/repo"),
+  ).toBeUndefined();
+  expect(
+    verifyReason(turn("/repo/src/a.mjs"), COMMANDS, "/repo"),
+  ).toBeDefined();
+  expect(
+    verifyReason(turn("/repo-two/a.mjs"), COMMANDS, "/repo"),
+  ).toBeUndefined();
+});
+
+test("a denied or failed edit does not count", () => {
+  const edit = (id) =>
+    line("assistant", [{ type: "tool_use", id, name: "Write", input: {} }]);
+  const error = (id) =>
+    line("user", [
+      { type: "tool_result", tool_use_id: id, is_error: true, content: "x" },
+    ]);
+  expect(reasonFor(prompt, edit("t1"), error("t1"))).toBeUndefined();
+  expect(
+    reasonFor(prompt, edit("t1"), result, edit("t2"), error("t2")),
+  ).toBeDefined();
+});
+
 test("only the last turn counts", () => {
   expect(
     reasonFor(prompt, use("Edit"), line("user", "next"), use("Read")),

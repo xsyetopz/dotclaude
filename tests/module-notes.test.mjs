@@ -14,13 +14,13 @@ function engine({ fork = { isAnswered: true, text: "## Goal\nx" } } = {}) {
     store,
     $: {
       plugin: { root: ROOT },
-      session: { root: async () => "/work/app" },
+      session: { root: async () => "/work/app", id: async () => "s1" },
       // A fake environment with no account, so the plan is `unknown`.
       env: {
         get: async (name) => (name === "HOME" ? "/nonexistent" : undefined),
       },
       fs: {
-        read: async (path) => Bun.file(path).text(),
+        read: async (path) => files[path] ?? Bun.file(path).text(),
         write: async (path, text) => {
           files[path] = text;
         },
@@ -73,7 +73,7 @@ test("Fable 5.1 is never allowed for a subagent", async () => {
     { subagentType: "my-agent", model: "fable", parentModel: "fable" },
     pass,
   );
-  expect(r.deny).toContain("opus-5-5, sonnet-5-5, haiku-4-5");
+  expect(r.deny).toContain("`opus-5-5`, `sonnet-5-5`, `haiku-4-5`");
 });
 
 test("an agent with no model runs on the model of its caller", async () => {
@@ -93,7 +93,7 @@ test("an effort outside the model's list is denied with the allowed values", asy
     { subagentType: "x", model: "sonnet", effort: "high" },
     pass,
   );
-  expect(sonnet.deny).toContain("low, medium");
+  expect(sonnet.deny).toContain("`low`, `medium`");
   const haiku = await h["agent.spawn"](
     $,
     { subagentType: "x", model: "haiku", effort: "low" },
@@ -124,6 +124,28 @@ test("the compaction adds the open-request instruction and a handoff note", asyn
   );
   expect(files[path]).toContain("status: in-progress");
   expect(r.messages.at(-1).text).toContain(path);
+  expect(r.messages.at(-1).text).toContain("keep the status `in-progress`");
+});
+
+test("a second compaction supersedes the earlier note of the session", async () => {
+  const { $, files, store } = engine();
+  const h = load();
+  const next = async () => ({ messages: [] });
+  const old = "/work/app/.claude/handoffs/2026-10-04-0000-compaction.md";
+  const other = "/work/app/.claude/handoffs/2026-10-04-0001-compaction.md";
+  files[old] =
+    "---\nstatus: in-progress\nwritten: x\n---\n\nstatus: in-progress\n";
+  files[other] = files[old];
+  store["handoff-notes"] = { s1: old, s2: other };
+  await h["session.compact"]($, { trigger: "auto" }, next);
+  expect(files[old]).toBe(
+    "---\nstatus: superseded\nwritten: x\n---\n\nstatus: in-progress\n",
+  );
+  expect(files[other]).toContain("status: in-progress");
+  const newest = store["handoff-notes"].s1;
+  expect(newest).not.toBe(old);
+  expect(files[newest]).toContain("status: in-progress");
+  expect(Object.keys(store["handoff-notes"])).toEqual(["s2", "s1"]);
 });
 
 test("a failed fork, a subagent, and a precompute compact without a note", async () => {

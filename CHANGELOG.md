@@ -10,6 +10,56 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.20.4] - 2026-10-05
+
+### Added
+
+- Each compaction note marks the earlier compaction note of the same session as `superseded`, because the new note carries its open items.
+  Before, each compaction left one more `in-progress` note.
+- The CodeGraph augment: when a `Grep` call or a Bash `rg` or `grep` search looks for one symbol name in a project with `.codegraph/`, the hooks module adds the callers and callees of that symbol to the search result.
+  Claude ignored rules that told it to run `codegraph`, so the graph now comes with the search that Claude already runs.
+  The design follows the GitNexus hooks.
+  Before a lookup, the hook runs `codegraph sync` if files changed since the last index, because without the MCP server the index does not update itself.
+  It never builds an index.
+  The plugin option `codegraph` turns it off.
+- The minimal-code rules: session start tells Claude to build the minimum, with the idea of Ponytail.
+  The plugin option `ponytail` turns them off.
+- Usage habits in the working rules: a handoff note and `/clear` at a task boundary, `/btw` for a side question, a lower effort in place of a model change, and a model change only after `/clear`.
+- Line breaks in the working rules: in Markdown, comments, commits, and PRs, Claude starts each sentence on a new line and does not break lines at a column, as in [Semantic Line Breaks](https://sembr.org/).
+  Claude hard-wrapped prose at about 80 columns, which breaks reflow in editors and terminals and makes diffs larger.
+  A project style takes precedence.
+  Shorter wording of the other rules keeps the file within its 2,000-byte bound.
+  Claude Code 2.1.289 has no `CLAUDE_NO_WRAP` variable or `--no-word-wrap` flag, and a plugin cannot change how the terminal wraps output.
+- The profile sets `cleanupPeriodDays` to 14, `enableArtifact` to `false`, `disableBundledSkills` to `true`, and `CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS` to `1`.
+- `/dotclaude:setup` keeps the newest 3 backups of each file and deletes the older ones.
+  It lists the memory files to review and the LSP plugins for the language servers on `PATH`.
+- The setup integrations reference covers the LSP plugins and the `ctx7` CLI for library docs, with no MCP server.
+  The `web-researcher` agent uses `ctx7` when it is on `PATH`, because it uses less context than a web search.
+  When `ctx7` is rate-limited, the agent checks the limit with one call and uses `WebSearch` and `WebFetch` until the reset.
+- `/dotclaude:setup` gives the command that adds a Context7 API key to the shell profile.
+  The user runs it outside Claude Code, and setup then checks that the key gives a tier other than `anonymous`.
+- The optional `dotclaude-jev` plugin: its `second-opinion` skill asks TypeSafe Jev, a decision model, for a yes or no check, a pick from options, or a rating, with a probability for each answer.
+  Claude uses it for its own close calls, and still asks the user the questions that only the user can answer.
+  It also checks a technical decision of the user: when Jev finds that facts decide it and that it causes defects, Claude tells the user the facts once and asks for a confirmation, and the answer of the user is final.
+  It needs `TYPESAFE_API_KEY`.
+- The README has a "Save weekly usage" section, and the dossier ranks the community claims about usage.
+
+### Changed
+
+- Plugin, agent, and skill descriptions and hook messages put code items in backticks.
+
+### Fixed
+
+- The verify gate no longer asks for a check after an edit to a file outside the project, such as a plan file in `~/.claude/plans/`.
+- The verify gate no longer counts an edit that failed, such as a `Write` that a permission denied.
+  Before, a denied `Write` sent Claude back for a check of a change that did not occur.
+- Setup keeps a status line of another tool, and tells you how to replace it with `--status-line`.
+  Before, it replaced the status line without a question.
+- A resumed session with an expired cache and less than 100k tokens of context no longer gets the cold cache notice, as in 0.19.
+  The cache write of a small context costs little.
+- The handoff pointer and the compaction note tell Claude to set a note to `done` only when each item in its Open section is done.
+  Before, the pointer said to close a note when "the work" was complete, and an agent closed a note whose Open list still had items.
+
 ## [0.20.3] - 2026-10-04
 
 ### Changed
@@ -177,4 +227,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.3...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.4...HEAD

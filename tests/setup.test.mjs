@@ -41,7 +41,13 @@ test("profile keeps the decided values", () => {
     "claude-haiku-4-5",
   ]);
   expect(PROFILE.autoCompactWindow).toBe(150000);
-  expect(JSON.stringify(PROFILE)).not.toMatch(/fable/i);
+  expect(PROFILE.cleanupPeriodDays).toBe(14);
+  // Subagents almost never pause 5 minutes, so the 1-hour write price costs more (docs/dossier/design.md).
+  expect(PROFILE.subagentPromptCacheTtl).toBeUndefined();
+  expect(PROFILE.enableArtifact).toBe(false);
+  expect(PROFILE.disableBundledSkills).toBe(true);
+  expect(PROFILE.env.CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS).toBe("1");
+  expect(JSON.stringify(PROFILE)).not.toMatch(/fable|opusplan/i);
 });
 
 test("a preview writes nothing and --apply merges with a backup", () => {
@@ -106,6 +112,22 @@ test("the CLAUDE.md block is added once and replaced in place", () => {
   const text = readFileSync(join(dir, "CLAUDE.md"), "utf8");
   expect(text.startsWith("# Mine\n")).toBe(true);
   expect(text.match(/dotclaude:begin/g)).toHaveLength(1);
+});
+
+test("a status line of another tool stays unless --status-line is given", () => {
+  const dir = mkdtempSync(join(tmpdir(), "setup-"));
+  const theirs = { type: "command", command: "ccusage statusline" };
+  writeFileSync(
+    join(dir, "settings.json"),
+    JSON.stringify({ statusLine: theirs }),
+  );
+  const { out } = run("settings.mjs", dir, "--apply");
+  expect(out).toContain("Kept your statusLine: ccusage statusline");
+  expect(settingsOf(dir).statusLine).toEqual(theirs);
+  expect(settingsOf(dir).subagentStatusLine.command).toContain("dotclaude");
+  expect(existsSync(join(dir, "dotclaude", "statusline.mjs"))).toBe(false);
+  run("settings.mjs", dir, "--status-line", "--apply");
+  expect(settingsOf(dir).statusLine.command).toContain("statusline.mjs");
 });
 
 test("--apply wires both status lines through stubs that run the plugin scripts", () => {

@@ -3,7 +3,9 @@
 Part of the [dotclaude dossier](../dossier.md). The index explains the
 source labels.
 
-> **0.20.0 status.** Sections 1 and 2 describe the 0.19 design. 0.20.0 removed the turn-limit handoff, the agent loop, the routing rule, and the usage-bound hooks that these sections name. The principles and the rejected alternatives still hold.
+> **0.20.0 status.** The principles in section 1 and the table in section 2 describe the current design.
+> The turn-limit handoff, the agent loop, and the routing rule are 0.19 history, and 0.20.0 removed them.
+> The rejected alternatives still hold.
 
 ## 1. Design Principles
 
@@ -11,11 +13,11 @@ source labels.
   stated only in prose did not hold in the measured week
   ([section 3](usage.md)). Prose stays only where no mechanism exists.
 - **Sized for Pro.** One set of usage bounds applies on every plan. Larger
-  plans reach their limits later. Fable access is the only plan-specific rule,
-  because it is a fact about the plan ([section 4](plans-and-models.md)).
+  plans reach their limits later.
+  The only plan-specific value is the cache time, which `hooks/lib/_plan.mjs` picks by plan.
+  The `plans` object of the settings profile is empty ([section 4](plans-and-models.md)).
 - **One owner for each number.** `hooks/lib/_budget.mjs` holds the bounds.
-  The session note reads it directly. A test fails when the output style, the
-  settings profile, or the option text disagrees with it.
+  Tests pin its copies in code and config, not in prose.
 - **No banned-phrase lists.** Claude routes around them with synonyms. The
   rules name what each behavior does and why.
 - **No hooks that judge tone or architecture.** A regex cannot tell a needed
@@ -39,34 +41,39 @@ source labels.
   Code.
 - **Fail open.** A bug in a guard must not stop the user's work. The guards
   are a best-effort parser, not a sandbox.
-- **One process per event.** `hooks.json` starts `hooks/dispatch.mjs` once
-  for each event. The dispatcher runs the actions whose matcher fits, all at
-  the same time, and merges their output in table order. **measured**
-  (2026-09-29, 50 `Bash` calls): 7 hook processes per call became 2, and CPU
-  time fell from about 164 ms to 86 ms per call. Wall time per event stayed
-  the same (Pre about 25 ms, Post about 50 ms), because the slowest action
-  sets it: `betterleaks` in PostToolUse and the load of the Bash guard's rule
-  modules in PreToolUse. A bare `bun` start takes 5 ms.
+- **One module for the tool hooks.** `hooks.json` loads `hooks/register.mjs`
+  as a hooks module (`tool.call`, `agent.spawn`, `prompt.submit`,
+  `turn.complete`, `session.compact`, and `tool.check`), so a tool call starts
+  no process.
+  Two classic command hooks remain: `hooks/session-start/context.mjs` and
+  `hooks/stop/verify.mjs` ([Claude Mods](mods.md)).
+  0.19 started `hooks/dispatch.mjs` once for each event.
+  **measured** (2026-09-29, 0.19, 50 `Bash` calls): 7 hook processes per call
+  became 2, and CPU time fell from about 164 ms to 86 ms per call.
+  A bare `bun` start takes 5 ms.
 - **Layered imports.** Event hooks import only `hooks/lib`. `hooks/lib`
-  imports only itself (`tests/lib/layers.test.mjs`). Skill scripts may import
-  `hooks/lib`.
+  imports only itself. Only the module `hooks/register.mjs` also imports the
+  event actions. Skill scripts may import `hooks/lib`.
 
 ## 2. Enforced Bounds
 
-| # | Scenario | Bound | Mechanism | Check |
-| --- | --- | --- | --- | --- |
-| Q1 | A subagent works a long task | No tool call past 100k tokens of context, or 150k for the reviewers. A fork gets its first call plus 50k. The report tool stays open. | `PreToolUse` hook on every tool | `tests/hooks/agent-budget.test.mjs` |
-| Q2 | The main conversation grows | Compaction at 150k | `autoCompactWindow` in the profile | `tests/lib/budget.test.mjs` |
-| Q3 | Claude spawns `general-purpose` | Refused, with the dotclaude agent for the job | `PreToolUse(Agent)` hook | `tests/hooks/model-lock.test.mjs` |
-| Q4 | Fan-out | 5 subagents, and 5 agents per workflow, at once | profile env | `tests/lib/budget.test.mjs` |
-| Q5 | dotclaude's text on every request | token limits in `LIMITS` | footprint test | `tests/lib/budget.test.mjs` |
-| Q6 | A bound changes | One edit in `_budget.mjs` | pinned copies | `tests/lib/budget.test.mjs` |
-| Q7 | Claude spawns any other subagent | It runs in the foreground and causes no wake turns | `Agent` hook, `CLAUDE_CODE_FORK_SUBAGENT=0` | `tests/hooks/model-lock.test.mjs` |
-| Q8 | Weekly review | The usage shares in [section 3](usage.md) are reproducible | `scripts/usage-report.mjs` | `tests/scripts/usage-report.test.mjs` |
+| Scenario | Bound | Mechanism | Check |
+| --- | --- | --- | --- |
+| A subagent works a long task | `maxTurns` in the agent file: 20 for `test-runner`, 40 for `investigator`, 60 for the others, 80 for `implementer` | Claude Code ends the agent at the limit | `tests/agents.test.mjs` |
+| A subagent model and effort | Opus 5.5 `low` to `high`, Sonnet 5.5 `low` and `medium`, Haiku 4.5 none | `agent.spawn` denial from `SUBAGENT_EFFORTS` (`guard_agents`) | `tests/agents.test.mjs`, `tests/module-notes.test.mjs` |
+| The main conversation grows | Compaction at 150k | `autoCompactWindow` in the profile | `tests/setup.test.mjs` |
+| Claude spawns `general-purpose` | Refused | `Agent(general-purpose)` deny rule in the profile | `tests/setup.test.mjs` |
+| Fan-out | 5 subagents, and 5 agents per workflow, at once | profile env | none |
+| A subagent runs in the background | It runs in the foreground and causes no wake turns | `CLAUDE_CODE_FORK_SUBAGENT=0` in the profile | none |
+| dotclaude's text on every request | `rules.md` at most 2,000 bytes | `RULES_MAX_BYTES` | `tests/session-start.test.mjs` |
+| Runtime JavaScript grows | At most 3,000 lines | `RUNTIME_JS_LINES` | `tests/budget.test.mjs` |
+| Weekly review | The usage shares in [section 3](usage.md) are reproducible | `scripts/usage-report.mjs` | none |
 
-Q2, Q4, and Q7 need the settings profile. Q1 and Q3 need only the plugin.
+The profile rows need `/dotclaude:setup`. The `maxTurns` and spawn rows need only the plugin.
+The status line shows the subagent context against `SUBAGENT_CONTEXT_TOKENS` (100k) and `REVIEWER_CONTEXT_TOKENS` (150k), and no hook enforces them.
+0.19 enforced these context bounds with a hook, and 0.20.0 removed it.
 
-Fork mode forces every subagent into the background. A foreground agent
+Fork mode (`CLAUDE_CODE_FORK_SUBAGENT`) forces every subagent into the background. A foreground agent
 returns its report in the turn that spawned it, so it causes no wake turn.
 Agents spawned in one message still run together. The expected saving is the
 redundant notification turns, up to about $135 a week, or 7% (inference).
@@ -75,14 +82,18 @@ background report in auto mode. The first wake turn remains, so forks stay
 off.
 The main session waits while agents run. Esc interrupts it.
 
-### Turn-Limit Handoff
+### Turn-Limit Handoff (0.19 History)
+
+0.19 added a hook that refused every tool except the report tool near an agent's turn limit.
+0.20.0 removed it, and `maxTurns` alone bounds an agent.
+The measurements below stay as the reason to keep tasks short.
 
 Claude Code delivers nothing from an agent that it stops at its turn limit.
 
 - **measured:** Of 13 capped runs after agents were told their limit up
   front, none reported before the cap. All were still calling tools.
-- A hook now refuses every tool except the report tool once about 5% of the
-  limit remains, with a minimum of 3 turns.
+- The 0.19 hook refused every tool except the report tool once about 5% of
+  the limit remained, with a minimum of 3 turns.
 - Claude Code counts the limit per invocation. A resume or a wake-up starts
   the count again. **measured:** resumed runs reached 100–380 calls under a
   cap of 80.
@@ -96,12 +107,14 @@ Claude Code delivers nothing from an agent that it stops at its turn limit.
 - The `implementer` limit stays 80. **measured:** in the week to
   2026-09-29, 31 of 252 runs reached it, and 27 of those were past 90k
   context. Most capped briefs named one behavior. Long runs passed 100k
-  context near turn 20, so the context bound now ends them first. A higher
+  context near turn 20, so the 0.19 context bound ended them first. A higher
   limit gives no more finished work.
+  0.20.0 keeps 80 for `implementer`.
 
-### The Agent Loop
+### The Agent Loop (0.19 History)
 
-The `slices` skill takes the workflow of the Bun, GitHub Copilot,
+0.20.0 removed the `slices` skill and the guards that held its oracle, because `/goal` covers a large change.
+The 0.19 `slices` skill took the workflow of the Bun, GitHub Copilot,
 and pnpm v12 Rust ports (**reported**). Each port used four parts:
 
 - A guide, written first. `.dotclaude/loop/GUIDE.md` holds the goal, the
@@ -114,25 +127,27 @@ and pnpm v12 Rust ports (**reported**). Each port used four parts:
   the guide, not the implementer's report. The Stop hook blocks once for a
   slice with the status `implemented`.
 
-The mechanisms are hooks because an oracle that the implementer can edit
+The 0.19 mechanisms were hooks because an oracle that the implementer can edit
 does not show anything. The main conversation is not limited, so the user
 can still fix a wrong oracle.
 
 A hypothesis was wrong. It said that worktree agents ran commands outside
 their worktree. **measured:** the 50 errors were Claude Code's own refusals
-of commands that it cannot verify stay in the worktree. The skill's brief
-tells each agent to run plain commands from the worktree root. dotclaude adds
+of commands that it cannot verify stay in the worktree. The 0.19 skill's brief
+told each agent to run plain commands from the worktree root. dotclaude added
 no guard for this, because the refusal already stops the command.
 
-### The Routing Rule
+### The Routing Rule (0.19 History)
 
+0.20.0 removed the routing rule and the delegation note, because users report cost blow-ups from subagents.
+`scripts/usage-report.mjs` still reports the delegation share.
 0.19.0 replaced the subagent rule "Work in the main conversation, and use a subagent only for …" with a routing rule.
 The routing rule tells Claude to delegate work whose tool results it does not need later, and to match the work to the agent descriptions.
 The old rule came from one week in which subagents were over half the cost.
-The causes were fan-out and `general-purpose` agents, which hooks now limit (Q1 to Q7 above).
+The causes were fan-out and `general-purpose` agents, which the profile and `maxTurns` now limit (section 2).
 But each main Opus turn reads the whole main context again ([99.9% cache reads](usage.md)), and users report that the main agent does almost all the work itself.
 **measured** before the change (2026-10-03, 7 days): 3.8 subagent runs per 100 main turns, and a median of 19169 tool-result tokens per main session ([baseline](usage.md)).
-**open:** whether the rule changes this share is in [Open Items](open-items.md).
+The rule is gone, so no one measured whether it changed this share.
 
 ### Rejected Alternatives
 
@@ -140,8 +155,16 @@ But each main Opus turn reads the whole main context again ([99.9% cache reads](
   were about 71M tokens: $355 at the 5-minute price, about $568 at the 1-hour
   price. The most the 1-hour TTL could save was $46 of rewrites after idle
   periods. The net result is about $170 a week worse.
+  **measured** again on 2026-10-05 from the request times of 981 subagent runs in 7 days.
+  The time between two requests of one subagent includes the tool time, such as a test run.
+  21,765 gaps were under 5 minutes, 41 were 5 to 60 minutes, and 1 was longer.
+  At the documented price ratios (a 5-minute write 1.25x, a 1-hour write 2x, a read 0.1x), the 5-minute TTL cost $796 and the 1-hour TTL $967, so 1 hour costs $171 more.
+  The 41 long gaps, such as 10 to 30 minute test runs, saved 2.54M tokens of rewrites, but all 65.5M tokens of writes paid the higher price.
+  A new agent that reads the cached prefix of an earlier agent of the same kind saves at most $5 more.
+  The 1-hour TTL pays only when about each subagent run has a pause of 5 to 60 minutes.
+  The 0.20.4 profile does not set `subagentPromptCacheTtl`.
 - **More or better prose.** The 400k handoff rule and "pick the most specific
-  agent" were both in the output style during the measured week.
+  agent" were both in the 0.19 output style during the measured week.
 - **Haiku for more subagents.** The cost is context times turns. No source
   that claims a saving gives measurements. Weaker models tend to take more
   turns.

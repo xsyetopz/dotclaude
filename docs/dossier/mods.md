@@ -3,14 +3,17 @@
 Part of the [dotclaude dossier](../dossier.md). The index explains the
 source labels.
 
-> **0.20.0 status.** This section describes the hooks module of Claude Code 2.1.288. dotclaude 0.20.0 uses it in `hooks/register.mjs` for `tool.call`, `agent.spawn`, `prompt.submit`, `turn.complete`, `session.compact`, and `tool.check`. It no longer uses the module for model-switch, config-change, or session-ledger hooks.
+> **0.20.0 status.** This section describes the hooks module of Claude Code 2.1.288.
+> dotclaude 0.20.0 uses it in `hooks/register.mjs` for `tool.call`, `agent.spawn`, `prompt.submit`, `turn.complete`, `session.compact`, and `tool.check`.
+> It no longer uses the module for model-switch, config-change, or session-ledger hooks.
+> The rows and gaps that name other events are 0.19 evidence, and each says so.
 
 ## 10. Claude Mods
 
 Claude Code 2.1.287 and later can load a plugin "hooks module". Anthropic calls a plugin
-with such a module a mod. dotclaude 0.18 runs most of its hooks in a module.
-[Hooks Module](../mods.md) gives the design. This section records the
-evidence.
+with such a module a mod. dotclaude has run most of its hooks in a module since 0.18.
+[Parts](../parts.md) lists what the module does in 0.20.0. This section
+records the evidence.
 
 ### What A Mod Is
 
@@ -69,48 +72,56 @@ evidence.
 
 | Work | Event | Evidence |
 | --- | --- | --- |
-| PreToolUse guards, PostToolUse actions | `tool.call`, `tool.check` | A failed call returns `{ isError, result, text, ref, context }`, and `text` is what the model reads (**binary**). |
-| SubagentStart conventions | `agent.spawn` | The context goes before the prompt, because no other field reaches the subagent (**official**, d.ts). |
-| Subagent context, main effort | `turn.step` | A `tool.call` input has no effort level (**official**, d.ts). |
-| UserPromptSubmit notes | `prompt.submit` | A hook attaches context "on the way down", in the input to `next` (**official**, d.ts). |
-| PreCompact prompt save | `session.compact` | A `precompute` installs nothing, and the real compaction fires the event again (**official**, d.ts). |
-| Built-in agents | `agent.offer` | `{ isOffered: false }` removes the agent from the listing and from dispatch (**official**, d.ts). |
-| Task reminders | `prompt.attachment` | `{ text: null }` leaves an attachment out. The reminders have type `task_reminder` or `todo_reminder` and origin `engine` (**official**, d.ts). |
-| Automatic clear | `prompt.submit`, `command.run` | `{ drop }` enters no prompt. `$.command.run` rejects inside a hook that the turn waits on, so the module runs `/clear` from a timer after the hook returns (**official**, d.ts, and **measured**, 2.1.288). `$.prompt.submit` takes no `context` and skips the hook that calls it, so the `SessionStart(clear)` hook adds the note (**measured**). |
-| Permission reminders | `telemetry.log` | A `tool_decision` record has `decision` (`accept` or `reject`), `source` (`config`, `user_temporary`, or `user_reject`), and the `tool_use_id` of the `tool.check` call. It comes before the tool runs (**measured**, 2.1.288). |
+| Guards, secret redaction, CodeGraph notes | `tool.call` | A failed call returns `{ isError, result, text, ref, context }`, and `text` is what the model reads (**binary**). |
+| Keep an ask of the guards | `tool.check` | The hook returns the ask of the guard unless the engine denies (`hooks/register.mjs`). |
+| Spawn rules | `agent.spawn` | A `{ deny }` result refuses the spawn with a reason (`hooks/register.mjs`). |
+| Cold-cache note | `prompt.submit`, `turn.complete` | A hook attaches context "on the way down", in the input to `next` (**official**, d.ts). `turn.complete` stores the time of the last turn. |
+| Compaction instruction and handoff fork | `session.compact` | A `precompute` installs nothing, and the real compaction fires the event again (**official**, d.ts). The fork runs before `next`, so it sees the whole conversation. |
 
 These stay classic command hooks:
 
 - `SessionStart`: `session.start` does not fire after `/clear`, `/resume`, or
   a compaction, and it cannot add context (**official**, d.ts).
-- `Stop`, `SubagentStop`: `turn.complete` cannot block (**official**, d.ts).
-- `TaskCompleted`, `StopFailure`, `PreModelSwitch`, `PostModelSwitch`: no
-  native event exists (**official**, d.ts).
-- `ConfigChange`: `config.set` sees only the `/config` rows (**official**,
-  d.ts).
+- `Stop`: `turn.complete` cannot block (**official**, d.ts).
+
+0.19 also used these events, and 0.20.0 removed each use (**official** or **measured** as marked):
+
+| Work | Event | Evidence |
+| --- | --- | --- |
+| Subagent context, main effort | `turn.step` | A `tool.call` input has no effort level (**official**, d.ts). |
+| Built-in agents | `agent.offer` | `{ isOffered: false }` removes the agent from the listing and from dispatch (**official**, d.ts). |
+| Task reminders | `prompt.attachment` | `{ text: null }` leaves an attachment out. The reminders have type `task_reminder` or `todo_reminder` and origin `engine` (**official**, d.ts). |
+| Automatic clear | `prompt.submit`, `command.run` | `{ drop }` enters no prompt. `$.command.run` rejects inside a hook that the turn waits on, so the module ran `/clear` from a timer after the hook returned (**official**, d.ts, and **measured**, 2.1.288). `$.prompt.submit` takes no `context` and skips the hook that calls it (**measured**). |
+| Permission reminders | `telemetry.log` | A `tool_decision` record has `decision` (`accept` or `reject`), `source` (`config`, `user_temporary`, or `user_reject`), and the `tool_use_id` of the `tool.check` call. It comes before the tool runs (**measured**, 2.1.288). |
+
+0.19 also kept `SubagentStop`, `TaskCompleted`, `StopFailure`, `PreModelSwitch`, `PostModelSwitch`, and `ConfigChange` as classic hooks.
+No native event exists for the first five, and `config.set` sees only the `/config` rows (**official**, d.ts).
 
 ### Gaps
 
 - The module gets no permission mode: no field on `tool.call` or
   `tool.check`, and `/config` has only the default mode (**official**, d.ts).
-  So `find . -name '*.log' -delete` gives an ask in the module and nothing in
+  So in 0.19, `find . -name '*.log' -delete` gave an ask in the module and nothing in
   the classic hook in auto mode (**measured**).
+  0.20.0 has no classic guard, and the module guards decide alone.
 - A classic `allow` is dropped, so the engine rules decide. This matters only
   for `Agent` and `SendMessage`, which no permission rule gates.
 - An action that throws is skipped, and its error is not logged.
   The module has no stderr.
   A rethrow would make the engine skip all of dotclaude for the event and
   count the failure toward a runaway (**binary**, `hookFailed`).
-  So only `DOTCLAUDE_DEBUG` rethrows.
-- The running marker is written after `next` of `agent.spawn`. Two spawns in
-  one message can both pass the concurrency check.
+  So `hooks/register.mjs` catches the errors of the calls that can fail.
+  0.19 had a `DOTCLAUDE_DEBUG` switch that rethrew, and 0.20.0 has none.
+- In 0.19, the running marker was written after `next` of `agent.spawn`, so two spawns in
+  one message could both pass the concurrency check.
+  0.20.0 has no such check, and the profile bounds fan-out with `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`.
 - `$.fs.write` is not atomic. It runs `mkdir` and then `writeFile`
   (**measured**, 2.1.287 bundle). `$.fs` has no rename, so the module cannot
-  write a file atomically. The module actions that change the ledger now wait
-  in a queue for each ledger file (`withLedger` in `hooks/lib/_ledger.mjs`),
-  so parallel tool calls keep all of their writes. The queue does not reach a
-  command hook process, so such a process can read a ledger that is half
-  written.
+  write a file atomically. In 0.19, the module actions that changed the
+  session ledger waited in a queue for each ledger file, so parallel tool
+  calls kept all of their writes. The queue did not reach a command hook
+  process, so such a process could read a ledger that was half written.
+  0.20.0 has no ledger.
 - In a subagent with `isolation: "worktree"`, `$.session.cwd()` gives
   `<root>/.claude/worktrees/<name>`, and `$.session.root()` gives `<root>`
   (**measured**). The module uses the worktree as the project of the
@@ -126,10 +137,11 @@ These stay classic command hooks:
   2.1.288 fixed it: "Fixed a plugin's `tool.call` hook making Bash fail and
   file searches read the wrong folder in subagents that run in a worktree"
   (**official**, release notes). On 2.1.288, 0 calls failed (**measured**).
-  dotclaude requires 2.1.288 for this reason.
+  dotclaude required 2.1.288 for this reason, and the README now requires 2.1.289.
 - `$.env.get` reads the environment of the Claude Code process (**binary**, 2.1.288).
   The `Notification` input for an `AskUserQuestion` dialog is `permission_prompt` with the message "Claude needs your permission" and no tool name (**measured**, 2.1.288).
   So only state that the module writes can tell it from a permission dialog.
+  0.19 used this for permission reminders, and 0.20.0 removed them.
 - After `--continue`, the first `$.model.fork` gives `nothing-to-fork`, and a fork after the next turn works (**measured**, 2.1.288).
 - The API can change in each release: "this surface may change between
   releases without notice" (**official**, d.ts header). Each dotclaude

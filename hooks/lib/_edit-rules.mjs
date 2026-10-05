@@ -53,7 +53,7 @@ export function editReasons(tool, input, existing = null) {
         );
       if (count(SKIP, after) > count(SKIP, before))
         out.push(
-          `The edit adds a skip, xfail, todo, or focus marker to the test file ${name}.`,
+          `The edit adds a \`skip\`, \`xfail\`, \`todo\`, or focus marker to the test file ${name}.`,
         );
     }
   }

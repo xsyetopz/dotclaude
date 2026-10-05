@@ -13,17 +13,29 @@ import {
 } from "./lib/_agent-rules.mjs";
 import { askFor } from "./lib/_bash-rules.mjs";
 import {
+  CODEGRAPH_SYNC_TIMEOUT_MS,
+  CODEGRAPH_TIMEOUT_MS,
   HANDOFF_FORK_TIMEOUT_MS,
+  HANDOFF_SESSIONS_MAX,
   SECRET_SCAN_MAX_BYTES,
   SECRET_SCAN_TIMEOUT_MS,
 } from "./lib/_budget.mjs";
 import { idleNote } from "./lib/_cache.mjs";
+import {
+  graphCommands,
+  graphNote,
+  indexState,
+  STATUS_COMMAND,
+  SYNC_COMMAND,
+  searchSymbol,
+} from "./lib/_codegraph.mjs";
 import {
   COMPACT_TEXT,
   HANDOFF_PROMPT,
   handoffFile,
   handoffPath,
   handoffRow,
+  supersede,
 } from "./lib/_compact.mjs";
 import { editReasons } from "./lib/_edit-rules.mjs";
 import {
@@ -122,6 +134,61 @@ async function scan($, text) {
   }
 }
 
+/**
+ * The state of the index at `root`, after a `codegraph sync` when files
+ * changed since the last index. The user approved the sync of an index that
+ * exists, but the hook never builds one. After a failed sync, the session
+ * does not try again, so a slow sync does not delay each search.
+ */
+async function currentIndex(run, root, graph) {
+  const status = await run(STATUS_COMMAND).catch(() => null);
+  const index = indexState(status?.stdout);
+  if (!index.pending || graph.failed.has(root)) return index;
+  const sync = await run(SYNC_COMMAND, CODEGRAPH_SYNC_TIMEOUT_MS).catch(
+    () => null,
+  );
+  if (sync?.exitCode === 0) return { state: "ok" };
+  graph.failed.add(root);
+  return index;
+}
+
+/**
+ * The CodeGraph notes for a search of one symbol name: the callers and
+ * callees once for each symbol in each context, and a note once for each
+ * project when the index stays stale. A project with no index or no
+ * `codegraph` gets nothing. `graph` holds the state of the session, and
+ * `graph.syncs` lets parallel searches share one sync.
+ */
+async function graphNotes($, e, graph) {
+  const symbol = searchSymbol(e);
+  if (!symbol) return [];
+  const root = await $.session.root();
+  const key = `${root}\n${e.agentId ?? "main"}\n${symbol}`;
+  if (graph.seen.has(key)) return [];
+  const run = (argv, timeoutMs = CODEGRAPH_TIMEOUT_MS) =>
+    $.process.run(argv, { cwd: root, timeoutMs });
+  let pending = graph.syncs.get(root);
+  if (!pending) {
+    pending = currentIndex(run, root, graph).finally(() =>
+      graph.syncs.delete(root),
+    );
+    graph.syncs.set(root, pending);
+  }
+  const index = await pending;
+  if (index.state === "none") return [];
+  graph.seen.add(key);
+  const notes = [];
+  if (index.note && !graph.warned.has(root)) {
+    graph.warned.add(root);
+    notes.push(index.note);
+  }
+  const [callers, callees] = await Promise.all(
+    graphCommands(symbol).map((argv) => run(argv).catch(() => null)),
+  );
+  const note = graphNote(symbol, callers?.stdout, callees?.stdout);
+  return note ? [...notes, note] : notes;
+}
+
 /** The agent file of a `dotclaude:` agent, parsed, or undefined. */
 async function agentDefinition($, subagentType) {
   const name = /^dotclaude:([a-z0-9-]+)$/.exec(String(subagentType))?.[1];
@@ -150,12 +217,33 @@ async function forkHandoff($) {
     const path = handoffPath(await $.session.root(), at);
     // The note is in memory, so a failed write loses only the file.
     await $.fs.write(path, handoffFile(fork.text, at)).catch(() => {});
+    await supersedeEarlier($, path).catch(() => {});
     return { text: fork.text, path };
   } catch {
     return null;
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Mark the earlier compaction note of this session as superseded, because the new note carries its open items.
+ * Without this, each compaction left one more `in-progress` note.
+ * The store keeps the newest note path of the last `HANDOFF_SESSIONS_MAX` sessions.
+ */
+async function supersedeEarlier($, path) {
+  const id = await $.session.id();
+  const notes = { ...((await $.store.get("handoff-notes")) ?? {}) };
+  const earlier = notes[id];
+  if (earlier && earlier !== path) {
+    const text = await $.fs.read(earlier);
+    const next = supersede(text);
+    if (next !== text) await $.fs.write(earlier, next);
+  }
+  delete notes[id];
+  notes[id] = path;
+  const kept = Object.entries(notes).slice(-HANDOFF_SESSIONS_MAX);
+  await $.store.set("handoff-notes", Object.fromEntries(kept));
 }
 
 /**
@@ -166,6 +254,12 @@ async function forkHandoff($) {
  */
 export function register(on, options) {
   const asks = new Map();
+  const graph = {
+    syncs: new Map(),
+    seen: new Set(),
+    failed: new Set(),
+    warned: new Set(),
+  };
 
   on("tool.call", async ($, e, next) => {
     const id = e.tool_use_id;
@@ -183,18 +277,26 @@ export function register(on, options) {
     } finally {
       if (keep) asks.delete(id);
     }
-    if (!r || "deny" in r || r.isError || !enabled(options, "guard_secrets"))
-      return r;
-    const findings = await scan($, strings(r.result).join("\n"));
-    if (!findings?.length) return r;
-    const { value, count } = redact(r.result, findings);
-    if (!count) return r;
-    // Core uses its own messages (`ref`, `text`) when they stay, so a
-    // changed result is a new object without them.
-    return {
-      result: value,
-      context: [...(r.context ?? []), redactionNote(count, findings)],
-    };
+    if (!r || "deny" in r || r.isError) return r;
+    let out = r;
+    if (enabled(options, "guard_secrets")) {
+      const findings = await scan($, strings(r.result).join("\n"));
+      const { value, count } = findings?.length
+        ? redact(r.result, findings)
+        : { count: 0 };
+      // Core uses its own messages (`ref`, `text`) when they stay, so a
+      // changed result is a new object without them.
+      if (count)
+        out = {
+          result: value,
+          context: [...(r.context ?? []), redactionNote(count, findings)],
+        };
+    }
+    if (!enabled(options, "codegraph")) return out;
+    const notes = await graphNotes($, e, graph).catch(() => []);
+    return notes.length
+      ? { ...out, context: [...(out.context ?? []), ...notes] }
+      : out;
   });
 
   // The model and effort rules. The call keeps its `model`: a model that the

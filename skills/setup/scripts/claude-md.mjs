@@ -10,6 +10,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { backup } from "./_files.mjs";
 
 const BEGIN = "<!-- dotclaude:begin (managed by /dotclaude:setup) -->";
 const END = "<!-- dotclaude:end -->";
@@ -41,9 +42,9 @@ if (!process.argv.includes("--apply")) {
 }
 fs.mkdirSync(path.dirname(file), { recursive: true });
 if (current) {
-  const backup = `${file}.dotclaude-backup-${new Date().toISOString().replace(/[:.]/g, "-")}`;
-  fs.copyFileSync(file, backup);
-  console.log(`Backup: ${backup}`);
+  const { made, deleted } = backup(file);
+  console.log(`Backup: ${made}`);
+  for (const f of deleted) console.log(`Deleted old backup: ${f}`);
 }
 fs.writeFileSync(file, next);
 console.log(`Wrote ${file}.`);

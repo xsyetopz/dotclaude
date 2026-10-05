@@ -38,7 +38,8 @@ export function modelKey(name) {
   return ALIASES[key] ?? key;
 }
 
-const allowedModels = () => Object.keys(SUBAGENT_EFFORTS).join(", ");
+const code = (list) => list.map((x) => `\`${x}\``).join(", ");
+const allowedModels = () => code(Object.keys(SUBAGENT_EFFORTS));
 
 /**
  * The reason to deny a spawn, or undefined.
@@ -59,7 +60,7 @@ export function spawnDenial({ askedModel, parentModel, pinned, effort }) {
     return `A subagent cannot run on \`${model}\`. The allowed models are ${allowedModels()}. Pick an agent that fixes one of them.`;
   if (effort && !efforts.includes(effort))
     return efforts.length
-      ? `The effort \`${effort}\` is not allowed for \`${key}\`. The allowed efforts are ${efforts.join(", ")}.`
+      ? `The effort \`${effort}\` is not allowed for \`${key}\`. The allowed efforts are ${code(efforts)}.`
       : `\`${key}\` takes no effort, and the effort is \`${effort}\`. Remove the effort.`;
   return undefined;
 }

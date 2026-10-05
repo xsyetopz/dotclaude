@@ -50,14 +50,18 @@ flag with a 4.3k-token replacement prompt.
 
 0.17 removed the shell function.
 The profile turns on the lean prompt, and dotclaude adds its engineering, git, and report rules to every session.
-0.17 put the rules in an output style, and 0.18 moves them to a SessionStart hook (`hooks/session-start/add-working-rules.mjs`).
-The rules are about 7 KB (`LIMITS.workingRulesBytes`).
+0.17 put the rules in an output style, and 0.18 moved them to a SessionStart hook (`add-working-rules.mjs`, removed in 0.20.0).
+The 0.18 rules were about 7 KB (`LIMITS.workingRulesBytes`).
+Since 0.20.0, `hooks/session-start/context.mjs` adds `hooks/session-start/rules.md`, which has 1,942 bytes against the bound `RULES_MAX_BYTES` (2,000).
+It also adds `minimal-code.md` unless the option `ponytail` is `false`.
 The 0.16 prompt and style took about 4.9k tokens.
 
 - The 2.1.287 prompt has the `<pasted_content>` rule, the `/<skill-name>`
   and `! <command>` guidance, and the rule on hard-to-reverse actions
   (**binary**). So the rules keep only the parts of the approval rule that are dotclaude's own.
-- The profile turns auto memory off, so no `# Memory` section is necessary.
+- 0.17 turned auto memory off in the profile, and the rules had no `# Memory` section.
+  0.20.0 leaves auto memory on, and `/dotclaude:setup` lists the memory files to review.
+  The rules still have no memory section.
 - The header and identity line are always sent (**capture**).
 
 Anthropic's published model system prompts are the Claude apps' prompts, not
@@ -76,17 +80,19 @@ With the 0.16 replacement prompt, `true` sent the same request as `false`
 
 The `additionalContext` of a SessionStart hook arrives in the same role-`system` message as the output style (**capture**, 2.1.288).
 So text from a hook has the same position as a style, and it applies with every style and with no style.
-This is why the working rules moved from the styles to a hook, and each style now holds only its reply-style rules.
+This is why the working rules moved from the styles to a hook, and the one style left, `Concise`, holds only reply-style rules.
 
 Observed behavior of SessionStart context in 2.1.288:
 
 - Claude Code keeps at most about 10,000 bytes of output from each hook command (**binary**).
   The limit applies per command, not per event.
-  So the rules have their own command in `hooks.json`, and the other SessionStart actions share the dispatcher's command.
+  In 0.19 the rules had their own command in `hooks.json`, and the other SessionStart actions shared the dispatcher's command.
+  Since 0.20.0, one command, `context.mjs`, adds the rules and the notes.
 - After `/compact` or an automatic compaction, Claude Code runs the hook again with source `compact`, and it drops the copy from startup (**capture**).
   So the rules come back after each compaction, and the text is not sent twice.
 - With `--resume`, the earlier copy stays in the transcript, so a new copy would be a duplicate.
-  The hook adds the rules only for the sources `startup`, `clear`, and `compact`, and not in subagents.
+  The hook adds the rules only for the sources `startup`, `clear`, and `compact`.
+  A `resume` gets only the cold-cache note, when the cache has expired.
 - No setting or hook output appends text to the built-in system prompt itself.
   The role-`system` message is the closest position that a plugin can reach.
 
@@ -105,7 +111,8 @@ The flag comes from the feature-flag fetch, which the telemetry settings control
 In a headless session with `cc-plugin-telemetry@builtin: false`, the debug log showed the plugin admitted and its `prompt.submit`, `turn.step`, and `session.end` hooks run.
 Its `telemetry.log` and `telemetry.mark` calls then go to no handler, and nothing is sent.
 The `telemetry` plugin is on by default.
-The setup switch `builtin-plugins` turns `you-should-know` on and the others off.
+0.19 had a setup switch `builtin-plugins` that turned `you-should-know` on and the others off.
+0.20.0 removed it, and the profile sets no `enabledPlugins`.
 
 ### Skill Listing And claude.ai Connectors
 
@@ -169,9 +176,6 @@ mode, remove `script` and add `-p`. The request bodies contain the user's
 
 ### Count The Injected Text
 
-`scripts/count-tokens.mjs` counts the tokens of the working rules, each output
-style, the SessionStart Fable note, the subagent conventions, and each agent prompt. It
-is opt-in, because it calls the API. Run
-`ANTHROPIC_API_KEY=... bun scripts/count-tokens.mjs`, and add `--json` for
-JSON. Each count is for the text alone, with the count of a one-word message
-taken off. Without the key, the script exits with code 1.
+`scripts/count-tokens.mjs` counted the tokens of the working rules, the output styles, and the agent prompts.
+0.20.0 removed it, because the features that it served are gone.
+`tests/session-start.test.mjs` bounds the working rules in bytes.

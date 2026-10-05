@@ -1,5 +1,7 @@
 // The text and the note file of a compaction.
 
+import { CLOSE_RULE } from "./_handoff.mjs";
+
 // The default summary text says to continue without asking. A model then
 // acted on a plan that the user had not approved.
 export const COMPACT_TEXT = `<open_request>
@@ -12,7 +14,7 @@ export const HANDOFF_PROMPT = `<handoff_request>
 Write a handoff note for a fresh session that continues this task.
 The conversation is about to be compacted, and the next part starts from this note.
 Write only what you verified or what the user said.
-Mark each item that you are not sure of as unverified.
+Mark each item that you are not sure of as \`unverified\`.
 Use these sections in this order:
 
 ## Goal
@@ -43,9 +45,20 @@ export const handoffPath = (root, at) =>
 export const handoffFile = (text, at) =>
   `---\nstatus: in-progress\nwritten: ${at.toISOString()}\n---\n\n${text.trim()}\n`;
 
+/**
+ * The note with `status: superseded` in place of `status: in-progress`.
+ * A newer note of the same session carries its open items,
+ * so the SessionStart pointer and the agent read only the newest note.
+ */
+export const supersede = (text) =>
+  text.replace(
+    /^(---\r?\n(?:(?!---).*\r?\n)*?)status: in-progress(?=\r?\n)/,
+    "$1status: superseded",
+  );
+
 /** The user row that carries the note into the compacted conversation. */
 export const handoffRow = (text, path) => ({
   role: "user",
-  text: `<compaction_handoff_note path="${path}">\n${text.trim()}\n</compaction_handoff_note>`,
+  text: `<compaction_handoff_note path="${path}">\n${text.trim()}\n</compaction_handoff_note>\n${CLOSE_RULE}`,
   toolUses: [],
 });

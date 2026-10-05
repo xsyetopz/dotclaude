@@ -1,7 +1,7 @@
 {
   "name": "dotclaude-browser",
-  "version": "0.20.3",
-  "description": "Drives a browser with agent-browser, or with CloakBrowser on sites with bot detection.",
+  "version": "0.20.4",
+  "description": "Drives a browser with `agent-browser`, or with CloakBrowser on sites with bot detection.",
   "author": {
     "name": "xsyetopz"
   },
@@ -11,7 +11,7 @@
     "backend": {
       "type": "string",
       "title": "Browser backend",
-      "description": "Use agent-browser, or cloakbrowser for sites with bot detection. CloakBrowser runs through agent-browser with its own Chromium binary.",
+      "description": "Use `agent-browser`, or `cloakbrowser` for sites with bot detection. CloakBrowser runs through `agent-browser` with its own Chromium binary.",
       "default": "agent-browser"
     }
   }

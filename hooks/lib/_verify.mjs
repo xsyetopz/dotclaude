@@ -63,8 +63,9 @@ export const runsCheck = (command, candidates) =>
 
 /**
  * The tool uses of the last turn in a transcript's JSONL text: `{ name,
- * command }` in order. The turn starts at the last user line that is not a
- * tool result.
+ * command, file, failed }` in order. The turn starts at the last user line
+ * that is not a tool result. `failed` marks a use whose result is an error,
+ * such as a denied permission.
  */
 export function lastTurn(jsonl) {
   const lines = jsonl.split("\n").flatMap((l) => {
@@ -81,18 +82,43 @@ export function lastTurn(jsonl) {
     !m.isSidechain &&
     (typeof m.message?.content === "string" ||
       blocks(m).some((b) => b.type === "text"));
-  const start = lines.findLastIndex(isPrompt);
-  return lines
-    .slice(start + 1)
+  const turn = lines.slice(lines.findLastIndex(isPrompt) + 1);
+  const failed = new Set(
+    turn
+      .flatMap(blocks)
+      .filter((b) => b.type === "tool_result" && b.is_error === true)
+      .map((b) => b.tool_use_id),
+  );
+  return turn
     .filter((m) => m.type === "assistant" && !m.isSidechain)
     .flatMap(blocks)
     .filter((b) => b.type === "tool_use")
-    .map((b) => ({ name: b.name, command: String(b.input?.command ?? "") }));
+    .map((b) => ({
+      name: b.name,
+      command: String(b.input?.command ?? ""),
+      file: String(b.input?.file_path ?? b.input?.notebook_path ?? ""),
+      failed: failed.has(b.id),
+    }));
 }
 
-/** The reason to send Claude back, or undefined. */
-export function verifyReason(uses, commands) {
-  const edit = uses.findLastIndex((u) => EDITS.has(u.name));
+/**
+ * Whether an edit of `file` is project work. An absolute path out of `root`,
+ * such as a plan file in `~/.claude/plans`, has no check in this project.
+ */
+const inProject = (file, root) =>
+  !root ||
+  !file?.startsWith("/") ||
+  file === root ||
+  file.startsWith(`${root.replace(/\/$/, "")}/`);
+
+/**
+ * The reason to send Claude back, or undefined.
+ * An edit that failed, such as a denied `Write`, changed no file.
+ */
+export function verifyReason(uses, commands, root) {
+  const edit = uses.findLastIndex(
+    (u) => EDITS.has(u.name) && !u.failed && inProject(u.file, root),
+  );
   if (edit < 0) return undefined;
   const ran = uses
     .slice(edit + 1)

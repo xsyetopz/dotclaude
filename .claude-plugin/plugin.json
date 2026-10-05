@@ -1,25 +1,19 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.20.3",
+  "version": "0.20.4",
   "description": "A small Claude Code plugin with guards, model and effort rules, compaction and cache notes, and role agents.",
   "author": {
     "name": "xsyetopz"
   },
   "repository": "https://github.com/xsyetopz/dotclaude",
   "license": "MIT",
-  "keywords": [
-    "hooks",
-    "guardrails",
-    "safety",
-    "agents",
-    "subagents"
-  ],
+  "keywords": ["hooks", "guardrails", "safety", "agents", "subagents"],
   "userConfig": {
     "guard_bash": {
       "type": "boolean",
       "title": "Bash guard",
-      "description": "Ask before destructive git/filesystem/database commands, hook bypasses, and public side effects (publish, gh writes, Claude Design writes outside /design-sync); deny recursive searches that walk gitignored build output.",
+      "description": "Ask before destructive `git`, file system, and database commands, hook bypasses, and public side effects (a publish, `gh` writes, and Claude Design writes outside `/design-sync`). Deny recursive searches that walk gitignored build output.",
       "default": true
     },
     "guard_edit": {
@@ -31,13 +25,25 @@
     "guard_secrets": {
       "type": "boolean",
       "title": "Secret redaction",
-      "description": "Scan every tool output with Betterleaks and replace each secret it finds with [REDACTED:<rule>] before the model sees it. Needs betterleaks on PATH. Without it, output passes through and session start says so.",
+      "description": "Scan every tool output with Betterleaks and replace each secret it finds with `[REDACTED:<rule>]` before the model sees it. Needs `betterleaks` on `PATH`. Without it, output passes through and session start says so.",
       "default": true
     },
     "guard_agents": {
       "type": "boolean",
       "title": "Subagent guard",
       "description": "Deny a subagent spawn that breaks the model and effort rules, with the reason.",
+      "default": true
+    },
+    "codegraph": {
+      "type": "boolean",
+      "title": "CodeGraph augment",
+      "description": "When a `Grep` call or a Bash `rg` or `grep` search looks for one symbol name in a project with a CodeGraph index, run `codegraph sync` if files changed since the last index, then add the callers and callees of that symbol to the search result. Needs `codegraph` on `PATH`. Never builds an index.",
+      "default": true
+    },
+    "ponytail": {
+      "type": "boolean",
+      "title": "Minimal code rules",
+      "description": "At session start, tell Claude to build the minimum: no code that the task does not need, reuse before new code, and the standard library before a dependency. The idea comes from Ponytail.",
       "default": true
     },
     "compaction_handoff": {

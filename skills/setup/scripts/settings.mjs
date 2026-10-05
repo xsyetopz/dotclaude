@@ -2,7 +2,7 @@
 // Merge profiles/recommended.json into a Claude Code settings file, and remove
 // CodeGraph's `prompt-hook` entry.
 //
-//   bun settings.mjs [--scope user|project|local] [--profile file] [--plan id] [--apply]
+//   bun settings.mjs [--scope user|project|local] [--profile file] [--plan id] [--status-line] [--apply]
 //
 // The profile's `plans` object holds per-plan overrides, by plan id (see
 // `hooks/lib/_plan.mjs`). They merge over the base values. The script detects
@@ -13,9 +13,11 @@
 // `status-line/main.mjs` and `subagents.mjs`, and sets `statusLine` and
 // `subagentStatusLine` to run them. A stub finds the newest version in the
 // plugin cache when it runs, so a plugin update needs no new stubs.
+// A status line of another tool stays, unless `--status-line` is given.
 //
 // Without --apply, it prints what differs and writes nothing. That is also the
-// status. With --apply, it backs the file up next to itself, then writes.
+// status. With --apply, it backs the file up next to itself, keeps the newest
+// three backups, then writes. It also reports auto memory to review.
 // Merge rules: objects merge key by key, arrays gain missing entries, and
 // scalars take the profile value. `availableModels` is replaced, because the
 // profile owns the model list. The script also reports a CodeGraph MCP entry
@@ -31,6 +33,7 @@ import {
   PLANS,
   planLabel,
 } from "../../../hooks/lib/_plan.mjs";
+import { backup, lspPlugins, memoryReport } from "./_files.mjs";
 
 /** The plan from the environment and the account in `.claude.json`. */
 function localPlan(env = { HOME: os.homedir(), ...process.env }) {
@@ -54,6 +57,7 @@ const profilePath = path.resolve(
   ),
 );
 const apply = args.includes("--apply");
+const replaceStatusLine = args.includes("--status-line");
 const planFlag = flag("--plan");
 if (planFlag && !PLANS.includes(planFlag)) {
   console.error(`Unknown plan "${planFlag}". Use ${PLANS.join(", ")}.`);
@@ -218,17 +222,26 @@ const overlay = (under, over) =>
     ]),
   );
 const profile = overlay(base, isObject(plans?.[plan]) ? plans[plan] : {});
+const current = readJson(target, {});
+// A status line whose command does not run a dotclaude stub belongs to another tool.
+const foreign = STATUS_LINES.filter(
+  (l) =>
+    !replaceStatusLine &&
+    isObject(current[l.key]) &&
+    !String(current[l.key].command ?? "").includes(STUB_DIR),
+);
+const ours = STATUS_LINES.filter((l) => !foreign.includes(l));
 const merged = removeCodegraphHook(
   merge(
-    readJson(target, {}),
+    current,
     {
       ...profile,
-      ...Object.fromEntries(STATUS_LINES.map((l) => [l.key, l.setting])),
+      ...Object.fromEntries(ours.map((l) => [l.key, l.setting])),
     },
     "",
   ),
 );
-const staleStubs = STATUS_LINES.filter((l) => {
+const staleStubs = ours.filter((l) => {
   const text = stubText(l.script);
   const had = fs.existsSync(l.stub) && fs.readFileSync(l.stub, "utf8") === text;
   if (!had) changes.push(`write ${l.stub}`);
@@ -251,10 +264,32 @@ console.log(
     : "Settings match the profile.",
 );
 for (const line of changes) console.log(`  ${line}`);
+for (const l of foreign)
+  console.log(
+    `Kept your ${l.key}: ${current[l.key].command}. Run again with --status-line to use the dotclaude status line.`,
+  );
 if (codegraphMcp)
   console.log(
     `CodeGraph MCP entry found in ${claudeJson}. Remove it with: claude mcp remove codegraph -s user`,
   );
+const lsp = lspPlugins(
+  (bin) => Bun.which(bin),
+  readJson(path.join(configDir, "plugins", "installed_plugins.json"), {}),
+);
+if (lsp.length) {
+  console.log(
+    "\nLanguage servers on PATH with no LSP plugin. Install each with:",
+  );
+  for (const name of lsp)
+    console.log(`  /plugin install ${name}@claude-plugins-official`);
+}
+const memory = memoryReport(configDir);
+if (memory.length) {
+  console.log(
+    "\nAuto memory to review (setup deletes no memory, the user decides):",
+  );
+  for (const line of memory) console.log(`  ${line}`);
+}
 if (!changes.length || !apply) {
   if (changes.length)
     console.log("\nDry run. Run again with --apply to write these changes.");
@@ -262,9 +297,9 @@ if (!changes.length || !apply) {
 }
 fs.mkdirSync(path.dirname(target), { recursive: true });
 if (fs.existsSync(target)) {
-  const backup = `${target}.dotclaude-backup-${new Date().toISOString().replace(/[:.]/g, "-")}`;
-  fs.copyFileSync(target, backup);
-  console.log(`\nBackup: ${backup}`);
+  const { made, deleted } = backup(target);
+  console.log(`\nBackup: ${made}`);
+  for (const f of deleted) console.log(`Deleted old backup: ${f}`);
 }
 for (const l of staleStubs) {
   fs.mkdirSync(STUB_DIR, { recursive: true });

@@ -30,8 +30,8 @@ faster.
 
 ### Plan Detection
 
-`model_plan: auto` reads `~/.claude.json` → `oauthAccount`, without the
-keychain token.
+`hooks/lib/_plan.mjs` reads `~/.claude.json` → `oauthAccount`, without the
+keychain token. (0.19 chose the policy below with the option `model_plan: auto`, which 0.20.0 removed.)
 
 | Field | Values seen |
 | --- | --- |
@@ -45,10 +45,11 @@ without an OAuth account resolves to `api`. The limit buckets are
 `seven_day_overage_included` (**binary**). The status line receives only the
 first two.
 
-### Per-Plan Policy
+### Per-Plan Policy (0.19 History)
 
-`hooks/lib/_plans.mjs` sets this policy for the model lock, the settings
-profile, and session start. Fable is never a subagent model.
+The 0.19 policy follows. The model lock, the profile, and the session note of 0.19 applied it.
+0.20.0 removed all three uses, and `hooks/lib/_plan.mjs` now picks only the cache time and the `api` note.
+Fable is never a subagent model.
 
 | Plan | Fable | Session note |
 | --- | --- | --- |
@@ -56,6 +57,11 @@ profile, and session start. Fable is never a subagent model.
 | `pro`, `team_standard` | left out unless extra usage is on | paid credits, small 5-hour window |
 | `api` | allowed | per-token price ratios |
 | `enterprise`, unknown | allowed | no Fable note |
+
+dotclaude does not use `opusplan` on any plan (user decision, 0.20.4).
+`opusplan` switches the model when plan mode starts and ends.
+**official:** a model switch loses the prompt cache, so the next turn writes the whole context again at full price (code.claude.com/docs/en/prompt-caching, "Switching models").
+A model change belongs right after `/clear`, when the context is small.
 
 ### Prices
 
@@ -78,12 +84,13 @@ API list prices per million tokens (**official**):
 - **official:** In Claude Code, the main conversation's cache lives 1 hour on
   a subscription within its limits and 5 minutes on usage credits or an API
   key. Subagents use 5 minutes. A prompt after the TTL, and a `/compact`
-  after it, write the whole context again. dotclaude tells the user when this
-  happens on 100k tokens or more.
+  after it, write the whole context again. dotclaude tells Claude, and so
+  the user, when a resumed session has an expired cache and when a prompt
+  comes after the cache time of the plan (`hooks/lib/_cache.mjs`).
 - **binary:** From Claude Code 2.1.287, the SessionStart input for `resume`
   and `fork` has `seconds_since_last_response`, `context_tokens`,
   `prompt_cache_likely_expired`, and `estimated_cache_write_usd`. dotclaude
-  uses them to tell the user before the first prompt.
+  uses them on `resume` to tell the user before the first prompt.
 - **reported:** One user found that turns more than 1 hour after the last
   turn were 1.6% of turns and 80% of cache writes.
 - **official:** `/model` loses the whole cache. An effort change and the
@@ -106,7 +113,7 @@ This section weighs **reported** experience and Anthropic's guidance.
 
 - **Opus 5.5:** the default, at medium effort, and high for hard work. Users
   report that it matches or beats Fable 5.1 on coding at a much lower cost.
-- **Fable 5.1:** a planner or advisor in the main conversation, when Opus 5.5
+- **Fable 5.1:** (0.20.0 left it out of `availableModels`.) A planner or advisor in the main conversation, when Opus 5.5
   has not solved the problem. Users report fast drain of the 5-hour window,
   whole-file rewrites, and invented tests. It is not for subagents or routine
   work.
@@ -120,11 +127,12 @@ This section weighs **reported** experience and Anthropic's guidance.
   Sonnet 5 in 0.11.0. Anthropic says Sonnet 5 follows instructions literally,
   and that Sonnet 5 prompts work on Sonnet 5.5 without changes. Its effort
   levels are recalibrated. At `low`, it sometimes reports a change as done
-  without a check (**official**). dotclaude uses it for fully specified
-  agents (`mechanical-worker`, `implementer`), and adds a reminder about
-  scope and checks. From 0.17.1, `reviewer` and `debugger` also use it, at
-  `high`. In the 0.17.1 evals, they passed the review and debug cases as
-  often as Opus 5.5 at about 55% of the cost ([evals](evals.md)). **measured:** On this
+  without a check (**official**). dotclaude uses it for `implementer` (which took the work of the removed
+  `mechanical-worker` in 0.20.0), and adds a reminder about scope and checks.
+  From 0.17.1, `reviewer` and `debugger` also use it, at `high` until
+  0.20.0, and at `medium` since. In the 0.17.1 evals, they passed the review
+  and debug cases as often as Opus 5.5 at about 55% of the cost
+  ([evals](evals.md)). **measured:** On this
   machine, 169 `implementer` runs on
   Opus 5.5 took 66 calls and $2.50 at the median, and 28 runs on Sonnet 5
   took 50 calls and $1.03. The tasks were not the same, and Opus got the
@@ -157,8 +165,9 @@ This section weighs **reported** experience and Anthropic's guidance.
   and CursorBench 4.0. Sonnet 5.5 at `high` costs about as much as Opus 5.5
   one level lower for about the same score. At `xhigh`, Sonnet 5.5 costs more
   than Opus 5.5 at `high` or `medium` for a score that is not higher. From
-  0.17.0, dotclaude also supports Sonnet 5.5 at `high`
-  ([Models](../models.md#effort)). In one
+  0.17.0 to 0.19, dotclaude also supported Sonnet 5.5 at `high`.
+  0.20.0 allows `low` and `medium` only
+  ([Parts](../parts.md#model-and-effort-rules)). In one
   user's test of 35 bug-fix tasks, both models fixed 34, but Sonnet 5.5 wrote
   outside its assigned folder 4 times and Opus 5.5 0 times. From 0.11.1, the
   reminder keeps Sonnet 5.5 agents inside the files of their brief.
@@ -168,13 +177,13 @@ This section weighs **reported** experience and Anthropic's guidance.
 
 ### Effort
 
-- `maxEffortLevel: "xhigh"` blocks `max`. The claude.ai effort picker warns
+- `maxEffortLevel: "high"` blocks `xhigh` and `max` (0.19 set `xhigh`, which blocked only `max`). The claude.ai effort picker warns
   that `max` uses about 5.5x the usage on Opus 5.5 and 3.5x on Fable 5.1.
-- `EFFORT_LEVELS` in `hooks/lib/_models.mjs` lists the supported levels:
-  Opus 5.5 `low` to `xhigh`, Sonnet 5.5 `low` to `high`. The model lock
-  enforces it for subagents and `claude` commands. **binary:** no hook event
-  fires on an effort change, and `PreModelSwitch` has no effort field, so
-  the main session is not covered.
+- `SUBAGENT_EFFORTS` in `hooks/lib/_budget.mjs` lists the supported levels:
+  Opus 5.5 `low` to `high`, Sonnet 5.5 `low` and `medium`, Haiku 4.5 none.
+  `agent.spawn` denies a spawn that breaks the table. **binary:** no hook
+  event fires on an effort change, so the main session is not covered, and
+  the status line warns about it.
 - **official:** Effort can change per turn without a cache miss on Opus 5.5
   and Fable 5.1 (code.claude.com/docs/en/prompt-caching).
 - **official:** Claude Code defaults Opus 5.5 and Sonnet 5.5 to `medium`.

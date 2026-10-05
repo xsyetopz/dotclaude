@@ -14,6 +14,16 @@ export const SECRET_SCAN_TIMEOUT_MS = 8000;
 /** Output size at which the secret scan stops. Larger output goes unscanned. */
 export const SECRET_SCAN_MAX_BYTES = 64 * 1024 * 1024;
 
+/**
+ * The CodeGraph augment of a search: time for one `codegraph` call (a call
+ * takes about 250 ms), time for one `codegraph sync` (12 changed files took
+ * 0.6 s), callers and callees for each symbol, and characters of the note.
+ */
+export const CODEGRAPH_TIMEOUT_MS = 3000;
+export const CODEGRAPH_SYNC_TIMEOUT_MS = 10000;
+export const CODEGRAPH_NEIGHBOURS = 3;
+export const CODEGRAPH_NOTE_MAX_CHARS = 1500;
+
 /** Characters of a command part that an ask reason shows. */
 export const COMMAND_PART_CHARS = 80;
 
@@ -32,6 +42,9 @@ export const SUBAGENT_EFFORTS = {
 /** Bytes of `hooks/session-start/rules.md`. A test fails above this number. */
 export const RULES_MAX_BYTES = 2000;
 
+/** Bytes of `hooks/session-start/minimal-code.md`. A test fails above this. */
+export const MINIMAL_CODE_MAX_BYTES = 800;
+
 /**
  * Time after the last turn at which the main prompt cache has expired. The
  * cache lives 1 hour on a subscription and 5 minutes on an API key, a cloud
@@ -41,8 +54,17 @@ export const RULES_MAX_BYTES = 2000;
 export const CACHE_TTL_MS = 60 * 60_000;
 export const API_CACHE_TTL_MS = 5 * 60_000;
 
+/**
+ * Context below which a resume with an expired cache gets no note.
+ * The cache write of a small context costs little, so the note would only add noise.
+ */
+export const COLD_RESUME_MIN_TOKENS = 100_000;
+
 /** Time that the handoff fork of a compaction can take. */
 export const HANDOFF_FORK_TIMEOUT_MS = 60_000;
+
+/** Sessions whose newest compaction note the store keeps, so the next note supersedes it. */
+export const HANDOFF_SESSIONS_MAX = 20;
 
 /** Main-conversation context: the `autoCompactWindow` of the settings profile. */
 export const MAIN_CONTEXT_TOKENS = 150_000;

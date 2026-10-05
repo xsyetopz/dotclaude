@@ -13,9 +13,9 @@ Read only the part that answers your question.
 
 | # | Part | Read it for |
 | --- | --- | --- |
-| 1–2 | [Design](dossier/design.md) | design principles, enforced usage bounds and their tests, turn-limit handoff, the agent loop, rejected alternatives |
+| 1–2 | [Design](dossier/design.md) | design principles, enforced usage bounds and their tests, the 0.19 turn-limit handoff, agent loop, and routing rule (history), rejected alternatives |
 | 3 | [Usage Evidence](dossier/usage.md) | where one Max 20x week of usage went, what that means on Pro, turns against tool calls |
-| 4 | [Plans And Models](dossier/plans-and-models.md) | the Fable limit (0.19), plan detection, per-plan policy, prices, model fit, effort |
+| 4 | [Plans And Models](dossier/plans-and-models.md) | the Fable limit and per-plan policy (0.19 history), plan detection, prices, model fit, effort |
 | 5 | [Claude Code Prompt Surface](dossier/prompt-surface.md) | what a request contains, the lean prompt, the working rules, output styles, tool removal |
 | 6–8 | [Evals](dossier/evals.md) | the removed fast-compact eval, the behavior eval suites and their results, compactions before a handoff |
 | 8–9 | [Open Items](dossier/open-items.md) | work still to measure or decide, reported claims that dotclaude does not act on |

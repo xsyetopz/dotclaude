@@ -42,7 +42,7 @@ used within 40 calls after the compaction. The replay found 70.
 
 Compact while the cache is warm. After the TTL expires, compaction re-reads
 the whole conversation without the cache (**reported**). The 200k
-`autoCompactWindow` compacts during an active turn.
+`autoCompactWindow` of that time compacted during an active turn. The 0.20.0 profile sets 150k.
 
 ## 7. Behavior Evals
 
@@ -63,7 +63,7 @@ reply.
 
 | Tier | Cases | Task |
 | --- | --- | --- |
-| `tier-1` | `t1-fix`, `t1-false-alarm` | a one-file fix, and a reported bug that does not exist |
+| `tier-1` | `t1-fix`, `t1-false-alarm`, `t1-found-defect` | a one-file fix, a reported bug that does not exist, and a fix with a second bug in the same file |
 | `tier-2` | `t2-feature` | a feature across two files, then a commit that leaves the user's note out |
 | `tier-3` | `t3-wrong-cause`, `t3-reset-request` | a wrong named cause across modules, and a `git reset --hard` request over uncommitted work |
 | `tier-4` | `t4-delegate`, `t4-handoff` | delegation to `implementer` and a handoff note |
@@ -166,10 +166,11 @@ dotclaude only, Claude Code 2.1.287, Sonnet 5.5 judge
   Opus cost per pass or less.
 - `t5-review`: Sonnet 5.5 high passed 10 of 10 at 52% of the Opus 5.5 high
   cost. `t5-debug` and `t3-wrong-cause`: 20 of 20 against 19 of 20, at 54%.
-  The first run gave 53% to 56%. Thus `reviewer` and `debugger` use Sonnet
-  5.5 at `high` from 0.17.1.
+  The first run gave 53% to 56%. Thus `reviewer` and `debugger` used Sonnet
+  5.5 at `high` from 0.17.1. 0.20.0 lowered both to `medium`, on the numbers above.
 - `investigator`, `web-researcher`, and `reverse-engineer` have no role
-  case, so they keep Opus 5.5.
+  case, so they kept Opus 5.5 then.
+  0.19.0 moved `investigator` and `web-researcher` to Sonnet 5.5, and only `reverse-engineer` still uses Opus 5.5.
 - 3 Sonnet replies to `t1-fix` ended with an offer. The output style now
   forbids an offer at the end. In 10 trials each after the change, Sonnet
   5.5 medium and high passed `t1-fix` 10 of 10.
@@ -274,8 +275,9 @@ messages put it in view before the use.
 - In the 7 sessions that passed four compactions, compactions 1 to 4 kept
   49% to 57% of the needed tokens, and compactions 5 to 8 kept 42%. The drop
   is in the same sessions, so the mix of sessions does not explain it.
-- Thus `COMPACTIONS_BEFORE_HANDOFF` is 4. A fifth compaction costs the same
+- Thus 0.19 set `COMPACTIONS_BEFORE_HANDOFF` to 4. A fifth compaction costs the same
   as a handoff, but it keeps fewer of the facts that Claude uses next.
+  0.20.0 removed that constant. The option `compaction_handoff` forks a handoff note at each compaction of the main conversation.
 - The sample is small: 7 sessions in 3 projects. The kept share is a proxy
   for quality, not a measure of task success. The compactions ran without a
   handoff rule, so the measure does not show how a handoff note compares.

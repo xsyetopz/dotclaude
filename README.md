@@ -36,13 +36,15 @@ It also sets the status line and the subagent status line.
 | Spawn rules | Deny a subagent spawn that breaks the model and effort rules. |
 | Compaction | Keep an unapproved plan open, and fork a handoff note. |
 | Cache notes | Tell Claude when the prompt cache expired. |
+| CodeGraph | Add the callers and callees of a symbol to a search for it, in a project with a CodeGraph index. |
+| Minimal code | Tell Claude to build the minimum, with the idea of Ponytail. |
 | Verify gate | Send Claude back once when it stops after an edit with no check. |
 | Status line | Model, effort, context against the compaction point, cache expiry, and usage limits. |
 | Agents | `investigator`, `web-researcher`, `implementer`, `reviewer`, `debugger`, `test-runner`, `reverse-engineer`. |
 | Skills | `/dotclaude:setup`, `/dotclaude:handoff`, `/dotclaude:contribute`. |
 | Style | `Concise`. |
 
-You can turn off each guard in `/config` under dotclaude with the options `guard_bash`, `guard_edit`, `guard_secrets`, `guard_agents`, and `compaction_handoff`.
+You can turn off each part in `/config` under dotclaude with the options `guard_bash`, `guard_edit`, `guard_secrets`, `guard_agents`, `codegraph`, `ponytail`, and `compaction_handoff`.
 The guards run in a hooks module.
 Where Claude Code does not load modules, such as with `--bare`, no guard runs.
 
@@ -57,6 +59,24 @@ Where Claude Code does not load modules, such as with `--bare`, no guard runs.
 The profile sets `maxEffortLevel` to `high`, and `availableModels` has no Fable.
 A call that asks for another model than the agent file fixes gets a deny with the reason.
 
+## Save weekly usage
+
+Each turn reads the whole context again, so the size of the context sets the cost of a turn.
+
+- At the end of a task, write a handoff note with `/dotclaude:handoff` and run `/clear`.
+  `/compact` reads the whole context to write its summary, and `/clear` costs nothing.
+- Change the model only right after `/clear`.
+  A new model starts a new prompt cache, so the next turn writes the whole context again at full price.
+  For this reason the profile does not use `opusplan`.
+- To lower the cost of a task, lower the effort and keep the model.
+- Keep `MEMORY.md` and `CLAUDE.md` short.
+  They load at each start, and Claude Code loads only the first 200 lines or 25 KB of `MEMORY.md`.
+  Setup lists the memory files to review.
+- Old transcripts in `~/.claude/projects/` do not go into the context.
+  They use only disk space, and the profile sets `cleanupPeriodDays` to 14.
+
+Usage evidence: [docs/dossier/usage.md](docs/dossier/usage.md#community-claims).
+
 ## Browser plugin
 
 ```text
@@ -66,6 +86,20 @@ A call that asks for another model than the agent file fixes gets a deny with th
 The plugin loads the `drive-web-browser` skill.
 It uses `agent-browser` by default.
 Set its `backend` option to `cloakbrowser` to run `agent-browser` with the CloakBrowser binary on sites with bot detection.
+
+## Jev plugin
+
+```text
+/plugin install dotclaude-jev@dotclaude
+```
+
+The plugin loads the `second-opinion` skill.
+Claude uses it to get a second opinion from [TypeSafe Jev](https://docs.typesafe.ai/introduction) on a close call: a yes or no check, a pick from its options, or a rating.
+It also checks your technical decisions.
+When facts show that a decision causes defects, Claude tells you once and asks you to confirm, and your answer is final.
+Jev is a decision model that gives probabilities, and it does not write text or answer for you.
+Export `TYPESAFE_API_KEY` before Claude Code starts.
+Each call sends the data of the decision to the TypeSafe API.
 
 ## Update
 

@@ -30,6 +30,8 @@ Each script writes nothing without `--apply`, so run its preview first.
    ```
 
    Show the user the list.
+   The preview also lists auto memory to review and LSP plugins to install.
+   Setup deletes no memory, because memory is the data of the user.
    The `Plan:` line shows the detected plan.
    `--plan <id>` sets another plan, with `api`, `pro`, `max5`, `max20`, `team`, or `enterprise`.
    The profile sets these groups:
@@ -38,12 +40,13 @@ Each script writes nothing without `--apply`, so run its preview first.
    | --- | --- |
    | Models | `model`, `availableModels` (Opus 5.5, Sonnet 5.5, Haiku 4.5), `advisorModel`, `env.CLAUDE_CODE_SUBAGENT_MODEL`, `env.ANTHROPIC_DEFAULT_HAIKU_MODEL` |
    | Effort | `maxEffortLevel: high`, which blocks `xhigh` and `max` because of their usage |
-   | Context | `autoCompactWindow: 150000`, `env.CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`, `promptSuggestionEnabled`, `awaySummaryEnabled`, `crossSessionInbound: hold` |
+   | Context | `autoCompactWindow: 150000`, `env.CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`, `enableArtifact: false`, `disableBundledSkills: true`, `promptSuggestionEnabled`, `awaySummaryEnabled`, `crossSessionInbound: hold` |
    | Fast mode off | `fastMode`, `fastModePerSessionOptIn`, `env.CLAUDE_CODE_DISABLE_FAST_MODE` |
-   | Subagents | `env.CLAUDE_CODE_FORK_SUBAGENT=0`, `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=5`, `env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS=5`, `workflowSizeGuideline`, `Agent(general-purpose)` deny |
+   | Subagents | `env.CLAUDE_CODE_FORK_SUBAGENT=0`, `env.CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1` (the built-in Explore agent runs on the main model), `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=5`, `env.CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS=5`, `workflowSizeGuideline`, `Agent(general-purpose)` deny |
    | Feedback off | `env.DISABLE_FEEDBACK_COMMAND`, `env.CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `env.DISABLE_ERROR_REPORTING` |
    | Safety | `Read(...)` deny rules for secret files, `disableBypassPermissionsMode`, `enableAllProjectMcpServers: false`, `workflowKeywordTriggerEnabled: false`, `permissions.ask` rules for public `gh` writes |
-   | Status lines | `statusLine`, `subagentStatusLine`, and two stubs in `<config dir>/dotclaude/` that run this plugin's `status-line` scripts (`${CLAUDE_PLUGIN_ROOT}` is empty in a status line command, so each stub finds the newest plugin version when it runs) |
+   | Status lines | `statusLine`, `subagentStatusLine`, and two stubs in `<config dir>/dotclaude/` that run this plugin's `status-line` scripts (`${CLAUDE_PLUGIN_ROOT}` is empty in a status line command, so each stub finds the newest plugin version when it runs). A status line of another tool stays, and `--status-line` replaces it. |
+   | Retention | `cleanupPeriodDays: 14`: Claude Code deletes transcripts and session files older than 14 days. Old transcripts take no context, so this saves disk only. Auto memory stays. |
    | Other | `includeGitInstructions: false`, `env.CLAUDE_CODE_ENABLE_TODO_TOOLS`, `env.CLAUDE_CODE_GLOB_NO_IGNORE=false` |
 
    The merge adds keys and rules.
@@ -63,12 +66,24 @@ Each script writes nothing without `--apply`, so run its preview first.
    claude mcp remove codegraph -s user
    ```
 
-   Each script backs the file up next to itself before it writes.
+   Each script backs the file up next to itself before it writes, and keeps the newest three backups.
    A second run changes nothing.
    The permission prompt of each command is the approval of the write, so do not ask a second time.
    If the user declines a prompt, stop, because a block is the user's decision.
 
+1. If `ctx7` is on `PATH`, run the rate-limit check from `${CLAUDE_SKILL_DIR}/references/integrations.md`.
+   If it shows `context7-quota-tier: anonymous`, show the user the API key command from that file, for the shell in `$SHELL`.
+   Tell the user to run it in a terminal outside Claude Code and to tell you when the key is added, because the key must not go into the conversation.
+   When the user reports it, run the check again with the key from a new shell, because this session started before the key was added:
+
+   ```bash
+   k="$($SHELL -ic 'printf %s "$CONTEXT7_API_KEY"' 2>/dev/null)"; curl -s -o /dev/null -D - ${k:+-H "Authorization: Bearer $k"} "https://context7.com/api/v2/libs/search?libraryName=react" | grep -i -E '^HTTP|^ratelimit-(remaining|reset)|^context7-quota-tier'
+   ```
+
+   Report the tier and the remaining calls.
+   If the tier is still `anonymous`, the key is not valid or not in the shell profile.
+
 1. Tell the user the files that changed and the backup paths.
    Tell them to restart Claude Code.
-   For CodeGraph install steps, read `${CLAUDE_SKILL_DIR}/references/integrations.md`.
+   For LSP, CodeGraph, and context7 install steps, read `${CLAUDE_SKILL_DIR}/references/integrations.md`.
 </procedure>

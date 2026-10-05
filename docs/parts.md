@@ -48,6 +48,7 @@ Each stub runs the newest plugin version in the plugin cache, so a plugin update
 | `/dotclaude:contribute` | Checks the AI policy of a project and drafts the contribution. | A contribution to another project speaks for the user. |
 | `Concise` output style | Short replies that start with the result. | Replies that are fast to read. |
 | `dotclaude-browser` plugin | Loads the `drive-web-browser` skill at session start. | Browser work with `agent-browser`, and CloakBrowser on a site with bot detection. |
+| `dotclaude-jev` plugin | Loads the `second-opinion` skill, which asks TypeSafe Jev about a decision of Claude. | A calibrated check of a close call, at $0.042 for each million input tokens. |
 
 Each agent has `maxTurns` in its file: 20 for `test-runner`, 40 for `investigator`, 60 for the others, and 80 for `implementer`.
 

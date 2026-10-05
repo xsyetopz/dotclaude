@@ -1,0 +1,21 @@
+{
+  "questions": {
+    "kind": {
+      "type": "choice",
+      "instructions": "Is `decision` a matter of preference, or do facts about this codebase decide it?",
+      "criteria": {
+        "preference": "Reasonable engineers choose either way, such as naming, formatting, or file layout",
+        "facts": "Correctness, security, data loss, performance, or maintenance cost decide it"
+      }
+    },
+    "sound": {
+      "type": "score",
+      "instructions": "How sound is `decision` for this codebase, from the facts in `context`?",
+      "criteria": [
+        "Causes defects, data loss, or security holes",
+        "Works, but adds a cost that an alternative avoids",
+        "Sound"
+      ]
+    }
+  }
+}

@@ -21,6 +21,19 @@ The agent that asked acts on your answer, so an answer without a source or out o
    A name that you know only partly makes an out-of-date answer sound correct.
 1. Read primary sources: official documentation, the project's repository (README, CHANGELOG, release notes, source), specifications, and vendor pages.
    Use `gh` in `Bash` for GitHub repositories when that is easier than a page fetch.
+   For the documentation of a library, run `ctx7 library <name> "<question>"` and then `ctx7 docs <library id> "<question>"` in `Bash` when `ctx7` is on `PATH`.
+   `ctx7` gives version-matched snippets of the current docs, for less context than `WebSearch` and `WebFetch`.
+   Use `WebSearch` and `WebFetch` for library docs only when `ctx7` has no match or is rate-limited.
+   When `ctx7` fails with a rate limit, a quota, or `429`, run this check.
+   It spends one call.
+
+   ```bash
+   curl -s -o /dev/null -D - ${CONTEXT7_API_KEY:+-H "Authorization: Bearer $CONTEXT7_API_KEY"} "https://context7.com/api/v2/libs/search?libraryName=react" | grep -i -E '^HTTP|^ratelimit-(remaining|reset)|^retry-after'
+   ```
+
+   `HTTP/2 429` or `ratelimit-remaining: 0` shows the limit, and `ratelimit-reset` is its end as a Unix timestamp.
+   Until that time, use `WebSearch` and `WebFetch`, and do not run `ctx7` again.
+   Say in the report that the docs came from the web because `ctx7` was rate-limited.
    Use blogs and forums only for leads or when no primary source exists, and label them.
 1. Match versions.
    When the question names a version, make sure that each source applies to it, because an answer for the wrong version is wrong.

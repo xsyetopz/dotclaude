@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
+import { SUBAGENT_EFFORTS } from "../hooks/lib/_budget.mjs";
 
 const DIR = new URL("../agents/", import.meta.url);
 const EXPECTED = [
@@ -11,10 +12,6 @@ const EXPECTED = [
   "test-runner",
   "web-researcher",
 ];
-const EFFORTS = {
-  opus: ["low", "medium", "high"],
-  sonnet: ["low", "medium"],
-};
 
 // Reads the `key: value` lines between the first two `---` lines.
 function frontmatter(text) {
@@ -52,13 +49,13 @@ test("each agent sets maxTurns as a positive integer", () => {
 
 test("model and effort follow the family rules", () => {
   for (const [name, fm] of Object.entries(agents)) {
-    const family = /^claude-(opus|sonnet|haiku)-/.exec(fm.model)?.[1];
-    expect(family, `${name} model`).toBeDefined();
-    if (family === "haiku") {
+    const efforts = SUBAGENT_EFFORTS[fm.model?.replace(/^claude-/, "")];
+    expect(efforts, `${name} model`).toBeDefined();
+    if (efforts.length === 0) {
       expect("effort" in fm, `${name} effort`).toBe(false);
       expect("thinking" in fm, `${name} thinking`).toBe(false);
     } else {
-      expect(EFFORTS[family], `${name} effort`).toContain(fm.effort);
+      expect(efforts, `${name} effort`).toContain(fm.effort);
     }
   }
 });
