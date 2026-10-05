@@ -61,6 +61,9 @@ steps after each update.
   A classic `PreToolUse` hook, `hooks/pre-tool-use/ask-guarded-calls.mjs`, now gives the same ask, and the classifier cannot allow a call that a classic hook asks about.
   The options `guard_bash` and `guard_edit` also turn this hook off.
   The attribution ask of the Bash guard is still in the module only, so auto mode does not show it.
+- `dotclaude-jev` no longer has a `tsconfig.json`.
+  It extended `.claude-plugin/types/`, which an installed plugin does not get.
+  The `tsconfig.json` at the repository root now gives the types to an editor.
 
 ## [0.21.0] - 2026-10-05
 

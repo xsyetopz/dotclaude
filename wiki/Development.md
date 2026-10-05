@@ -56,6 +56,13 @@ A test then does not change your own setup.
 [Sandbox](Sandbox) tells how to test in it, for people and for AI agents.
 To try a checkout in your own config, run `claude --plugin-dir /path/to/dotclaude/plugins/dotclaude`.
 
+## Types
+
+The root `tsconfig.json` gives an editor the types of the Claude Code hooks module.
+It extends `plugins/dotclaude/.claude-plugin/types/tsconfig.json`.
+Claude Code writes that folder when it loads the plugin from your checkout, for example in `just sandbox`.
+Git ignores the folder, and the plugins have no `tsconfig.json`, because an installed plugin does not get the folder.
+
 ## Releases
 
 `just bump` sets one version in `package.json` and in the `plugin.json` of each plugin under `plugins/`.
