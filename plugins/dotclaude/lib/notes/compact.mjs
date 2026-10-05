@@ -66,6 +66,8 @@ export const supersede = (text) =>
  */
 export const handoffRow = (path) => {
   const name = path.split("/").pop();
+  // A space ends a bare `@` path, so Claude Code reads a quoted one.
+  const mention = /\s/.test(path) ? `@"${path}"` : `@${path}`;
   return {
     role: "user",
     text: clause(
@@ -77,7 +79,7 @@ Do not use a tool.
 Send one short reply to the user, then stop.
 In the reply, tell the user that the note is at \`.claude/handoffs/${name}\`.
 Tell the user to run \`/clear\` and then to send a prompt that you write.
-Write a short prompt that names the next step of the task and the note as \`@${path}\`.
+Write a short prompt that names the next step of the task and the note as \`${mention}\`.
 The \`@\` and the absolute path make Claude Code read the note into the fresh session.
 </compaction_handoff>`,
     ),

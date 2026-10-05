@@ -64,6 +64,10 @@ steps after each update.
 - `dotclaude-jev` no longer has a `tsconfig.json`.
   It extended `.claude-plugin/types/`, which an installed plugin does not get.
   The `tsconfig.json` at the repository root now gives the types to an editor.
+- A prompt that Claude suggests after a handoff now puts a path with a space in quotes, as in `@"/a b/n.md"`.
+  A space ends a bare `@` path, so Claude Code did not read the note.
+  The working rules, the handoff skill, and the prompt after a compaction all use the quoted form.
+  The working rules are shorter, so that they stay within `RULES_MAX_BYTES`.
 
 ## [0.21.0] - 2026-10-05
 

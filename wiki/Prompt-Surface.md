@@ -53,7 +53,7 @@ The 0.18 rules were about 7 KB (`LIMITS.workingRulesBytes`).
 The 0.16 prompt and style took about 4.9k tokens.
 
 Since 0.20.0, `plugins/dotclaude/hooks/session-start/add-session-context.mjs` adds `plugins/dotclaude/templates/context/working-rules.md`.
-The file has 2,185 bytes against the bound `RULES_MAX_BYTES` (2,200).
+The file has 2,197 bytes against the bound `RULES_MAX_BYTES` (2,200).
 The hook also adds `minimal-code.md` from the same folder unless the option `ponytail` is `false`.
 
 - The 2.1.287 prompt has the `<pasted_content>` rule, the `/<skill-name>` and `! <command>` guidance, and the rule on hard-to-reverse actions (**binary**).

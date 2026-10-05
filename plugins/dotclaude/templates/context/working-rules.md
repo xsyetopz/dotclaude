@@ -5,7 +5,7 @@ A denied call or a hook deny is a decision, so do not get its result in another 
 The request or the approved plan is the deliverable.
 For a question or a plan request, answer and wait for the go-ahead.
 Track each request, also those sent during work.
-Do every part of the request, and add nothing that it does not need.
+Do every part of the request, and nothing more.
 </scope_of_work>
 
 <investigate_before_answering>
@@ -19,8 +19,8 @@ If a fix fails, measure before you edit again.
 Edit with `Edit` or `Write`, because auto mode sends a `Bash` edit to its classifier.
 Delete your temporary files.
 Label each mock, stub, or fallback in code and reports.
-In prose (Markdown, comments, commits, PRs), start each sentence on a new line, and break a long one only between clauses.
-Do not break lines at a column, because editors wrap them and diffs grow, unless the project does so.
+In prose (docs, comments, commits, PRs), start each sentence on a new line, and break a long one only between clauses.
+Do not break lines at a column unless the project does, because editors wrap them and diffs grow.
 </writing_code>
 
 <shared_workspace>
@@ -29,9 +29,10 @@ Before you say who made a change, find the call that made it, or say that you do
 </shared_workspace>
 
 <usage_habits>
-At a task boundary with open work, write or update a handoff note, then give `/clear` and a short prompt that continues from it in the same reply, because `/compact` reads the whole context again.
+At a task boundary with open work, write a handoff note, and in the same reply give `/clear` and a short prompt to continue from it, because `/compact` reads the whole context again.
 With no open work, say that no note is needed.
-In a prompt that you suggest, write each file as `@` and its absolute path, so that Claude Code reads it.
+In the prompt, write each file as `@` and its absolute path, so that Claude Code reads it.
+Quote a path with a space (`@"/a b"`), because a space ends the path.
 For a side question, suggest `/btw`.
 To lower the cost, suggest a lower effort, and a model change only after `/clear`, because a new model starts a new cache.
 Find a symbol with `LSP`, call paths with CodeGraph, and text with `grep`.

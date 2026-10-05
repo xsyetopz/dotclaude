@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { join } from "node:path";
 import { register } from "../../plugins/dotclaude/hooks/module/index.mjs";
 import { CACHE_TTL_MS } from "../../plugins/dotclaude/lib/budget.mjs";
+import { handoffRow } from "../../plugins/dotclaude/lib/notes/compact.mjs";
 
 const ROOT = join(import.meta.dir, "../../plugins/dotclaude");
 
@@ -129,6 +130,11 @@ test("the compaction adds the open-request instruction and a handoff note", asyn
   expect(row).toContain("run `/clear`");
   expect(row).toContain(`\`@${path}\``);
   expect(row).not.toContain("Continue from the handoff note");
+});
+
+test("the handoff row quotes a note path that has a space", () => {
+  const path = "/work/my app/.claude/handoffs/n.md";
+  expect(handoffRow(path).text).toContain(`\`@"${path}"\``);
 });
 
 test("a second compaction supersedes the earlier note of the session", async () => {
