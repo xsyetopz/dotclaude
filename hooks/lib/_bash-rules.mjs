@@ -104,6 +104,26 @@ export function isCommit(command) {
   });
 }
 
+const DISCARD =
+  "This command discards the uncommitted changes in the named files, and git cannot restore them.";
+// A word that names a file and not a branch: a path with an extension, a
+// relative path, or a glob.
+const PATH_LIKE = /(^\.{1,2}(\/|$)|\.[A-Za-z]\w*$|[*?])/;
+
+/**
+ * True when `git checkout <args>` overwrites files in the work tree: with
+ * `--force`, with paths after `--`, with a ref and a path, or with one word
+ * that looks like a path. A branch switch keeps uncommitted changes.
+ */
+function checkoutDiscards(args) {
+  if (hasFlag(args, "--force", "f")) return true;
+  const dash = args.indexOf("--");
+  if (dash >= 0) return dash < args.length - 1;
+  if (hasFlag(args, "--orphan", "bB")) return false;
+  const words = args.filter((a) => !a.startsWith("-"));
+  return words.length > 1 || PATH_LIKE.test(words[0] ?? "");
+}
+
 function gitReason(words) {
   const i = gitSub(words);
   const sub = words[i];
@@ -127,16 +147,14 @@ function gitReason(words) {
         return "This command deletes untracked files for good.";
       break;
     case "checkout":
+      if (checkoutDiscards(args)) return DISCARD;
+      break;
     case "restore":
       if (
-        args.includes(".") &&
-        !(
-          sub === "restore" &&
-          hasFlag(args, "--staged") &&
-          !hasFlag(args, "--worktree")
-        )
+        args.some((a) => !a.startsWith("-")) &&
+        !(hasFlag(args, "--staged", "S") && !hasFlag(args, "--worktree", "W"))
       )
-        return "This command discards the changes in the work tree.";
+        return DISCARD;
       break;
     case "branch":
       if (args.some((a) => /^-[a-zA-Z]*D/.test(a)))

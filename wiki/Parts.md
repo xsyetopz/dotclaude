@@ -10,7 +10,7 @@ Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-
 
 | Part | Event | Bound in `_budget.mjs` | User need |
 | --- | --- | --- | --- |
-| Bash guard (`guard_bash`) | `tool.call` | `COMMAND_PART_CHARS` | Ask before a forced push, a hard reset, a recursive removal outside the project, `sudo`, or a write to a device. The reason shows the command part. Deny a Claude `Co-Authored-By` line in a commit when the settings leave it out, and ask before a Claude attribution line in a repository of another owner. |
+| Bash guard (`guard_bash`) | `tool.call` | `COMMAND_PART_CHARS` | Ask before a forced push, a hard reset, a `git checkout` or `git restore` of files, a recursive removal outside the project, `sudo`, or a write to a device. The reason shows the command part. Deny a Claude `Co-Authored-By` line in a commit when the settings leave it out, and ask before a Claude attribution line in a repository of another owner. |
 | Edit guard (`guard_edit`) | `tool.call` | none | Ask before an edit that removes test assertions, adds a skip marker, writes a `[REDACTED:` marker, or changes a generated file, a lockfile, or a Claude Code settings file. |
 | Secret redaction (`guard_secrets`) | `tool.call` | `SECRET_SCAN_TIMEOUT_MS`, `SECRET_SCAN_MAX_BYTES` | Keep a secret in a tool result out of the context. Betterleaks finds it, and the result shows `[REDACTED:<rule>]`. |
 | Spawn rules (`guard_agents`) | `agent.spawn` | `SUBAGENT_EFFORTS` | Keep the subagent model and effort within the [rules](#model-and-effort-rules). The hook denies a call that asks for another model than the agent file fixes, and gives the reason. |

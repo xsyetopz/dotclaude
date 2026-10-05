@@ -27,6 +27,10 @@ steps after each update.
 
 ### Fixed
 
+- The Bash guard asks before a `git checkout` or `git restore` of named files, because the command discards their uncommitted changes and git cannot restore them.
+  Before, it asked only for the path `.`.
+  In one session, Claude ran `git checkout` on a file to undo one small edit, and the command also discarded the uncommitted tests of earlier sessions.
+  A branch switch, such as `git checkout main` or `git checkout feature/login`, does not ask, because it keeps uncommitted changes.
 - The CodeGraph augment adds a note only for a real definition.
   `codegraph callers` falls back to a text search for a name that is not a symbol, so words such as `token`, `delet`, and `REDACTED` got notes with unrelated callers.
   The hook now runs `codegraph query` first, and it continues only when the index has a function, method, class, or a similar definition with exactly that name.
