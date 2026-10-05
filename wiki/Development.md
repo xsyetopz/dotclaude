@@ -7,7 +7,7 @@ It shows the commands, the layout rules, and the steps to test, release, and pub
 
 - Install [Bun](https://bun.sh) 1.4.2 or later and `just`.
 - Install Claude Code 2.1.289 or later.
-  `just validate` and `just release` call the `claude` CLI.
+  `just validate`, `just update`, and `just release` call the `claude` CLI.
 - Run each command in the repository root.
 
 ## Commands
@@ -21,6 +21,7 @@ It shows the commands, the layout rules, and the steps to test, release, and pub
 | `just sandbox` | Runs Claude Code with this checkout as its plugin, in its own config. See [Sandbox](Sandbox). |
 | `just sandbox-clean` | Removes the sandbox. |
 | `just usage` | Shows where your Claude Code usage went. Add `--days N` or `--json`. |
+| `just update` | Updates the marketplace, then the 3 installed plugins from it. Restart Claude Code after it. |
 | `just bump <level>` | Bumps the version. See [Releases](#releases). |
 | `just release` | Tags each plugin and pushes the tags. See [Releases](#releases). |
 | `just eval-agent <model> <effort> [runs]` | Runs the agent role cases at a model (`opus` or `sonnet`) and effort. It spends usage. |

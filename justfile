@@ -44,6 +44,15 @@ wiki:
     git -C "$tmp" commit --quiet -m "Sync wiki from dotclaude $(git rev-parse --short HEAD)"
     git -C "$tmp" push --quiet origin HEAD
 
+# Refresh the dotclaude marketplace, then update each plugin under plugins/ that you installed; restart Claude Code after
+update:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    claude plugin marketplace update dotclaude
+    for p in plugins/*/; do
+        claude plugin update "$(basename "$p")@dotclaude"
+    done
+
 # Bump the version (major, minor, patch, or X.Y.Z) in both manifests and the CHANGELOG; add --dry-run to preview
 bump level *flags:
     bun tools/bump-version.mjs "$@"
