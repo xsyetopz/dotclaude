@@ -1,5 +1,7 @@
 // The pointer to the newest open handoff note.
 
+import { clause } from "./_terms.mjs";
+
 /** The `key: value` pairs of a note's leading front matter. */
 export function frontMatter(text) {
   const out = {};
@@ -31,4 +33,7 @@ export const CLOSE_RULE =
 
 /** The SessionStart context that points at `note`. */
 export const pointer = ({ name, meta }) =>
-  `<handoff>\nAn earlier session left a handoff note at \`.claude/handoffs/${name}\`${meta.written ? ` (written ${meta.written})` : ""}.\nWhen the user asks to continue earlier work, read the note first.\nThen compare it with \`git status\` and \`git log --oneline -5\` before you act, because later commits and edits make parts of it stale.\nWhere they differ, the repository is correct.\n${CLOSE_RULE}\n</handoff>`;
+  clause(
+    "handoff",
+    `<handoff>\nAn earlier session left a handoff note at \`.claude/handoffs/${name}\`${meta.written ? ` (written ${meta.written})` : ""}.\nWhen the user asks to continue earlier work, read the note first.\nThen compare it with \`git status\` and \`git log --oneline -5\` before you act, because later commits and edits make parts of it stale.\nWhere they differ, the repository is correct.\n${CLOSE_RULE}\n</handoff>`,
+  );

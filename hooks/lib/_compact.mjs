@@ -1,14 +1,17 @@
 // The text and the note file of a compaction.
 
 import { CLOSE_RULE } from "./_handoff.mjs";
+import { clause, clauseTag } from "./_terms.mjs";
 
 // The default summary text says to continue without asking. A model then
 // acted on a plan that the user had not approved.
-export const COMPACT_TEXT = `<open_request>
+export const COMPACT_TEXT = `${clauseTag("compaction")}
+<open_request>
 If the last request of the user asked for a plan, asked a question, or asked for approval, write in the summary that this request is still open.
 Also write that the next turn waits for the user.
 The user did not approve a plan that the conversation only describes, so the next turn must not carry it out.
-</open_request>`;
+</open_request>
+</dotclaude_terms>`;
 
 export const HANDOFF_PROMPT = `<handoff_request>
 Write a handoff note for a fresh session that continues this task.
@@ -59,6 +62,9 @@ export const supersede = (text) =>
 /** The user row that carries the note into the compacted conversation. */
 export const handoffRow = (text, path) => ({
   role: "user",
-  text: `<compaction_handoff_note path="${path}">\n${text.trim()}\n</compaction_handoff_note>\n${CLOSE_RULE}`,
+  text: clause(
+    "handoff",
+    `<compaction_handoff_note path="${path}">\n${text.trim()}\n</compaction_handoff_note>\n${CLOSE_RULE}`,
+  ),
   toolUses: [],
 });

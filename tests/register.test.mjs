@@ -149,3 +149,72 @@ test("a denied call and a failed call are not scanned", async () => {
   );
   expect(calls).toHaveLength(0);
 });
+
+/** A fake `$` with these remotes, `gh` outputs, and user settings. */
+function repo(remotes, settings = {}, { login = "me", orgs = "" } = {}) {
+  const { $ } = engine();
+  const out = (argv) => {
+    if (argv[0] === "git") return remotes;
+    return argv.includes("config") ? login : orgs;
+  };
+  $.process.run = async (argv) =>
+    out(argv) === null
+      ? { exitCode: 128, stdout: "" }
+      : { exitCode: 0, stdout: out(argv) };
+  $.fs.read = async (file) => {
+    if (file === "/home/u/.claude/settings.json")
+      return JSON.stringify(settings);
+    throw new Error("missing");
+  };
+  return $;
+}
+
+const TRAILER =
+  "git commit -m \"$(cat <<'EOF'\nFix\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nEOF\n)\"";
+const remote = (url) => `origin\t${url} (fetch)\norigin\t${url} (push)`;
+
+test("a Claude trailer that the settings leave out is denied in a repository of the user", async () => {
+  const $ = repo(remote("git@github.com:me/x.git"), {
+    includeCoAuthoredBy: false,
+  });
+  const { verdict } = await call(load(), $, { tool: "Bash", command: TRAILER });
+  expect(verdict.decision).toBe("deny");
+  expect(verdict.reason).toContain("`Co-Authored-By`");
+});
+
+test("a Claude trailer that the settings keep passes in a repository of an owned organization", async () => {
+  const $ = repo(remote("https://github.com/org/x"), {}, { orgs: "org\n" });
+  const { verdict } = await call(load(), $, { tool: "Bash", command: TRAILER });
+  expect(verdict).toEqual({ decision: "allow" });
+});
+
+test("a Claude attribution line asks in a repository of another owner", async () => {
+  const $ = repo(remote("https://github.com/them/x"), {
+    includeCoAuthoredBy: false,
+  });
+  const command =
+    'git -C . commit -m "x\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)"';
+  const { verdict } = await call(load(), $, { tool: "Bash", command });
+  expect(verdict.decision).toBe("ask");
+  expect(verdict.reason).toContain("AI policy");
+});
+
+test("a commit with no Claude line, a non-commit, and no repository keep the engine verdict", async () => {
+  const them = repo(remote("https://github.com/them/x"));
+  for (const command of ['git commit -m "Fix"', `echo ${TRAILER}`])
+    expect(
+      (await call(load(), them, { tool: "Bash", command })).verdict,
+    ).toEqual({ decision: "allow" });
+  const none = repo(null);
+  expect(
+    (await call(load(), none, { tool: "Bash", command: TRAILER })).verdict,
+  ).toEqual({ decision: "allow" });
+  expect(
+    (
+      await call(load({ guard_bash: false }), them, {
+        tool: "Bash",
+        command: TRAILER,
+      })
+    ).verdict,
+  ).toEqual({ decision: "allow" });
+});

@@ -170,7 +170,14 @@ delete env.XDG_CONFIG_HOME;
 const token = loginToken();
 if (token) env.CLAUDE_CODE_OAUTH_TOKEN = token;
 else console.error("No login token found. Run /login inside the sandbox.");
-const pluginDirs = [REPO, path.join(REPO, "plugins", "dotclaude-browser")];
+// The checkout and each plugin in `plugins/`, such as dotclaude-jev.
+const pluginDirs = [
+  REPO,
+  ...fs
+    .readdirSync(path.join(REPO, "plugins"), { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => path.join(REPO, "plugins", d.name)),
+];
 const r = spawnSync(
   claude,
   [...pluginDirs.flatMap((dir) => ["--plugin-dir", dir]), ...args],

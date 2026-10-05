@@ -11,7 +11,20 @@ import {
   pinnedModel,
   spawnDenial,
 } from "./lib/_agent-rules.mjs";
-import { askFor } from "./lib/_bash-rules.mjs";
+import {
+  CLAUDE_TRAILER,
+  hasClaudeAttribution,
+  LOGIN_ARGV,
+  linesOf,
+  mergeSettings,
+  ORGS_ARGV,
+  OTHER_OWNER_REASON,
+  ownRepo,
+  settingsPaths,
+  TRAILER_OFF_REASON,
+  trailerOff,
+} from "./lib/_attribution.mjs";
+import { askFor, isCommit } from "./lib/_bash-rules.mjs";
 import {
   CODEGRAPH_SYNC_TIMEOUT_MS,
   CODEGRAPH_TIMEOUT_MS,
@@ -110,6 +123,51 @@ async function askReason($, e, options) {
     return editReasons(e.tool, e, existing).join(" ") || undefined;
   }
   return undefined;
+}
+
+/** The output of `argv` in `cwd`, or null when it fails. */
+async function output($, argv, cwd) {
+  try {
+    const r = await $.process.run(argv, { cwd, timeoutMs: 3000 });
+    return r.exitCode === 0 ? r.stdout : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The verdict for a `git commit` with a Claude attribution line, or
+ * undefined. It asks in a repository of another owner, and it denies a
+ * Claude trailer in a repository of the user when the settings leave it out.
+ */
+async function trailerVerdict($, e, options) {
+  const command = String(e.command ?? "");
+  if (e.tool !== "Bash" || !enabled(options, "guard_bash")) return undefined;
+  if (!hasClaudeAttribution(command) || !isCommit(command)) return undefined;
+  const [cwd, root] = await Promise.all([
+    $.session.cwd().catch(() => ""),
+    $.session.root().catch(() => ""),
+  ]);
+  const dir = cwd || root;
+  const remotes = await output($, ["git", "remote", "-v"], dir);
+  if (remotes === null) return undefined;
+  const owners = linesOf(await output($, LOGIN_ARGV, dir));
+  if (remotes && !ownRepo(remotes, owners) && owners.length)
+    owners.push(...linesOf(await output($, ORGS_ARGV, dir)));
+  if (remotes && !ownRepo(remotes, owners))
+    return { decision: "ask", reason: OTHER_OWNER_REASON };
+  const [config, home] = await Promise.all([
+    $.env.get("CLAUDE_CONFIG_DIR"),
+    $.env.get("HOME"),
+  ]);
+  const texts = await Promise.all(
+    settingsPaths(config || `${home}/.claude`, root || dir).map((file) =>
+      $.fs.read(file).catch(() => ""),
+    ),
+  );
+  return trailerOff(mergeSettings(texts)) && CLAUDE_TRAILER.test(command)
+    ? { decision: "deny", reason: TRAILER_OFF_REASON }
+    : undefined;
 }
 
 /**
@@ -263,14 +321,22 @@ export function register(on, options) {
 
   on("tool.call", async ($, e, next) => {
     const id = e.tool_use_id;
-    let reason;
-    try {
-      reason = await askReason($, e, options);
-    } catch {
-      reason = undefined;
-    }
-    const keep = reason !== undefined && id !== undefined;
-    if (keep) asks.set(id, { decision: "ask", reason });
+    const [reason, trailer] = await Promise.all([
+      askReason($, e, options).catch(() => undefined),
+      trailerVerdict($, e, options).catch(() => undefined),
+    ]);
+    // A deny wins, and the reasons of two asks are joined.
+    const verdict =
+      trailer?.decision === "deny"
+        ? trailer
+        : reason || trailer
+          ? {
+              decision: "ask",
+              reason: [reason, trailer?.reason].filter(Boolean).join(" "),
+            }
+          : undefined;
+    const keep = verdict !== undefined && id !== undefined;
+    if (keep) asks.set(id, verdict);
     let r;
     try {
       r = await next(e);

@@ -10,6 +10,50 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.20.8] - 2026-10-05
+
+### Fixed
+
+- Commits and pull requests of Claude get the git attribution again.
+  The `includeGitInstructions: false` setting of the profile removes the `Co-Authored-By` trailer and the pull request footer of Claude Code.
+  The 0.8 session note gave them back, but the 0.20.0 reset removed it.
+  The session note reads the `attribution` and `includeCoAuthoredBy` settings, as Claude Code does.
+  Claude Code 2.1.289 gives no `model` to a SessionStart command hook, so the note tells Claude to write the name of its model in the trailer, such as `Claude Sonnet 5.5`.
+  The name then also follows a `/model` change.
+- A repository with a remote of another owner gets no Claude attribution lines.
+  A repository is the user's own when it has no remote, or when each remote is on GitHub under the `gh` login or under an organization where that login has the owner role.
+  GitHub records no organization creator, so the owner role (`admin`) stands for it.
+  A fork with an `upstream` of another owner is not the user's own.
+  In such a repository, the session note tells Claude to follow the AI policy of the project and to use `/dotclaude:contribute`.
+- The Bash guard checks the Claude attribution lines of `git commit` again, as it did before the 0.20.0 reset.
+  In a repository of the user, it denies a Claude `Co-Authored-By` line when the settings leave the trailer out, because Claude adds the line from habit.
+  In a repository of another owner, it asks before a commit with a Claude attribution line.
+
+### Changed
+
+- Each note that dotclaude or one of its plugins gives to an agent is a clause of the dotclaude Terms of Use.
+  The session start gives the `dotclaude_terms_of_use` block, and each note comes in a `dotclaude_terms` tag with its clause number and title.
+  The tag names the hook that enforces the clause.
+  The wiki page `Terms-of-Use` lists the 10 clauses.
+- The Jev note is clause 10, and the `dotclaude-jev` hooks module enforces it.
+  When `TYPESAFE_API_KEY` is set, the module runs one `jev.mjs ask` call for each `AskUserQuestion`.
+  Jev sorts each question into preference or facts, and picks from its options.
+  A question that facts decide shows the pick of Jev and its confidence to the user.
+  A question about a goal, a preference, or an approval stays as it is.
+  The module does not deny `AskUserQuestion`, because a deny also blocked the questions that only the user can answer, and Claude could then ask in plain text.
+  When Jev fails, the question passes unchanged.
+- `just sandbox` loads each plugin in `plugins/`, so a sandbox test also covers `dotclaude-jev`.
+  The `Sandbox` wiki page tells why a headless run denies a tool that `--allowedTools` does not list, and how to give `gh` the login of the user.
+- The 3,000-line bound on runtime JavaScript (`RUNTIME_JS_LINES` and `tests/budget.test.mjs`) is removed.
+  The new rule is that runtime JavaScript does only the work that the latest Claude Code does not do, and uses the settings and extension points of Claude Code when they exist.
+
+### Added
+
+- The `dotclaude-jev` plugin adds a session note that sends each decision through the `second-opinion` skill.
+  The decisions are the close calls of Claude, the questions of the user that ask for a decision, a pick, or a rating, the technical decisions of the user, and each request for a second opinion.
+  Claude asks each question with options through `AskUserQuestion`, so that the hooks module can add the pick of Jev.
+  Goals, preferences, and approvals stay with the user.
+
 ## [0.20.7] - 2026-10-05
 
 ### Fixed
@@ -261,4 +305,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.7...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.8...HEAD

@@ -6,15 +6,18 @@ Tests pin the copies of a bound in code and config.
 
 ## Hooks
 
+Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-Use).
+
 | Part | Event | Bound in `_budget.mjs` | User need |
 | --- | --- | --- | --- |
-| Bash guard (`guard_bash`) | `tool.call` | `COMMAND_PART_CHARS` | Ask before a forced push, a hard reset, a recursive removal outside the project, `sudo`, or a write to a device. The reason shows the command part. |
+| Bash guard (`guard_bash`) | `tool.call` | `COMMAND_PART_CHARS` | Ask before a forced push, a hard reset, a recursive removal outside the project, `sudo`, or a write to a device. The reason shows the command part. Deny a Claude `Co-Authored-By` line in a commit when the settings leave it out, and ask before a Claude attribution line in a repository of another owner. |
 | Edit guard (`guard_edit`) | `tool.call` | none | Ask before an edit that removes test assertions, adds a skip marker, or changes a generated file, a lockfile, or a Claude Code settings file. |
 | Secret redaction (`guard_secrets`) | `tool.call` | `SECRET_SCAN_TIMEOUT_MS`, `SECRET_SCAN_MAX_BYTES` | Keep a secret in a tool result out of the context. Betterleaks finds it, and the result shows `[REDACTED:<rule>]`. |
 | Spawn rules (`guard_agents`) | `agent.spawn` | `SUBAGENT_EFFORTS` | Keep the subagent model and effort within the [rules](#model-and-effort-rules). The hook denies a call that asks for another model than the agent file fixes, and gives the reason. |
 | Cold-cache note | `SessionStart` (resume), `prompt.submit` | `CACHE_TTL_MS` | Tell Claude that the prompt cache expired, so that it says what a handoff note and `/clear` can save. |
 | Compaction | `session.compact` | `HANDOFF_FORK_TIMEOUT_MS` | Keep an unapproved plan or an open question open after a compaction, and keep the task state in a handoff note (`compaction_handoff`). |
 | Working rules | `SessionStart` | `RULES_MAX_BYTES` | Give Claude the few rules that have a stated incident, in at most 2,000 bytes. |
+| Git attribution | `SessionStart` | none | Put back the `Co-Authored-By` trailer and the pull request footer that `includeGitInstructions: false` removes. A repository with a remote of another owner gets no lines, because the AI policy of that project decides. The owners are the `gh` login and the organizations where it has the owner role. |
 | Handoff pointer | `SessionStart` | none | Point a new or cleared session to the newest handoff note with `status: in-progress`. |
 | `verify` gate | `Stop` | none | Send Claude back once when a turn edited files and no check ran after the last edit. |
 
@@ -46,7 +49,7 @@ Each stub runs the newest plugin version in the plugin cache, so a plugin update
 | `/dotclaude:contribute` | Checks the AI policy of a project and drafts the contribution. | A contribution to another project speaks for the user. |
 | `Concise` output style | Short replies that start with the result. | Replies that are fast to read. |
 | `dotclaude-browser` plugin | Loads the `drive-web-browser` skill at session start. | Browser work with `agent-browser`, and CloakBrowser on a site with bot detection. |
-| `dotclaude-jev` plugin | Loads the `second-opinion` skill, which asks TypeSafe Jev about a decision of Claude. | A calibrated check of a close call, at $0.042 for each million input tokens. |
+| `dotclaude-jev` plugin | Loads the `second-opinion` skill, which asks TypeSafe Jev about a decision of Claude. Its session note sends each decision and each question with options through Jev, and its hooks module adds the pick of Jev to each `AskUserQuestion` question that facts decide. | A calibrated check of a close call, at $0.042 for each million input tokens. |
 
 Each agent has `maxTurns` in its file.
 The values are 20 for `test-runner`, 40 for `investigator`, 60 for the others, and 80 for `implementer`.
@@ -63,8 +66,9 @@ The profile sets `maxEffortLevel` to `high`, so `xhigh` and `max` stay blocked.
 Fable 5.1 is not in `availableModels`, and a subagent never runs on it.
 No hook event fires when the effort of the main session changes, so the status line warns and nothing denies.
 
-## Runtime budget
+## Runtime scope
 
 Runtime JavaScript is all `.mjs` files in `hooks/`, `status-line/`, `skills/`, and `plugins/`.
-`RUNTIME_JS_LINES` is 3,000, and `tests/budget.test.mjs` fails above it.
+It does only the work that the latest Claude Code does not do.
+When Claude Code has a setting, a hook, or another extension point for a need, dotclaude uses it.
 Release 0.19.1 had 18,935 lines.

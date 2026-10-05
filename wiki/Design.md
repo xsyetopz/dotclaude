@@ -75,7 +75,6 @@ The rejected alternatives still hold.
 | Fan-out | 5 subagents, and 5 agents per workflow, at once | profile env | none |
 | A subagent runs in the background | It runs in the foreground and causes no wake turns | `CLAUDE_CODE_FORK_SUBAGENT=0` in the profile | none |
 | Text of dotclaude on every request | `rules.md` at most 2,000 bytes | `RULES_MAX_BYTES` | `tests/session-start.test.mjs` |
-| Runtime JavaScript grows | At most 3,000 lines | `RUNTIME_JS_LINES` | `tests/budget.test.mjs` |
 | Weekly review | The usage shares in [Usage evidence](Usage-Evidence) are reproducible | `scripts/usage-report.mjs` | none |
 
 The profile rows need `/dotclaude:setup`.

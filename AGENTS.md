@@ -26,8 +26,10 @@ Docs, design, and evidence: the [wiki](https://github.com/xsyetopz/dotclaude/wik
   Follow Claude's prompting best practices: give the reason, say what to do, use no forceful words, and put code items in backticks.
 - Change a usage bound only in `hooks/lib/_budget.mjs`.
   Tests pin its copies in code and config, not in prose.
-- Keep runtime JavaScript (`hooks/`, `status-line/`, `skills/`, `plugins/`) at 3,000 lines or less.
-  `tests/budget.test.mjs` pins the bound.
+- Do not write runtime JavaScript (`hooks/`, `status-line/`, `skills/`, `plugins/`) for a feature that the latest Claude Code has.
+  When Claude Code has a setting, a hook, or another extension point for a need, use it.
+- Each note to an agent is a clause of the dotclaude Terms of Use.
+  Add the clause to `hooks/lib/_terms.mjs` and `wiki/Terms-of-Use.md`, and enforce it with a hook when a hook can see a break of it.
 - `hooks/lib` imports only itself.
   Event hooks import only `hooks/lib`.
   Only the hooks module `hooks/register.mjs` also imports the event actions.

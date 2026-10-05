@@ -73,9 +73,29 @@ function hasFlag(args, long, short = "") {
 
 const GIT_VALUE_FLAGS = new Set(["-C", "-c", "--git-dir", "--work-tree"]);
 
-function gitReason(words) {
+/** The index of the git subcommand in `words`. */
+function gitSub(words) {
   let i = 1;
   while (words[i]?.startsWith("-")) i += GIT_VALUE_FLAGS.has(words[i]) ? 2 : 1;
+  return i;
+}
+
+/** True when a part of `command` is `git commit`. */
+export function isCommit(command) {
+  return partsOf(command).some((raw) => {
+    let words = raw;
+    while (
+      /^[A-Za-z_]\w*=/.test(words[0] ?? "") ||
+      WRAPPERS.has(base(words[0])) ||
+      base(words[0]) === "sudo"
+    )
+      words = words.slice(1);
+    return base(words[0]) === "git" && words[gitSub(words)] === "commit";
+  });
+}
+
+function gitReason(words) {
+  const i = gitSub(words);
   const sub = words[i];
   const args = words.slice(i + 1);
   switch (sub) {

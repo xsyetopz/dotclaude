@@ -2,6 +2,7 @@
   - [Home](Home)
 - Use
   - [Parts](Parts)
+  - [Terms of Use](Terms-of-Use)
   - [Contributions](Contributions)
 - Develop
   - [Development](Development)

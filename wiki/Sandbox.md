@@ -23,6 +23,7 @@ just sandbox-clean                 # remove the sandbox
 ```
 
 Arguments after `just sandbox` go to `claude`.
+The script loads the checkout and each plugin in `plugins/`, such as `dotclaude-browser` and `dotclaude-jev`.
 `scripts/sandbox.mjs` does the work, and `bun scripts/sandbox.mjs` is the same without `just`.
 
 | Variable | Default | Use |
@@ -44,6 +45,9 @@ The sandbox directory has three parts:
 - `home/` is the `HOME` of `claude`.
   The script removes `ZDOTDIR` and `XDG_CONFIG_HOME` from its environment.
   Your global git config does not apply in the sandbox.
+  The `gh` login does not apply either, so a test of the git attribution sees no owner.
+  Set `GH_CONFIG_DIR=~/.config/gh` to give `gh` your login name.
+  `gh` reads its token from the keychain with the real `HOME`, so a `gh api` call in the sandbox fails, such as the organization owner check.
 
 The script also removes the variables of a Claude Code session that runs the script.
 It removes each variable that has the value your own settings `env` gives it.
@@ -97,6 +101,10 @@ just sandbox --model claude-sonnet-5-5 -p "Run cat pkg/a.ts and describe it."
 - Put the prompt before variadic flags such as `--allowedTools`.
   A variadic flag takes all the arguments after it, and then `claude` finds no prompt.
 - Add `--allowedTools 'Bash(cat:*)'` when the test needs a tool without a permission prompt.
+- A headless run is in the `default` permission mode, and no person can answer a prompt.
+  So Claude Code denies each tool that `--allowedTools` does not list, with "you haven't granted it yet".
+  This deny is not a decision of the user.
+  Before the run, list each tool that the test needs, such as `--allowedTools 'Bash' 'Write' 'Edit'`.
 - Add `--debug-file <path>` to see which hooks ran and what they returned.
 - Put test files in `project/` first, for example a `pkg/CLAUDE.md` with a rule that the reply must show.
 

@@ -3,7 +3,6 @@
 dotclaude is a small Claude Code plugin for software engineering.
 It keeps only the parts that Claude Code does not cover: guards, model and effort rules, compaction and cold-cache notes, a verify gate, a status line, and role agents.
 It optimizes for the most quality per unit of usage quota, not for speed.
-The runtime JavaScript stays within 3,000 lines.
 
 [The wiki](https://github.com/xsyetopz/dotclaude/wiki) tells what each part does and why.
 [Parts](https://github.com/xsyetopz/dotclaude/wiki/Parts) lists each part with its event and bound.

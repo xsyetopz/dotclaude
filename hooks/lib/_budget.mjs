@@ -1,13 +1,6 @@
 // dotclaude's bounds. A test keeps the copies of these numbers in step with
 // this file.
 
-/**
- * Lines of runtime JavaScript for the whole 0.20.0 release: all `.mjs` files
- * under `hooks/`, `status-line/`, `skills/`, and `plugins/`.
- * `tests/budget.test.mjs` fails above this number.
- */
-export const RUNTIME_JS_LINES = 3000;
-
 /** Time that one Betterleaks scan can take. A scan takes about 30 ms. */
 export const SECRET_SCAN_TIMEOUT_MS = 8000;
 

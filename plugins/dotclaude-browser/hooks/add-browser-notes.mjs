@@ -9,10 +9,18 @@ const LOAD_SKILL =
 const CLOAKBROWSER_NOTE =
   "Use CloakBrowser as the browser backend, not plain `agent-browser`. Follow the skill's CloakBrowser section.";
 
+// Clause 9 of the dotclaude Terms of Use. A test compares the tag with
+// `hooks/lib/_terms.mjs`, which this plugin cannot import.
+export const CLAUSE_TAG =
+  '<dotclaude_terms clause="9" title="Web browser (dotclaude-browser)">';
+
 export function sessionContext(backend) {
   const choice = (backend ?? "").trim().toLowerCase();
-  if (choice !== "cloakbrowser") return LOAD_SKILL;
-  return `${LOAD_SKILL}\n<browser_preferences>This preference comes from the user's dotclaude-browser settings. ${CLOAKBROWSER_NOTE}</browser_preferences>`;
+  const text =
+    choice === "cloakbrowser"
+      ? `${LOAD_SKILL}\n<browser_preferences>This preference comes from the user's dotclaude-browser settings. ${CLOAKBROWSER_NOTE}</browser_preferences>`
+      : LOAD_SKILL;
+  return `${CLAUSE_TAG}\n${text}\n</dotclaude_terms>`;
 }
 
 if (import.meta.main) {

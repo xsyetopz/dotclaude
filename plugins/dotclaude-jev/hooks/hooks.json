@@ -1,0 +1,18 @@
+{
+  "description": "dotclaude-jev: give Claude clause 10 of the dotclaude Terms of Use at session start, and add the Jev pick to each `AskUserQuestion` question that facts decide",
+  "modules": ["./register.mjs"],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/second-opinion.md"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

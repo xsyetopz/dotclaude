@@ -34,9 +34,9 @@ The plugin uses Bun ESM with no dependencies at run time.
 - *One owner for each number.*
   `hooks/lib/_budget.mjs` holds every usage bound.
   Tests fail when the output style, the settings profile, or the option text disagrees with it.
-- *A line budget.*
-  Runtime JavaScript (`hooks/`, `status-line/`, `skills/`, and `plugins/`) stays within `RUNTIME_JS_LINES`, 3,000 lines.
-  `tests/budget.test.mjs` fails above it.
+- *No copy of Claude Code.*
+  Runtime JavaScript (`hooks/`, `status-line/`, `skills/`, and `plugins/`) does only the work that the latest Claude Code does not do.
+  When Claude Code has a setting, a hook, or another extension point for a need, use it.
 - *Layered imports.*
   Event hooks import only `hooks/lib`.
   `hooks/lib` imports only itself.

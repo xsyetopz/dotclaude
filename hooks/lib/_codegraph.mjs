@@ -4,6 +4,7 @@
 // The code is our own.
 
 import { CODEGRAPH_NEIGHBOURS, CODEGRAPH_NOTE_MAX_CHARS } from "./_budget.mjs";
+import { clause } from "./_terms.mjs";
 
 const IDENTIFIER = /^[A-Za-z_$][\w$]{2,}$/;
 
@@ -100,9 +101,12 @@ export function graphNote(symbol, callersText, calleesText) {
   ]
     .filter(Boolean)
     .join("\n");
-  return text.length > CODEGRAPH_NOTE_MAX_CHARS
-    ? `${text.slice(0, CODEGRAPH_NOTE_MAX_CHARS)}…`
-    : text;
+  return clause(
+    "codegraph",
+    text.length > CODEGRAPH_NOTE_MAX_CHARS
+      ? `${text.slice(0, CODEGRAPH_NOTE_MAX_CHARS)}…`
+      : text,
+  );
 }
 
 /**
