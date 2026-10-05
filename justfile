@@ -31,6 +31,19 @@ sandbox-clean:
 usage *args:
     bun scripts/usage-report.mjs "$@"
 
+# Publish wiki/ to the GitHub wiki; the wiki repository exists only after its first page is made in the web UI
+wiki:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tmp="$(mktemp -d)"
+    trap 'rm -rf "$tmp"' EXIT
+    git clone --quiet https://github.com/xsyetopz/dotclaude.wiki.git "$tmp"
+    rsync -a --delete --exclude .git wiki/ "$tmp/"
+    git -C "$tmp" add -A
+    if git -C "$tmp" diff --cached --quiet; then echo "The wiki is up to date."; exit 0; fi
+    git -C "$tmp" commit --quiet -m "Sync wiki from dotclaude $(git rev-parse --short HEAD)"
+    git -C "$tmp" push --quiet origin HEAD
+
 # Bump the version (major, minor, patch, or X.Y.Z) in both manifests and the CHANGELOG; add --dry-run to preview
 bump level *flags:
     bun scripts/bump-version.mjs "$@"

@@ -1,6 +1,6 @@
 // The CodeGraph augment: a search for one symbol name gets the callers and callees of that symbol from the CodeGraph index, added to the search result.
 // Claude does not have to choose the tool, because the graph comes with the search that it already ran.
-// The design follows the GitNexus hooks (`docs/dossier/usage.md`).
+// The design follows the GitNexus hooks (`wiki/Usage-Evidence.md`).
 // The code is our own.
 
 import { CODEGRAPH_NEIGHBOURS, CODEGRAPH_NOTE_MAX_CHARS } from "./_budget.mjs";

@@ -48,7 +48,7 @@ export const MINIMAL_CODE_MAX_BYTES = 800;
 /**
  * Time after the last turn at which the main prompt cache has expired. The
  * cache lives 1 hour on a subscription and 5 minutes on an API key, a cloud
- * provider, or usage credits (`docs/dossier/plans-and-models.md`).
+ * provider, or usage credits (`wiki/Plans-and-Models.md`).
  * `hooks/lib/_plan.mjs` picks one by plan.
  */
 export const CACHE_TTL_MS = 60 * 60_000;

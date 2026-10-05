@@ -10,6 +10,14 @@ steps after each update.
 
 ## [Unreleased]
 
+### Changed
+
+- The documentation moved to the [GitHub wiki](https://github.com/xsyetopz/dotclaude/wiki).
+  The page source is in `wiki/`, and `just wiki` publishes it.
+  `docs/README.md` now only links to the wiki pages.
+- The release archive of 0.1 to 0.19 is now one consolidated wiki page for each release line, with [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History) as its index.
+- The external sources of the old `docs/external/` are now in `external/`, which git ignores.
+
 ## [0.20.5] - 2026-10-05
 
 ### Fixed
@@ -221,24 +229,24 @@ Run `/dotclaude:setup` again after you update.
 
 | Series | Releases |
 | --- | --- |
-| [0.19](docs/changelog/0.19.md) | 0.19.1, 0.19.0 |
-| [0.18](docs/changelog/0.18.md) | 0.18.1, [0.18.0](docs/changelog/0.18.0.md) |
-| [0.17](docs/changelog/0.17.md) | 0.17.1, [0.17.0](docs/changelog/0.17.0.md) |
-| [0.16](docs/changelog/0.16.md) | 0.16.1, 0.16.0 |
-| [0.15](docs/changelog/0.15.md) | 0.15.1, 0.15.0 |
-| [0.14](docs/changelog/0.14.md) | 0.14.1, 0.14.0 |
-| [0.13](docs/changelog/0.13.md) | 0.13.1, 0.13.0 |
-| [0.12](docs/changelog/0.12.md) | 0.12.1, 0.12.0 |
-| [0.11](docs/changelog/0.11.md) | 0.11.1, 0.11.0 |
-| [0.10](docs/changelog/0.10.md) | 0.10.2, 0.10.1, 0.10.0 |
-| [0.9](docs/changelog/0.9.md) | 0.9.0 |
-| [0.8](docs/changelog/0.8.md) | 0.8.2, 0.8.1, 0.8.0 |
-| [0.7](docs/changelog/0.7.md) | 0.7.0 |
-| [0.6](docs/changelog/0.6.md) | 0.6.2, 0.6.1, 0.6.0 |
-| [0.5](docs/changelog/0.5.md) | 0.5.1, 0.5.0 |
-| [0.4](docs/changelog/0.4.md) | 0.4.0 |
-| [0.3](docs/changelog/0.3.md) | 0.3.0 |
-| [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
+| [0.19](https://github.com/xsyetopz/dotclaude/wiki/Release-0.19) | 0.19.1, 0.19.0 |
+| [0.18](https://github.com/xsyetopz/dotclaude/wiki/Release-0.18) | 0.18.1, 0.18.0 |
+| [0.17](https://github.com/xsyetopz/dotclaude/wiki/Release-0.17) | 0.17.1, 0.17.0 |
+| [0.16](https://github.com/xsyetopz/dotclaude/wiki/Release-0.16) | 0.16.1, 0.16.0 |
+| [0.15](https://github.com/xsyetopz/dotclaude/wiki/Release-0.15) | 0.15.1, 0.15.0 |
+| [0.14](https://github.com/xsyetopz/dotclaude/wiki/Release-0.14) | 0.14.1, 0.14.0 |
+| [0.13](https://github.com/xsyetopz/dotclaude/wiki/Release-0.13) | 0.13.1, 0.13.0 |
+| [0.12](https://github.com/xsyetopz/dotclaude/wiki/Release-0.12) | 0.12.1, 0.12.0 |
+| [0.11](https://github.com/xsyetopz/dotclaude/wiki/Release-0.11) | 0.11.1, 0.11.0 |
+| [0.10](https://github.com/xsyetopz/dotclaude/wiki/Release-0.10) | 0.10.2, 0.10.1, 0.10.0 |
+| [0.9](https://github.com/xsyetopz/dotclaude/wiki/Release-0.9) | 0.9.0 |
+| [0.8](https://github.com/xsyetopz/dotclaude/wiki/Release-0.8) | 0.8.2, 0.8.1, 0.8.0 |
+| [0.7](https://github.com/xsyetopz/dotclaude/wiki/Release-0.7) | 0.7.0 |
+| [0.6](https://github.com/xsyetopz/dotclaude/wiki/Release-0.6) | 0.6.2, 0.6.1, 0.6.0 |
+| [0.5](https://github.com/xsyetopz/dotclaude/wiki/Release-0.5) | 0.5.1, 0.5.0 |
+| [0.4](https://github.com/xsyetopz/dotclaude/wiki/Release-0.4) | 0.4.0 |
+| [0.3](https://github.com/xsyetopz/dotclaude/wiki/Release-0.3) | 0.3.0 |
+| [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
   https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.5...HEAD

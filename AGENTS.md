@@ -1,7 +1,7 @@
 # AGENTS.md
 
 A Claude Code plugin in Bun ESM.
-Design and evidence: `docs/dossier.md`.
+Docs, design, and evidence: the [wiki](https://github.com/xsyetopz/dotclaude/wiki), with its source in `wiki/`.
 
 ## Commands (repository root)
 
@@ -11,7 +11,7 @@ Design and evidence: `docs/dossier.md`.
 - `bunx markdownlint-cli2 README.md` lints Markdown.
   Headings and code blocks have a 100-column bound.
 - `just sandbox` runs Claude Code with this checkout in a separate config.
-  Read `docs/sandbox.md` first.
+  Read `wiki/Sandbox.md` first.
 
 ## Rules
 
@@ -39,5 +39,6 @@ Design and evidence: `docs/dossier.md`.
   Reading the bundle for evidence is permitted.
 - Add CHANGELOG entries under `[Unreleased]`.
   Change versions with `just bump`.
-- `.gitignore` hides `docs/`.
-  Add each new public doc path to its allow list.
+- Write public docs in `wiki/`, and run `just wiki` to publish them.
+  `docs/README.md` only links to the wiki.
+  `external/` holds local sources, and git ignores it.

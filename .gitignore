@@ -5,15 +5,6 @@ evals/results/
 evals-heldout/results/
 .pytest_cache/
 
-/docs/*
-!/docs/dossier.md
-!/docs/dossier/
-!/docs/changelog/
-!/docs/sandbox.md
-!/docs/README.md
-!/docs/parts.md
-!/docs/development.md
-!/docs/contributions.md
-!/docs/attributions.md
+/external/
 
 /letters/

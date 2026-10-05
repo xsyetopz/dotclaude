@@ -5,9 +5,9 @@ It keeps only the parts that Claude Code does not cover: guards, model and effor
 It optimizes for the most quality per unit of usage quota, not for speed.
 The runtime JavaScript stays within 3,000 lines.
 
-[The documentation](docs/README.md) tells what each part does and why.
-[Parts](docs/parts.md) lists each part with its event and bound.
-[The dossier](docs/dossier.md) holds the measurements and sources.
+[The wiki](https://github.com/xsyetopz/dotclaude/wiki) tells what each part does and why.
+[Parts](https://github.com/xsyetopz/dotclaude/wiki/Parts) lists each part with its event and bound.
+The evidence pages, from [Design](https://github.com/xsyetopz/dotclaude/wiki/Design) on, hold the measurements and sources.
 
 ## Install
 
@@ -75,7 +75,7 @@ Each turn reads the whole context again, so the size of the context sets the cos
 - Old transcripts in `~/.claude/projects/` do not go into the context.
   They use only disk space, and the profile sets `cleanupPeriodDays` to 14.
 
-Usage evidence: [docs/dossier/usage.md](docs/dossier/usage.md#community-claims).
+Usage evidence: [Usage evidence](https://github.com/xsyetopz/dotclaude/wiki/Usage-Evidence#community-claims).
 
 ## Browser plugin
 
@@ -122,7 +122,7 @@ To try an unreleased checkout, run `claude --plugin-dir /path/to/dotclaude`.
 
 `just check` runs lint, tests, and plugin validation.
 `just sandbox` runs Claude Code with this checkout in a separate config.
-See [Development](docs/development.md) and [Sandbox](docs/sandbox.md).
+See [Development](https://github.com/xsyetopz/dotclaude/wiki/Development) and [Sandbox](https://github.com/xsyetopz/dotclaude/wiki/Sandbox).
 
 ## License
 

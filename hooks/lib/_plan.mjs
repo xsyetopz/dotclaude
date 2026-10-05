@@ -1,7 +1,7 @@
 // The user's Claude plan, from the account that Claude Code caches in
 // `.claude.json` (`oauthAccount`). Only these plan fields are read. Tokens
 // live in the keychain or `.credentials.json`, and this file never opens them.
-// Field values were seen on Claude Code 2.1.289 (`docs/dossier/plans-and-models.md`).
+// Field values were seen on Claude Code 2.1.289 (`wiki/Plans-and-Models.md`).
 
 // It reads no file, because the hooks module may not import `node:fs`.
 // Each caller reads `claudeJsonPath(env)` and gives its text to `accountFrom`.

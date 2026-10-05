@@ -42,7 +42,7 @@ test("profile keeps the decided values", () => {
   ]);
   expect(PROFILE.autoCompactWindow).toBe(150000);
   expect(PROFILE.cleanupPeriodDays).toBe(14);
-  // Subagents almost never pause 5 minutes, so the 1-hour write price costs more (docs/dossier/design.md).
+  // Subagents almost never pause 5 minutes, so the 1-hour write price costs more (wiki/Design.md).
   expect(PROFILE.subagentPromptCacheTtl).toBeUndefined();
   expect(PROFILE.enableArtifact).toBe(false);
   expect(PROFILE.disableBundledSkills).toBe(true);
