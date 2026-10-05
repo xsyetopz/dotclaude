@@ -92,7 +92,7 @@ test("only the last turn counts", () => {
   ).toBeUndefined();
 });
 
-test("the Stop hook blocks once, and not when stop_hook_active is set", () => {
+test("the Stop hook sends feedback once, and not when stop_hook_active is set", () => {
   const dir = import.meta.dir;
   const file = `${require("node:os").tmpdir()}/verify-${process.pid}.jsonl`;
   require("node:fs").writeFileSync(file, [prompt, use("Edit")].join("\n"));
@@ -103,7 +103,11 @@ test("the Stop hook blocks once, and not when stop_hook_active is set", () => {
       ),
       env: { ...process.env, CLAUDE_PROJECT_DIR: `${dir}/..` },
     }).stdout.toString();
-  expect(JSON.parse(run({})).decision).toBe("block");
+  const out = JSON.parse(run({}));
+  // A `decision` shows as "Stop hook error" in Claude Code.
+  expect(out.decision).toBeUndefined();
+  expect(out.hookSpecificOutput.hookEventName).toBe("Stop");
+  expect(out.hookSpecificOutput.additionalContext).toContain("no check ran");
   expect(run({ stop_hook_active: true })).toBe("");
   require("node:fs").rmSync(file);
 });

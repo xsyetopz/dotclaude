@@ -2,6 +2,9 @@
 // after the last edit. `turn.complete` cannot block a stop, so this is a
 // classic hook that reads the transcript. A stop after this reason
 // (`stop_hook_active`) passes, so the gate fires once per turn.
+// The reason goes in `additionalContext`, which also continues the turn:
+// Claude Code shows it as "Stop hook feedback", and a `decision: "block"`
+// reason as "Stop hook error".
 
 import fs from "node:fs";
 import path from "node:path";
@@ -35,5 +38,12 @@ if (!data.stop_hook_active && data.transcript_path) {
     root,
   );
   if (reason)
-    process.stdout.write(JSON.stringify({ decision: "block", reason }));
+    process.stdout.write(
+      JSON.stringify({
+        hookSpecificOutput: {
+          hookEventName: "Stop",
+          additionalContext: reason,
+        },
+      }),
+    );
 }

@@ -10,6 +10,13 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.20.7] - 2026-10-05
+
+### Fixed
+
+- The Stop verify gate sends its reason as `additionalContext`, so Claude Code shows "Stop hook feedback", not "Stop hook error".
+  0.20.0 used `decision: "block"` again, which Claude Code shows as an error.
+
 ## [0.20.6] - 2026-10-05
 
 ### Changed
@@ -254,4 +261,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.6...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.7...HEAD
