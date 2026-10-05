@@ -10,6 +10,20 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.20.5] - 2026-10-05
+
+### Fixed
+
+- The Context7 rate-limit check in `/dotclaude:setup` reads the status and the tier correctly.
+  Context7 refuses a key that is not valid with `HTTP/2 401`, and it can show `context7-quota-tier: anonymous` for a valid key.
+  Before, setup told the user that the key was not valid when the tier was `anonymous`.
+  Setup also asks for a key only when `CONTEXT7_API_KEY` is not set.
+- `/dotclaude:setup` suggests each curated LSP plugin of the `claude-plugins-official` marketplace whose language server is on `PATH`.
+  It reads the plugins from the marketplace manifest, so a new curated plugin shows with no dotclaude release.
+  Before, a fixed table of 6 plugins left out `csharp-lsp`, `jdtls-lsp`, `kotlin-lsp`, `lua-lsp`, `php-lsp`, and `ruby-lsp`.
+  For an installed plugin that is disabled, setup gives `/plugin enable`.
+  Before, setup counted an installed plugin as done, also when it was disabled.
+
 ## [0.20.4] - 2026-10-05
 
 ### Added
@@ -227,4 +241,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](docs/changelog/0.1-0.2.md) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.4...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.20.5...HEAD

@@ -72,7 +72,7 @@ Each script writes nothing without `--apply`, so run its preview first.
    If the user declines a prompt, stop, because a block is the user's decision.
 
 1. If `ctx7` is on `PATH`, run the rate-limit check from `${CLAUDE_SKILL_DIR}/references/integrations.md`.
-   If it shows `context7-quota-tier: anonymous`, show the user the API key command from that file, for the shell in `$SHELL`.
+   If `CONTEXT7_API_KEY` is not set and the check shows `context7-quota-tier: anonymous`, show the user the API key command from that file, for the shell in `$SHELL`.
    Tell the user to run it in a terminal outside Claude Code and to tell you when the key is added, because the key must not go into the conversation.
    When the user reports it, run the check again with the key from a new shell, because this session started before the key was added:
 
@@ -81,7 +81,11 @@ Each script writes nothing without `--apply`, so run its preview first.
    ```
 
    Report the tier and the remaining calls.
-   If the tier is still `anonymous`, the key is not valid or not in the shell profile.
+   If the request has no `Authorization` header, the key is not in the shell profile.
+   To find this, print only the length of `$k`, because the key must not go into the conversation.
+   If the status is `HTTP/2 401`, Context7 did not accept the key, so tell the user to make a new key in the dashboard.
+   If the status is `HTTP/2 200` and the tier is still `anonymous`, the key can be valid, because a valid key can also get the anonymous tier.
+   Tell the user to look at the usage of the key in the Context7 dashboard.
 
 1. Tell the user the files that changed and the backup paths.
    Tell them to restart Claude Code.

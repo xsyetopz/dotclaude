@@ -1,5 +1,5 @@
 // File helpers for the setup scripts: backups that keep a bound,
-// and a report of auto memory that does not load or is old.
+// the LSP plugins to enable, and a report of auto memory that does not load or is old.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -27,28 +27,32 @@ export function backup(file, now = new Date()) {
   return { made, deleted };
 }
 
-// The official code intelligence plugins, by the language server that each needs on `PATH`.
-// The `LSP` tool stays off until one of them is installed.
-const LSP_PLUGINS = {
-  "rust-analyzer": "rust-analyzer-lsp",
-  "sourcekit-lsp": "swift-lsp",
-  "typescript-language-server": "typescript-lsp",
-  clangd: "clangd-lsp",
-  "pyright-langserver": "pyright-lsp",
-  gopls: "gopls-lsp",
-};
+// The official marketplace lists its code intelligence plugins with the `lspServers` that each runs.
+// The `LSP` tool stays off until one of them is enabled.
+const OFFICIAL = "claude-plugins-official";
 
 /**
- * The LSP plugins whose language server `which` finds
- * and that `installed_plugins.json` (parsed) does not list.
+ * The commands to type for the official LSP plugins whose language servers `which` all finds
+ * and that the user has not enabled.
+ * `marketplace` is the parsed marketplace manifest, `installed` is the parsed `installed_plugins.json`,
+ * and `enabled` is `enabledPlugins` of the user settings.
  */
-export function lspPlugins(which, installed) {
-  const have = Object.keys(installed?.plugins ?? {}).map(
-    (k) => k.split("@")[0],
-  );
-  return Object.entries(LSP_PLUGINS)
-    .filter(([bin, name]) => which(bin) && !have.includes(name))
-    .map(([, name]) => name);
+export function lspPlugins(which, marketplace, installed, enabled) {
+  return (marketplace?.plugins ?? [])
+    .filter((p) => {
+      const servers = Object.values(p.lspServers ?? {});
+      const key = `${p.name}@${OFFICIAL}`;
+      return (
+        servers.length &&
+        servers.every((s) => which(s.command)) &&
+        enabled?.[key] !== true
+      );
+    })
+    .map((p) =>
+      Object.hasOwn(installed?.plugins ?? {}, `${p.name}@${OFFICIAL}`)
+        ? `/plugin enable ${p.name}@${OFFICIAL}`
+        : `/plugin install ${p.name}@${OFFICIAL}`,
+    );
 }
 
 // Claude Code loads the first 200 lines or 25 KB of `MEMORY.md`, whichever comes first.

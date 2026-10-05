@@ -50,9 +50,37 @@ test("the memory report names a long MEMORY.md and old files, and deletes nothin
   rmSync(dir, { recursive: true });
 });
 
-test("setup names an LSP plugin for each language server on PATH with no plugin", () => {
-  const which = (bin) => ["clangd", "sourcekit-lsp"].includes(bin);
-  const installed = { plugins: { "clangd-lsp@claude-plugins-official": [] } };
-  expect(lspPlugins(which, installed)).toEqual(["swift-lsp"]);
-  expect(lspPlugins(() => false, {})).toEqual([]);
+test("setup names an LSP plugin for each language server on PATH with no enabled plugin", () => {
+  const plugin = (name, command) => ({
+    name,
+    lspServers: { [name]: { command } },
+  });
+  const marketplace = {
+    plugins: [
+      plugin("clangd-lsp", "clangd"),
+      plugin("swift-lsp", "sourcekit-lsp"),
+      plugin("gopls-lsp", "gopls"),
+      plugin("lua-lsp", "lua-language-server"),
+      { name: "liquid-lsp" },
+    ],
+  };
+  const which = (bin) =>
+    ["clangd", "sourcekit-lsp", "gopls", "lua-language-server"].includes(bin);
+  const installed = {
+    plugins: {
+      "clangd-lsp@claude-plugins-official": [],
+      "gopls-lsp@claude-plugins-official": [],
+    },
+  };
+  const enabled = {
+    "gopls-lsp@claude-plugins-official": true,
+    "lua-lsp@claude-plugins-official": false,
+  };
+  expect(lspPlugins(which, marketplace, installed, enabled)).toEqual([
+    "/plugin enable clangd-lsp@claude-plugins-official",
+    "/plugin install swift-lsp@claude-plugins-official",
+    "/plugin install lua-lsp@claude-plugins-official",
+  ]);
+  expect(lspPlugins(() => false, marketplace, {}, {})).toEqual([]);
+  expect(lspPlugins(which, undefined, {}, undefined)).toEqual([]);
 });

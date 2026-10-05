@@ -35,19 +35,12 @@ The plugin option `codegraph` turns it off.
 ## LSP
 
 The built-in `LSP` tool gives definitions, references, and diagnostics.
-It stays off until an official code intelligence plugin is installed, and each plugin needs its language server on `PATH`.
-`scripts/settings.mjs` lists the plugins whose language server is on `PATH` but that are not installed.
-
-| Language server | Plugin |
-| --- | --- |
-| `clangd` | `clangd-lsp` |
-| `sourcekit-lsp` | `swift-lsp` |
-| `typescript-language-server` | `typescript-lsp` |
-| `rust-analyzer` | `rust-analyzer-lsp` |
-| `pyright-langserver` | `pyright-lsp` |
-| `gopls` | `gopls-lsp` |
-
-Install each with `/plugin install <plugin>@claude-plugins-official`.
+It stays off until an official code intelligence plugin is enabled, and each plugin needs its language server on `PATH`.
+`scripts/settings.mjs` reads the plugins and their language servers from the `claude-plugins-official` marketplace manifest.
+It lists each plugin whose language server is on `PATH` but that is not enabled in the user settings.
+For a plugin that is not installed, it gives `/plugin install <plugin>@claude-plugins-official`.
+For a plugin that is installed but disabled, it gives `/plugin enable <plugin>@claude-plugins-official`.
+A plugin that declares its servers only in its own repository, such as `liquid-lsp`, is not in the list.
 
 ## context7
 
@@ -80,7 +73,9 @@ printf 'Context7 API key: '; read -rs k; echo; echo "export CONTEXT7_API_KEY=$k"
 
 This command prints the status, the quota tier, the remaining calls, and the reset time as a Unix timestamp.
 It spends one call.
-`context7-quota-tier: anonymous` shows that no valid key reached Context7, because an invalid key also gets the anonymous tier.
+`HTTP/2 401` shows that Context7 did not accept the key.
+`context7-quota-tier: anonymous` with `HTTP/2 200` does not show that the key is not valid, because a valid key can also get the anonymous tier.
+To find if Context7 counts the calls on the key, look at the usage of the key in the Context7 dashboard.
 `RateLimit-Remaining: 0` or `HTTP/2 429` shows that `ctx7` is rate-limited until `RateLimit-Reset`.
 
 ```bash

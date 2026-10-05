@@ -1,6 +1,6 @@
 {
   "name": "dotclaude-jev",
-  "version": "0.20.4",
+  "version": "0.20.5",
   "description": "Gets a second opinion from TypeSafe Jev, a decision model, for a yes or no check, a pick from options, or a rating. Needs `TYPESAFE_API_KEY`.",
   "author": {
     "name": "xsyetopz"

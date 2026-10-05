@@ -272,16 +272,30 @@ if (codegraphMcp)
   console.log(
     `CodeGraph MCP entry found in ${claudeJson}. Remove it with: claude mcp remove codegraph -s user`,
   );
+// A bad marketplace manifest only hides the LSP list, so it does not stop the settings merge.
+let marketplace = {};
+try {
+  marketplace = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        configDir,
+        "plugins/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json",
+      ),
+      "utf8",
+    ),
+  );
+} catch {}
 const lsp = lspPlugins(
   (bin) => Bun.which(bin),
+  marketplace,
   readJson(path.join(configDir, "plugins", "installed_plugins.json"), {}),
+  readJson(targets.user, {}).enabledPlugins,
 );
 if (lsp.length) {
   console.log(
-    "\nLanguage servers on PATH with no LSP plugin. Install each with:",
+    "\nLanguage servers on PATH with no enabled LSP plugin. Run each:",
   );
-  for (const name of lsp)
-    console.log(`  /plugin install ${name}@claude-plugins-official`);
+  for (const command of lsp) console.log(`  ${command}`);
 }
 const memory = memoryReport(configDir);
 if (memory.length) {
