@@ -10,6 +10,7 @@ just lint                    # biome ci (lint and format)
 just validate                # claude plugin validate --strict
 just check                   # all three
 just bump minor --dry-run    # preview a version bump
+just release --dry-run       # preview the release tags
 claude --plugin-dir plugins/dotclaude plugin details dotclaude  # inventory and token cost
 just usage --days 7          # where your usage went
 just sandbox                 # Claude Code with this checkout, own config
@@ -67,6 +68,8 @@ Git ignores the folder, and the plugins have no `tsconfig.json`, because an inst
 
 `just bump` sets one version in `package.json` and in the `plugin.json` of each plugin under `plugins/`.
 It also moves the `[Unreleased]` CHANGELOG entries under a dated heading.
+`just release` makes a `{name}--v{version}` tag for each plugin at `HEAD`, and pushes all tags to `origin` in one atomic push.
+It checks all plugins before it makes a tag, so a bad manifest stops the release with no tag made.
 Before 1.0, a release can change or remove behavior without a compatibility layer.
 
 ## Evals

@@ -14,6 +14,8 @@ steps after each update.
 
 ### Added
 
+- `just release` tags all plugins at `HEAD` and pushes the tags in one atomic push.
+  Add `--dry-run` to preview the tags.
 - At startup, the user gets a notice when the user settings, the `CLAUDE.md` block, or the status line launchers differ from the setup profile.
   The notice recommends `/dotclaude:setup`, and it shows once for each plugin version, so a value that the user keeps on purpose does not show at each start.
   The notice goes to the user only, and adds nothing to the context of Claude.

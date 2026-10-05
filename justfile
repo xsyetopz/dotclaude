@@ -48,6 +48,19 @@ wiki:
 bump level *flags:
     bun tools/bump-version.mjs "$@"
 
+# Tag each plugin under plugins/ at HEAD and push all tags in one atomic push; add --dry-run to preview
+release *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tags=()
+    for p in plugins/*/; do
+        tags+=("$(claude plugin tag --dry-run "$p" | awk '/^Tag:/ {print $2}')")
+    done
+    printf 'Tags: %s\n' "${tags[*]}"
+    if [[ "${1:-}" == --dry-run ]]; then exit 0; fi
+    for p in plugins/*/; do claude plugin tag "$p"; done
+    git push --atomic origin "${tags[@]/#/refs/tags/}"
+
 # Run the investigator and web-researcher role cases with the agent at a model (opus or sonnet) and effort; this spends usage
 eval-agent model effort runs="10":
     CLAUDE_CODE_SUBAGENT_MODEL=claude-{{ model }}-5-5 CLAUDE_CODE_EFFORT_LEVEL={{ effort }} claude plugin eval plugins/dotclaude --model opus --judge-model sonnet --runs {{ runs }} --ablation none --scaffold --allow-tools Bash WebFetch WebSearch --keep-temp --tag agent-role --json plugins/dotclaude/evals/results/agents-{{ model }}-{{ effort }}.json
