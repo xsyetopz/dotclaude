@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.22.2",
+  "version": "0.22.3",
   "description": "A small Claude Code plugin with guards, model and effort rules, compaction and cache notes, and role agents.",
   "author": {
     "name": "xsyetopz"
@@ -13,7 +13,7 @@
     "guard_bash": {
       "type": "boolean",
       "title": "Bash guard",
-      "description": "Ask before destructive `git`, file system, and database commands, hook bypasses, and public side effects (a publish, `gh` writes, and Claude Design writes outside `/design-sync`). Deny recursive searches that walk gitignored build output.",
+      "description": "Ask before destructive commands: a forced push, a hard reset, `git clean -f`, discarded changes, a forced branch delete, `rm -r` of the home folder, the project, or a path outside it, device writes, `mkfs`, and a recursive `chmod 777`. Ask before a command that skips the git hooks, a publish of a package or an image, a `gh` write, and a database delete. Ask before a read of a secret file, and before `codegraph init` or `codegraph uninit`.",
       "default": true
     },
     "guard_edit": {

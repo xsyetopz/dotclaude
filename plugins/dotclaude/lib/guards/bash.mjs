@@ -127,10 +127,20 @@ function checkoutDiscards(args) {
   return words.length > 1 || PATH_LIKE.test(words[0] ?? "");
 }
 
-function gitReason(words) {
+const SKIP_HOOKS = "This command skips the git hooks of the project.";
+// Environment values that turn off the hooks of Husky, Lefthook, and pre-commit.
+const HOOKS_OFF_ENV = /^(HUSKY=0|LEFTHOOK=0|SKIP=.+)$/;
+
+function gitReason(words, env) {
   const i = gitSub(words);
   const sub = words[i];
   const args = words.slice(i + 1);
+  if (
+    hasFlag(args, "--no-verify", sub === "commit" ? "n" : "") ||
+    words.slice(1, i).some((w) => /^core\.hooksPath=/i.test(w)) ||
+    env.some((w) => HOOKS_OFF_ENV.test(w))
+  )
+    return SKIP_HOOKS;
   switch (sub) {
     case "push":
       if (
@@ -210,13 +220,111 @@ const ENV_TEMPLATE = /\.(example|sample|template|dist)$/;
 const isSecretFile = (word) =>
   SECRET_FILE.some((re) => re.test(word)) && !ENV_TEMPLATE.test(word);
 
+// `gh` groups that change GitHub, and the verbs in them that only read.
+const GH_GROUPS = new Set(
+  "pr issue release repo gist secret variable workflow run label project ruleset cache".split(
+    " ",
+  ),
+);
+const GH_READS = new Set(
+  "list view status diff checks download watch clone checkout".split(" "),
+);
+const GH_WRITE =
+  "This command writes to GitHub, where other people can see it.";
+
+function ghReason(args) {
+  const [sub, verb] = args.filter((a) => !a.startsWith("-"));
+  if (sub === "api") {
+    const i = args.findIndex((a) => /^(-X|--method)$/.test(a));
+    const inline = args.find((a) => /^(-X.|--method=)/.test(a));
+    const method = (
+      i >= 0
+        ? (args[i + 1] ?? "")
+        : (inline?.replace(/^(-X|--method=)/, "") ?? "")
+    ).toUpperCase();
+    const fields =
+      hasFlag(args, "--input", "fF") ||
+      hasFlag(args, "--field") ||
+      hasFlag(args, "--raw-field");
+    return (method ? method !== "GET" : fields) ? GH_WRITE : undefined;
+  }
+  if (GH_GROUPS.has(sub) && verb && !GH_READS.has(verb)) return GH_WRITE;
+  return undefined;
+}
+
+const PUBLISH =
+  "This command publishes a package or an image, and a publish is hard to undo.";
+const DRY_RUN = (args) => hasFlag(args, "--dry-run");
+
+function publishReason(name, args) {
+  const [sub, next] = args.filter((a) => !a.startsWith("-"));
+  const found =
+    (["npm", "pnpm", "bun"].includes(name) &&
+      ["publish", "unpublish", "deprecate"].includes(sub)) ||
+    (name === "yarn" &&
+      (sub === "publish" || (sub === "npm" && next === "publish"))) ||
+    (name === "cargo" && ["publish", "yank"].includes(sub)) ||
+    (name === "gem" && ["push", "yank"].includes(sub)) ||
+    (name === "twine" && sub === "upload") ||
+    (["poetry", "uv", "vsce", "ovsx"].includes(name) && sub === "publish") ||
+    (["docker", "podman"].includes(name) && sub === "push") ||
+    (name === "dotnet" && sub === "nuget" && next === "push");
+  return found && !DRY_RUN(args) ? PUBLISH : undefined;
+}
+
+const DB_DELETE = "This command deletes data in a database.";
+const DB_CLIENTS = new Set(
+  "psql mysql mariadb sqlite3 sqlcmd mongosh mongo redis-cli clickhouse-client".split(
+    " ",
+  ),
+);
+const DESTRUCTIVE_SQL =
+  /\b(drop\s+(table|database|schema|index|view|collection)|truncate|delete\s+from|flushall|flushdb|dropdatabase|deletemany)\b|\.drop\(/i;
+
+function databaseReason(name, args) {
+  if (DB_CLIENTS.has(name) && args.some((a) => DESTRUCTIVE_SQL.test(a)))
+    return DB_DELETE;
+  if (name === "dropdb") return DB_DELETE;
+  if (name === "mysqladmin" && args.includes("drop")) return DB_DELETE;
+  const [sub, next] = args.filter((a) => !a.startsWith("-"));
+  if (
+    name === "prisma" &&
+    ((sub === "migrate" && next === "reset") || hasFlag(args, "--force-reset"))
+  )
+    return DB_DELETE;
+  if (
+    ["rails", "rake"].includes(name) &&
+    /^db:(drop|reset|schema:load)$/.test(sub ?? "")
+  )
+    return DB_DELETE;
+  if (/manage\.py$/.test(name) && sub === "flush") return DB_DELETE;
+  return undefined;
+}
+
+// `npx`, `bunx`, and `python manage.py` run another tool,
+// so the guard reads the tool that they run.
+function runnerTarget(name, args) {
+  if (["npx", "bunx"].includes(name))
+    return args.filter((a) => !a.startsWith("-"));
+  if (["python", "python3"].includes(name) && /manage\.py$/.test(args[0] ?? ""))
+    return args;
+  return undefined;
+}
+
 /** The reason for one part, or undefined. `words` has no leading `sudo`. */
-function reasonFor(words, ctx) {
+function reasonFor(words, ctx, env = []) {
   const name = base(words[0]);
   const args = words.slice(1);
+  const inner = runnerTarget(name, args);
+  if (inner?.length) return reasonFor(inner, ctx, env);
+  const other =
+    (name === "gh" && ghReason(args)) ||
+    publishReason(name, args) ||
+    databaseReason(name, args);
+  if (other) return other;
   switch (name) {
     case "git":
-      return gitReason(words);
+      return gitReason(words, env);
     case "rm":
       if (hasFlag(args, "--recursive", "rR")) return rmReason(args, ctx);
       break;
@@ -267,8 +375,12 @@ export function askFor(command, ctx) {
   for (const raw of partsOf(command)) {
     let words = raw;
     let sudo = false;
+    const env = [];
     for (;;) {
-      while (/^[A-Za-z_]\w*=/.test(words[0] ?? "")) words = words.slice(1);
+      while (/^[A-Za-z_]\w*=/.test(words[0] ?? "")) {
+        env.push(words[0]);
+        words = words.slice(1);
+      }
       if (WRAPPERS.has(base(words[0]))) words = words.slice(1);
       else if (base(words[0]) === "sudo") {
         sudo = true;
@@ -278,7 +390,7 @@ export function askFor(command, ctx) {
     if (!words.length) continue;
     const reason = sudo
       ? "This command runs as the root user."
-      : reasonFor(words, ctx);
+      : reasonFor(words, ctx, env);
     if (reason) findings.push({ part: partText(raw), reason });
   }
   return findings;

@@ -10,6 +10,29 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.22.3] - 2026-10-05
+
+### Added
+
+- Bash guard: asks before 4 more kinds of commands.
+  The old `guard_bash` description listed them, but the code did not ask.
+  - A command that skips the git hooks: `--no-verify`, `git commit -n`, `-c core.hooksPath=...`, and `HUSKY=0`, `LEFTHOOK=0`, or `SKIP=...` before `git`.
+  - A publish of a package or an image: `npm`, `pnpm`, `yarn`, or `bun` `publish`, `unpublish`, or `deprecate`, `cargo publish` or `yank`, `gem push` or `yank`, `twine upload`, `poetry`, `uv`, `vsce`, or `ovsx` `publish`, `docker` or `podman` `push`, and `dotnet nuget push`.
+    A command with `--dry-run` passes.
+  - A `gh` write: a verb that does not only read in a group such as `pr`, `issue`, `release`, or `repo`, and `gh api` with a method other than `GET` or with fields.
+  - A database delete: `DROP`, `TRUNCATE`, `DELETE FROM`, `FLUSHALL`, or `FLUSHDB` in a database client command, `dropdb`, `mysqladmin drop`, `prisma migrate reset`, `prisma db push --force-reset`, `rails` or `rake` `db:drop`, `db:reset`, or `db:schema:load`, and `manage.py flush`.
+  - The guard also reads the tool that `npx`, `bunx`, or `python manage.py` runs.
+
+### Changed
+
+- The wiki now has the layout of the Claude Code docs: get started pages, task guides, reference tables, and evidence pages with a summary first.
+  New pages: `Install`, `Quickstart`, `Guards`, `Handoffs`, `Browser`, `Second-Opinion`, and `Options`.
+
+### Fixed
+
+- The `guard_bash` option description and the marketplace descriptions listed parts that the code no longer has: a check gate before stop, a model lock, a search deny, and the CAPTCHA OCR.
+  They now list only what the code does.
+
 ## [0.22.2] - 2026-10-05
 
 ### Fixed
@@ -442,4 +465,4 @@ Run `/dotclaude:setup` again after you update.
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.22.2...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.22.3...HEAD
