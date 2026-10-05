@@ -9,13 +9,13 @@
     {
       "name": "dotclaude",
       "source": "./plugins/dotclaude",
-      "description": "Adds guards against destructive commands and weakened tests, a check gate before Claude stops, carry-over across compaction, a model lock, working rules, and task agents.",
+      "description": "Adds guards against destructive commands and weakened tests, secret redaction, model and effort rules for subagents, a handoff note before compaction, cache notes, working rules, and role agents.",
       "category": "productivity"
     },
     {
       "name": "dotclaude-browser",
       "source": "./plugins/dotclaude-browser",
-      "description": "Drives a browser with `agent-browser`, or with CloakBrowser on sites with bot detection, and reads text CAPTCHAs with offline `ddddocr-rs` OCR.",
+      "description": "Drives a browser with `agent-browser`, or with CloakBrowser on sites with bot detection.",
       "category": "productivity"
     },
     {
