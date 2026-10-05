@@ -147,4 +147,4 @@ A version in parentheses marks a later patch of this line, and an entry with no 
   The guard now also checks each comma-separated run of string literals as one command, backtick bodies, Perl `qx` and `qw`, Ruby `%x` and `%w`, and AppleScript `do shell script`.
 - `scripts/sandbox.mjs`: removed each `DOTCLAUDE_` variable, also one that the user set on the command line, such as `DOTCLAUDE_DEBUG`.
 
-Previous: [Release 0.18](Release-0.18) · Next: [Current changelog](https://github.com/xsyetopz/dotclaude/blob/main/CHANGELOG.md)
+Previous: [Release 0.18](Release-0.18) · Next: [Release 0.20](Release-0.20)

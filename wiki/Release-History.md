@@ -1,10 +1,12 @@
 # Release History
 
-The current release line (0.20 and later) is in [CHANGELOG.md](https://github.com/xsyetopz/dotclaude/blob/main/CHANGELOG.md), newest first.
+The current release line (0.22 and later) is in [CHANGELOG.md](https://github.com/xsyetopz/dotclaude/blob/main/CHANGELOG.md), newest first.
 These pages hold the older lines, one page for each release line, with the changes of all patch versions merged.
 
 | Page | Dates | Summary |
 | --- | --- | --- |
+| [Release 0.21](Release-0.21) | 2026-10-05 | `sembr` line-break hook and guard for `[REDACTED:` edits. Stop verify gate removed. |
+| [Release 0.20](Release-0.20) | 2026-10-04 to 2026-10-05 | Full reset to 2,118 lines of runtime JavaScript. New status line, `dotclaude-jev` plugin, Terms of Use, and wiki. |
 | [Release 0.19](Release-0.19) | 2026-10-03 | Guards for infrastructure, new dependencies, and TLS. Delegation note. Auto-clear and desktop notices. |
 | [Release 0.18](Release-0.18) | 2026-10-03 | dotclaude became a mod. Working rules moved to a SessionStart hook and shrank to 5.1 KB. |
 | [Release 0.17](Release-0.17) | 2026-10-01 to 2026-10-02 | Setup skills merged, 19 agents cut to 8, organization rollout, and larger evals. |
