@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "fal": {
+      "type": "http",
+      "url": "https://mcp.fal.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${user_config.fal_key}"
+      }
+    }
+  }
+}

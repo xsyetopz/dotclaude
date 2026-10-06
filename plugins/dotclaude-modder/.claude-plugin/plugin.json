@@ -1,0 +1,19 @@
+{
+  "name": "dotclaude-modder",
+  "version": "0.24.0",
+  "description": "Mods a PC game that you own: engine recon, game internals, fal assets, sprites, in-game tests, showcase videos, and field notes. Based on universal-modder by Rehan.",
+  "author": {
+    "name": "xsyetopz"
+  },
+  "repository": "https://github.com/xsyetopz/dotclaude",
+  "license": "MIT",
+  "keywords": ["game-modding", "modding", "fal", "sprites", "game-assets"],
+  "userConfig": {
+    "fal_key": {
+      "type": "string",
+      "title": "fal API key",
+      "description": "The key from https://fal.ai/dashboard/keys. The fal MCP server and `um fal` use it. Without it, `um fal` reads `FAL_KEY` from the environment.",
+      "sensitive": true
+    }
+  }
+}

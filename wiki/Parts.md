@@ -199,6 +199,7 @@ Where Claude Code does not load modules, such as with `--bare`, only the classic
 | `Concise` output style | Gives short replies that start with the result. | Replies that are fast to read. |
 | `dotclaude-browser` plugin | Loads the `drive-web-browser` skill at session start. | Browser work with `agent-browser`, and CloakBrowser on a site with bot detection. |
 | `dotclaude-jev` plugin | Loads the `second-opinion` skill, which asks TypeSafe Jev about a decision of Claude. | A calibrated check of a close call, at $0.042 for each million input tokens. |
+| `dotclaude-modder` plugin | Gives clause 17 at session start, denies a kill by process name, and adds the game modding skills and the `um` command. | Mods of PC games that the user owns, with backups and no online play. |
 
 The session note of `dotclaude-jev` sends each decision and each question with options through Jev.
 Its hooks module adds the pick of Jev to each `AskUserQuestion` question that facts decide.

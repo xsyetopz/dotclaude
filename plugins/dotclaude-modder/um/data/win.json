@@ -1,0 +1,149 @@
+{
+  "help": [
+    "",
+    "Games render with the GPU, so GDI screen grabs are black.",
+    "Windows.Graphics.Capture (the `gfxcapture` filter of ffmpeg) gets the real frames of one window, even when another window covers it.",
+    "Many games talk to WASAPI directly, so a process-loopback capture is the only clean way to get the sound of the game alone.",
+    "Input goes through SendInput only while the game is the foreground window, so nothing leaks into other apps.",
+    "",
+    "Lessons:",
+    "  Never block the main thread of the game when you stop a recording.",
+    "  Write .mkv, because it survives a kill.",
+    "  NVENC H.264 tops out at 4096 px wide: for ultrawide, crop or use HEVC.",
+    "  The crash reporter of a crashed game (BugSplat and others) can make Steam refuse to relaunch it: list it and kill it by PID.",
+    "",
+    "Then mux: um video mux take1.mkv take1.audio.raw take1.json out.mp4",
+    ""
+  ],
+  "messages": {
+    "platform": "`um win` drives Windows games (native Windows or WSL). On Linux use xdotool or ydotool with ffmpeg x11grab or pipewire. On macOS use screencapture with ffmpeg avfoundation.",
+    "noPid": "no pid for audio capture (give --exe or --pid). Recording video only.",
+    "noFfmpeg": "no Windows ffmpeg with gfxcapture yet: run `um win setup`",
+    "hdr": "WARNING: Windows Auto HDR is on{exe}. On an HDR display the capture of an SDR game comes out washed out (brighter, shifted colours). Turn Auto HDR off for the game while you capture: Settings > System > Display > Graphics > (the game) > Auto HDR.",
+    "noFrames": "WARNING: no video frames were captured. gfxcapture delivers a frame only when the window redraws. A game that is paused, minimized or on a static menu gives nothing, and ffmpeg cannot react to `q` until a frame comes. Record while the game is rendering."
+  },
+  "commands": {
+    "setup": {
+      "help": "install the PowerShell tools and a gfxcapture-capable ffmpeg (SHA-256 checked)",
+      "usage": "[--force]",
+      "options": {
+        "force": {
+          "type": "boolean",
+          "help": "download ffmpeg again"
+        }
+      }
+    },
+    "ps": {
+      "help": "processes that have a window",
+      "usage": "[name]",
+      "options": {}
+    },
+    "kill": {
+      "help": "kill by exact PID",
+      "usage": "<pid>",
+      "options": {}
+    },
+    "launch": {
+      "help": "start a game (exe path or --steam APPID), with its arguments after `--`",
+      "usage": "[--steam] <target> [-- args]",
+      "options": {
+        "steam": {
+          "type": "boolean"
+        }
+      }
+    },
+    "shot": {
+      "help": "screenshot of a game window",
+      "usage": "[--exe NAME | --hwnd N | --title RE] [--scale F] <output.png>",
+      "options": {
+        "exe": {
+          "type": "string",
+          "help": "executable name of the window, for example AoE2DE_s.exe (regex)"
+        },
+        "hwnd": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "help": "window title regex"
+        },
+        "scale": {
+          "type": "string",
+          "help": "also write a scaled copy (for example 0.33) that is cheap to look at"
+        }
+      }
+    },
+    "drive": {
+      "help": "send WinDrive commands to a game window",
+      "usage": "--proc NAME [--no-retry] <command>...",
+      "options": {
+        "proc": {
+          "type": "string",
+          "help": "process name without .exe"
+        },
+        "no-retry": {
+          "type": "boolean"
+        }
+      }
+    },
+    "record": {
+      "help": "record a game window and its audio, to --out .mkv, .audio.raw and .json",
+      "usage": "--out BASE [--exe NAME | --hwnd N | --title RE] [--seconds S] [--fps N] [--no-audio] [--crop L:T:R:B] [--pid N]",
+      "options": {
+        "exe": {
+          "type": "string",
+          "help": "executable name of the window, for example AoE2DE_s.exe (regex)"
+        },
+        "hwnd": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "help": "window title regex"
+        },
+        "out": {
+          "type": "string",
+          "help": "base path (Windows or WSL path), writes .mkv, .audio.raw, and .json"
+        },
+        "seconds": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "string"
+        },
+        "no-audio": {
+          "type": "boolean"
+        },
+        "crop": {
+          "type": "string",
+          "help": "left:top:right:bottom px to cut (for example ultrawide to the 16:9 center)"
+        },
+        "pid": {
+          "type": "string",
+          "help": "process to capture audio from, when --exe matches more than one (for example two java.exe)"
+        }
+      }
+    },
+    "reg": {
+      "help": "read or set registry values (set backs the key up first)",
+      "usage": "[--type REG_DWORD] get|set <key> [value] [data]",
+      "options": {
+        "type": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "codecs": {
+    "h264_nvenc": "-c:v h264_nvenc -preset p4 -cq 19",
+    "h264_amf": "-c:v h264_amf -quality quality -qp_i 19 -qp_p 19",
+    "h264_qsv": "-c:v h264_qsv -global_quality 19",
+    "libx264": "-c:v libx264 -preset veryfast -crf 18"
+  },
+  "ffmpeg": {
+    "quiet": "-hide_banner -loglevel error -y",
+    "probe": "-hide_banner -loglevel error -f lavfi -i color=black:s=256x256:d=0.1 -c:v",
+    "tags": "-pix_fmt yuv420p -colorspace bt709 -color_range tv -flush_packets 1"
+  },
+  "powershell": "-NoProfile -ExecutionPolicy Bypass -File"
+}

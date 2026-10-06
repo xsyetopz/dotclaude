@@ -1,0 +1,128 @@
+{
+  "help": [
+    "",
+    "Render a 3D model (GLB) into sprite frames from the camera of a game, with Blender.",
+    "",
+    "  um render3d model.glb out/ --preset aoe2 --length 80 --anims idle:10:bob,walk:12:bob,attack:16:lunge,death:20:die --shadows",
+    "  um render3d model.glb out/ --preset side --canvas 128 --length 110",
+    "  um render3d model.glb out/ --preset iso8 --canvas 256x256 --length 150 --engine eevee",
+    "",
+    "Rendering from 3D keeps every facing and frame consistent, which per-frame image generation cannot do.",
+    "Typical flow: concept art, `um fal model3d` (image to 3D), these renders, then the sprite format of the engine.",
+    "Presets (camera elevation, headings, direction order):",
+    "  aoe2      ortho 30 deg, 16 headings clockwise from east (AoE2 DE and Genie unit order)",
+    "  iso8      ortho 30 deg (2:1 diamond tiles), 8 headings clockwise from east",
+    "  trueiso   ortho 35.264 deg, 8 headings",
+    "  topdown   ortho 90 deg, 8 headings (twin-stick and top-down shooters)",
+    "  side      ortho 0 deg, 2 headings: facing right, facing left (platformers, Terraria style)",
+    "  turntable persp 20 deg, 24 headings (icons, previews, promo spins)",
+    "Blender must be on PATH, or set BLENDER=/path/to/blender.",
+    "Frames: <out>/<anim>_<heading>_<frame>.png (and _s for the shadow pass).",
+    "Pack them with `um sprite sheet`, or with a writer for the engine.",
+    ""
+  ],
+  "presets": {
+    "aoe2": {
+      "type": "ortho",
+      "start_deg": 0,
+      "clockwise": true,
+      "elevation_deg": 30,
+      "headings": 16
+    },
+    "iso8": {
+      "type": "ortho",
+      "start_deg": 0,
+      "clockwise": true,
+      "elevation_deg": 30,
+      "headings": 8
+    },
+    "trueiso": {
+      "type": "ortho",
+      "start_deg": 0,
+      "clockwise": true,
+      "elevation_deg": 35.264,
+      "headings": 8
+    },
+    "topdown": {
+      "type": "ortho",
+      "start_deg": 0,
+      "clockwise": true,
+      "elevation_deg": 89.9,
+      "headings": 8
+    },
+    "side": {
+      "type": "ortho",
+      "start_deg": 0,
+      "clockwise": true,
+      "elevation_deg": 0.01,
+      "headings": 2
+    },
+    "turntable": {
+      "type": "persp",
+      "start_deg": 0,
+      "clockwise": false,
+      "elevation_deg": 20,
+      "headings": 24,
+      "fov_deg": 30
+    }
+  },
+  "motions": {
+    "bob": { "kind": "bob", "amp": 1.0, "cycles": 1 },
+    "walk": { "kind": "bob", "amp": 0.8, "pitch": 0.8, "cycles": 2 },
+    "lunge": { "kind": "lunge", "dist": 12, "pitch": -3 },
+    "die": { "kind": "die", "roll": 80, "sink": 3 },
+    "wreck": { "kind": "wreck", "roll": 80, "sink": 3 },
+    "spin": { "kind": "spin", "turns": 1 },
+    "still": null
+  },
+  "blenderPaths": [
+    "/Applications/Blender.app/Contents/MacOS/Blender",
+    "C:\\Program Files\\Blender Foundation\\Blender\\blender.exe"
+  ],
+  "messages": {
+    "notProgram": "BLENDER is not a program: ",
+    "notFound": "Blender not found: install it (blender.org, or `snap install blender --classic`) or set BLENDER=/path/to/blender",
+    "usage": "usage: um render3d <model.glb> <outdir> [options]"
+  },
+  "usage": "<model.glb> <outdir> [--preset aoe2] [--canvas 200] [--length 80] [--anims idle:1] [--shadows]",
+  "options": {
+    "shadows": {
+      "type": "boolean",
+      "help": "also render a shadow-only pass (_s.png)"
+    },
+    "preset": {
+      "type": "string",
+      "help": "aoe2, iso8, trueiso, topdown, side, or turntable (default aoe2)"
+    },
+    "canvas": { "type": "string", "help": "frame size px: N or WxH" },
+    "length": {
+      "type": "string",
+      "help": "longest horizontal side of the model (or height with --measure height) in px"
+    },
+    "measure": {
+      "type": "string",
+      "help": "length or height (default length)"
+    },
+    "forward-yaw": {
+      "type": "string",
+      "help": "degrees to turn the model so that its front faces +X (east)"
+    },
+    "anims": {
+      "type": "string",
+      "help": "name:frames:motion,... motions: bob,walk,lunge,die,wreck,spin,still"
+    },
+    "samples": { "type": "string" },
+    "engine": { "type": "string", "help": "cycles or eevee (default cycles)" },
+    "elevation": {
+      "type": "string",
+      "help": "override the camera elevation (deg)"
+    },
+    "headings": { "type": "string", "help": "override the number of facings" },
+    "sun": { "type": "string" },
+    "ambient": { "type": "string" },
+    "ground-y": {
+      "type": "string",
+      "help": "px from the top where the ground point goes (default: canvas center)"
+    }
+  }
+}

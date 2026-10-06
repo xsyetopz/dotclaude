@@ -67,6 +67,16 @@ See [Browser](Browser).
 Each call sends the data of the decision to the TypeSafe API.
 See [Second opinion](Second-Opinion).
 
+## Install the modder plugin
+
+```text
+/plugin install dotclaude-modder@dotclaude
+```
+
+The plugin needs Bun, and `uv` for its Python parts.
+Enter your fal key in its `fal_key` option to generate assets with fal.
+See [Modder](Modder).
+
 ## Update
 
 1. Update the marketplace and the plugin.

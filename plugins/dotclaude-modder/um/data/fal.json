@@ -1,0 +1,278 @@
+{
+  "_": "Recipes (checked against the fal catalog 2026-09). Any model can change with --model. Option types: s string (default), n number, ns number as string, ms seconds as milliseconds, b flag, nb negated flag, l comma list, m repeatable. d is the default, c the allowed values, req the reason for a required option, h the help text (else the allowed values). Input values fill {name} from the positionals and options. name is [positional, suffix], or [positional] for a slug of its text.",
+  "ext": {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "audio/mpeg": ".mp3",
+    "audio/wav": ".wav",
+    "audio/x-wav": ".wav",
+    "video/mp4": ".mp4",
+    "model/gltf-binary": ".glb"
+  },
+  "recipes": {
+    "image": {
+      "help": "text to image (Nano Banana 2)",
+      "pos": ["prompt"],
+      "model": "fal-ai/nano-banana-2",
+      "name": ["prompt"],
+      "opts": {
+        "aspect": { "d": "1:1", "h": "for example 1:1, 16:9, 3:4, 21:9" },
+        "res": { "d": "1K", "c": ["0.5K", "1K", "2K", "4K"] },
+        "n": { "t": "n", "d": 1 },
+        "seed": { "t": "n" }
+      },
+      "input": {
+        "prompt": "{prompt}",
+        "aspect_ratio": "{aspect}",
+        "resolution": "{res}",
+        "num_images": "{n}",
+        "seed": "{seed}"
+      }
+    },
+    "sprite": {
+      "help": "text to sprite on a transparent background (GPT Image 2)",
+      "pos": ["prompt"],
+      "model": "openai/gpt-image-2",
+      "name": ["prompt"],
+      "opts": {
+        "quality": { "d": "high", "c": ["low", "medium", "high"] },
+        "size": {
+          "d": "square_hd",
+          "h": "square_hd, portrait_4_3, landscape_4_3, ..."
+        },
+        "n": { "t": "n", "d": 1 }
+      },
+      "input": {
+        "prompt": "{prompt}. {style}",
+        "background": "transparent",
+        "quality": "{quality}",
+        "image_size": "{size}",
+        "num_images": "{n}",
+        "output_format": "png"
+      },
+      "alt": {
+        "unless": "openai/gpt-image",
+        "input": {
+          "prompt": "{prompt}. {style}, on a plain flat white background",
+          "num_images": "{n}"
+        }
+      }
+    },
+    "edit": {
+      "help": "edit or make variants of reference images (consistent sets, animation frames)",
+      "pos": ["prompt"],
+      "model": "fal-ai/nano-banana-2/edit",
+      "name": ["prompt"],
+      "opts": {
+        "ref": {
+          "t": "m",
+          "req": "an image path or URL, repeatable",
+          "h": "reference image (path or URL), repeatable"
+        },
+        "aspect": { "d": "auto" },
+        "res": { "d": "1K", "c": ["0.5K", "1K", "2K", "4K"] },
+        "n": { "t": "n", "d": 1 },
+        "seed": { "t": "n" }
+      },
+      "input": {
+        "prompt": "{prompt}",
+        "image_urls": "{ref}",
+        "num_images": "{n}",
+        "aspect_ratio": "{aspect}",
+        "resolution": "{res}",
+        "seed": "{seed}"
+      }
+    },
+    "rmbg": {
+      "help": "remove the background (BiRefNet v2)",
+      "pos": ["image"],
+      "model": "fal-ai/birefnet/v2",
+      "name": ["image", "_cut"],
+      "opts": {},
+      "input": { "image_url": "{image}", "output_format": "png" }
+    },
+    "pixelate": {
+      "help": "image to grid-snapped pixel art (fal image2pixel)",
+      "pos": ["image"],
+      "model": "fal-ai/image2pixel",
+      "name": ["image", "_px"],
+      "opts": {
+        "colors": { "t": "n", "d": 32 },
+        "scale": { "t": "n", "h": "force the pixel scale" }
+      },
+      "input": {
+        "image_url": "{image}",
+        "max_colors": "{colors}",
+        "transparent_background": true,
+        "trim_borders": true,
+        "scale": "{scale}"
+      }
+    },
+    "upscale": {
+      "help": "upscale an image (SeedVR2)",
+      "pos": ["image"],
+      "model": "fal-ai/seedvr/upscale/image",
+      "name": ["image", "_up"],
+      "opts": { "factor": { "t": "n", "d": 2 } },
+      "input": {
+        "image_url": "{image}",
+        "upscale_factor": "{factor}",
+        "output_format": "png"
+      }
+    },
+    "texture": {
+      "help": "seamless tiling texture (Z-Image Turbo tiling)",
+      "pos": ["prompt"],
+      "model": "fal-ai/z-image/turbo/tiling",
+      "name": ["prompt"],
+      "opts": {
+        "size": { "d": "square_hd" },
+        "tiling": { "d": "both", "c": ["both", "horizontal", "vertical"] }
+      },
+      "input": {
+        "prompt": "{prompt}, seamless tileable texture, top-down, even lighting",
+        "image_size": "{size}",
+        "tiling_mode": "{tiling}"
+      }
+    },
+    "pbr": {
+      "help": "PBR material maps (PATINA)",
+      "pos": ["prompt"],
+      "model": "fal-ai/patina/material",
+      "name": ["prompt"],
+      "opts": {
+        "maps": {
+          "t": "l",
+          "d": "basecolor,normal,roughness,metalness,height"
+        },
+        "size": { "d": "square_hd" }
+      },
+      "input": {
+        "prompt": "{prompt}",
+        "maps": "{maps}",
+        "image_size": "{size}",
+        "tiling_mode": "both"
+      }
+    },
+    "model3d": {
+      "help": "image to textured 3D model (GLB)",
+      "pos": ["image"],
+      "name": ["image", ""],
+      "opts": {
+        "engine": {
+          "d": "trellis2",
+          "c": ["trellis2", "hunyuan", "tripo", "meshy"]
+        },
+        "texture": { "t": "n", "d": 2048, "c": ["1024", "2048", "4096"] },
+        "faces": {
+          "t": "n",
+          "d": 100000,
+          "h": "target face count (game-ready: 5k-50k)"
+        }
+      },
+      "on": "engine",
+      "cases": {
+        "trellis2": {
+          "model": "fal-ai/trellis-2",
+          "input": {
+            "image_url": "{image}",
+            "texture_size": "{texture}",
+            "decimation_target": "{faces}"
+          }
+        },
+        "hunyuan": {
+          "model": "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d",
+          "input": {
+            "input_image_url": "{image}",
+            "face_count": "{faces}",
+            "enable_pbr": true
+          }
+        },
+        "tripo": {
+          "model": "tripo3d/h3.1/image-to-3d",
+          "input": { "image_url": "{image}" }
+        },
+        "meshy": {
+          "model": "meshy/v7.1/image-to-3d",
+          "input": { "image_url": "{image}" }
+        }
+      }
+    },
+    "rig": {
+      "help": "auto-rig a humanoid model (Meshy), with animations if you want",
+      "pos": ["model_file"],
+      "model": "fal-ai/meshy/rigging",
+      "name": ["model_file", "_rigged"],
+      "opts": {
+        "animate": { "t": "b" },
+        "height": { "t": "n", "d": 1.7, "h": "character height in meters" }
+      },
+      "input": {
+        "model_url": "{model_file}",
+        "enable_animation": "{animate}",
+        "height_meters": "{height}"
+      }
+    },
+    "sfx": {
+      "help": "sound effect (ElevenLabs SFX v2)",
+      "pos": ["prompt"],
+      "model": "fal-ai/elevenlabs/sound-effects/v2",
+      "name": ["prompt"],
+      "opts": { "seconds": { "t": "n" }, "loop": { "t": "b" } },
+      "input": {
+        "text": "{prompt}",
+        "duration_seconds": "{seconds}",
+        "loop": "{loop}",
+        "output_format": "mp3_44100_192"
+      }
+    },
+    "music": {
+      "help": "music track (ElevenLabs Music)",
+      "pos": ["prompt"],
+      "model": "elevenlabs/music/v2.5",
+      "name": ["prompt"],
+      "opts": { "seconds": { "t": "ms", "d": 60 }, "vocals": { "t": "nb" } },
+      "input": {
+        "prompt": "{prompt}",
+        "music_length_ms": "{seconds}",
+        "force_instrumental": "{vocals}",
+        "output_format": "mp3_44100_192"
+      }
+    },
+    "voice": {
+      "help": "voice line or narration (ElevenLabs v3)",
+      "pos": ["text"],
+      "model": "fal-ai/elevenlabs/tts/eleven-v3",
+      "name": ["text"],
+      "opts": {
+        "voice-id": { "d": "Rachel" },
+        "stability": { "t": "n", "d": 0.5 }
+      },
+      "input": {
+        "text": "{text}",
+        "voice": "{voice-id}",
+        "stability": "{stability}"
+      }
+    },
+    "video": {
+      "help": "image to video clip (Seedance 2.5) for trailers and cutscenes",
+      "pos": ["image", "prompt"],
+      "model": "bytedance/seedance-2.5/image-to-video",
+      "name": ["image", "_video"],
+      "opts": {
+        "seconds": { "t": "ns", "d": 5 },
+        "res": { "d": "720p", "c": ["480p", "720p", "1080p"] },
+        "audio": { "t": "b" }
+      },
+      "input": {
+        "image_url": "{image}",
+        "prompt": "{prompt}",
+        "duration": "{seconds}",
+        "resolution": "{res}",
+        "generate_audio": "{audio}"
+      }
+    }
+  }
+}

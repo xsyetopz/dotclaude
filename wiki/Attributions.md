@@ -1,7 +1,7 @@
 # Attributions
 
-dotclaude uses ideas from the projects below and copies no code from them.
-Each part below is a new implementation.
+dotclaude uses ideas from the projects below.
+Each part below is a new implementation, except the `dotclaude-modder` plugin, which is a port.
 
 ## Licenses
 
@@ -9,6 +9,14 @@ Each part below is a new implementation.
 | --- | --- | --- |
 | DensePack, agent-skills, Ponytail, `jev` CLI | MIT | ideas only |
 | GitNexus | PolyForm Noncommercial | its design only, no code or text |
+| universal-modder | MIT | its code, ported to Bun and Python, and its skill text, adapted |
+
+## Ported code
+
+The `dotclaude-modder` plugin is a port of [universal-modder](https://github.com/rehan-remade/universal-modder) by Rehan.
+The `um` command keeps the commands and the behavior of the upstream `um`, in Bun, and in Python for the pixel, video, and backup work.
+The skills adapt the upstream skill text.
+`plugins/dotclaude-modder/LICENSE` keeps the upstream copyright notice.
 
 ## Projects
 

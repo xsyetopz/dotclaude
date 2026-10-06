@@ -1,0 +1,84 @@
+{
+  "help": [
+    "",
+    "Check a mod folder before you share it.",
+    "It must hold no game files, no decompiled code and no secrets, and it must have credits.",
+    "",
+    "    um publish check ./MyMod --game \"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Terraria\"",
+    "",
+    "FAIL  files that are byte-identical to files in the game install (this redistributes game files),",
+    "      leaked API keys (FAL_KEY, Anthropic, GitHub, AWS...), .env files",
+    "WARN  decompiler fingerprints in source (FUN_xxxx / DAT_xxxx / sub_XXXX, \"// Decompiled with\",",
+    "      ILSpy and dnSpy headers): reimplement the code or reference it, and do not ship decompiled code",
+    "      big engine archives (.pak/.bsa/.ba2/.vpk/.rpf/.utoc...) that can hold original assets",
+    "      absolute user paths",
+    "      no README or credits",
+    "      fal-generated assets in fal_manifest.jsonl without an attribution line",
+    "",
+    "It follows IW4L's publish-check.",
+    "It is a lint and not legal advice.",
+    "When in doubt, ship a patch or converter that runs on the user's own install (\"bring your own game files\").",
+    ""
+  ],
+  "secrets": [
+    [
+      "fal key",
+      "\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{32}\\b",
+      ""
+    ],
+    ["FAL_KEY assignment", "FAL_KEY\\s*[=:]\\s*['\"]?[A-Za-z0-9:_-]{20,}", ""],
+    ["Anthropic key", "sk-ant-[A-Za-z0-9_-]{20,}", ""],
+    [
+      "OpenAI key",
+      "\\bsk-(?:(?:proj|svcacct|admin)-[A-Za-z0-9_-]{32,}|[A-Za-z0-9]{32,})",
+      ""
+    ],
+    [
+      "GitHub token",
+      "\\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{60,})",
+      ""
+    ],
+    ["AWS key id", "\\bAKIA[0-9A-Z]{16}\\b", ""],
+    ["private key", "-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", ""]
+  ],
+  "decomp": [
+    ["Ghidra auto-name", "\\b(?:FUN|DAT|LAB|PTR)_[0-9a-fA-F]{6,}\\b", "g"],
+    [
+      "IDA auto-name",
+      "\\b(?:sub|loc|unk|off|dword|qword)_[0-9A-F]{5,}\\b",
+      "g"
+    ],
+    [
+      "decompiler header",
+      "^\\s*(?:\\/\\/|#|--|;)\\s*(?:Decompiled with|Decompiler:|ILSpy|dnSpy|JetBrains decompiler)|^#region Assembly ",
+      "gim"
+    ]
+  ],
+  "userPath": [
+    "[A-Z]:\\\\Users\\\\[^\\\\\\s\"']+|\\/home\\/[a-z_][a-z0-9_-]*\\/|\\/Users\\/[A-Za-z]+\\/",
+    ""
+  ],
+  "ext": {
+    "code": ".cs .c .cpp .h .hpp .py .lua .js .ts .rs .java .kt .gd .rpy .psc .gml .hlsl .glsl .as .vb .il",
+    "text": ".json .toml .ini .cfg .txt .md .xml .yaml .yml .sh .ps1 .bat .env",
+    "archive": ".pak .utoc .ucas .bsa .ba2 .vpk .rpf .pck .assets .bundle .sga .big .wad .bdt .archive",
+    "skip": ".git .venv venv node_modules __pycache__ .pytest_cache obj .vs .idea"
+  },
+  "messages": {
+    "notFolder": "not a folder: ",
+    "noReadme": "no README (install steps, requirements, credits)",
+    "noCredit": "fal-generated assets (fal_manifest.jsonl) but no credit line in README/CREDITS",
+    "checkNeedsMod": "check needs <mod>",
+    "failed": "publish check failed"
+  },
+  "command": {
+    "help": "check a mod folder",
+    "usage": "<mod> [--game DIR]",
+    "options": {
+      "game": {
+        "type": "string",
+        "help": "game install folder, to catch copied game files"
+      }
+    }
+  }
+}

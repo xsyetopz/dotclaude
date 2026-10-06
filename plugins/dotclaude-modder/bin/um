@@ -1,0 +1,12 @@
+#!/usr/bin/env bun
+// Claude Code puts the plugin `bin/` on the Bash PATH, so `um` runs from any folder.
+import { main } from "../um/cli.mjs";
+import { UmError } from "../um/common.mjs";
+
+try {
+  process.exitCode = await main(process.argv.slice(2));
+} catch (e) {
+  if (!(e instanceof UmError)) throw e;
+  console.error(`um: ${e.message}`);
+  process.exitCode = e.code;
+}

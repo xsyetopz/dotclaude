@@ -4,7 +4,7 @@
   "owner": {
     "name": "xsyetopz"
   },
-  "description": "Lists the dotclaude plugin and its optional browser and Jev plugins.",
+  "description": "Lists the dotclaude plugin and its optional browser, Jev, and game modding plugins.",
   "plugins": [
     {
       "name": "dotclaude",
@@ -23,6 +23,12 @@
       "source": "./plugins/dotclaude-jev",
       "description": "Gets a second opinion from TypeSafe Jev, a decision model, for a yes or no check, a pick from options, or a rating. Needs `TYPESAFE_API_KEY`.",
       "category": "productivity"
+    },
+    {
+      "name": "dotclaude-modder",
+      "source": "./plugins/dotclaude-modder",
+      "description": "Mods a PC game that you own: engine recon, game internals, fal assets, sprites, in-game tests, showcase videos, and field notes. Based on universal-modder by Rehan.",
+      "category": "development"
     }
   ]
 }

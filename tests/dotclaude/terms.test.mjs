@@ -51,6 +51,9 @@ test("the plugins use the tags of the clause list", () => {
   expect(
     read("plugins/dotclaude-jev/hooks/session-start/second-opinion.md"),
   ).toStartWith(clauseTag("second-opinion"));
+  expect(
+    read("plugins/dotclaude-modder/hooks/session-start/game-modding.md"),
+  ).toStartWith(clauseTag("game-modding"));
 });
 
 test("the wiki lists each clause with its number", () => {

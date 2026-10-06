@@ -34,6 +34,7 @@ If Claude does something because of dotclaude and you ask "why did you do that?"
 | [Handoffs](Handoffs) | Carry work across `/clear`. |
 | [Browser](Browser) | Drive a browser. |
 | [Second opinion](Second-Opinion) | Get a second opinion from Jev. |
+| [Modder](Modder) | Mod a PC game that you own. |
 | [Contributions](Contributions) | Draft work for projects that you do not own. |
 | [Options](Options) | Turn parts on and off. |
 | [Parts](Parts) | Find each part, its event, and its bound. |

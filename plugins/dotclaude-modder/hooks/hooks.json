@@ -1,0 +1,20 @@
+{
+  "description": "dotclaude-modder: give Claude clause 17 of the dotclaude Terms of Use at session start, and deny a Bash call that stops processes by name",
+  "modules": ["./module/index.mjs"],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/game-modding.md"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

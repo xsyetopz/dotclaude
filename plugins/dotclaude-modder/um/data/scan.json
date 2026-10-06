@@ -1,0 +1,584 @@
+{
+  "options": {
+    "list": {
+      "type": "boolean",
+      "help": "list installed games (Steam, Epic, Xbox)"
+    },
+    "json": { "type": "boolean" }
+  },
+  "engines": {
+    "unity-mono": [
+      "Unity (Mono)",
+      "unity.md",
+      "BepInEx 5 (or MelonLoader) plugin in C# with HarmonyX patches; read Managed/Assembly-CSharp.dll with ILSpy; assets via AssetRipper/UABEA"
+    ],
+    "unity-il2cpp": [
+      "Unity (IL2CPP)",
+      "unity.md",
+      "BepInEx 6 (IL2CPP) or MelonLoader; recover types with Cpp2IL / Il2CppDumper, patch through Il2CppInterop"
+    ],
+    "unreal": [
+      "Unreal Engine",
+      "unreal.md",
+      "UE4SS (Lua/C++ hooks, live property viewer) and/or pak mods in Content/Paks/~mods (FModel to browse, retoc/repak to pack)"
+    ],
+    "godot": [
+      "Godot",
+      "godot.md",
+      "recover the project with GDRE Tools; patch scripts/scenes via a PCK overlay or Godot Mod Loader"
+    ],
+    "gamemaker": [
+      "GameMaker",
+      "misc-engines.md",
+      "UndertaleModTool: decompile/edit GML, sprites and rooms in data.win"
+    ],
+    "rpgmaker-mvmz": [
+      "RPG Maker MV/MZ (NW.js)",
+      "misc-engines.md",
+      "JS plugins in js/plugins + js/plugins.js; data/*.json for database edits"
+    ],
+    "rpgmaker-rgss": [
+      "RPG Maker XP/VX/VX Ace (RGSS Ruby)",
+      "misc-engines.md",
+      "extract the RGSS archive, edit Ruby in Scripts.rvdata2"
+    ],
+    "renpy": [
+      "Ren'Py",
+      "misc-engines.md",
+      "unrpa/unrpyc to read; add .rpy files in game/"
+    ],
+    "xna-fna": [
+      "XNA/FNA/MonoGame (.NET)",
+      "dotnet-xna.md",
+      "the game's loader if any (tModLoader, SMAPI, Everest), else Harmony/MonoMod patches; read the exe with ILSpy"
+    ],
+    "dotnet": [
+      ".NET application",
+      "dotnet-xna.md",
+      "Harmony/MonoMod patches via a loader (BepInEx supports .NET games too); read with ILSpy"
+    ],
+    "source": [
+      "Source (1)",
+      "source.md",
+      "custom/ + addons, VScript where supported, Source SDK mods; SourceMod only on servers you run"
+    ],
+    "source2": [
+      "Source 2",
+      "source.md",
+      "Workshop tools / addons, VScript/Panorama; decompile assets with Source 2 Viewer (VRF)"
+    ],
+    "creation": [
+      "Bethesda Creation/Gamebryo",
+      "bethesda.md",
+      "ESP/ESL plugins (xEdit, Creation Kit), Papyrus scripts, script-extender plugins, MO2 profiles"
+    ],
+    "genie": [
+      "Genie (Age of Empires DE)",
+      "genie-aoe2.md",
+      "data mods (genieutils-py), graphics/UI mods, scenarios; SLD sprites"
+    ],
+    "clausewitz": [
+      "Paradox Clausewitz/Jomini",
+      "misc-engines.md",
+      "script mods (plain text) in Documents/Paradox Interactive/<game>/mod"
+    ],
+    "re-engine": [
+      "Capcom RE Engine",
+      "big-frameworks.md",
+      "REFramework (Lua scripts, in-game UI) + Fluffy Mod Manager for pak/natives replacements"
+    ],
+    "fromsoft": [
+      "FromSoftware (Dantelion)",
+      "big-frameworks.md",
+      "ModEngine2 + Smithbox/DSMapStudio, param edits; offline only"
+    ],
+    "rage": [
+      "Rockstar RAGE",
+      "big-frameworks.md",
+      "story mode: ScriptHookV + ASI loader, OpenIV/CodeWalker for assets; never online"
+    ],
+    "redengine": [
+      "CD Projekt REDengine",
+      "big-frameworks.md",
+      "REDmod, Cyber Engine Tweaks, RED4ext, WolvenKit (Cyberpunk); REDkit (Witcher 3)"
+    ],
+    "idtech": [
+      "id Tech / Doom family",
+      "misc-engines.md",
+      "WAD/PK3/PK4 mods, source ports"
+    ],
+    "cryengine": [
+      "CryEngine",
+      "native.md",
+      "pak (zip) overrides, Lua/XML where exposed; native hooks otherwise"
+    ],
+    "frostbite": [
+      "Frostbite",
+      "native.md",
+      "Frosty Tool Suite for supported titles, offline only; most titles have kernel anti-cheat"
+    ],
+    "electron": [
+      "Electron / NW.js / HTML5",
+      "misc-engines.md",
+      "extract resources/app.asar (or package.nw), patch JS, open devtools"
+    ],
+    "love2d": [
+      "LÖVE (Lua)",
+      "misc-engines.md",
+      "the .love/exe is a zip of Lua; patch or inject with lovely"
+    ],
+    "java": [
+      "Java",
+      "misc-engines.md",
+      "decompile jars (Vineflower/CFR), patch with a mod loader or bytecode (Mixin/ASM)"
+    ],
+    "defold": ["Defold", "misc-engines.md", "unpack game.arcd; Lua scripts"],
+    "cocos": [
+      "Cocos2d-x",
+      "native.md",
+      "Lua/JS scripts if bundled; else native hooks"
+    ],
+    "haxe": [
+      "Haxe/OpenFL/HaxeFlixel",
+      "misc-engines.md",
+      "assets/ overrides; hscript mod loaders where present (Polymod)"
+    ],
+    "native": [
+      "Unknown native engine",
+      "native.md",
+      "proxy-DLL loader + function hooks (MinHook/SafetyHook), memory reading; Ghidra/IDA + x64dbg + Cheat Engine"
+    ]
+  },
+  "known": {
+    "terraria": [
+      "tModLoader (free Steam app 1281930): C# ModItem/ModNPC/ModProjectile/ModSystem, hot reload from ModSources",
+      "dotnet-xna.md"
+    ],
+    "stardew valley": [
+      "SMAPI + Content Patcher (JSON content packs) or C# SMAPI mods with Harmony",
+      "dotnet-xna.md"
+    ],
+    "celeste": [
+      "Everest + Olympus; C# code mods with MonoMod hooks, maps with Lönn/Ahorn",
+      "dotnet-xna.md"
+    ],
+    "rimworld": [
+      "XML Defs + C# with Harmony; drop mods in Mods/ (or Workshop)",
+      "unity.md"
+    ],
+    "age of empires ii: definitive edition": [
+      "data mods (.dat via genieutils-py), UI/graphics mods, scenarios (AoE2ScenarioParser), SLD sprites",
+      "genie-aoe2.md"
+    ],
+    "the elder scrolls v: skyrim special edition": [
+      "ESP/ESL plugins (xEdit, Creation Kit), Papyrus, SKSE + CommonLibSSE-NG native plugins, MO2",
+      "bethesda.md"
+    ],
+    "fallout 4": [
+      "ESP plugins (FO4Edit, Creation Kit), Papyrus, F4SE plugins, MO2",
+      "bethesda.md"
+    ],
+    "starfield": ["Creation Kit plugins, SFSE", "bethesda.md"],
+    "elden ring": [
+      "ModEngine2 (offline, EAC disabled) + Smithbox/DSMapStudio param/map edits; never online",
+      "big-frameworks.md"
+    ],
+    "grand theft auto v": [
+      "Story mode only: ScriptHookV + ASI loader, OpenIV/CodeWalker. BattlEye guards GTA Online: never mod online",
+      "big-frameworks.md"
+    ],
+    "grand theft auto v enhanced": [
+      "Story mode only: ScriptHookV (enhanced build) + ASI loader. BattlEye guards GTA Online: never mod online",
+      "big-frameworks.md"
+    ],
+    "cyberpunk 2077": [
+      "REDmod / Cyber Engine Tweaks (Lua) / RED4ext / ArchiveXL, WolvenKit for assets",
+      "big-frameworks.md"
+    ],
+    "baldur's gate 3": [
+      "Script Extender (Lua) + LSLib/Multitool for .pak, official mod.io toolkit",
+      "big-frameworks.md"
+    ],
+    "valheim": ["BepInEx 5 + Jotunn, HarmonyX patches", "unity.md"],
+    "lethal company": ["BepInEx 5 + HarmonyX (Thunderstore)", "unity.md"],
+    "risk of rain 2": ["BepInEx 5 + R2API (Thunderstore)", "unity.md"],
+    "hollow knight": [
+      "Hollow Knight Modding API (Lumafly installer), C# mods",
+      "unity.md"
+    ],
+    "slay the spire": [
+      "ModTheSpire + BaseMod (Java, SpirePatch)",
+      "misc-engines.md"
+    ],
+    "slay the spire 2": [
+      "the game's own mod loader: C# .dll + Godot .pck + .json manifest in mods/. BaseLib (NuGet Alchyr.Sts2.BaseLib) for cards, relics and characters",
+      "godot.md"
+    ],
+    "balatro": [
+      "Steamodded + lovely (Lua injection into the LÖVE game)",
+      "misc-engines.md"
+    ],
+    "factorio": [
+      "official Lua modding API (mods/ folder, data.lua + control.lua)",
+      "misc-engines.md"
+    ],
+    "counter-strike 2": [
+      "Workshop maps / Source 2 tools, local -insecure only. VAC: never inject on official servers",
+      "source.md"
+    ],
+    "portal 2": [
+      "VScript (Squirrel) + Puzzle Maker/Hammer, Workshop",
+      "source.md"
+    ],
+    "half-life 2": [
+      "Source SDK 2013 mods (C++), maps with Hammer",
+      "source.md"
+    ],
+    "doom": [
+      "WAD/PK3 mods with a source port (GZDoom/UZDoom)",
+      "misc-engines.md"
+    ],
+    "minecraft": ["Fabric (Mixin) or NeoForge", "minecraft.md"]
+  },
+  "onlineOnly": [
+    "valorant",
+    "league of legends",
+    "fortnite",
+    "apex legends",
+    "pubg",
+    "pubg battlegrounds",
+    "rainbow six siege",
+    "rainbow six siege x",
+    "tom clancy s rainbow six siege",
+    "tom clancy s rainbow six siege x",
+    "call of duty",
+    "call of duty hq",
+    "call of duty warzone",
+    "destiny 2",
+    "genshin impact",
+    "escape from tarkov",
+    "battlefield 2042",
+    "battlefield 6",
+    "overwatch",
+    "overwatch 2",
+    "counter strike 2",
+    "dota 2",
+    "marvel rivals",
+    "the finals",
+    "rust",
+    "dead by daylight",
+    "naraka bladepoint",
+    "warframe",
+    "deadlock"
+  ],
+  "antiCheat": [
+    [
+      "EasyAntiCheat",
+      [
+        "easyanticheat/*",
+        "*easyanticheat*",
+        "start_protected_game.exe",
+        "eac_launcher.exe"
+      ]
+    ],
+    ["BattlEye", ["battleye/*", "*beservice*", "*_be.exe"]],
+    ["EA Javelin anticheat", ["eaanticheat*", "*/eaanticheat*"]],
+    ["nProtect GameGuard", ["gameguard/*", "*gamemon*.des"]],
+    ["XIGNCODE3", ["xigncode/*", "*x3.xem"]],
+    ["Tencent ACE", ["*ace-base*", "*sgguard*", "*/ace/*.sys"]],
+    ["mhyprot", ["*mhypbase.dll", "*mhyprot*"]],
+    ["PunkBuster", ["pb/pbsvc*", "pb/pbcl*"]],
+    ["Ricochet", ["*randgrid.sys"]]
+  ],
+  "loaders": [
+    ["BepInEx", ["bepinex/core/*", "doorstop_config.ini", ".doorstop_version"]],
+    ["MelonLoader", ["melonloader/*"]],
+    ["UE4SS", ["*ue4ss.dll", "*ue4ss-settings.ini", "*/ue4ss/*"]],
+    ["tModLoader", ["tmodloader.dll"]],
+    ["SMAPI", ["stardewmodapi*", "smapi-internal/*"]],
+    ["Everest (Celeste)", ["celeste.mod.mm.dll", "everest*"]],
+    ["ModEngine2", ["*modengine2_launcher.exe", "*config_eldenring.toml"]],
+    ["REFramework", ["reframework/*"]],
+    [
+      "Script Extender (Bethesda)",
+      [
+        "skse64_loader.exe",
+        "skse_loader.exe",
+        "f4se_loader.exe",
+        "nvse_loader.exe",
+        "sfse_loader.exe",
+        "obse64_loader.exe",
+        "obse_loader.exe"
+      ]
+    ],
+    ["ScriptHookV", ["scripthookv.dll", "scripthookrdr2.dll"]],
+    ["ASI loader", ["*.asi"]],
+    ["Cyber Engine Tweaks", ["bin/x64/plugins/cyber_engine_tweaks/*"]],
+    ["RED4ext", ["red4ext/*"]],
+    ["REDmod", ["tools/redmod/*"]],
+    ["ReShade", ["*reshade.ini", "*reshade*.log"]],
+    ["Fabric/Forge profile", ["*fabric-loader*", "*neoforge*", "*forge-*.jar"]],
+    ["Steamodded (Balatro)", ["*steamodded*"]],
+    ["Hollow Knight Modding API", ["*modding api*", "*/managed/mods/*"]]
+  ],
+  "modDirs": [
+    "mods",
+    "mod",
+    "addons",
+    "plugins",
+    "custom",
+    "workshop",
+    "usermods",
+    "~mods",
+    "content/paks/~mods",
+    "data/scripts",
+    "bepinex/plugins"
+  ],
+  "rules": {
+    "rpgmaker-rgss": {
+      "score": 100,
+      "when": [
+        [
+          "game.rgssad",
+          "game.rgss2a",
+          "game.rgss3a",
+          "data/scripts.rxdata",
+          "data/scripts.rvdata",
+          "data/scripts.rvdata2"
+        ]
+      ],
+      "ev": ["game.rgss*", "data/scripts.r*"],
+      "n": 2
+    },
+    "creation": {
+      "score": 100,
+      "when": [["data/*.esm"], ["data/*.bsa", "data/*.ba2"]],
+      "ev": ["data/*.esm"],
+      "n": 3
+    },
+    "genie": {
+      "score": 100,
+      "when": [
+        ["resources/_common/dat/*.dat"],
+        ["aoe2de_s.exe", "aoede_s.exe", "aoe*_s.exe"]
+      ],
+      "ev": ["resources/_common/dat/*.dat"]
+    },
+    "re-engine": {
+      "score": 100,
+      "when": [["re_chunk_000.pak", "re_chunk_000.pak.*"]],
+      "label": "re_chunk_000.pak"
+    },
+    "fromsoft": {
+      "score": 95,
+      "when": [
+        [
+          "eldenring.exe",
+          "game/eldenring.exe",
+          "darksoulsiii.exe",
+          "game/darksoulsiii.exe",
+          "sekiro.exe",
+          "armoredcore6.exe",
+          "game/armoredcore6.exe",
+          "nightreign.exe",
+          "game/nightreign.exe",
+          "*/regulation.bin",
+          "regulation.bin"
+        ]
+      ],
+      "ev": [
+        "*eldenring.exe",
+        "*darksoulsiii.exe",
+        "*sekiro.exe",
+        "*armoredcore6.exe",
+        "*nightreign.exe",
+        "*regulation.bin"
+      ],
+      "n": 2
+    },
+    "redengine": {
+      "score": 100,
+      "when": [
+        [
+          "archive/pc/content/*.archive",
+          "bin/x64/witcher3.exe",
+          "content/content0/*.bundle"
+        ]
+      ],
+      "ev": ["archive/pc/content/*.archive", "bin/x64/witcher3.exe"]
+    },
+    "idtech": {
+      "score": 70,
+      "when": [
+        ["*.wad", "*.pk3", "base/*.pk4", "id1/pak0.pak", "base/*.resources"]
+      ],
+      "n": 2
+    },
+    "cryengine": { "score": 95, "when": [["*crysystem.dll"]] },
+    "frostbite": { "score": 90, "when": [["data/cas.cat", "*layout.toc"]] },
+    "love2d": {
+      "score": 95,
+      "when": [["love.dll", "*.love", "lovec.exe"]],
+      "ev": ["love.dll", "*.love"]
+    },
+    "defold": {
+      "score": 100,
+      "when": [["game.dmanifest", "game.arcd"]],
+      "label": "game.arcd"
+    },
+    "cocos": { "score": 90, "when": [["*libcocos2d*.dll", "*cocos2d*.dll"]] },
+    "haxe": { "score": 80, "when": [["lime.ndll", "*lime.hdll"]] },
+    "clausewitz": {
+      "score": 90,
+      "when": [["launcher-settings.json", "*/launcher-settings.json"]],
+      "dirs": ["common", "events"],
+      "label": "common/ + events/ + launcher-settings.json"
+    },
+    "renpy": {
+      "score": 100,
+      "when": [],
+      "dirs": ["renpy", "game"],
+      "label": "renpy/ + game/",
+      "count": { "archives": "game/*.rpa" }
+    },
+    "rpgmaker-mvmz": [
+      {
+        "score": 100,
+        "when": [["www/js/rpg_core.js", "js/rpg_core.js"]],
+        "label": "rpg_core.js (MV)",
+        "det": { "version": "MV" }
+      },
+      {
+        "score": 100,
+        "when": [["js/rmmz_core.js", "www/js/rmmz_core.js"]],
+        "label": "rmmz_core.js (MZ)",
+        "det": { "version": "MZ" }
+      }
+    ],
+    "rage": [
+      {
+        "score": 95,
+        "when": [
+          [
+            "gta5.exe",
+            "gta5_enhanced.exe",
+            "playgtav.exe",
+            "rdr2.exe",
+            "gtaiv.exe"
+          ]
+        ],
+        "ev": ["gta5*.exe", "playgtav.exe", "rdr2.exe", "*.rpf"],
+        "n": 2
+      },
+      {
+        "score": 95,
+        "when": [["*.rpf"], ["*.exe"]],
+        "ev": ["gta5*.exe", "playgtav.exe", "rdr2.exe", "*.rpf"],
+        "n": 2
+      }
+    ]
+  },
+  "warnings": {
+    "empty": "the install folder is (nearly) empty: the game is not fully installed, or lives elsewhere",
+    "antiCheat": "anti-cheat present ({anti}): offline/single-player only, never inject into online play; many titles need the anti-cheat disabled via an official offline launch option - do not bypass it",
+    "online": "'{name}' is an online competitive game: modding its client breaks the ToS and gets accounts banned - stop, or use official tools only (Workshop/creative modes)",
+    "scriptHook": "ScriptHookV only works in story mode; launch GTA offline"
+  },
+  "patterns": {
+    "unityVersionFiles": [
+      "globalgamemanagers",
+      "data.unity3d",
+      "maindata",
+      "resources.assets"
+    ],
+    "skipDirs": ["__pycache__", ".git", "shadercache"],
+    "unityEvidence": [
+      "UnityPlayer + GameAssembly / global-metadata.dat",
+      "UnityPlayer + Managed/Assembly-CSharp.dll",
+      "UnityPlayer"
+    ],
+    "ueVersion": [
+      "\\+\\+UE[45]\\+Release-\\d\\.\\d+",
+      "\\+\\x00\\+\\x00U\\x00E\\x00[45]\\x00\\+\\x00R\\x00e\\x00l\\x00e\\x00a\\x00s\\x00e\\x00-\\x00\\d\\x00\\.\\x00\\d\\x00(?:\\d\\x00)?"
+    ],
+    "unityData": [
+      "*_data/globalgamemanagers",
+      "*_data/data.unity3d",
+      "*_data/maindata"
+    ],
+    "unityPlayer": [
+      "*unityplayer.dll",
+      "*unityplayer.so",
+      "*unityplayer.dylib"
+    ],
+    "il2cpp": [
+      "*gameassembly.dll",
+      "*gameassembly.so",
+      "*gameassembly.dylib",
+      "*il2cpp_data/metadata/global-metadata.dat"
+    ],
+    "shipping": [
+      "*/binaries/win64/*-win64-shipping.exe",
+      "*/binaries/win64/*-wingdk-shipping.exe",
+      "*/binaries/linux/*-linux-shipping"
+    ],
+    "paks": ["*/content/paks/*.pak", "*/content/paks/*.utoc"],
+    "gamemaker": [
+      "data.win",
+      "game.unx",
+      "game.ios",
+      "game.droid",
+      "assets/game.unx"
+    ],
+    "xna": [
+      "fna.dll",
+      "monogame.framework.dll",
+      "microsoft.xna.framework*.dll",
+      "*/fna.dll"
+    ],
+    "electron": [
+      "resources/app.asar",
+      "resources/app/package.json",
+      "package.nw",
+      "nw.dll"
+    ]
+  },
+  "steam": {
+    "win": ["{pf86}/Steam", "C:/Program Files/Steam"],
+    "wsl": ["/mnt/c/Program Files (x86)/Steam", "/mnt/c/Program Files/Steam"],
+    "mac": ["{home}/Library/Application Support/Steam"],
+    "unix": [
+      "{home}/.steam/steam",
+      "{home}/.local/share/Steam",
+      "{home}/.var/app/com.valvesoftware.Steam/.local/share/Steam"
+    ]
+  },
+  "saves": {
+    "known": {
+      "age of empires ii: definitive edition": [
+        "{profile}/Games/Age of Empires 2 DE"
+      ],
+      "terraria": ["{documents}/My Games/Terraria"],
+      "tmodloader": ["{documents}/My Games/Terraria/tModLoader"],
+      "stardew valley": ["{appdata}/StardewValley"],
+      "the elder scrolls v: skyrim special edition": [
+        "{documents}/My Games/Skyrim Special Edition"
+      ],
+      "elden ring": ["{appdata}/EldenRing"],
+      "grand theft auto v": ["{documents}/Rockstar Games/GTA V"],
+      "grand theft auto v legacy": ["{documents}/Rockstar Games/GTA V"],
+      "cyberpunk 2077": ["{profile}/Saved Games/CD Projekt Red/Cyberpunk 2077"]
+    },
+    "win": [
+      "{docs}/My Games/{n}",
+      "{docs}/{n}",
+      "{profile}/Saved Games/{n}",
+      "{profile}/Games/{n}",
+      "{appdata}/{n}",
+      "{localappdata}/{n}",
+      "{localappdata}/{n}/Saved"
+    ],
+    "mac": ["{home}/Library/Application Support/{n}"],
+    "linux": ["{home}/.local/share/{n}", "{home}/.config/{n}"]
+  }
+}

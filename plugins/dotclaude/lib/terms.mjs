@@ -49,6 +49,11 @@ export const TERMS = [
     title: "Questions to the user",
     enforcedBy: "a Stop hook",
   },
+  {
+    id: "game-modding",
+    title: "Game modding (dotclaude-modder)",
+    enforcedBy: "a hook that denies a kill by process name",
+  },
 ];
 
 /** The opening tag of the clause `id`. */

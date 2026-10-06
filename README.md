@@ -102,6 +102,17 @@ Jev is a decision model that gives probabilities, and it does not write text or 
 Export `TYPESAFE_API_KEY` before Claude Code starts.
 Each call sends the data of the decision to the TypeSafe API.
 
+## Modder plugin
+
+```text
+/plugin install dotclaude-modder@dotclaude
+```
+
+The plugin lets Claude mod a PC game that you own, from engine recon to assets, in-game tests, and a showcase video.
+It is a port of [universal-modder](https://github.com/rehan-remade/universal-modder) by Rehan.
+It needs Bun, and `uv` for its Python parts.
+See [Modder](https://github.com/xsyetopz/dotclaude/wiki/Modder).
+
 ## Update
 
 ```bash
