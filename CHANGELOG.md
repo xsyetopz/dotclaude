@@ -12,6 +12,9 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 
 ### Fixed
 
+- The clause 18 prompt hook blocked correct messages that list a part as not verified, repeat a claim of another agent that they did not check, or report a run whose results they did not read.
+  It now blocks only when it can quote the words of the done claim.
+  In a replay of 32 real messages and 5 breaks with the transcript, the system prompt, and the model of Claude Code 2.1.292, false blocks went from 4 of 32 to 2 of 32, and the hook caught 5 of 5 breaks.
 - The Bash guard denied a write to a temporary file as a write to a project file.
   It now ignores module paths in `import`, `from`, and `require`, and follows `cd` from part to part of a command, so that `cd "$TMPDIR/x" && … > out.txt` writes to `$TMPDIR`.
 

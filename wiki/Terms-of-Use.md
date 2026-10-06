@@ -85,10 +85,11 @@ A clause that is not enforced has no hook that can see a break of it, such as co
 - The model blocks a message that calls a part done that no check passed on.
   For example, a check of the part did not run, failed, is flaky, or is pre-existing.
   It also blocks a done claim next to a failed-test count that is not 0.
-- A **Not verified** list, open items, and a skipped step that is not a check do not count.
-  A progress report that calls each part written or still running, and says that its checks are still to run, does not count.
-  A part under **Not verified** that the message also calls done is a break.
-- When the model is not sure, it blocks, because a missed failure looks like finished work.
+- A part that the message calls open, not verified, not checked, or still running does not count.
+  A claim of another agent that the message says it did not check, a run whose results it did not read, a part that is only written or started, and a skipped step that is not a check also do not count.
+  A part that the message also calls done in its own words is a break.
+  A claim of another agent that the message repeats with no such words is a done claim of the message, and so is a prompt for the next session in the message.
+- The model blocks only when it can quote the words of the done claim, because a false block makes Claude change a correct message.
 - The hook blocks only once in a row.
 - The reason tells Claude to fix the part, or to list it as not verified and not call it done.
   Claude Code also shows the full hook prompt to Claude with the reason, so the prompt is short and reads as the rule.

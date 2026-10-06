@@ -37,7 +37,7 @@ test("the prompt reads the hook input, blocks once, and has no semicolons", () =
     '{"ok": false',
     "**Not verified**",
     "count of failed tests",
-    'If you are not sure, return {"ok": false}',
+    'Return {"ok": false} only when you can quote such words',
     `This is clause ${n} of the dotclaude Terms of Use.`,
   ])
     expect(prompt).toContain(part);
