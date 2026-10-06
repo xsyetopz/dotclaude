@@ -113,6 +113,8 @@ Line breaks:
 
 - `sembr` rewraps the message of a `git commit`, `gh pr`, or `gh issue` command before it runs.
 - After a `Write` or `Edit` of Markdown or code comments that break at a column, the result gets the `sembr` text.
+- It skips front matter, headings, tables, and code fences.
+  A line that starts with a lowercase `key:` is front matter, because an `Edit` sends only its new text, with no `---` line.
 
 Stale-setup notice:
 

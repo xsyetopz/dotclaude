@@ -42,8 +42,9 @@ const LIST = /^(([-*+]|\d+[.)])\s+)(.*)$/;
 // Tool directives, tags, and a shebang are not prose.
 const NOT_PROSE =
   /^(@|!|-\*-|eslint|biome-ignore|prettier-ignore|istanbul|c8 |noqa|pylint|fmt:|go:|nolint|type:)/;
+// A lowercase `key:` line is front matter, also in an edit with no `---`.
 const MARKDOWN_SKIP =
-  /^\s*(#|\||<|>|\[[^\]]+\]:|(-{3,}|\*{3,}|_{3,}|={3,})\s*$)/;
+  /^\s*(#|\||<|>|\[[^\]]+\]:|[a-z][\w-]*:(\s|$)|(-{3,}|\*{3,}|_{3,}|={3,})\s*$)/;
 const FENCE = /^\s*(```|~~~)/;
 const TRAILER = /^([A-Z][a-z]*(-[A-Za-z]+)+|Fixes|Closes|Refs|Resolves): \S/;
 const spaces = (s) => " ".repeat(s.length);

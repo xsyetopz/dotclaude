@@ -65,6 +65,18 @@ test("proseBlocks skips front matter, headings, fences, and tables", () => {
   expect(blocks[1].rest).toBe("  ");
 });
 
+// An Edit sends only its new text, so front matter can come without `---`.
+test("proseBlocks skips front matter keys in an edit fragment", () => {
+  const text = [
+    "description: Reviews code. Delegate reviews.",
+    "  nested-key: A value. Another sentence.",
+    "Note: this line is prose.",
+  ].join("\n");
+  expect(proseBlocks(text, "markdown").map((b) => b.bodies)).toEqual([
+    ["Note: this line is prose."],
+  ]);
+});
+
 test("proseBlocks reads comment blocks and skips tags and directives", () => {
   const text = [
     "// A comment that",
