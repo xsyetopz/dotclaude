@@ -178,6 +178,9 @@ Where Claude Code does not load modules, such as with `--bare`, only the classic
 | `debugger` | Finds the cause of a failure. | A second reading with fresh context. | 60 |
 | `test-runner` | Runs tests and reports the result. | Run checks on the cheapest model. | 20 |
 | `reverse-engineer` | Reads binaries and file formats. | The one role that stays on Opus. | 60 |
+| `translator` | Translates and localizes strings and docs, and lists the defects before it edits. | Give translations to an agent that keeps keys and placeholders. | 60 |
+| `docs-writer` | Makes the docs agree with the code, with no `Bash`. | Give docs work to an agent that checks each claim in the code. | 40 |
+| `digest-writer` | Writes a short digest of long material, with references. | Read long material on the cheapest model. | 20 |
 
 ## Skills, output style, and plugins
 

@@ -5,11 +5,14 @@ import { SUBAGENT_EFFORTS } from "../../plugins/dotclaude/lib/budget.mjs";
 const DIR = new URL("../../plugins/dotclaude/agents/", import.meta.url);
 const EXPECTED = [
   "debugger",
+  "digest-writer",
+  "docs-writer",
   "implementer",
   "investigator",
   "reverse-engineer",
   "reviewer",
   "test-runner",
+  "translator",
   "web-researcher",
 ];
 
@@ -68,9 +71,12 @@ test("the effort table holds", () => {
     implementer: ["claude-sonnet-5-5", "medium"],
     investigator: ["claude-sonnet-5-5", "medium"],
     "web-researcher": ["claude-sonnet-5-5", "medium"],
+    translator: ["claude-sonnet-5-5", "medium"],
+    "docs-writer": ["claude-sonnet-5-5", "medium"],
   };
   for (const [name, [model, effort]] of Object.entries(table)) {
     expect([agents[name].model, agents[name].effort]).toEqual([model, effort]);
   }
   expect(agents["test-runner"].model).toBe("claude-haiku-4-5");
+  expect(agents["digest-writer"].model).toBe("claude-haiku-4-5");
 });

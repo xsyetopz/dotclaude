@@ -41,7 +41,7 @@ It also sets the status line and the subagent status line.
 | Line breaks | Rewrap commit and `gh` messages with semantic line breaks by `sembr`, and give Claude the `sembr` text for prose that it wrote with breaks at a column. |
 | Minimal code | Tell Claude to build the minimum, with the idea of Ponytail. |
 | Status line | Model, effort, context against the compaction point, cache expiry, and usage limits. |
-| Agents | `investigator`, `web-researcher`, `implementer`, `reviewer`, `debugger`, `test-runner`, `reverse-engineer`. |
+| Agents | `investigator`, `web-researcher`, `implementer`, `reviewer`, `debugger`, `test-runner`, `reverse-engineer`, `translator`, `docs-writer`, `digest-writer`. |
 | Skills | `/dotclaude:setup`, `/dotclaude:handoff`, `/dotclaude:contribute`. |
 | Style | `Concise`. |
 
@@ -54,8 +54,8 @@ Where Claude Code does not load modules, such as with `--bare`, no guard runs.
 | Model | Efforts | Roles |
 | --- | --- | --- |
 | Opus 5.5 | `low`, `medium`, `high` | main session, `reverse-engineer` |
-| Sonnet 5.5 | `low`, `medium` | all other agents except `test-runner` |
-| Haiku 4.5 | none | `test-runner` |
+| Sonnet 5.5 | `low`, `medium` | all other agents |
+| Haiku 4.5 | none | `test-runner`, `digest-writer` |
 
 The profile sets `maxEffortLevel` to `high`, and `availableModels` has no Fable.
 A call that asks for another model than the agent file fixes gets a deny with the reason.
