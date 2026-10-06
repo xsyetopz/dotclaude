@@ -1,12 +1,12 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+This file records the notable changes to this project.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before 1.0.0, any
-release may change or remove behavior; see the README's "Update" section for the
-steps after each update.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and the versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Before 1.0.0, a release can change or remove behavior.
+After each update, do the steps in the "Update" section of the README.
+The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History) page of the wiki has the notes of older releases.
 
 ## [Unreleased]
 
