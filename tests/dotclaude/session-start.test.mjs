@@ -59,6 +59,7 @@ test("startup, clear, and compact add the rules", () => {
     expect(rules).toContain("<working_rules>");
     expect(longRuns).toContain("<long_runs>");
     expect(longRuns).toContain("time one run of the step");
+    expect(longRuns).toContain("also when you did not start it");
     expect(
       contextFor({ source }, root).find((p) => p.includes("<user_questions>")),
     ).toStartWith(clauseTag("user-questions"));

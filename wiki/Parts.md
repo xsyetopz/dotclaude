@@ -73,6 +73,7 @@ Compaction:
 Long runs:
 
 - Claude times one run of a step of unknown speed, gives each run a `timeout`, and runs long work in the background.
+- When a background run stalls, or a run waits on a stale process, lock, or monitor, Claude stops that blocker and runs the step again, also when Claude did not start it.
 - Clause 13 of the [Terms of Use](Terms-of-Use) is not enforced.
 
 Subagent progress:

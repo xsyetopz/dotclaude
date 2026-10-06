@@ -10,6 +10,13 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 
 ## [Unreleased]
 
+## [0.23.2] - 2026-10-06
+
+### Fixed
+
+- Clause 13 of the Terms of Use, `Long runs`: when a background run stalls, or a run waits on a stale process, lock, or monitor, Claude stops that blocker and runs the step again, also when Claude did not start it.
+  Before, Claude could read the `shared_workspace` rule as a reason to stop, and end the turn with the task blocked.
+
 ## [0.23.1] - 2026-10-06
 
 ### Changed
@@ -80,4 +87,4 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.23.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.23.2...HEAD
