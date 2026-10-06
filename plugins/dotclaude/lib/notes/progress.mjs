@@ -23,6 +23,8 @@ export const MAIN_PROGRESS = clause(
 Each subagent adds its progress to \`${PROGRESS_DIR}/<agent ID>.md\`, because Claude Code delivers no report from an agent that stops at its turn limit.
 When an agent stops at its turn limit, read its progress file.
 Then send the next step to the agent with \`SendMessage\` to its task ID, because a new agent or your own run does the done steps again.
+If \`SendMessage\` cannot continue the agent, such as an agent in a worktree that Claude Code lost, start one new agent.
+Give it the worktree folder of the old agent, the progress file, and the diff, and tell it to do only the steps that are not done, because the files of the old agent stay in that folder.
 Give each agent a task that fits in its turn limit, because each tool call uses a turn.
 Give one subject (a language, a tool, or a product) to each research agent, and send the agents in one message, so that they run at the same time.
 </subagent_progress>`,

@@ -87,6 +87,8 @@ Set the option `compaction_handoff` to `false` to turn the note off ([Options](O
 Claude Code delivers no report from a subagent that stops at its turn limit.
 Each subagent adds one line after each step to `dotclaude-progress/<agent ID>.md` in the temporary folder.
 When an agent stops at its limit, the main agent reads the file and sends the next step with `SendMessage`.
+When `SendMessage` cannot continue the agent, such as an agent in a worktree that Claude Code lost, the main agent starts one new agent.
+The new agent gets the worktree folder of the old agent, the progress file, and the diff, and it does only the steps that are not done.
 This is clause 15 of the [Terms of Use](Terms-of-Use).
 
 ```bash

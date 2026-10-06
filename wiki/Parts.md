@@ -81,6 +81,7 @@ Subagent progress:
 - Claude Code delivers no report from a subagent that stops at its turn limit.
 - Each subagent adds a line after each step to `dotclaude-progress/<agent ID>.md` in the temporary folder.
 - The main agent reads the file and continues the agent with `SendMessage`.
+- When `SendMessage` cannot continue the agent, the main agent starts one new agent in the same worktree folder, with the progress file and the diff.
 - Clause 15 of the [Terms of Use](Terms-of-Use) is not enforced.
 
 Questions to the user:

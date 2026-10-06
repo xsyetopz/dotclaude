@@ -39,6 +39,11 @@ test("the main agent gets the progress clause", () => {
   );
 });
 
+test("the main clause says what to do when SendMessage cannot continue an agent", () => {
+  expect(MAIN_PROGRESS).toContain("If `SendMessage` cannot continue the agent");
+  expect(MAIN_PROGRESS).toContain("do only the steps that are not done");
+});
+
 test("each progress clause is clause 15 and has no semicolon", () => {
   for (const text of [MAIN_PROGRESS, subagentProgress(progressFile("a1"))]) {
     expect(text).toStartWith(clauseTag("subagent-progress"));
