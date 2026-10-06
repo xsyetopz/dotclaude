@@ -16,7 +16,7 @@ Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-
 | Spawn rules (`guard_agents`) | `agent.spawn` | `SUBAGENT_EFFORTS` | Keeps the subagent model and effort within the [rules](#model-and-effort-rules). |
 | Cold-cache note | `SessionStart` (resume), `prompt.submit` | `CACHE_TTL_MS` | Tells Claude that the prompt cache expired. |
 | Compaction | `session.compact` | `HANDOFF_FORK_TIMEOUT_MS` | Keeps an open plan or question, and writes a handoff note before an automatic compaction. |
-| Working rules | `SessionStart` | `RULES_MAX_BYTES` | Gives Claude the few rules that have a stated incident, in at most 2,200 bytes. |
+| Working rules | `SessionStart` | `RULES_MAX_BYTES` | Gives Claude the few rules that have a stated incident, in at most 2,000 bytes. |
 | Long runs | `SessionStart` | none | Tells Claude to time and bound long steps. |
 | Subagent progress | `SessionStart`, `SubagentStart` | none | Keeps the work of a subagent that stops at its turn limit. |
 | CodeGraph call paths (`codegraph`) | `tool.call` | `CODEGRAPH_TIMEOUT_MS`, `CODEGRAPH_QUERY_LIMIT`, `CODEGRAPH_NEIGHBOURS`, `CODEGRAPH_NOTE_MAX_CHARS` | Adds callers and callees to a symbol search. |

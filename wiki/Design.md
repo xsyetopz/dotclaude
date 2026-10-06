@@ -72,7 +72,7 @@ A bare `bun` start takes 5 ms.
 | Claude spawns `general-purpose` | Refused | `Agent(general-purpose)` deny rule in the profile | `tests/dotclaude/setup.test.mjs` |
 | Fan-out | 5 subagents, and 5 agents per workflow, at once | profile env | none |
 | A subagent runs in the background | It runs in the foreground and causes no wake turns | `CLAUDE_CODE_FORK_SUBAGENT=0` in the profile | none |
-| Text of dotclaude on every request | `working-rules.md` at most 2,200 bytes | `RULES_MAX_BYTES` | `tests/dotclaude/session-start.test.mjs` |
+| Text of dotclaude on every request | `working-rules.md` at most 2,000 bytes | `RULES_MAX_BYTES` | `tests/dotclaude/session-start.test.mjs` |
 | Weekly review | The usage shares in [Usage evidence](Usage-Evidence) are reproducible | `tools/usage-report.mjs` | none |
 
 The profile rows need `/dotclaude:setup`.
