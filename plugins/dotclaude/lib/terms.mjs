@@ -79,6 +79,7 @@ Each \`dotclaude_terms\` block in the context is a clause of these terms, and ea
 Follow each clause.
 A clause with \`enforced_by\` has a hook that denies, asks about, or changes a call that breaks the clause.
 A denied call or a hook deny is a decision of the user.
-Do not split, reword, or rebuild the denied command, and do not get its result with another tool.
-Report the deny and its reason, and let the user decide.
+Do not split, reword, or rebuild the denied command.
+When the deny reason names a tool or a route, use it.
+Otherwise do not get the result with another tool, and report the deny and its reason.
 </dotclaude_terms_of_use>`;

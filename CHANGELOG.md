@@ -27,7 +27,9 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
   Clause 18 now has the two `<verification>` lines that it did not already say.
   Clause 10 (Jev) loses the line about `AskUserQuestion`, because clause 16 says the same thing.
 - The rule about a deny moves from clause 1 to the Terms of Use preamble, which subagents also get.
-  It now tells the agent not to split, reword, or rebuild a denied command, and to report the deny.
+  It now tells the agent not to split, reword, or rebuild a denied command.
+  When the deny reason names a tool or a route, such as `Edit` for a Bash write, the agent uses it.
+  Otherwise the agent reports the deny and its reason.
   A subagent got past a deny in 0.25.1 by rewording a command.
 - Clause 18 tells the agent to run each check that can run before it ends the turn.
   A part goes in the **Not verified** list only when its check cannot run in this session, because agents listed checks that they could run.
