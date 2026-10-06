@@ -8,7 +8,7 @@ The core plugin is `dotclaude`.
 
 | Need | For | Note |
 | --- | --- | --- |
-| Claude Code 2.1.290 or later | all plugins | |
+| Claude Code 2.1.291 or later | all plugins | |
 | [Bun](https://bun.sh) 1.4.2 or later on `PATH` | `dotclaude` | The hooks run with `bun`. |
 | git | `dotclaude` | |
 | `betterleaks` on `PATH` | secret redaction | Without it, tool output passes through. |

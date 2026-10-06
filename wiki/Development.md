@@ -6,7 +6,7 @@ It shows the commands, the layout rules, and the steps to test, release, and pub
 ## Before you begin
 
 - Install [Bun](https://bun.sh) 1.4.2 or later and `just`.
-- Install Claude Code 2.1.290 or later.
+- Install Claude Code 2.1.291 or later.
   `just validate`, `just update`, and `just release` call the `claude` CLI.
 - Run each command in the repository root.
 

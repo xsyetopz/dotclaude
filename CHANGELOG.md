@@ -10,6 +10,13 @@ steps after each update.
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-10-06
+
+### Changed
+
+- dotclaude needs Claude Code 2.1.291 or later.
+  2.1.291 fixes a regression of 2.1.288 that could lose the last messages of a session at quit, and a regression of 2.1.290 that could drop answers to permission prompts in cloud sessions.
+
 ## [0.23.0] - 2026-10-06
 
 ### Added
@@ -73,4 +80,4 @@ steps after each update.
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.23.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.23.1...HEAD
