@@ -151,6 +151,10 @@ test.each([
   `python3 -c "from pathlib import Path; Path('a.md').write_text('x')"`,
   `node -e "require('fs').writeFileSync('src/a.js', 'x')"`,
   `bun -e "await Bun.write('a.json', '{}')"`,
+  "cd src && echo x > a.md",
+  "cd /tmp && echo x > /work/app/a.md",
+  "(cd /tmp) && echo x > a.md",
+  `bun -e "import { f } from './lib/f.mjs'; const p = 'out/a.json'; await Bun.write(p, f())"`,
 ])("denies the project write %s", (command) => {
   expect(writes(command)).toBe(true);
 });
@@ -171,6 +175,10 @@ test.each([
   `python3 -c "open('/tmp/a.txt', 'w').write(open('src/a.txt').read())"`,
   `node -e "console.log(require('fs').readFileSync('a.json', 'utf8'))"`,
   "git commit -m \"writeFileSync('a.txt') > done\"",
+  'cd "$TMPDIR/c18" && jq . a.json > cases.jsonl',
+  "cd /tmp/x && echo x > a.txt",
+  "cd $OUT && echo x > a.txt",
+  `bun -e "import { f } from './lib/f.mjs'; await Bun.write(process.argv[1] + '/s.txt', f())" "$TMPDIR"`,
 ])("allows %s", (command) => {
   expect(writes(command)).toBe(false);
 });

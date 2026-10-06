@@ -431,6 +431,7 @@ const TEMP_ROOTS = [
  */
 function projectFile(target, { project, cwd, home, tmp }) {
   if (!target || !project || target.includes("$")) return false;
+  if (cwd === null && !/^[/~]/.test(target)) return false;
   const t = target.replace(/^~(?=\/|$)/, home ?? "\0");
   if (t.startsWith("\0")) return false;
   const path = resolve(t, cwd);
@@ -502,17 +503,20 @@ const WRITE_CALLS = [
   /\b(?:writeFileSync|writeFile|appendFileSync|appendFile|createWriteStream|Bun\.write|Deno\.writeTextFile|Deno\.writeFile|File\.write|IO\.write)\(\s*(?:(["'`])([^"'`\n]*)\1)?/g,
 ];
 const PATH_LITERAL = /(["'])([^"'\n$]*\/[^"'\n$]*|[^"'\n$/]*\.[A-Za-z]\w*)\1/g;
+// A module path in `import`, `require`, or `import()`, which code reads and does not write.
+const MODULE_PATH = /\b(?:from|import|require)\s*\(?\s*(["'`])[^"'`\n]*\1/g;
 
 /**
  * The files that script code in `command` writes.
- * When a write call has no literal path, each path literal in the code counts.
+ * When a write call has no literal path, each path literal in the code counts,
+ * except a module path.
  */
 function scriptTargets(command) {
   const calls = WRITE_CALLS.flatMap((re) =>
     [...command.matchAll(re)].map((m) => m[2] ?? null),
   );
   if (calls.every((t) => t !== null)) return calls;
-  return [...command.matchAll(PATH_LITERAL)]
+  return [...command.replace(MODULE_PATH, "").matchAll(PATH_LITERAL)]
     .map((m) => m[2])
     .filter((p) => !/^\w+:\/\//.test(p));
 }
@@ -524,27 +528,43 @@ function scriptTargets(command) {
  */
 export function writeFor(command, ctx) {
   const findings = [];
-  for (const raw of partsOf(withoutHeredocs(command))) {
+  const shell = withoutHeredocs(command);
+  // The tokenizer drops parentheses, so a `cd` in a subshell would leak out.
+  const followCd = !/(^|[;&|]\s*)\(/m.test(shell);
+  let at = ctx;
+  let scripted = null;
+  for (const raw of partsOf(shell)) {
     const words = commandWords(raw);
     const name = base(words[0]);
+    if (name === "cd" && followCd) at = { ...at, cwd: cdTarget(words[1], at) };
+    if (INTERPRETERS.has(name)) scripted ??= { raw, at };
     const targets = [
       ...redirectTargets(raw),
       ...(name === "tee" ? teeTargets(words.slice(1)) : []),
       ...inPlaceTargets(name, words.slice(1)),
     ];
-    if (targets.some((t) => projectFile(t, ctx)))
+    if (targets.some((t) => projectFile(t, at)))
       findings.push({ part: partText(raw), reason: BASH_WRITE });
   }
-  const scripted = partsOf(command).find((raw) =>
-    INTERPRETERS.has(base(commandWords(raw)[0])),
-  );
   if (
     scripted &&
     !findings.length &&
-    scriptTargets(command).some((t) => projectFile(t, ctx))
+    scriptTargets(command).some((t) => projectFile(t, scripted.at))
   )
-    findings.push({ part: partText(scripted), reason: BASH_WRITE });
+    findings.push({ part: partText(scripted.raw), reason: BASH_WRITE });
   return findings;
+}
+
+/**
+ * The folder after `cd dir`, or null when it is known only at run time.
+ * `$TMPDIR` at the start of `dir` is the temporary folder in `ctx`.
+ */
+function cdTarget(dir, { cwd, home, tmp }) {
+  if (cwd === null || dir === "-") return null;
+  const d = (dir ?? "~")
+    .replace(/^\$\{?TMPDIR\}?(?=\/|$)/, tmp ?? "$")
+    .replace(/^~(?=\/|$)/, home ?? "$");
+  return d.includes("$") ? null : resolve(d, cwd);
 }
 
 const partText = (words) => {

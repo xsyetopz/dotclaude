@@ -10,6 +10,11 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 
 ## [Unreleased]
 
+### Fixed
+
+- The Bash guard denied a write to a temporary file as a write to a project file.
+  It now ignores module paths in `import`, `from`, and `require`, and follows `cd` from part to part of a command, so that `cd "$TMPDIR/x" && … > out.txt` writes to `$TMPDIR`.
+
 ## [0.25.1] - 2026-10-06
 
 ### Fixed
