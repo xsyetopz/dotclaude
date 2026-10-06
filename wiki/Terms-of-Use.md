@@ -33,7 +33,7 @@ This page lists the 18 clauses and the hook that enforces each one.
 | 15 | Subagent progress | `subagent_progress`, at session start and at the start of each subagent | Not enforced |
 | 16 | Questions to the user | `user_questions`, at session start | A Stop hook ([details](#clause-16)) |
 | 17 | Game modding (dotclaude-modder) | `game_modding`, at session start | The `dotclaude-modder` module ([details](#clause-17)) |
-| 18 | Known defects | `known_defects`, at session start and at the start of each subagent | A Stop hook and a SubagentStop hook ([details](#clause-18)) |
+| 18 | Known defects | `known_defects`, at session start and at the start of each subagent | A Stop hook ([details](#clause-18)) |
 
 A deny reason of an enforced clause names the clause.
 A clause that is not enforced has no hook that can see a break of it, such as code that is larger than it needs to be.
@@ -81,7 +81,10 @@ A clause that is not enforced has no hook that can see a break of it, such as co
 
 ### Clause 18
 
-- A prompt hook on Stop and on SubagentStop sends the last message to the background model of Claude Code.
+- A prompt hook on Stop sends the transcript and the last message to the background model of Claude Code.
+  Claude Code cuts the transcript at half of the context window of that model.
+- No hook checks the last message of a subagent, because each call costs about as much as the transcript.
+  The main agent compares each "done" in a subagent report with the check output.
 - The model blocks a message that calls a part done that no check passed on.
   For example, a check of the part did not run, failed, is flaky, or is pre-existing.
   It also blocks a done claim next to a failed-test count that is not 0.

@@ -21,7 +21,7 @@ Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-
 | Long runs | `SessionStart` | none | Tells Claude to time and bound long steps. |
 | Subagent progress | `SessionStart`, `SubagentStart` | none | Keeps the work of a subagent that stops at its turn limit. |
 | Questions to the user | `SessionStart`, `Stop` | none | Keeps each question to the user in `AskUserQuestion`. |
-| Known defects | `SessionStart`, `SubagentStart`, `Stop`, `SubagentStop` | none | Keeps a known defect or a skipped check out of a done report. |
+| Known defects | `SessionStart`, `SubagentStart`, `Stop` | none | Keeps a known defect or a skipped check out of a done report. |
 | CodeGraph call paths (`codegraph`) | `tool.call` | `CODEGRAPH_TIMEOUT_MS`, `CODEGRAPH_QUERY_LIMIT`, `CODEGRAPH_NEIGHBOURS`, `CODEGRAPH_NOTE_MAX_CHARS` | Adds callers and callees to a symbol search. |
 | CodeGraph index (`codegraph`) | `SessionStart` | none | Tells Claude to index a git repository. |
 | Git attribution | `SessionStart` | none | Puts back the commit trailer and pull request footer. |
@@ -101,7 +101,7 @@ Known defects:
 
 - The note tells Claude to fix each defect in its own change, and to report a defect outside the request with its evidence.
   The main agent then asks the user to fix it now, or to keep it open with a reason and an owner.
-- A prompt hook (`"type": "prompt"`) on `Stop` and `SubagentStop` blocks a last message that calls a part done that no check passed on.
+- A prompt hook (`"type": "prompt"`) on `Stop` blocks a last message that calls a part done that no check passed on.
   A **Not verified** list does not count.
 - It blocks only once in a row.
 - It uses the background model of Claude Code, so each stop adds one model call.
@@ -155,7 +155,7 @@ Where Claude Code does not load modules, such as with `--bare`, only the classic
 | `hooks/pre-tool-use/ask-guarded-calls.mjs` | Gives the asks of the Bash and edit guards again, and the ask of the policy guard. |
 | `hooks/subagent-start/add-subagent-context.mjs` | Gives each subagent the policy clause, the known defects clause, and its progress file. |
 | `hooks/stop/block-plain-questions.mjs` | Blocks the end of a turn that asks the user a question in plain text. |
-| Prompt hook on `Stop` and `SubagentStop` | Blocks the end of a turn or of a subagent that calls a part done that no check passed on. Its prompt is in `hooks/hooks.json`. |
+| Prompt hook on `Stop` | Blocks the end of a turn that calls a part done that no check passed on. Its prompt is in `hooks/hooks.json`. |
 
 - The `PreToolUse` hook gives the asks again because in auto mode the classifier can allow a call that the module asks about.
   See [Claude mods](Claude-Mods).

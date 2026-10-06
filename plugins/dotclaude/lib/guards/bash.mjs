@@ -407,7 +407,7 @@ export function askFor(command, ctx) {
   return findings;
 }
 
-const BASH_WRITE = `This command writes a project file through \`Bash\`. Edit a project file with \`Edit\` or \`Write\`. These tools show the user a diff, and Claude Code checkpoints can rewind them. The dotclaude edit guard also checks them. A \`Bash\` write skips all of these. Put a temporary file in \`$TMPDIR\`. This is clause ${TERMS.findIndex((t) => t.id === "working-rules") + 1} of the dotclaude Terms of Use.`;
+const BASH_WRITE = `This command writes a project file through \`Bash\`. Edit a project file with \`Edit\` or \`Write\`. These tools show the user a diff, and Claude Code checkpoints can rewind them. The dotclaude edit guard also checks them. A \`Bash\` write skips all of these. If you have no \`Edit\` or \`Write\`, do not write the file, and report the write that you need. Put a temporary file in \`$TMPDIR\`. This is clause ${TERMS.findIndex((t) => t.id === "working-rules") + 1} of the dotclaude Terms of Use.`;
 // The auto-mode text of Claude Code 2.1.290 (byte-identical in 2.1.292) tells Claude to edit files with `sed`, heredocs,
 // or scripts (binary, `case "auto_mode"`).
 const AUTO_MODE_EDIT_TEXT =

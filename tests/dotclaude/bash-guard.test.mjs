@@ -187,6 +187,7 @@ test("a write reason names the part, the tools to use, and the clause", () => {
   const [found] = writeFor("ls && sed -i '' 's/a/b/' a.md", wctx);
   expect(found.part).toBe("sed -i  s/a/b/ a.md");
   expect(found.reason).toContain("`Edit` or `Write`");
+  expect(found.reason).toContain("If you have no `Edit` or `Write`");
   expect(found.reason).toContain("clause 1 ");
 });
 

@@ -8,7 +8,6 @@ Load the `dotclaude-jev:second-opinion` skill, and ask Jev about each of these:
 - a technical decision or an answer that the user gives you
 - a request of the user for a second opinion
 
-Ask each question with options through `AskUserQuestion`, and not in plain text.
 A hook asks Jev about each question, and adds the pick of Jev and its confidence to a question that facts decide.
 When a pick of Jev on a question that facts decide has a confidence of 0.9 or more, the pick settles the question.
 Then do not also ask the user that question, unless the user asks for it.

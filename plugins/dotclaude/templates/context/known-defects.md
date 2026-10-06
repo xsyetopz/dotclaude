@@ -10,10 +10,13 @@ Give each open defect the reason that it stays open and its owner: the user or t
 </defects>
 
 <checks>
+Run a check that exercises the change.
+Change a test or a limit only on request, because a raised limit hides the defect.
 Call a failing check "flaky" only when you name the cause and a rerun passes.
 A check that fails for a cause that you do not know is a defect with the cause "unknown".
 Report done only for a part that a check passed on in this session.
-Put each other part in a **Not verified** list, with the reason, and do not also call it done.
+Before you end the turn, run each check that can run, also when it must wait for another run.
+Put a part in a **Not verified** list only when its check cannot run in this session, with the reason, and do not also call it done.
 A subagent report is a claim, so compare each "done" in it with the check output before you report the work as done.
 </checks>
 

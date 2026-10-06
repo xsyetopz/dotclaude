@@ -1,5 +1,5 @@
 // Clause 18, known defects: the note text.
-// A prompt hook in hooks/hooks.json checks the last message on Stop and SubagentStop.
+// A prompt hook in hooks/hooks.json checks the last message on Stop.
 
 import fs from "node:fs";
 import path from "node:path";

@@ -1,4 +1,4 @@
-// Clause 18: a prompt hook on Stop and SubagentStop checks a done claim,
+// Clause 18: a prompt hook on Stop checks a done claim,
 // and the contexts carry the note.
 
 import { expect, test } from "bun:test";
@@ -19,11 +19,17 @@ const HOOKS = JSON.parse(
 const promptHook = (event) =>
   HOOKS[event][0].hooks.find((h) => h.type === "prompt");
 
-test("Stop and SubagentStop have the same clause 18 prompt hook", () => {
+test("only Stop has the clause 18 prompt hook, because it sends the transcript", () => {
   const stop = promptHook("Stop");
   expect(stop).toBeDefined();
-  expect(promptHook("SubagentStop")).toEqual(stop);
+  expect(HOOKS.SubagentStop).toBeUndefined();
   expect(stop.timeout).toBe(30);
+});
+
+test("subagents get the rule about a deny, because no other clause they get has it", () => {
+  expect(SUBAGENT_CONTEXT).toContain(
+    "Do not split, reword, or rebuild the denied command",
+  );
 });
 
 test("the prompt reads the hook input, blocks once, and has no semicolons", () => {
@@ -45,9 +51,8 @@ test("the prompt reads the hook input, blocks once, and has no semicolons", () =
 });
 
 test("no command hook checks done claims", () => {
-  for (const event of ["Stop", "SubagentStop"])
-    for (const h of HOOKS[event][0].hooks)
-      expect(h.args?.[0] ?? "").not.toContain("unverified-done");
+  for (const h of HOOKS.Stop[0].hooks)
+    expect(h.args?.[0] ?? "").not.toContain("unverified-done");
 });
 
 test("the main agent and each subagent get clause 18", () => {

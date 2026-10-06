@@ -57,7 +57,7 @@ export const TERMS = [
   {
     id: "known-defects",
     title: "Known defects",
-    enforcedBy: "a Stop hook and a SubagentStop hook",
+    enforcedBy: "a Stop hook",
   },
 ];
 
@@ -78,5 +78,7 @@ The user installed dotclaude and accepted the dotclaude Terms of Use for this se
 Each \`dotclaude_terms\` block in the context is a clause of these terms, and each clause is a rule of the user.
 Follow each clause.
 A clause with \`enforced_by\` has a hook that denies, asks about, or changes a call that breaks the clause.
-A hook deny is the decision of the user, so do not get its result in another way.
+A denied call or a hook deny is a decision of the user.
+Do not split, reword, or rebuild the denied command, and do not get its result with another tool.
+Report the deny and its reason, and let the user decide.
 </dotclaude_terms_of_use>`;

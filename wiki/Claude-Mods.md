@@ -170,7 +170,8 @@ No native event exists for the first five.
 
 ## Prompt hooks on Stop
 
-dotclaude uses a classic hook with `"type": "prompt"` on `Stop` and `SubagentStop` for clause 18.
+dotclaude uses a classic hook with `"type": "prompt"` on `Stop` for clause 18.
+0.26.0 removed the same hook on `SubagentStop`, because each call sends the transcript, about 46k tokens in the mean.
 These facts are from the Claude Code 2.1.292 binary (**binary**), read only:
 
 - Claude Code sends the hook `prompt` as a condition, after the words "has the following stopping condition been satisfied? Answer based on transcript evidence only."

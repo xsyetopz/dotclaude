@@ -10,11 +10,38 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-10-06
+
+### Removed
+
+- The clause 18 prompt hook on `SubagentStop`.
+  Claude Code sends the transcript with each prompt hook call on `Stop` and `SubagentStop`, up to half of the context window of the model.
+  In 7 days of sessions, the mean was about 46k tokens, or about $0.046 on Claude Haiku 4.5, for each call.
+  Clause 18 already tells the main agent to compare each "done" in a subagent report with the check output.
+  The prompt hook on `Stop` stays.
+
+### Changed
+
+- The session context is shorter.
+  The working rules lose the `<verification>` block and the line about LSP, CodeGraph, and `grep`.
+  Clause 18 now has the two `<verification>` lines that it did not already say.
+  Clause 10 (Jev) loses the line about `AskUserQuestion`, because clause 16 says the same thing.
+- The rule about a deny moves from clause 1 to the Terms of Use preamble, which subagents also get.
+  It now tells the agent not to split, reword, or rebuild a denied command, and to report the deny.
+  A subagent got past a deny in 0.25.1 by rewording a command.
+- Clause 18 tells the agent to run each check that can run before it ends the turn.
+  A part goes in the **Not verified** list only when its check cannot run in this session, because agents listed checks that they could run.
+- Clause 1 tells the agent to ask the user about a change that it cannot attribute, and not to leave it with no question.
+- The Bash guard deny of a write to a project file tells an agent with no `Edit` or `Write`, such as a read-only subagent, to report the write that it needs.
+  Before, the deny told it only to use tools that it did not have.
+
 ### Fixed
 
 - The clause 18 prompt hook blocked correct messages that list a part as not verified, repeat a claim of another agent that they did not check, or report a run whose results they did not read.
   It now blocks only when it can quote the words of the done claim.
   In a replay of 32 real messages and 5 breaks with the transcript, the system prompt, and the model of Claude Code 2.1.292, false blocks went from 4 of 32 to 2 of 32, and the hook caught 5 of 5 breaks.
+  Transcripts do not record `background_tasks` and `session_crons`, so the replay sent them empty.
+  A second replay of one real progress report and one false done claim, each with `background_tasks` empty and with a running `just check`, gave the correct result in 4 of 4 runs.
 - The Bash guard denied a write to a temporary file as a write to a project file.
   It now ignores module paths in `import`, `from`, and `require`, and follows `cd` from part to part of a command, so that `cd "$TMPDIR/x" && … > out.txt` writes to `$TMPDIR`.
 
@@ -190,4 +217,4 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.25.1...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.26.0...HEAD

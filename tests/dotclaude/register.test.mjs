@@ -55,7 +55,7 @@ async function call(handlers, $, e, result = { result: "ok" }) {
   return { r, verdict };
 }
 
-test("hooks.json names the module, PreToolUse, SessionStart, Stop, SubagentStart, and SubagentStop", () => {
+test("hooks.json names the module, PreToolUse, SessionStart, Stop, and SubagentStart", () => {
   const json = JSON.parse(
     readFileSync(
       join(import.meta.dir, "../../plugins/dotclaude/hooks/hooks.json"),
@@ -68,7 +68,6 @@ test("hooks.json names the module, PreToolUse, SessionStart, Stop, SubagentStart
     "SessionStart",
     "Stop",
     "SubagentStart",
-    "SubagentStop",
   ]);
   for (const [event, [entry]] of Object.entries(json.hooks)) {
     const command = entry.hooks.find((h) => h.type === "command");
