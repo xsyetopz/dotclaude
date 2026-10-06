@@ -151,7 +151,7 @@ No native event exists for the first five.
 - 2.1.288 fixed it (**official**, release notes).
   The note says: "Fixed a plugin's `tool.call` hook making Bash fail and file searches read the wrong folder in subagents that run in a worktree".
   On 2.1.288, 0 calls failed (**measured**).
-- dotclaude required 2.1.288 for this reason, and the README now requires 2.1.289.
+- dotclaude required 2.1.288 for this reason, and the README now requires 2.1.290.
 
 </details>
 

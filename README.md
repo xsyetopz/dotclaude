@@ -15,7 +15,7 @@ The evidence pages, from [Design](https://github.com/xsyetopz/dotclaude/wiki/Des
 /plugin install dotclaude@dotclaude
 ```
 
-Requirements: Claude Code 2.1.289 or later, [Bun](https://bun.sh) 1.4.2 or later on `PATH`, and git.
+Requirements: Claude Code 2.1.290 or later, [Bun](https://bun.sh) 1.4.2 or later on `PATH`, and git.
 The secret redaction needs `betterleaks` on `PATH`.
 Without it, tool output passes through.
 
