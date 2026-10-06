@@ -93,6 +93,37 @@ test("a destructive Bash command gives an ask with its reason", async () => {
   expect(verdict.reason).toContain("`git push --force`");
 });
 
+test("a Bash write to a project file is denied before it runs", async () => {
+  const { $ } = engine();
+  const { r, verdict } = await call(load(), $, {
+    tool: "Bash",
+    command: "sed -i '' 's/a/b/' src/a.c",
+  });
+  expect(r.deny).toContain("`Edit` or `Write`");
+  expect(verdict).toBeUndefined();
+  const off = await call(load({ guard_bash: false }), $, {
+    tool: "Bash",
+    command: "sed -i '' 's/a/b/' src/a.c",
+  });
+  expect(off.r.deny).toBeUndefined();
+});
+
+test("the auto-mode reminder gets the edit rule", async () => {
+  const h = load();
+  const e = {
+    type: "auto_mode",
+    text: "Do your work through the Bash tool wherever it can accomplish the job: make file changes with sed. Fall back to a dedicated tool only when Bash genuinely cannot do the job.",
+  };
+  const out = await h["prompt.attachment"]({}, e, async (x) => x);
+  expect(out.text).toContain("`Edit` or `Write`");
+  const kept = await load({ guard_bash: false })["prompt.attachment"](
+    {},
+    e,
+    async (x) => x,
+  );
+  expect(kept).toBe(e);
+});
+
 test("a safe Bash command keeps the engine verdict", async () => {
   const { $ } = engine();
   const { verdict } = await call(load(), $, {

@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
-import { askFor } from "../../plugins/dotclaude/lib/guards/bash.mjs";
+import {
+  askFor,
+  autoModeText,
+  writeFor,
+} from "../../plugins/dotclaude/lib/guards/bash.mjs";
 
 const ctx = { project: "/work/app", cwd: "/work/app", home: "/home/u" };
 const asks = (command) => askFor(command, ctx).length > 0;
@@ -125,6 +129,71 @@ test("each flagged rm target has its own reason", () => {
   expect(found.reason).toBe(
     `\`/tmp/a.sh\`: The target is outside the project. \`\${TMPDIR}tmp.*\`: The target is known only at run time.`,
   );
+});
+
+const wctx = { ...ctx, tmp: "/var/folders/x/T/" };
+const writes = (command) => writeFor(command, wctx).length > 0;
+
+test.each([
+  "sed -i '' 's/a/b/' Sources/kk.lproj/Localizable.strings",
+  "sed -i.bak -e 's/a/b/' src/a.c",
+  "gsed --in-place 's/a/b/' README.md",
+  "perl -pi -e 's/a/b/' lib/x.pm",
+  "echo hi > notes.md",
+  "echo hi >> /work/app/notes.md",
+  "printf x 2>errors.log",
+  "make &>build.log",
+  "cat > src/a.txt <<'EOF'\nhello > there\nEOF",
+  "echo x | tee -a docs/a.md",
+  "bash -c 'echo x > a.txt'",
+  `python3 -c "open('src/a.txt', 'w').write('x')"`,
+  `python3 - <<'EOF'\np = "Sources/mn.lproj/Localizable.strings"\nwith open(p, "w") as f:\n    f.write(t)\nEOF`,
+  `python3 -c "from pathlib import Path; Path('a.md').write_text('x')"`,
+  `node -e "require('fs').writeFileSync('src/a.js', 'x')"`,
+  `bun -e "await Bun.write('a.json', '{}')"`,
+])("denies the project write %s", (command) => {
+  expect(writes(command)).toBe(true);
+});
+
+test.each([
+  "sed -n '1,5p' src/a.c",
+  "sed 's/a/b/' src/a.c > /tmp/out.c",
+  "sed -i '' 's/a/b/' /tmp/x.txt",
+  "echo hi > /dev/null",
+  "cmd 2>&1 | tail",
+  "echo x > $TMPDIR/a.txt",
+  "echo x > /var/folders/x/T/a.txt",
+  "echo x > ~/notes.md",
+  "echo x > ../other/a.md",
+  "tee /tmp/log < in.txt",
+  "git commit -F - <<'EOF'\nfix: a > b\nEOF",
+  `python3 -c "import json; print(json.load(open('package.json')))"`,
+  `python3 -c "open('/tmp/a.txt', 'w').write(open('src/a.txt').read())"`,
+  `node -e "console.log(require('fs').readFileSync('a.json', 'utf8'))"`,
+  "git commit -m \"writeFileSync('a.txt') > done\"",
+])("allows %s", (command) => {
+  expect(writes(command)).toBe(false);
+});
+
+test("a write reason names the part, the tools to use, and the clause", () => {
+  const [found] = writeFor("ls && sed -i '' 's/a/b/' a.md", wctx);
+  expect(found.part).toBe("sed -i  s/a/b/ a.md");
+  expect(found.reason).toContain("`Edit` or `Write`");
+  expect(found.reason).toContain("clause 1 ");
+});
+
+test("the auto-mode text gets the edit rule in place of its Bash edits", () => {
+  const relaxed =
+    "While auto mode is active:\n\nYou can do much of your work through the Bash tool when it is the simpler route: read files with cat, and make small, mechanical file changes with sed, heredocs, or short scripts instead of the dedicated Read, Edit, or Write tools. The choice is yours: prefer Edit or Write when a shell edit would be fragile, such as sed/awk flags that differ between GNU and BSD/macOS.";
+  const strict =
+    "Do your work through the Bash tool wherever it can accomplish the job: make file changes with sed, heredocs, or short scripts. Fall back to a dedicated tool only when Bash genuinely cannot do the job.";
+  for (const text of [relaxed, strict]) {
+    const out = autoModeText(text);
+    expect(out).not.toContain("sed");
+    expect(out).toContain("Edit a project file only with `Edit` or `Write`");
+  }
+  expect(autoModeText(relaxed)).toStartWith("While auto mode is active:\n\n");
+  expect(autoModeText("other text")).toBe("other text");
 });
 
 test("an rm target inside the project is allowed when the project is unknown only for others", () => {

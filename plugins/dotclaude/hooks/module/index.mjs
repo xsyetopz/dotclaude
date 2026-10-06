@@ -35,7 +35,12 @@ import {
   TRAILER_OFF_REASON,
   trailerOff,
 } from "../../lib/guards/attribution.mjs";
-import { askFor, isCommit } from "../../lib/guards/bash.mjs";
+import {
+  askFor,
+  autoModeText,
+  isCommit,
+  writeFor,
+} from "../../lib/guards/bash.mjs";
 import { editReasons } from "../../lib/guards/edit.mjs";
 import {
   fetchedRepos,
@@ -118,23 +123,32 @@ async function sessionPlan($) {
 const enabled = (options, name) =>
   options?.[name] !== false && options?.[name] !== "false";
 
+/** The folders that the Bash guard reads: `cwd`, `project`, `home`, and `tmp`. */
+async function bashContext($) {
+  const [cwd, project, home, tmp] = await Promise.all([
+    $.session.cwd().catch(() => ""),
+    $.session.root().catch(() => ""),
+    $.env.get("HOME"),
+    $.env.get("TMPDIR"),
+  ]);
+  return { cwd: cwd || project, project, home, tmp };
+}
+
+const findingText = (found) =>
+  found.length
+    ? found.map((f) => `\`${f.part}\`: ${f.reason}`).join(" ")
+    : undefined;
+
+/** The reason to deny a Bash call that writes a project file, or undefined. */
+async function writeDenial($, e, options) {
+  if (e.tool !== "Bash" || !enabled(options, "guard_bash")) return undefined;
+  return findingText(writeFor(String(e.command ?? ""), await bashContext($)));
+}
+
 /** The reason to ask about a tool call, or undefined. */
 async function askReason($, e, options) {
-  if (e.tool === "Bash" && enabled(options, "guard_bash")) {
-    const [cwd, project, home] = await Promise.all([
-      $.session.cwd().catch(() => ""),
-      $.session.root().catch(() => ""),
-      $.env.get("HOME"),
-    ]);
-    const found = askFor(String(e.command ?? ""), {
-      cwd: cwd || project,
-      project,
-      home,
-    });
-    return found.length
-      ? found.map((f) => `\`${f.part}\`: ${f.reason}`).join(" ")
-      : undefined;
-  }
+  if (e.tool === "Bash" && enabled(options, "guard_bash"))
+    return findingText(askFor(String(e.command ?? ""), await bashContext($)));
   if (EDIT_TOOLS.has(e.tool) && enabled(options, "guard_edit")) {
     const existing =
       e.tool === "Write" && e.file_path
@@ -427,6 +441,8 @@ export function register(on, options) {
   const policySeen = new Set();
 
   on("tool.call", async ($, e, next) => {
+    const deny = await writeDenial($, e, options).catch(() => undefined);
+    if (deny) return { deny };
     const id = e.tool_use_id;
     const [reason, trailer, command] = await Promise.all([
       askReason($, e, options).catch(() => undefined),
@@ -479,6 +495,15 @@ export function register(on, options) {
     return notes.length
       ? { ...out, context: [...(out.context ?? []), ...notes] }
       : out;
+  });
+
+  // The auto-mode reminder gets the edit rule in place of its `Bash` edit text,
+  // so that it agrees with the Bash guard.
+  on("prompt.attachment", async (_$, e, next) => {
+    if (!enabled(options, "guard_bash") || typeof e.text !== "string")
+      return next(e);
+    const text = autoModeText(e.text);
+    return next(text === e.text ? e : { ...e, text });
   });
 
   // The model and effort rules. The call keeps its `model`: a model that the

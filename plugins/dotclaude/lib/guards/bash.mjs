@@ -93,16 +93,21 @@ function gitSub(words) {
   return i;
 }
 
+/** `words` with no leading variable, wrapper, or `sudo`. */
+function commandWords(words) {
+  while (
+    /^[A-Za-z_]\w*=/.test(words[0] ?? "") ||
+    WRAPPERS.has(base(words[0])) ||
+    base(words[0]) === "sudo"
+  )
+    words = words.slice(1);
+  return words;
+}
+
 /** True when a part of `command` is `git commit`. */
 export function isCommit(command) {
   return partsOf(command).some((raw) => {
-    let words = raw;
-    while (
-      /^[A-Za-z_]\w*=/.test(words[0] ?? "") ||
-      WRAPPERS.has(base(words[0])) ||
-      base(words[0]) === "sudo"
-    )
-      words = words.slice(1);
+    const words = commandWords(raw);
     return base(words[0]) === "git" && words[gitSub(words)] === "commit";
   });
 }
@@ -399,6 +404,146 @@ export function askFor(command, ctx) {
       : reasonFor(words, ctx, env);
     if (reason) findings.push({ part: partText(raw), reason });
   }
+  return findings;
+}
+
+const BASH_WRITE = `This command writes a project file through \`Bash\`. Edit a project file with \`Edit\` or \`Write\`, because these tools show the user a diff, Claude Code checkpoints can rewind them, and the dotclaude edit guard checks them. A \`Bash\` write skips all of these. Put a temporary file in \`$TMPDIR\`. This is clause ${TERMS.findIndex((t) => t.id === "working-rules") + 1} of the dotclaude Terms of Use.`;
+// The auto-mode text of Claude Code 2.1.290 tells Claude to edit files with `sed`, heredocs,
+// or scripts (binary, `case "auto_mode"`).
+const AUTO_MODE_EDIT_TEXT =
+  /(?:Do your work|You can do much of your work) through the \S+ tool [\s\S]*?(?:cannot do the job\.|BSD\/macOS\.)/;
+const AUTO_MODE_EDITS = `Read and search with \`Bash\` when it is the simpler route. Edit a project file only with \`Edit\` or \`Write\`, because a \`Bash\` write skips the diff, the checkpoints, and the dotclaude edit guard. The dotclaude Bash guard denies a \`Bash\` write to a project file.`;
+
+/** The auto-mode `text` with the dotclaude edit rule in place of the `Bash` edit text. */
+export const autoModeText = (text) =>
+  text.replace(AUTO_MODE_EDIT_TEXT, AUTO_MODE_EDITS);
+
+const TEMP_ROOTS = [
+  "/tmp",
+  "/private/tmp",
+  "/var/folders",
+  "/private/var/folders",
+];
+
+/**
+ * True when a write to `target` changes a file in the project.
+ * A target with `$` is known only at run time, so it passes.
+ */
+function projectFile(target, { project, cwd, home, tmp }) {
+  if (!target || !project || target.includes("$")) return false;
+  const t = target.replace(/^~(?=\/|$)/, home ?? "\0");
+  if (t.startsWith("\0")) return false;
+  const path = resolve(t, cwd);
+  if (path.startsWith("/dev/")) return false;
+  if ([...TEMP_ROOTS, tmp].some((r) => r && inside(path, resolve(r, "/"))))
+    return false;
+  return inside(path, project);
+}
+
+/** `command` with the body of each heredoc removed, because a body is data. */
+function withoutHeredocs(command) {
+  const out = [];
+  let end = null;
+  for (const line of command.split("\n")) {
+    if (end !== null) {
+      if (line.trim() === end) end = null;
+      continue;
+    }
+    out.push(line);
+    end = /(?<!<)<<(?!<)-?\s*(['"]?)([\w.-]+)\1/.exec(line)?.[2] ?? null;
+  }
+  return out.join("\n");
+}
+
+/** The files that `sed -i` or `perl -i` changes, from its `args`. */
+function inPlaceTargets(name, args) {
+  const inPlace = ["sed", "gsed"].includes(name)
+    ? hasFlag(args, "--in-place", "i")
+    : name === "perl" && args.some((a) => /^-[a-zA-Z]*i/.test(a));
+  if (!inPlace) return [];
+  const files = [];
+  let script = false;
+  for (let i = 0; i < args.length; i += 1) {
+    if (/^(-[ef]|--expression|--file)$/.test(args[i])) {
+      script = true;
+      i += 1;
+    } else if (args[i] && !args[i].startsWith("-")) files.push(args[i]);
+  }
+  // With no `-e`, the first word is the script.
+  return script ? files : files.slice(1);
+}
+
+/** The redirect targets in `words`: `> f`, `>> f`, `2>f`, and `>f`. */
+function redirectTargets(words) {
+  return words.flatMap((w, i) => {
+    const m = /^\d*>>?(.*)$/.exec(w);
+    if (!m) return [];
+    const target = m[1] || words[i + 1];
+    return target ? [target] : [];
+  });
+}
+
+/** The files of `tee`, before the first redirect in `args`. */
+function teeTargets(args) {
+  const end = args.findIndex((a) => /^\d*[<>]/.test(a));
+  return args
+    .slice(0, end < 0 ? undefined : end)
+    .filter((a) => !a.startsWith("-"));
+}
+
+const INTERPRETERS = new Set(
+  "python python3 node bun deno ruby perl".split(" "),
+);
+// Write calls of script code.
+// Group 2 is the path when it is a literal.
+const WRITE_CALLS = [
+  /\bopen\(\s*(?:(["'])([^"'\n]*)\1|[^,()\n]*)\s*,\s*(?:mode\s*=\s*)?["'][rbt]*[wax+][rwabxt+]*["']/g,
+  /(?:\bPath\(\s*(["'])([^"'\n]*)\1\s*\))?\.write_(?:text|bytes)\(/g,
+  /\b(?:writeFileSync|writeFile|appendFileSync|appendFile|createWriteStream|Bun\.write|Deno\.writeTextFile|Deno\.writeFile|File\.write|IO\.write)\(\s*(?:(["'`])([^"'`\n]*)\1)?/g,
+];
+const PATH_LITERAL = /(["'])([^"'\n$]*\/[^"'\n$]*|[^"'\n$/]*\.[A-Za-z]\w*)\1/g;
+
+/**
+ * The files that script code in `command` writes.
+ * When a write call has no literal path, each path literal in the code counts.
+ */
+function scriptTargets(command) {
+  const calls = WRITE_CALLS.flatMap((re) =>
+    [...command.matchAll(re)].map((m) => m[2] ?? null),
+  );
+  if (calls.every((t) => t !== null)) return calls;
+  return [...command.matchAll(PATH_LITERAL)]
+    .map((m) => m[2])
+    .filter((p) => !/^\w+:\/\//.test(p));
+}
+
+/**
+ * One finding for each part of `command` that writes a file in the project:
+ * a redirect, `tee`, `sed -i`, `perl -i`, or script code with a write call.
+ * `ctx` holds `project`, `cwd`, `home`, and `tmp`.
+ */
+export function writeFor(command, ctx) {
+  const findings = [];
+  for (const raw of partsOf(withoutHeredocs(command))) {
+    const words = commandWords(raw);
+    const name = base(words[0]);
+    const targets = [
+      ...redirectTargets(raw),
+      ...(name === "tee" ? teeTargets(words.slice(1)) : []),
+      ...inPlaceTargets(name, words.slice(1)),
+    ];
+    if (targets.some((t) => projectFile(t, ctx)))
+      findings.push({ part: partText(raw), reason: BASH_WRITE });
+  }
+  const scripted = partsOf(command).find((raw) =>
+    INTERPRETERS.has(base(commandWords(raw)[0])),
+  );
+  if (
+    scripted &&
+    !findings.length &&
+    scriptTargets(command).some((t) => projectFile(t, ctx))
+  )
+    findings.push({ part: partText(scripted), reason: BASH_WRITE });
   return findings;
 }
 
