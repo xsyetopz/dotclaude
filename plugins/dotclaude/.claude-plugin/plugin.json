@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.22.3",
+  "version": "0.23.0",
   "description": "A small Claude Code plugin with guards, model and effort rules, compaction and cache notes, and role agents.",
   "author": {
     "name": "xsyetopz"
