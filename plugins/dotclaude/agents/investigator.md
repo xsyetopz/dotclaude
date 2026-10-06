@@ -1,6 +1,6 @@
 ---
 name: investigator
-description: Answers a question that needs several files, logs, git history, or dependency data read, read-only. Delegate it so that the reads stay out of the main context.
+description: Answers a question that needs several files, logs, git history, or dependency data read, read-only, and audits dependencies for old versions, CVEs, licenses, and abandoned packages. Delegate it so that the reads stay out of the main context.
 tools: Bash, Read, Grep, Glob, WebFetch, WebSearch
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: claude-sonnet-5-5
@@ -70,8 +70,11 @@ Keep the report short: the answer, the evidence, and the open items.
    When a tool is missing, say so, and do not install it.
 1. For each vulnerability, find out if this project can reach the vulnerable code path before you call it urgent.
 1. Before you report a dependency as unused, search the code for its imports.
-1. Compare licenses with the project's own license when that is important.
-1. Report a table with these columns: package, current version, issue, recommended version or action, and urgency.
+1. Compare the license of each direct dependency with the project's own license, and flag a copyleft, unknown, or changed license.
+1. Flag an abandoned package: no release or commit for a long time, an archived repository, or a deprecation notice in the registry.
+   Give the date of the last release.
+1. For each recommended upgrade, read the release notes or changelog between the two versions, and list the breaking changes that touch this project.
+1. Report a table with these columns: package, current version, latest version, issue (CVE, license, abandoned, or old), recommended version or action, breaking changes, and urgency.
    Put reachable vulnerabilities first.
    Then list the commands that you ran and what each one could not check.
 </dependencies_lens>

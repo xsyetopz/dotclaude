@@ -41,7 +41,7 @@ It also sets the status line and the subagent status line.
 | Line breaks | Rewrap commit and `gh` messages with semantic line breaks by `sembr`, and give Claude the `sembr` text for prose that it wrote with breaks at a column. |
 | Minimal code | Tell Claude to build the minimum, with the idea of Ponytail. |
 | Status line | Model, effort, context against the compaction point, cache expiry, and usage limits. |
-| Agents | `investigator`, `web-researcher`, `implementer`, `reviewer`, `debugger`, `test-runner`, `reverse-engineer`, `translator`, `docs-writer`, `digest-writer`. |
+| Agents | `investigator`, `web-researcher`, `implementer`, `reviewer`, `debugger`, `test-runner`, `reverse-engineer`, `translator`, `docs-writer`, `digest-writer`, `eval-designer`, `fuzz-engineer`, `infra-engineer`. |
 | Skills | `/dotclaude:setup`, `/dotclaude:handoff`, `/dotclaude:contribute`. |
 | Style | `Concise`. |
 

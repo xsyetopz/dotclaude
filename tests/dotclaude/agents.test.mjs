@@ -7,7 +7,10 @@ const EXPECTED = [
   "debugger",
   "digest-writer",
   "docs-writer",
+  "eval-designer",
+  "fuzz-engineer",
   "implementer",
+  "infra-engineer",
   "investigator",
   "reverse-engineer",
   "reviewer",
@@ -73,6 +76,9 @@ test("the effort table holds", () => {
     "web-researcher": ["claude-sonnet-5-5", "medium"],
     translator: ["claude-sonnet-5-5", "medium"],
     "docs-writer": ["claude-sonnet-5-5", "medium"],
+    "eval-designer": ["claude-sonnet-5-5", "medium"],
+    "fuzz-engineer": ["claude-sonnet-5-5", "medium"],
+    "infra-engineer": ["claude-sonnet-5-5", "medium"],
   };
   for (const [name, [model, effort]] of Object.entries(table)) {
     expect([agents[name].model, agents[name].effort]).toEqual([model, effort]);

@@ -175,16 +175,19 @@ Where Claude Code does not load modules, such as with `--bare`, only the classic
 
 | Agent | What it does | User need | `maxTurns` |
 | --- | --- | --- | --- |
-| `investigator` | Reads in a separate context. | Keep long reads out of the main context. | 40 |
+| `investigator` | Reads in a separate context, and audits dependencies for CVEs, licenses, and abandoned packages. | Keep long reads out of the main context. | 40 |
 | `web-researcher` | Researches in a separate context. | Keep long reads out of the main context. | 60 |
 | `implementer` | Makes one scoped change with a known check. | Give edits to a cheaper model. | 80 |
-| `reviewer` | Reviews a diff. | A second reading with fresh context. | 60 |
+| `reviewer` | Reviews a diff, a plan, an API design, or the security of a whole feature. | A second reading with fresh context. | 60 |
 | `debugger` | Finds the cause of a failure. | A second reading with fresh context. | 60 |
 | `test-runner` | Runs tests and reports the result. | Run checks on the cheapest model. | 20 |
 | `reverse-engineer` | Reads binaries and file formats. | The one role that stays on Opus. | 60 |
 | `translator` | Translates and localizes strings and docs, and lists the defects before it edits. | Give translations to an agent that keeps keys and placeholders. | 60 |
 | `docs-writer` | Makes the docs agree with the code, with no `Bash`. | Give docs work to an agent that checks each claim in the code. | 40 |
 | `digest-writer` | Writes a short digest of long material, with references. | Read long material on the cheapest model. | 20 |
+| `eval-designer` | Writes eval cases and graders, and checks that each case fails on a baseline. | Measure a prompt, skill, or agent, and not only test code. | 60 |
+| `fuzz-engineer` | Writes fuzz and property tests, and reduces each crash to a minimal input. | Find the inputs that break a parser or a protocol. | 60 |
+| `infra-engineer` | Writes CI, container, build, and deploy config, and stops before an apply or a deploy. | Infra changes that leave each live change to the user. | 60 |
 
 ## Skills, output style, and plugins
 
