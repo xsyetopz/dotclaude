@@ -18,6 +18,7 @@ import {
   MINIMAL_CODE_MAX_BYTES,
   RULES_MAX_BYTES,
 } from "../../plugins/dotclaude/lib/budget.mjs";
+import { clauseTag } from "../../plugins/dotclaude/lib/terms.mjs";
 
 const RULES = join(
   import.meta.dir,
@@ -58,6 +59,9 @@ test("startup, clear, and compact add the rules", () => {
     expect(rules).toContain("<working_rules>");
     expect(longRuns).toContain("<long_runs>");
     expect(longRuns).toContain("time one run of the step");
+    expect(
+      contextFor({ source }, root).find((p) => p.includes("<user_questions>")),
+    ).toStartWith(clauseTag("user-questions"));
   }
   expect(contextFor({ source: "resume" }, root)).toEqual([]);
 });
@@ -73,10 +77,10 @@ test("startup and clear point at the newest in-progress note only", () => {
   expect(pointer).toContain(
     "`done` only when each item in its **Open** section is done",
   );
-  expect(contextFor({ source: "compact" }, root)).toHaveLength(5);
+  expect(contextFor({ source: "compact" }, root)).toHaveLength(6);
   expect(
     contextFor({ source: "startup" }, project({ "a.md": "done" })),
-  ).toHaveLength(5);
+  ).toHaveLength(6);
 });
 
 test("the minimal code rules are on unless the plugin option is false", () => {

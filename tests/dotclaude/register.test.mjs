@@ -55,7 +55,7 @@ async function call(handlers, $, e, result = { result: "ok" }) {
   return { r, verdict };
 }
 
-test("hooks.json names the module, PreToolUse, SessionStart, and SubagentStart", () => {
+test("hooks.json names the module, PreToolUse, SessionStart, Stop, and SubagentStart", () => {
   const json = JSON.parse(
     readFileSync(
       join(import.meta.dir, "../../plugins/dotclaude/hooks/hooks.json"),
@@ -66,12 +66,14 @@ test("hooks.json names the module, PreToolUse, SessionStart, and SubagentStart",
   expect(Object.keys(json.hooks)).toEqual([
     "PreToolUse",
     "SessionStart",
+    "Stop",
     "SubagentStart",
   ]);
   for (const [event, [entry]] of Object.entries(json.hooks)) {
     const script = entry.hooks[0].args[0];
     expect(script).toStartWith(`\${CLAUDE_PLUGIN_ROOT}/hooks/`);
     const file = script.replace(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: heredoc
       "${CLAUDE_PLUGIN_ROOT}",
       join(import.meta.dir, "../../plugins/dotclaude"),
     );

@@ -19,6 +19,7 @@ Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-
 | Working rules | `SessionStart` | `RULES_MAX_BYTES` | Gives Claude the few rules that have a stated incident, in at most 2,000 bytes. |
 | Long runs | `SessionStart` | none | Tells Claude to time and bound long steps. |
 | Subagent progress | `SessionStart`, `SubagentStart` | none | Keeps the work of a subagent that stops at its turn limit. |
+| Questions to the user | `SessionStart`, `Stop` | none | Keeps each question to the user in `AskUserQuestion`. |
 | CodeGraph call paths (`codegraph`) | `tool.call` | `CODEGRAPH_TIMEOUT_MS`, `CODEGRAPH_QUERY_LIMIT`, `CODEGRAPH_NEIGHBOURS`, `CODEGRAPH_NOTE_MAX_CHARS` | Adds callers and callees to a symbol search. |
 | CodeGraph index (`codegraph`) | `SessionStart` | none | Tells Claude to index a git repository. |
 | Git attribution | `SessionStart` | none | Puts back the commit trailer and pull request footer. |
@@ -81,6 +82,12 @@ Subagent progress:
 - The main agent reads the file and continues the agent with `SendMessage`.
 - Clause 15 of the [Terms of Use](Terms-of-Use) is not enforced.
 
+Questions to the user:
+
+- The `Stop` hook blocks the end of a turn whose last message asks the user a question in plain text.
+- It blocks only once in a row, so Claude can end a turn whose question is not to the user.
+- Clause 16 of the [Terms of Use](Terms-of-Use) has the detail.
+
 CodeGraph call paths:
 
 - Before the search, the module runs `codegraph index -q` when the index has an old format.
@@ -126,6 +133,7 @@ Where Claude Code does not load modules, such as with `--bare`, only the classic
 | `hooks/session-start/add-session-context.mjs` | Adds the `SessionStart` rows. Its `setupNotice` shows the stale-setup notice. |
 | `hooks/pre-tool-use/ask-guarded-calls.mjs` | Gives the asks of the Bash and edit guards again, and the ask of the policy guard. |
 | `hooks/subagent-start/add-subagent-context.mjs` | Gives each subagent the policy clause and its progress file. |
+| `hooks/stop/block-plain-questions.mjs` | Blocks the end of a turn that asks the user a question in plain text. |
 
 - The `PreToolUse` hook gives the asks again because in auto mode the classifier can allow a call that the module asks about.
   See [Claude mods](Claude-Mods).

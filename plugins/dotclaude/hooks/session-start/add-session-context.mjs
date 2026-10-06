@@ -105,6 +105,11 @@ const API_NOTE = clause(
   "<claude_plan>\nThe plan is pay-per-token API, so the prompt cache lives 5 minutes.\nA pause of more than 5 minutes makes the next prompt write the whole context again.\nBefore a long wait, finish the step or write a handoff note.\n</claude_plan>",
 );
 
+const USER_QUESTIONS = clause(
+  "user-questions",
+  "<user_questions>\nAsk each question to the user through `AskUserQuestion`, with options, and not in plain text, because the user can then pick an answer, and other hooks can add facts to the question.\n</user_questions>",
+);
+
 /**
  * The context parts for the SessionStart input `data`. The plugin option
  * `ponytail` comes as `CLAUDE_PLUGIN_OPTION_PONYTAIL`, and only "false"
@@ -133,7 +138,7 @@ export function contextFor(
       `<long_runs>\n${fs.readFileSync(LONG_RUNS, "utf8").trim()}\n</long_runs>`,
     ),
   );
-  parts.push(POLICY_CLAUSE, MAIN_PROGRESS);
+  parts.push(POLICY_CLAUSE, MAIN_PROGRESS, USER_QUESTIONS);
   if (ponytail !== "false")
     parts.push(
       clause(

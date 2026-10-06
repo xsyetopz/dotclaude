@@ -44,6 +44,11 @@ export const TERMS = [
     enforcedBy: "the policy guard",
   },
   { id: "subagent-progress", title: "Subagent progress" },
+  {
+    id: "user-questions",
+    title: "Questions to the user",
+    enforcedBy: "a Stop hook",
+  },
 ];
 
 /** The opening tag of the clause `id`. */

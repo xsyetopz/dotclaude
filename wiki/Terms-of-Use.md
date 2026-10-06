@@ -1,7 +1,7 @@
 # Terms of Use
 
 Each note that dotclaude or one of its plugins gives to an agent is a clause of the dotclaude Terms of Use.
-This page lists the 15 clauses and the hook that enforces each one.
+This page lists the 16 clauses and the hook that enforces each one.
 
 ## How the terms work
 
@@ -31,6 +31,7 @@ This page lists the 15 clauses and the hook that enforces each one.
 | 13 | Long runs | `long_runs`, at session start | Not enforced |
 | 14 | Project AI policy | `project_ai_policy`, at session start, at the start of each subagent, and after a fetch from a GitHub repository with a policy file, unless the `guard_policy` option is off | The policy guard ([details](#clause-14)) |
 | 15 | Subagent progress | `subagent_progress`, at session start and at the start of each subagent | Not enforced |
+| 16 | Questions to the user | `user_questions`, at session start | A Stop hook ([details](#clause-16)) |
 
 A deny reason of an enforced clause names the clause.
 A clause that is not enforced has no hook that can see a break of it, such as code that is larger than it needs to be.
@@ -63,6 +64,12 @@ A clause that is not enforced has no hook that can see a break of it, such as co
 - The ask comes before the call, so the user sees the policy before any code arrives.
 - It covers GitHub fetches and local clones, not other hosts.
 - It does not deny.
+
+### Clause 16
+
+- The Stop hook blocks the end of a turn when one of the last 3 prose lines of the last message ends in a question mark.
+- It skips code blocks, inline code, headings, and quotes.
+- It blocks only once in a row, so Claude can end a turn whose question is not to the user.
 
 ## Related pages
 
