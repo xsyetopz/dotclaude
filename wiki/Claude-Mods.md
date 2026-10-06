@@ -203,7 +203,7 @@ These facts are from live tests of 2.1.292 in `just sandbox` with Haiku 4.5 (**t
 - A SubagentStop hook that always blocks blocked a subagent 8 times.
   At the 9th block, the subagent ended, and the main agent got no warning.
   The main agent had no block before, so the test does not show that the two counts are separate.
-- The clause 18 prompt has about 1,000 characters.
+- The clause 18 prompt has about 1,150 characters.
   In one run of each of 7 sample reports, it gave the correct result for 6:
   - It let through a report that skipped a step at the request of the user.
   - It let through a report with a passing check, and a report with a **Not verified** list.

@@ -10,6 +10,14 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-10-06
+
+### Fixed
+
+- The clause 18 prompt hook let through a progress report that calls each part written or still running, and says that its checks are still to run.
+  Before, it blocked such a report in 2 of 5 runs, because it read "written" as "done".
+  With the fix, it let through the same report in 8 of 8 runs, and blocked a false done claim in 4 of 4 runs.
+
 ## [0.25.0] - 2026-10-06
 
 ### Added
@@ -174,4 +182,4 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.25.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.25.1...HEAD

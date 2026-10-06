@@ -86,6 +86,7 @@ A clause that is not enforced has no hook that can see a break of it, such as co
   For example, a check of the part did not run, failed, is flaky, or is pre-existing.
   It also blocks a done claim next to a failed-test count that is not 0.
 - A **Not verified** list, open items, and a skipped step that is not a check do not count.
+  A progress report that calls each part written or still running, and says that its checks are still to run, does not count.
   A part under **Not verified** that the message also calls done is a break.
 - When the model is not sure, it blocks, because a missed failure looks like finished work.
 - The hook blocks only once in a row.
