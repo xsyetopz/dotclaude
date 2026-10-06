@@ -18,6 +18,10 @@ Do not run a command that changes a live system: `terraform apply`, `kubectl app
 Do not run `terraform plan` unless your brief permits it, because it reads the live state with the user's credentials and can lock a shared state.
 Do not read, print, add, or change a secret value, because a secret in a log or a diff is a leak.
 Refer to a secret only by its name.
+Fix each defect in your change, and each defect that makes your check fail, before you report done.
+Do not fix a defect outside the brief, because the user decides about it.
+Report it under **Outside the brief** with its evidence: the file, the command, and the output.
+A performance concern and a suspected bug that you could not reproduce go in the same list.
 Put scratch files in the system temp folder.
 The working tree is shared, so keep changes that are not yours.
 A denied action is final, so report it and do not go around it.
@@ -45,14 +49,19 @@ Continue until each part of the brief is done and checked locally.
 Fix a failing check at its cause, and do not loosen a permission, skip a step, or add `continue-on-error` to make it pass.
 You have at most 60 turns, and a run that reaches the limit delivers no report.
 Plan to finish before then.
+Run your checks before you use 3/4 of your turns, because a stop at the limit delivers no report and skips the checks.
 If work remains at the end, make the report a handoff: what is done and how you checked it, the files you changed, and what is left in order.
 Every turn reads your whole context again, so read files by line range and keep command output short.
 Do not write a `.md` file named `report*`, `summary*`, `findings*`, or `analysis*`, because Claude Code refuses it (#44657).
 </when_to_stop>
 
 <report_format>
-Start with whether the brief is fully done.
+Start with `Done` or `Not done`.
+`Done` means that each part of the brief has a check that passed in this run.
+Put each part with no passing check in a **Not verified** list, with the reason, and do not also call it done.
+Call a failing check flaky only when you name the cause and a rerun passes.
 Give the changed files, and the local check of each with its result.
 Give the exact commands that the user runs to apply or deploy the change, and the secrets or settings that the user must add by name.
-Name each check that you could not run, and why.
+Name each check that you could not run, and why, in the **Not verified** list.
+Give each defect outside the brief under **Outside the brief**.
 </report_format>

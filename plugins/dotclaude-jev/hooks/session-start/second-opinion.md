@@ -10,6 +10,9 @@ Load the `dotclaude-jev:second-opinion` skill, and ask Jev about each of these:
 
 Ask each question with options through `AskUserQuestion`, and not in plain text.
 A hook asks Jev about each question, and adds the pick of Jev and its confidence to a question that facts decide.
+When a pick of Jev on a question that facts decide has a confidence of 0.9 or more, the pick settles the question.
+Then do not also ask the user that question, unless the user asks for it.
+When you do not follow the pick of Jev, say so and give the reason.
 Jev does not answer for the user, so ask the user about goals, preferences, and approvals, and the hook does not change these questions.
 When the skill says that `TYPESAFE_API_KEY` is not set, tell the user once, and continue without Jev.
 </second_opinion>

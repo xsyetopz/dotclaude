@@ -1,6 +1,6 @@
 # Parts
 
-This page lists each part of dotclaude 0.22.2, the event that runs it, its bound, and the need that it serves.
+This page lists each part of dotclaude 0.25.0, the event that runs it, its bound, and the need that it serves.
 All bounds are in `plugins/dotclaude/lib/budget.mjs`, and tests pin the copies of a bound in code and config.
 
 ## Hooks
@@ -11,6 +11,7 @@ Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-
 | --- | --- | --- | --- |
 | Bash guard (`guard_bash`) | `tool.call` | `COMMAND_PART_CHARS` | Asks before a risky command. Denies a Claude trailer that the settings leave out. |
 | Edit guard (`guard_edit`) | `tool.call` | none | Asks before a risky edit. |
+| Plugin publish ask | `tool.call`, `PreToolUse` | none | Asks before a `PublishPlugin` call. |
 | Secret redaction (`guard_secrets`) | `tool.call` | `SECRET_SCAN_TIMEOUT_MS`, `SECRET_SCAN_MAX_BYTES` | Keeps a secret in a tool result out of the context. |
 | Project AI policy guard (`guard_policy`) | `PreToolUse`, `tool.call`, `SessionStart`, `SubagentStart` | `POLICY_FETCH_TIMEOUT_MS`, `POLICY_FILE_MAX_CHARS`, `POLICY_REASON_MAX_CHARS`, `POLICY_PATHS_MAX` | Respects a project that forbids AI tools. |
 | Spawn rules (`guard_agents`) | `agent.spawn` | `SUBAGENT_EFFORTS` | Keeps the subagent model and effort within the [rules](#model-and-effort-rules). |
@@ -20,6 +21,7 @@ Each note of these parts to an agent is a clause of the [Terms of Use](Terms-of-
 | Long runs | `SessionStart` | none | Tells Claude to time and bound long steps. |
 | Subagent progress | `SessionStart`, `SubagentStart` | none | Keeps the work of a subagent that stops at its turn limit. |
 | Questions to the user | `SessionStart`, `Stop` | none | Keeps each question to the user in `AskUserQuestion`. |
+| Known defects | `SessionStart`, `SubagentStart`, `Stop`, `SubagentStop` | none | Keeps a known defect or a skipped check out of a done report. |
 | CodeGraph call paths (`codegraph`) | `tool.call` | `CODEGRAPH_TIMEOUT_MS`, `CODEGRAPH_QUERY_LIMIT`, `CODEGRAPH_NEIGHBOURS`, `CODEGRAPH_NOTE_MAX_CHARS` | Adds callers and callees to a symbol search. |
 | CodeGraph index (`codegraph`) | `SessionStart` | none | Tells Claude to index a git repository. |
 | Git attribution | `SessionStart` | none | Puts back the commit trailer and pull request footer. |
@@ -42,6 +44,11 @@ Bash guard:
 Edit guard:
 
 - It asks before an edit that removes test assertions, adds a skip marker, writes a `[REDACTED:` marker, or changes a generated file, a lockfile, or a Claude Code settings file.
+
+Plugin publish ask:
+
+- `PublishPlugin` (Claude Code 2.1.292) publishes a plugin to the claude.ai library of the organization, where other people can see it.
+- No `guard_*` option turns this ask off.
 
 Secret redaction:
 
@@ -90,6 +97,16 @@ Questions to the user:
 - It blocks only once in a row, so Claude can end a turn whose question is not to the user.
 - Clause 16 of the [Terms of Use](Terms-of-Use) has the detail.
 
+Known defects:
+
+- The note tells Claude to fix each defect in its own change, and to report a defect outside the request with its evidence.
+  The main agent then asks the user to fix it now, or to keep it open with a reason and an owner.
+- A prompt hook (`"type": "prompt"`) on `Stop` and `SubagentStop` blocks a last message that calls a part done that no check passed on.
+  A **Not verified** list does not count.
+- It blocks only once in a row.
+- It uses the background model of Claude Code, so each stop adds one model call.
+- Clause 18 of the [Terms of Use](Terms-of-Use) has the detail.
+
 CodeGraph call paths:
 
 - Before the search, the module runs `codegraph index -q` when the index has an old format.
@@ -136,12 +153,13 @@ Where Claude Code does not load modules, such as with `--bare`, only the classic
 | --- | --- |
 | `hooks/session-start/add-session-context.mjs` | Adds the `SessionStart` rows. Its `setupNotice` shows the stale-setup notice. |
 | `hooks/pre-tool-use/ask-guarded-calls.mjs` | Gives the asks of the Bash and edit guards again, and the ask of the policy guard. |
-| `hooks/subagent-start/add-subagent-context.mjs` | Gives each subagent the policy clause and its progress file. |
+| `hooks/subagent-start/add-subagent-context.mjs` | Gives each subagent the policy clause, the known defects clause, and its progress file. |
 | `hooks/stop/block-plain-questions.mjs` | Blocks the end of a turn that asks the user a question in plain text. |
+| Prompt hook on `Stop` and `SubagentStop` | Blocks the end of a turn or of a subagent that calls a part done that no check passed on. Its prompt is in `hooks/hooks.json`. |
 
 - The `PreToolUse` hook gives the asks again because in auto mode the classifier can allow a call that the module asks about.
   See [Claude mods](Claude-Mods).
-- It starts one process for each `Bash`, `Edit`, `Write`, `WebFetch`, `Read`, `Grep`, and `Glob` call.
+- It starts one process for each `Bash`, `Edit`, `Write`, `WebFetch`, `Read`, `Grep`, `Glob`, and `PublishPlugin` call.
 - The `SubagentStart` hook exists because a subagent does not get the `SessionStart` context.
 - `plugins/dotclaude/lib/setup/diff.mjs` compares the user setup with the profile for the stale-setup notice.
 
@@ -157,7 +175,7 @@ Where Claude Code does not load modules, such as with `--bare`, only the classic
 
 - `lib/` imports only itself.
 - `hooks/`, `status-line/`, and the skill scripts import only `lib/` and their own folder.
-- The texts are `context/working-rules.md`, `context/minimal-code.md`, `context/long-runs.md`, `CLAUDE.md.block`, and `settings.json`.
+- The texts are `context/working-rules.md`, `context/minimal-code.md`, `context/long-runs.md`, `context/known-defects.md`, `CLAUDE.md.block`, and `settings.json`.
 - `/dotclaude:setup` merges `CLAUDE.md.block` and `settings.json` into the files of the user.
 - The block has a `<codegraph>` rule, and setup removes an old `CODEGRAPH_START` section after a backup.
 

@@ -2,6 +2,10 @@
 // reasons to ask before an edit. `existing` is the text of the file before a
 // `Write`, or null when the file is new or unreadable.
 
+/** The reason to ask before a `PublishPlugin` call. */
+export const PUBLISH_PLUGIN_REASON =
+  "This call publishes a plugin to the claude.ai library of the organization. Other people of the organization can then see and install it. Check the plugin and its files before you publish.";
+
 const SETTINGS =
   /(^|\/)\.claude\/settings(\.local)?\.json$|(^|\/)managed-settings(\.d\/[^/]+)?\.json$/;
 const GENERATED =
@@ -44,7 +48,7 @@ export function editReasons(tool, input, existing = null) {
   const out = [];
   if (SETTINGS.test(file))
     out.push(
-      `${name} holds Claude Code settings. An edit can change permissions or hooks.`,
+      `${name} holds Claude Code settings. An edit can change permissions or hooks. Make the edit only if the user asked for this change.`,
     );
   if (GENERATED.test(file))
     out.push(
@@ -54,7 +58,7 @@ export function editReasons(tool, input, existing = null) {
   // The secret redaction (`secrets.mjs`) writes this marker into tool output.
   if (count(REDACTED, after) > count(REDACTED, before ?? ""))
     out.push(
-      `The edit writes a \`[REDACTED:\` marker into ${name}. The secret redaction put this marker in a tool output in place of a value, so the edit can replace the real value in the file.`,
+      `The edit writes a \`[REDACTED:\` marker into ${name}. The secret redaction put this marker in a tool output in place of a value. The edit can replace the real value in the file. Keep the old text in the place of the marker.`,
     );
   if (TEST_PATH.test(file)) {
     // A new test file weakens no test.
@@ -62,11 +66,11 @@ export function editReasons(tool, input, existing = null) {
       const removed = count(ASSERT, before) - count(ASSERT, after);
       if (removed > 0)
         out.push(
-          `The edit removes ${removed} assertion(s) from the test file ${name}.`,
+          `The edit removes ${removed} assertion(s) from the test file ${name}. A test with fewer assertions can hide a defect. Keep each assertion, or tell the user why you remove it.`,
         );
       if (count(SKIP, after) > count(SKIP, before))
         out.push(
-          `The edit adds a \`skip\`, \`xfail\`, \`todo\`, or focus marker to the test file ${name}.`,
+          `The edit adds a \`skip\`, \`xfail\`, \`todo\`, or focus marker to the test file ${name}. The marker stops tests from running, so a failure stays hidden. Fix the cause of the failure and keep each test on.`,
         );
     }
   }

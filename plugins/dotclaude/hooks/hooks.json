@@ -1,10 +1,10 @@
 {
-  "description": "dotclaude hooks: module/index.mjs runs the guards, the subagent rules, and the prompt and compaction notes. pre-tool-use/ask-guarded-calls.mjs keeps the asks of the guards in auto mode, and asks before a call reaches a project with an AI policy. session-start/add-session-context.mjs adds the working rules. stop/block-plain-questions.mjs blocks the end of a turn that asks the user a question in plain text. subagent-start/add-subagent-context.mjs gives each subagent the project AI policy clause and the path of its progress file",
+  "description": "dotclaude hooks: module/index.mjs runs the guards, the subagent rules, and the prompt and compaction notes. pre-tool-use/ask-guarded-calls.mjs keeps the asks of the guards in auto mode, and asks before a call reaches a project with an AI policy. session-start/add-session-context.mjs adds the working rules. stop/block-plain-questions.mjs blocks the end of a turn that asks the user a question in plain text. A prompt hook on Stop and SubagentStop blocks the end of a turn, for the main agent and for each subagent, that calls a part done that no check passed on. subagent-start/add-subagent-context.mjs gives each subagent the project AI policy clause, the known defects clause, and the path of its progress file",
   "modules": ["./module/index.mjs"],
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|WebFetch|Read|Grep|Glob",
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|WebFetch|Read|Grep|Glob|PublishPlugin",
         "hooks": [
           {
             "type": "command",
@@ -41,6 +41,11 @@
               "${CLAUDE_PLUGIN_ROOT}/hooks/stop/block-plain-questions.mjs"
             ],
             "timeout": 10
+          },
+          {
+            "type": "prompt",
+            "prompt": "Clause 18 of the dotclaude Terms of Use: the agent calls a part done only when a check of that part passed.\nHook input: $ARGUMENTS\nIf `stop_hook_active` is `true`, return {\"ok\": true}.\nIn `last_assistant_message`, a break is one part that is called done, fixed, or passing, and whose check did not run, failed, is flaky, or is pre-existing.\nA done claim next to a count of failed tests that is not 0 is also a break, whatever the cause.\nA part under **Not verified**, or called open, \"may be done\", or not checked, passes, also when the message calls other parts done.\nIt is a break when the message also calls that same part done.\nA skipped step that is not a check passes.\nFor a break, return {\"ok\": false, \"reason\": \"...\"}.\nIf you are not sure, return {\"ok\": false}, because a false block costs only one turn.\nIn `reason`, name the part, and tell the agent to fix it or to move it to a **Not verified** list.\nEnd `reason` with: This is clause 18 of the dotclaude Terms of Use.",
+            "timeout": 30
           }
         ]
       }
@@ -55,6 +60,17 @@
               "${CLAUDE_PLUGIN_ROOT}/hooks/subagent-start/add-subagent-context.mjs"
             ],
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Clause 18 of the dotclaude Terms of Use: the agent calls a part done only when a check of that part passed.\nHook input: $ARGUMENTS\nIf `stop_hook_active` is `true`, return {\"ok\": true}.\nIn `last_assistant_message`, a break is one part that is called done, fixed, or passing, and whose check did not run, failed, is flaky, or is pre-existing.\nA done claim next to a count of failed tests that is not 0 is also a break, whatever the cause.\nA part under **Not verified**, or called open, \"may be done\", or not checked, passes, also when the message calls other parts done.\nIt is a break when the message also calls that same part done.\nA skipped step that is not a check passes.\nFor a break, return {\"ok\": false, \"reason\": \"...\"}.\nIf you are not sure, return {\"ok\": false}, because a false block costs only one turn.\nIn `reason`, name the part, and tell the agent to fix it or to move it to a **Not verified** list.\nEnd `reason` with: This is clause 18 of the dotclaude Terms of Use.",
+            "timeout": 30
           }
         ]
       }

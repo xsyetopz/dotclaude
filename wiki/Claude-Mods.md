@@ -168,6 +168,55 @@ No native event exists for the first five.
 
 </details>
 
+## Prompt hooks on Stop
+
+dotclaude uses a classic hook with `"type": "prompt"` on `Stop` and `SubagentStop` for clause 18.
+These facts are from the Claude Code 2.1.292 binary (**binary**), read only:
+
+- Claude Code sends the hook `prompt` as a condition, after the words "has the following stopping condition been satisfied? Answer based on transcript evidence only."
+  Stop and SubagentStop get their own system prompt for this.
+- The model is the hook `model` field, else `ANTHROPIC_SMALL_FAST_MODEL`, else Haiku in most setups.
+- The default timeout is 30 seconds.
+- The answer schema is `ok`, `reason`, and `impossible`, and `ok` and `reason` are required.
+  An `ok: false` answer on Stop or SubagentStop blocks, and Claude gets the reason and continues.
+  With `impossible: true`, the stop goes through.
+- The next stop in the turn has `stop_hook_active: true`.
+- A timeout, an API error, invalid JSON, or a schema failure does not block, so the hook fails open.
+- Claude Code ends the turn after 8 consecutive blocks from Stop hooks, and shows a warning.
+  `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` changes the cap, and a value of 0 or less removes it.
+- Each query loop keeps its own count of blocks, and a subagent runs its own loop.
+  The count goes back to 0 when Claude calls a tool.
+  At the cap, Claude Code shows the warning only for the main agent.
+
+These facts are from live tests of 2.1.292 in `just sandbox` with Haiku 4.5 (**tested**):
+
+- A `"type": "prompt"` hook in a plugin `hooks.json` runs on Stop and on SubagentStop.
+  The 2.1.0 changelog added prompt hooks from plugins.
+  The bug in [issue #13155](https://github.com/anthropics/claude-code/issues/13155) does not occur on 2.1.292.
+- The evaluator model is `claude-haiku-4-5`.
+  It gets the transcript, and `$ARGUMENTS` in the prompt becomes the hook input JSON.
+- On a block, Claude gets `Stop hook feedback:`, then the full hook prompt in square brackets, then the `reason`.
+  The prompt in this text has `$ARGUMENTS`, not the hook input.
+  Thus a long prompt adds its full length to the context at each block, and Claude reads each rule of the prompt, also the rules that let a message through.
+  Keep the prompt short, and write it as a rule that Claude can read.
+- The model writes its own `reason`, and does not copy a sample reason from the prompt.
+- A SubagentStop hook that always blocks blocked a subagent 8 times.
+  At the 9th block, the subagent ended, and the main agent got no warning.
+  The main agent had no block before, so the test does not show that the two counts are separate.
+- The clause 18 prompt has about 1,000 characters.
+  In one run of each of 7 sample reports, it gave the correct result for 6:
+  - It let through a report that skipped a step at the request of the user.
+  - It let through a report with a passing check, and a report with a **Not verified** list.
+  - It blocked a report that called a fix done, apart from a flaky test.
+  - It blocked a report that called a slice done with 1 failed test from another agent.
+  - It blocked a report that called a fix done and also put the fix under **Not verified**.
+  - It blocked an open item that "may already be done", although the prompt lets such an item through.
+    The rule to block when the model is not sure is the probable cause.
+- At the next stop, `stop_hook_active` was `true`, and the hook let the stop through.
+
+The [hooks doc](https://code.claude.com/docs/en/hooks) says that the count goes back to 0 at each tool call.
+The [environment variables doc](https://code.claude.com/docs/en/env-vars) says that the cap applies to Stop and SubagentStop hooks.
+
 ## Related pages
 
 - [Parts](Parts) lists what the module does.

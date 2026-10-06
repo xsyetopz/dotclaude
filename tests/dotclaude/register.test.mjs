@@ -55,7 +55,7 @@ async function call(handlers, $, e, result = { result: "ok" }) {
   return { r, verdict };
 }
 
-test("hooks.json names the module, PreToolUse, SessionStart, Stop, and SubagentStart", () => {
+test("hooks.json names the module, PreToolUse, SessionStart, Stop, SubagentStart, and SubagentStop", () => {
   const json = JSON.parse(
     readFileSync(
       join(import.meta.dir, "../../plugins/dotclaude/hooks/hooks.json"),
@@ -68,9 +68,12 @@ test("hooks.json names the module, PreToolUse, SessionStart, Stop, and SubagentS
     "SessionStart",
     "Stop",
     "SubagentStart",
+    "SubagentStop",
   ]);
   for (const [event, [entry]] of Object.entries(json.hooks)) {
-    const script = entry.hooks[0].args[0];
+    const command = entry.hooks.find((h) => h.type === "command");
+    if (!command) continue;
+    const script = command.args[0];
     expect(script).toStartWith(`\${CLAUDE_PLUGIN_ROOT}/hooks/`);
     const file = script.replace(
       // biome-ignore lint/suspicious/noTemplateCurlyInString: heredoc
@@ -80,7 +83,7 @@ test("hooks.json names the module, PreToolUse, SessionStart, Stop, and SubagentS
     expect(existsSync(file), event).toBe(true);
   }
   expect(json.hooks.PreToolUse[0].matcher).toBe(
-    "Bash|Edit|Write|MultiEdit|NotebookEdit|WebFetch|Read|Grep|Glob",
+    "Bash|Edit|Write|MultiEdit|NotebookEdit|WebFetch|Read|Grep|Glob|PublishPlugin",
   );
   expect(typeof json.description).toBe("string");
 });
@@ -154,6 +157,17 @@ test("an edit of a settings file asks", async () => {
     new_string: "b",
   });
   expect(verdict.decision).toBe("ask");
+});
+
+test("a PublishPlugin call asks, also with each guard option off", async () => {
+  const { $ } = engine();
+  const { verdict } = await call(
+    load({ guard_bash: false, guard_edit: false }),
+    $,
+    { tool: "PublishPlugin" },
+  );
+  expect(verdict.decision).toBe("ask");
+  expect(verdict.reason).toContain("claude.ai library");
 });
 
 test("an option set to false turns a guard off", async () => {

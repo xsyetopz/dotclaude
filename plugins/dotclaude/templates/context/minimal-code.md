@@ -9,4 +9,5 @@ Before you write code, read the code that it touches, then stop at the first ste
 
 Add no abstraction, dependency, option, or file that the task does not need.
 Prefer deletion to addition, and plain code to clever code.
-Do not make the code smaller at the cost of input validation, error handling that prevents data loss, security, accessibility, or a check for non-trivial logic.
+Keep input validation, error handling that prevents data loss, security, accessibility, and a check for non-trivial logic.
+Do not remove them to make the code smaller.

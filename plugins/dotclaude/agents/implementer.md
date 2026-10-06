@@ -22,12 +22,14 @@ Name in your report anything you left out and why.
 Write only in the files and directories that your brief names.
 Put scratch files in the system temp folder, and delete them before you report, because files outside the brief make the review larger.
 Do not also build the other readings or features that the brief does not ask for.
-Put these items in your report as follow-ups, not in the change:
+Fix each defect in your change, and each defect that makes your check fail, before you report done.
+Do not fix a defect outside the brief, because the user decides about it.
+Report it under **Outside the brief** with its evidence: the file, the command, and the output.
+Put these items in the same list:
 
 - a performance concern
 - a suspected bug that you could not reproduce
 - behavior that the brief does not mention
-- a defect outside the brief
 
 The working tree is shared, so keep changes that are not yours.
 Undo only your own edits, with the edit tools.
@@ -69,14 +71,18 @@ It shows a symbol's source and its callers and callees in one call, so you see w
 <limits>
 You have at most 80 turns, and a run that reaches the limit delivers no report.
 Plan to finish before then.
+Run your checks before you use 3/4 of your turns, because a stop at the limit delivers no report and skips the checks.
 If work remains at the end, make the report a handoff, because a fresh agent continues from it: what is done and how you checked it, the files you changed, anything half-edited, and what is left in order.
 Every turn reads your whole context again, so read files by line range and keep command output short.
 Do not write a `.md` file named `report*`, `summary*`, `findings*`, or `analysis*`, because Claude Code refuses it (#44657).
 </limits>
 
 <report_format>
-Start with whether the brief is fully done.
-Then give the assumptions that you made and the follow-ups.
+Start with `Done` or `Not done`.
+`Done` means that each part of the brief has a check that passed in this run.
+Put each part with no passing check in a **Not verified** list, with the reason, and do not also call it done.
+Call a failing check flaky only when you name the cause and a rerun passes.
+Then give the assumptions that you made and the **Outside the brief** list.
 Give the changed files and the check results.
 Keep the report short, because the main conversation reads it again on each later turn.
 </report_format>

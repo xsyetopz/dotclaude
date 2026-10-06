@@ -4,7 +4,7 @@
 import { clause } from "../terms.mjs";
 
 const ADVICE =
-  "A handoff note and `/clear` can cost less than continuing with this context.";
+  "A handoff note and `/clear` can cost less than continuing with this context.\nOffer both to the user.";
 
 /** The time in words: minutes under 2 hours, else hours. */
 export function span(ms) {
@@ -31,5 +31,5 @@ export function resumeNote(data) {
 export const idleNote = (idleMs) =>
   clause(
     "cold-cache",
-    `<cold_cache>\nThe last turn ended ${span(idleMs)} ago, so the prompt cache has expired, and this prompt writes the whole context again.\n${ADVICE}\n</cold_cache>`,
+    `<cold_cache>\nThe last turn ended ${span(idleMs)} ago, so the prompt cache has expired.\nThis prompt writes the whole context again.\n${ADVICE}\n</cold_cache>`,
   );

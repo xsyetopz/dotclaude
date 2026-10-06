@@ -54,6 +54,11 @@ export const TERMS = [
     title: "Game modding (dotclaude-modder)",
     enforcedBy: "a hook that denies a kill by process name",
   },
+  {
+    id: "known-defects",
+    title: "Known defects",
+    enforcedBy: "a Stop hook and a SubagentStop hook",
+  },
 ];
 
 /** The opening tag of the clause `id`. */

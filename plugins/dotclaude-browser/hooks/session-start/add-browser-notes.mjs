@@ -4,10 +4,10 @@
 // never skill text, so a non-default `backend` is passed on here.
 
 const LOAD_SKILL =
-  "For anything in a web browser (agent-browser, CloakBrowser, screenshots, forms), load the `dotclaude-browser:drive-web-browser` skill before the first browser command.";
+  "For anything in a web browser (agent-browser, CloakBrowser, screenshots, forms), load the `dotclaude-browser:drive-web-browser` skill before the first browser command. The skill has the commands and the rules for the browser.";
 
 const CLOAKBROWSER_NOTE =
-  "Use CloakBrowser as the browser backend, not plain `agent-browser`. Follow the skill's CloakBrowser section.";
+  "Use CloakBrowser as the browser backend, not plain `agent-browser`, because the user chose this backend. Follow the skill's CloakBrowser section.";
 
 // Clause 9 of the dotclaude Terms of Use. A test compares the tag with
 // `plugins/dotclaude/lib/terms.mjs`, which this plugin cannot import.

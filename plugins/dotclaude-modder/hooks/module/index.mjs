@@ -16,7 +16,7 @@ const KILL_BY_NAME = [
 ];
 
 export const KILL_REASON =
-  "Clause 17 (Game modding): this command stops processes by name or by pattern, and a name can also match your own shell or other apps of the user. Find the PID with `um win ps`, and stop that one process with `um win kill <pid>`.";
+  "This command stops processes by name or by pattern. A name can also match your own shell or other apps of the user. Find the PID with `um win ps`, and stop that one process with `um win kill <pid>`. This is clause 17 of the dotclaude Terms of Use.";
 
 /** True when `command` stops processes by name or by pattern. */
 export const killsByName = (command) =>

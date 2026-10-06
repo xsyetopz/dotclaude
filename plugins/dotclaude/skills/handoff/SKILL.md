@@ -29,6 +29,8 @@ written: <UTC time, ISO 8601>
 ```
 
 Set `status: done` only when **Open** is empty.
+When an item in **Open** was also open in an earlier note, do it in this session, or ask the user about it through `AskUserQuestion`.
+An item that moves from note to note with no decision never closes.
 When a newer note continues the work of an earlier open note, set the earlier note to `status: superseded`.
 A new session continues only from a note with `in-progress` or `blocked`.
 </header>
@@ -46,6 +48,8 @@ Skip a section only when it has no content:
    When a later decision replaced an earlier one, give the later one and name the one that it replaced.
 1. **Open**: the remaining steps in order, each request from the user that is not started, and each blocked item with its blocker.
    Include each question that waits for the user's answer, and each thing that you told the user you would do.
+   Give each item the reason that it stays open, and its owner: the user, or the next session.
+   An item that moves from note to note with no decision stays open.
 1. **Details that are hard to rebuild**: exact error messages, commands, IDs, versions, and `file:line` locations that the next session would otherwise find again.
 </sections>
 

@@ -78,10 +78,10 @@ test("startup and clear point at the newest in-progress note only", () => {
   expect(pointer).toContain(
     "`done` only when each item in its **Open** section is done",
   );
-  expect(contextFor({ source: "compact" }, root)).toHaveLength(6);
+  expect(contextFor({ source: "compact" }, root)).toHaveLength(7);
   expect(
     contextFor({ source: "startup" }, project({ "a.md": "done" })),
-  ).toHaveLength(6);
+  ).toHaveLength(7);
 });
 
 test("the minimal code rules are on unless the plugin option is false", () => {

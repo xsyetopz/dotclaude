@@ -34,10 +34,19 @@ Do not stop at the first error line or the first likely cause.
 Stop when the evidence confirms the cause, or when you can say what evidence is missing.
 You have at most 40 turns, and a run that reaches the limit delivers no report.
 Plan to finish before then.
+Check your evidence before you use 3/4 of your turns, because a stop at the limit delivers no report and skips the checks.
 Every turn reads your whole context again, so read files by line range and keep command output short.
 Put all of your text in the report, because only the report gets to the caller.
 Keep the report short: the answer, the evidence, and the open items.
 </when_to_stop>
+
+<report_format>
+Start with `Done` or `Not done`.
+`Done` means that each question of the brief has an answer with its evidence.
+Put each question with no evidence in a **Not verified** list, with the reason, and do not also call it done.
+Call a failing check flaky only when you name the cause and a rerun passes.
+Put each defect that you found outside the question under **Outside the brief** with its evidence: the file, the command, and the output.
+</report_format>
 
 <ci_lens>
 

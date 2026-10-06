@@ -36,6 +36,21 @@ test("an edit of Claude settings gives a reason", () => {
   expect(askReason(data, env)).toContain("Claude Code settings");
 });
 
+test("a PublishPlugin call gives a reason", () => {
+  const data = {
+    tool_name: "PublishPlugin",
+    tool_input: { path: "/work/app" },
+  };
+  expect(askReason(data, env)).toContain("library of the organization");
+  expect(
+    askReason(data, {
+      ...env,
+      CLAUDE_PLUGIN_OPTION_GUARD_BASH: "false",
+      CLAUDE_PLUGIN_OPTION_GUARD_EDIT: "false",
+    }),
+  ).toContain("publishes a plugin");
+});
+
 test("the guard options turn the asks off", () => {
   expect(
     askReason(bash("git reset --hard"), {

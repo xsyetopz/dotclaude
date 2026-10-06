@@ -281,7 +281,7 @@ export const GH_MESSAGE =
 
 export const COMMAND_NOTE = clause(
   "line-breaks",
-  "<line_breaks>\nThe hook changed the line breaks of the message in this command to semantic line breaks with `sembr`.\n</line_breaks>",
+  "<line_breaks>\nThe hook changed the line breaks of the message in this command to semantic line breaks with `sembr`.\nWrite semantic line breaks in the next commit, pull request, or issue message, so that the hook does not change it.\n</line_breaks>",
 );
 
 /** The note that gives the fixed lines of each block in `name`. */
@@ -289,13 +289,13 @@ export function lineBreakNote(name, fixes) {
   const shown = fixes.slice(0, LINE_BREAK_NOTE_MAX_BLOCKS);
   const more =
     fixes.length > shown.length
-      ? `\n${fixes.length - shown.length} more blocks have the same problem.`
+      ? `\n${fixes.length - shown.length} more blocks have the same problem.\nChange them in the same way.`
       : "";
   const blocks = shown
     .map((f) => `<fixed_text>\n${f.fixed.join("\n")}\n</fixed_text>`)
     .join("\n");
   return clause(
     "line-breaks",
-    `<line_breaks>\nThe edit of \`${name}\` has prose that breaks lines at a column.\nA semantic line break starts each sentence on a new line and breaks a long sentence only between clauses, so editors can wrap the text and diffs stay small.\n\`sembr\` gives the text below.\nUse \`Edit\` to change each block to this text, unless the project wraps prose at a column.\n${blocks}${more}\n</line_breaks>`,
+    `<line_breaks>\nThe edit of \`${name}\` has prose that breaks lines at a column.\nA semantic line break starts each sentence on a new line.\nIt breaks a long sentence only between clauses.\nThen editors can wrap the text, and diffs stay small.\n\`sembr\` gives the text below.\nUse \`Edit\` to change each block to this text, unless the project wraps prose at a column.\n${blocks}${more}\n</line_breaks>`,
   );
 }

@@ -65,7 +65,9 @@ test("the user's own repository gets the default trailer and footer", () => {
 test("without the model in the hook input, Claude writes its model name", () => {
   const note = attributionNote(undefined, OFF);
   expect(note).toContain("Co-Authored-By: <model> <noreply@anthropic.com>");
-  expect(note).toContain("changed to the name of the model that you run on");
+  expect(note).toContain(
+    "Change `<model>` to the name of the model that you run on",
+  );
   expect(note).not.toContain("this text exactly:\nCo-Authored-By");
 });
 

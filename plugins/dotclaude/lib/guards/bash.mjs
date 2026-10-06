@@ -407,12 +407,12 @@ export function askFor(command, ctx) {
   return findings;
 }
 
-const BASH_WRITE = `This command writes a project file through \`Bash\`. Edit a project file with \`Edit\` or \`Write\`, because these tools show the user a diff, Claude Code checkpoints can rewind them, and the dotclaude edit guard checks them. A \`Bash\` write skips all of these. Put a temporary file in \`$TMPDIR\`. This is clause ${TERMS.findIndex((t) => t.id === "working-rules") + 1} of the dotclaude Terms of Use.`;
-// The auto-mode text of Claude Code 2.1.290 tells Claude to edit files with `sed`, heredocs,
+const BASH_WRITE = `This command writes a project file through \`Bash\`. Edit a project file with \`Edit\` or \`Write\`. These tools show the user a diff, and Claude Code checkpoints can rewind them. The dotclaude edit guard also checks them. A \`Bash\` write skips all of these. Put a temporary file in \`$TMPDIR\`. This is clause ${TERMS.findIndex((t) => t.id === "working-rules") + 1} of the dotclaude Terms of Use.`;
+// The auto-mode text of Claude Code 2.1.290 (byte-identical in 2.1.292) tells Claude to edit files with `sed`, heredocs,
 // or scripts (binary, `case "auto_mode"`).
 const AUTO_MODE_EDIT_TEXT =
   /(?:Do your work|You can do much of your work) through the \S+ tool [\s\S]*?(?:cannot do the job\.|BSD\/macOS\.)/;
-const AUTO_MODE_EDITS = `Read and search with \`Bash\` when it is the simpler route. Edit a project file only with \`Edit\` or \`Write\`, because a \`Bash\` write skips the diff, the checkpoints, and the dotclaude edit guard. The dotclaude Bash guard denies a \`Bash\` write to a project file.`;
+const AUTO_MODE_EDITS = `Read and search with \`Bash\` when it is the simpler route. Edit a project file only with \`Edit\` or \`Write\`. A \`Bash\` write skips the diff, the checkpoints, and the dotclaude edit guard. For this reason, the dotclaude Bash guard denies a \`Bash\` write to a project file.`;
 
 /** The auto-mode `text` with the dotclaude edit rule in place of the `Bash` edit text. */
 export const autoModeText = (text) =>

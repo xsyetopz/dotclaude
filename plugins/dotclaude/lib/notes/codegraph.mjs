@@ -175,8 +175,8 @@ export function indexState(statusText) {
   const reindex = Boolean(s.index?.reindexRecommended);
   if (!pending && !reindex) return { state: "ok" };
   const note = reindex
-    ? "The CodeGraph index of this project has a format from an earlier CodeGraph version, so its call paths can be incomplete. Tell the user that `codegraph index` builds the index again."
-    : `The CodeGraph index of this project has ${pending} changed file(s) that it does not include, so its call paths can be out of date. Run \`codegraph sync\` to update the index before you rely on them.`;
+    ? "The CodeGraph index of this project has a format from an earlier CodeGraph version.\nIts call paths can be incomplete.\nTell the user that `codegraph index` builds the index again."
+    : `The CodeGraph index of this project does not include ${pending} changed file(s).\nIts call paths can be out of date.\nRun \`codegraph sync\` to update the index before you rely on them.`;
   return { state: "stale", reindex, pending: !reindex && pending > 0, note };
 }
 

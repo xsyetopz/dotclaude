@@ -18,17 +18,18 @@ const PR_FOOTER =
 export const OTHER_OWNER_NOTE = `${clauseTag("git-attribution")}
 <git_attribution source="dotclaude">
 This repository has a remote of another owner, so the AI policy of that project decides the attribution.
-Before a commit or a pull request, read the policy, such as \`CONTRIBUTING.md\` or \`AI_POLICY.md\`, and use only the attribution form that it asks for.
+Before a commit or a pull request, read the policy, such as \`CONTRIBUTING.md\` or \`AI_POLICY.md\`.
+Use only the attribution form that it asks for.
 When the policy says nothing, add no Claude \`Co-Authored-By\` line and no Claude Code footer.
 For an issue, a pull request, or a comment, use the \`dotclaude:contribute\` skill.
 </git_attribution>
 </dotclaude_terms>`;
 
 export const TRAILER_OFF_REASON =
-  "The commit message has a Claude `Co-Authored-By` line, but the attribution settings of the user leave it out. Remove the line, then commit again. This is clause 3 of the dotclaude Terms of Use.";
+  "The commit message has a Claude `Co-Authored-By` line. The attribution settings of the user leave it out. Remove the line, then commit again. This is clause 3 of the dotclaude Terms of Use.";
 
 export const OTHER_OWNER_REASON =
-  "The commit message has a Claude attribution line, and this repository has a remote of another owner. The AI policy of that project decides if the line can stay. This is clause 3 of the dotclaude Terms of Use.";
+  "The commit message has a Claude attribution line, and this repository has a remote of another owner. The AI policy of that project decides if the line can stay. Read the policy, and keep the line only if the policy asks for it. This is clause 3 of the dotclaude Terms of Use.";
 
 export const CLAUDE_TRAILER =
   /(^|[\s"'])co-authored-by:[^\n]*(claude|anthropic)/im;
@@ -128,7 +129,7 @@ export function attributionNote(model, s) {
   if (commit)
     lines.push(
       commit.includes("<model>")
-        ? `End each commit message with a blank line, then this text, with \`<model>\` changed to the name of the model that you run on, such as \`Claude Opus 5.5\`:\n${commit}`
+        ? `End each commit message with a blank line, then this text.\nChange \`<model>\` to the name of the model that you run on, such as \`Claude Opus 5.5\`:\n${commit}`
         : `End each commit message with a blank line, then this text exactly:\n${commit}`,
     );
   if (pr)

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { SUBAGENT_EFFORTS } from "../../plugins/dotclaude/lib/budget.mjs";
+import { spawnDenial } from "../../plugins/dotclaude/lib/guards/agents.mjs";
 
 const DIR = new URL("../../plugins/dotclaude/agents/", import.meta.url);
 const EXPECTED = [
@@ -85,4 +86,25 @@ test("the effort table holds", () => {
   }
   expect(agents["test-runner"].model).toBe("claude-haiku-4-5");
   expect(agents["digest-writer"].model).toBe("claude-haiku-4-5");
+});
+
+test("a workflow spawn with no model and no pinned model gives no deny", () => {
+  expect(spawnDenial({})).toBeUndefined();
+  expect(spawnDenial({ parentModel: "claude-opus-5-5" })).toBeUndefined();
+  expect(
+    spawnDenial({ parentModel: "claude-opus-5-5", effort: "high" }),
+  ).toBeUndefined();
+});
+
+test("an effort that the model does not allow gets the effort deny", () => {
+  expect(SUBAGENT_EFFORTS["sonnet-5-5"]).not.toContain("high");
+  const denied = spawnDenial({
+    parentModel: "claude-sonnet-5-5",
+    effort: "high",
+  });
+  expect(denied).toContain("The effort `high` is not allowed");
+  expect(denied).toContain("`sonnet-5-5`");
+  expect(
+    spawnDenial({ parentModel: "claude-haiku-4-5", effort: "low" }),
+  ).toContain("takes no effort");
 });

@@ -59,13 +59,17 @@ Do not stop at a search result snippet or a `WebFetch` summary when the fact dec
 Stop and report as soon as the evidence settles the answer, and say what stays open.
 You have at most 60 turns, and a run that reaches the limit before its report delivers nothing.
 Plan to finish before then.
+Check your sources before you use 3/4 of your turns, because a stop at the limit delivers no report and skips the checks.
 Every turn reads your whole context again, so save large pages to a file in the scratchpad directory and search them with `rg`.
 Put all of your text in the report, because only the report gets to the caller.
 </when_to_stop>
 
 <report_format>
-Give the direct answer first, then the supporting facts, each with its source URL.
-Mark each item that you inferred and did not read, and list what you could not find or reach.
+Start with `Done` or `Not done`.
+`Done` means that each question of the brief has an answer with its evidence.
+Put each question with no source in a **Not verified** list, with the reason, and do not also call it done.
+Then give the direct answer, then the supporting facts, each with its source URL.
+Mark each item that you inferred and did not read, and list what you could not find or reach in the **Not verified** list.
 Keep the report short, because the main conversation reads it again on each later turn.
 </report_format>
 

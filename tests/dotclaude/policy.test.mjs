@@ -20,6 +20,7 @@ import {
   policyReason,
   within,
 } from "../../plugins/dotclaude/lib/guards/policy.mjs";
+import { knownDefectsClause } from "../../plugins/dotclaude/lib/notes/defects.mjs";
 import { clauseTag, TERMS_OF_USE } from "../../plugins/dotclaude/lib/terms.mjs";
 
 const POLICY = "Do not read, open, search, or run any file in this repository.";
@@ -199,7 +200,9 @@ test("after a fetch, the module adds the policy once for each context", async ()
 test("the main agent and each subagent get the clause", () => {
   expect(POLICY_CLAUSE).toStartWith(clauseTag("project-ai-policy"));
   expect(POLICY_CLAUSE).not.toContain(";");
-  expect(SUBAGENT_CONTEXT).toBe(`${TERMS_OF_USE}\n\n${POLICY_CLAUSE}`);
+  expect(SUBAGENT_CONTEXT).toBe(
+    `${TERMS_OF_USE}\n\n${POLICY_CLAUSE}\n\n${knownDefectsClause()}`,
+  );
   const root = mkdtempSync(join(tmpdir(), "ss-"));
   expect(contextFor({ source: "startup" }, root, "max")).toContain(
     POLICY_CLAUSE,

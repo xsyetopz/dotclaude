@@ -24,6 +24,7 @@ import {
 import { POLICY_CLAUSE } from "../../lib/guards/policy.mjs";
 import { resumeNote } from "../../lib/notes/cache.mjs";
 import { initNote } from "../../lib/notes/codegraph.mjs";
+import { knownDefectsClause } from "../../lib/notes/defects.mjs";
 import { newestOpen, pointer } from "../../lib/notes/handoff.mjs";
 import { MAIN_PROGRESS } from "../../lib/notes/progress.mjs";
 import { accountFrom, claudeJsonPath, detectPlan } from "../../lib/plan.mjs";
@@ -102,12 +103,12 @@ function notesIn(dir) {
 // Only the API plan changes a decision: its prompt cache lives 5 minutes.
 const API_NOTE = clause(
   "api-plan",
-  "<claude_plan>\nThe plan is pay-per-token API, so the prompt cache lives 5 minutes.\nA pause of more than 5 minutes makes the next prompt write the whole context again.\nBefore a long wait, finish the step or write a handoff note.\n</claude_plan>",
+  "<claude_plan>\nThe plan of the user is pay-per-token API.\nThe prompt cache of this plan lives 5 minutes.\nAfter a pause of more than 5 minutes, the next prompt writes the whole context again.\nBefore a long wait, finish the step or write a handoff note.\n</claude_plan>",
 );
 
 const USER_QUESTIONS = clause(
   "user-questions",
-  "<user_questions>\nAsk each question to the user through `AskUserQuestion`, with options, and not in plain text, because the user can then pick an answer, and other hooks can add facts to the question.\n</user_questions>",
+  "<user_questions>\nAsk each question to the user through `AskUserQuestion`, with options, and not in plain text.\nThen the user can pick an answer.\nOther hooks can also add facts to the question.\n</user_questions>",
 );
 
 /**
@@ -138,7 +139,12 @@ export function contextFor(
       `<long_runs>\n${fs.readFileSync(LONG_RUNS, "utf8").trim()}\n</long_runs>`,
     ),
   );
-  parts.push(POLICY_CLAUSE, MAIN_PROGRESS, USER_QUESTIONS);
+  parts.push(
+    POLICY_CLAUSE,
+    MAIN_PROGRESS,
+    USER_QUESTIONS,
+    knownDefectsClause(),
+  );
   if (ponytail !== "false")
     parts.push(
       clause(

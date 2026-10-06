@@ -35,6 +35,10 @@ You do not decide, rate, or recommend, because the caller does that.
 
 <report_format>
 
+Start with `Done` or `Not done`.
+`Done` means that each question of the brief has an answer with its reference.
+Put each question with no answer in a **Not verified** list, with the reason, and do not also call it done.
+
 Give one section for each question or topic of the brief, in the order of the brief:
 
 ```text

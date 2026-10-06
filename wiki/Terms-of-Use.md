@@ -1,7 +1,7 @@
 # Terms of Use
 
 Each note that dotclaude or one of its plugins gives to an agent is a clause of the dotclaude Terms of Use.
-This page lists the 17 clauses and the hook that enforces each one.
+This page lists the 18 clauses and the hook that enforces each one.
 
 ## How the terms work
 
@@ -33,6 +33,7 @@ This page lists the 17 clauses and the hook that enforces each one.
 | 15 | Subagent progress | `subagent_progress`, at session start and at the start of each subagent | Not enforced |
 | 16 | Questions to the user | `user_questions`, at session start | A Stop hook ([details](#clause-16)) |
 | 17 | Game modding (dotclaude-modder) | `game_modding`, at session start | The `dotclaude-modder` module ([details](#clause-17)) |
+| 18 | Known defects | `known_defects`, at session start and at the start of each subagent | A Stop hook and a SubagentStop hook ([details](#clause-18)) |
 
 A deny reason of an enforced clause names the clause.
 A clause that is not enforced has no hook that can see a break of it, such as code that is larger than it needs to be.
@@ -77,6 +78,20 @@ A clause that is not enforced has no hook that can see a break of it, such as co
 - The hooks module of `dotclaude-modder` denies a Bash call that stops processes by name or by pattern.
 - It finds `pkill`, `killall`, `taskkill /IM`, `Stop-Process -Name`, and `kill` with `pgrep`.
 - The deny reason tells Claude to stop one process by its PID with `um win kill <pid>`.
+
+### Clause 18
+
+- A prompt hook on Stop and on SubagentStop sends the last message to the background model of Claude Code.
+- The model blocks a message that calls a part done that no check passed on.
+  For example, a check of the part did not run, failed, is flaky, or is pre-existing.
+  It also blocks a done claim next to a failed-test count that is not 0.
+- A **Not verified** list, open items, and a skipped step that is not a check do not count.
+  A part under **Not verified** that the message also calls done is a break.
+- When the model is not sure, it blocks, because a missed failure looks like finished work.
+- The hook blocks only once in a row.
+- The reason tells Claude to fix the part, or to list it as not verified and not call it done.
+  Claude Code also shows the full hook prompt to Claude with the reason, so the prompt is short and reads as the rule.
+- [Claude mods](Claude-Mods) gives the test results on Claude Code 2.1.292.
 
 ## Related pages
 

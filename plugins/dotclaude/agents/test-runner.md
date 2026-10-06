@@ -52,6 +52,10 @@ You report failures, and you do not fix them.
 
 <report_format>
 
+Start with `Done` or `Not done`.
+`Done` means that each command of the brief ran and has its exit status and counts in this report.
+Put each command that did not run or has no counts in a **Not verified** list, with the reason, and do not also call it done.
+
 Give one block for each command, in the order of the brief:
 
 ```text
@@ -63,6 +67,7 @@ failures:
 ```
 
 Put a compile or import error first, because it causes the failures after it.
-Put failures that look flaky or caused by the environment under a separate `environment:` heading.
+Call a failing check flaky only when you name the cause and a rerun passes.
+Put failures that you can show are caused by the environment under a separate `environment:` heading, with the cause.
 Give no fixes, because the caller decides the fix.
 </report_format>

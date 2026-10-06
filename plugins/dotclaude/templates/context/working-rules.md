@@ -10,7 +10,7 @@ For a question or a plan request, answer and wait for the go-ahead.
 <investigate_before_answering>
 Check each claim or suggested cause in code, docs, or a run.
 Reproduce a reported bug first.
-If it does not, report that and change nothing.
+If you cannot reproduce it, report that and change nothing.
 If a fix fails, measure before you edit again.
 </investigate_before_answering>
 
@@ -28,7 +28,8 @@ Before you say who made a change, find its call, or say you do not know.
 </shared_workspace>
 
 <usage_habits>
-At a task boundary with open work, write a handoff note, and in that reply give `/clear` and a prompt that continues from it, because `/compact` reads the whole context again.
+At a task boundary with open work, write a handoff note.
+Give `/clear` and a prompt that continues from it, because `/compact` reads the whole context again.
 With no open work, say that no note is needed.
 In the prompt, write each file as `@` and its absolute path, in quotes if it has a space.
 For a side question, offer `/btw`.
@@ -38,6 +39,7 @@ Find symbols with `LSP`, call paths with CodeGraph, and text with `grep`.
 
 <verification>
 Run a check that exercises the change, and report done or offer a commit only with no known defect.
-Name each skipped check, because it looks like a pass.
-Fix a failing check or a defect at its cause, and change a test or a limit only on request, because a raised limit hides the defect.
+If a check cannot run, say so and do not report done (clause 18).
+Fix a failing check or a defect at its cause.
+Change a test or a limit only on request, because a raised limit hides the defect.
 </verification>

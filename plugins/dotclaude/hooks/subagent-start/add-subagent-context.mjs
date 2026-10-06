@@ -6,6 +6,7 @@
 
 import fs from "node:fs";
 import { POLICY_CLAUSE } from "../../lib/guards/policy.mjs";
+import { knownDefectsClause } from "../../lib/notes/defects.mjs";
 import {
   PROGRESS_DIR,
   progressFile,
@@ -13,7 +14,7 @@ import {
 } from "../../lib/notes/progress.mjs";
 import { TERMS_OF_USE } from "../../lib/terms.mjs";
 
-export const SUBAGENT_CONTEXT = `${TERMS_OF_USE}\n\n${POLICY_CLAUSE}`;
+export const SUBAGENT_CONTEXT = `${TERMS_OF_USE}\n\n${POLICY_CLAUSE}\n\n${knownDefectsClause()}`;
 
 /** The context for the SubagentStart input `data`. */
 export function contextFor(data) {

@@ -1,5 +1,6 @@
-// PreToolUse: asks before a Bash command or an edit that a guard finds. In
-// auto mode, the auto-mode classifier decides an ask of the module
+// PreToolUse: asks before a Bash command or an edit that a guard finds,
+// and before each `PublishPlugin` call.
+// In auto mode, the auto-mode classifier decides an ask of the module
 // (`tool.check`), and it can allow the call. An ask of a classic PreToolUse
 // hook stays an ask, so the user sees a prompt (measured, Claude Code 2.1.289).
 // It also asks before the first call of a session that reaches a project of
@@ -18,7 +19,7 @@ import {
   ownRepo,
 } from "../../lib/guards/attribution.mjs";
 import { askFor } from "../../lib/guards/bash.mjs";
-import { editReasons } from "../../lib/guards/edit.mjs";
+import { editReasons, PUBLISH_PLUGIN_REASON } from "../../lib/guards/edit.mjs";
 import {
   fetchedRepos,
   outsidePaths,
@@ -60,6 +61,7 @@ export function askReason(data, env = process.env) {
       }
     return editReasons(data.tool_name, input, existing).join(" ") || undefined;
   }
+  if (data.tool_name === "PublishPlugin") return PUBLISH_PLUGIN_REASON;
   return undefined;
 }
 

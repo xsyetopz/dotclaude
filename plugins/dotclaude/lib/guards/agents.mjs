@@ -50,7 +50,7 @@ const allowedModels = () => code(Object.keys(SUBAGENT_EFFORTS));
  */
 export function spawnDenial({ askedModel, parentModel, pinned, effort }) {
   if (askedModel && pinned && modelKey(askedModel) !== modelKey(pinned))
-    return `This agent is fixed to the model \`${pinned}\`, and the call asked for \`${askedModel}\`. Omit \`model\`, or pick the agent whose model you need.`;
+    return `This agent is fixed to the model \`${pinned}\`, and the call asked for \`${askedModel}\`. Omit \`model\` to use the model of the agent. To use another model, pick the agent that has it.`;
   const model = pinned || askedModel || parentModel;
   // The spawn names no model and the engine gave none: nothing to check.
   if (!model) return undefined;

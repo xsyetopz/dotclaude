@@ -25,7 +25,8 @@ When an agent stops at its turn limit, read its progress file.
 Then send the next step to the agent with \`SendMessage\` to its task ID, because a new agent or your own run does the done steps again.
 If \`SendMessage\` cannot continue the agent, such as an agent in a worktree that Claude Code lost, start one new agent.
 Give it the worktree folder of the old agent, the progress file, and the diff, and tell it to do only the steps that are not done, because the files of the old agent stay in that folder.
-Give each agent a task that fits in its turn limit, because each tool call uses a turn.
+Give each agent a slice of the task whose checks also fit in its turn limit, because each tool call uses a turn.
+Read a report that says "done" next to "did not run" or "flaky" as not done, because a check that did not pass gives no proof.
 Give one subject (a language, a tool, or a product) to each research agent, and send the agents in one message, so that they run at the same time.
 </subagent_progress>`,
 );
@@ -39,6 +40,7 @@ Your progress file is \`${file}\`.
 After each step, add one line to it with \`Bash\`, for example \`echo 'done: <step> | next: <step>' >> ${file}\`.
 Claude Code delivers no report from an agent that stops at its turn limit, and the agent that sent you then reads this file to continue the work.
 Add the line in the same \`Bash\` call as a step when you can, because each tool call uses a turn.
+Run your checks before you use 3/4 of your turns, because an agent that stops at its turn limit skips them.
 Do not write secrets in the file.
 </subagent_progress>`,
   );

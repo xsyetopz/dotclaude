@@ -41,7 +41,7 @@ import {
   isCommit,
   writeFor,
 } from "../../lib/guards/bash.mjs";
-import { editReasons } from "../../lib/guards/edit.mjs";
+import { editReasons, PUBLISH_PLUGIN_REASON } from "../../lib/guards/edit.mjs";
 import {
   fetchedRepos,
   POLICY_FILES,
@@ -156,6 +156,7 @@ async function askReason($, e, options) {
         : null;
     return editReasons(e.tool, e, existing).join(" ") || undefined;
   }
+  if (e.tool === "PublishPlugin") return PUBLISH_PLUGIN_REASON;
   return undefined;
 }
 
