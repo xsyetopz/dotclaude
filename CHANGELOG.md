@@ -62,6 +62,7 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
   A subagent got past a deny in 0.25.1 by rewording a command.
 - The Bash guard deny of a write to a project file tells an agent with no `Edit` or `Write`, such as a read-only subagent, to report the write that it needs.
   Before, the deny told it only to use tools that it did not have.
+- The wiki labels the subagent cache figures in `Design.md` with their measurement, and records that the Stop hook lets one retry through.
 - The cold-cache note counts the idle time from the last compaction of the main agent, and not only from the last turn.
   A compaction writes a new cache, so after it the note does not say that the cache expired too early.
 

@@ -214,6 +214,10 @@ These facts are from live tests of 2.1.292 in `just sandbox` with Haiku 4.5 (**t
   - It blocked an open item that "may already be done", although the prompt lets such an item through.
     The rule to block when the model is not sure is the probable cause.
 - At the next stop, `stop_hook_active` was `true`, and the hook let the stop through.
+- On 2026-10-07, the retry after a block repeated the claim "Done, all tests pass" with no test run, and the hook let it through.
+  The same message with `stop_hook_active: false` was blocked in 3 of 3 runs.
+  Thus the rule "If `stop_hook_active` is `true`, return {"ok": true}" lets one retry through.
+  This is a known limit, and the rule stays, because it stops a loop of blocks.
 
 The [hooks doc](https://code.claude.com/docs/en/hooks) says that the count goes back to 0 at each tool call.
 The [environment variables doc](https://code.claude.com/docs/en/env-vars) says that the cap applies to Stop and SubagentStop hooks.

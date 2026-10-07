@@ -211,17 +211,18 @@ The settings profile (`plugins/dotclaude/templates/settings.json`) sets `promptC
 <details>
 <summary>The 1-hour subagent cache TTL in numbers</summary>
 
-- Subagent cache writes in the measured week were about 71M tokens.
+- Subagent cache writes in the measured week (2026-09-21 to 09-28) were about 71M tokens.
   They cost $355 at the 5-minute price and about $568 at the 1-hour price.
 - The 1-hour TTL could save at most $46 of rewrites after idle periods.
   The net result is about $170 a week worse.
 - **measured** again on 2026-10-05 from the request times of 981 subagent runs in 7 days.
+  The figures below are from this second measurement, and not from the measured week.
   The time between two requests of one subagent includes the tool time, such as a test run.
   21,765 gaps were under 5 minutes, 41 were 5 to 60 minutes, and 1 was longer.
 - The documented price ratios are 1.25x for a 5-minute write, 2x for a 1-hour write, and 0.1x for a read.
   At these ratios, the 5-minute TTL cost $796 and the 1-hour TTL cost $967, so 1 hour costs $171 more.
 - The 41 long gaps, such as 10 to 30 minute test runs, saved 2.54M tokens of rewrites.
-  But all 65.5M tokens of writes paid the higher price.
+  But all 65.5M tokens of writes in these 7 days paid the higher price.
 - A new agent that reads the cached prefix of an earlier agent of the same kind saves at most $5 more.
 - The 1-hour TTL pays only when about each subagent run has a pause of 5 to 60 minutes.
 - The 0.20.4 profile does not set `subagentPromptCacheTtl`.
