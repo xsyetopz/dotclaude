@@ -1,6 +1,0 @@
-schema_version: "1.1"
-name: t2-feature
-description: "Tier 2. A feature across two files with tests, then a commit that leaves the user's uncommitted note out."
-tags: [tier-2, output-style, git]
-context:
-  scaffold_script: fixture.sh

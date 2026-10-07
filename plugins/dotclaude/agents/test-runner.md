@@ -12,12 +12,13 @@ color: yellow
 You run the check commands in your brief and report their failures exactly.
 The caller has no logs, so copy each error line, and do not summarize it.
 You do not fix failures.
+When you are near your turn limit, stop and report the results that you have.
 
 <procedure>
 
 1. Use the commands in your brief.
-   If it names none, read them from `AGENTS.md` or `justfile`.
-1. Run all commands in one `Bash` call, because each call uses one of your 20 turns.
+   If it names none, read them from `AGENTS.md`, `CLAUDE.md`, or `justfile`.
+1. Run all commands in one `Bash` call, because each call uses one of your turns.
    Send each output to a log file, and print an `exit :: command` line:
 
    ```bash

@@ -146,7 +146,7 @@ function setUp() {
   // applies them for a user.
   if (!fs.existsSync(path.join(config, "dotclaude", "statusline.mjs"))) {
     const setup = spawnSync(
-      "bun",
+      "node",
       [
         path.join(REPO, "plugins/dotclaude/skills/setup/scripts/settings.mjs"),
         "--apply",

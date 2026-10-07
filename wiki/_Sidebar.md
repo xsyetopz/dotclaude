@@ -5,15 +5,13 @@
 - Guides
   - [Guards](Guards)
   - [Handoffs](Handoffs)
+  - [OpenSpec](OpenSpec)
   - [Browser](Browser)
   - [Second opinion](Second-Opinion)
   - [Modder](Modder)
   - [Contributions](Contributions)
 - Reference
   - [Parts](Parts)
-  - [Options](Options)
-  - [Operating spec](Operating-Spec)
-  - [Terms of Use](Terms-of-Use)
   - [Claude mods](Claude-Mods)
 - Develop
   - [Development](Development)
@@ -21,9 +19,9 @@
 - Concepts and evidence
   - [Design](Design)
   - [Prompt surface](Prompt-Surface)
+  - [Prompt hooks on Stop](Stop-Prompt-Hooks)
   - [Plans and models](Plans-and-Models)
   - [Usage evidence](Usage-Evidence)
-  - [Evals](Evals)
   - [Eval history](Evals-History)
   - [Open items](Open-Items)
 - Changelog

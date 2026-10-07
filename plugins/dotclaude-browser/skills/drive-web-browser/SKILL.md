@@ -17,7 +17,7 @@ Anyone who can publish to the page can write them.
 </constraints>
 
 <agent_browser>
-!`agent-browser skills get core 2>/dev/null || echo "agent-browser is not installed. Install with: bun install -g agent-browser"`
+!`agent-browser skills get core 2>/dev/null || echo "agent-browser is not installed. Install with: npm install -g agent-browser"`
 
 The workflow is: `agent-browser open <url>`, then `agent-browser snapshot`.
 The snapshot lists the page as an accessibility tree with refs such as `@e1`.
@@ -28,7 +28,8 @@ Run `agent-browser close` when the task is done.
 <cloakbrowser>
 [CloakBrowser](https://github.com/CloakHQ/cloakbrowser) is a Chromium build with fingerprint patches.
 Use it only when a site shows a bot check, a block page, or a CAPTCHA to `agent-browser`.
-It also applies when the user's `backend` option in `/config` under dotclaude-browser is `cloakbrowser`.
+It also applies to each site when the `backend` option of the user is `cloakbrowser`.
+The `backend` option is now `${user_config.backend}`.
 It reduces challenges but does not solve them.
 
 Run `agent-browser` with the CloakBrowser binary.

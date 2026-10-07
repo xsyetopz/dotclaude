@@ -12,7 +12,7 @@ Source labels (official, binary, capture, measured, reported, inference, tested)
 - The delegation share and the hooks that it led to, such as the delegation note, are 0.19 history.
 - Turns set the cost, not tool calls.
 - Of the community tips, one set is true, one is false, and some tools are not used.
-- The hook of dotclaude adds a CodeGraph note only for a search of one symbol name.
+- The CodeGraph note hook is 0.20 to 0.26 history, and 0.27.0 removed it.
 
 ## The measured week
 
@@ -45,7 +45,8 @@ Model choice is not one of them.
 1. **`general-purpose` in place of dotclaude agents.**
    The 0.19 output style preferred dotclaude agents in prose.
    That preference did not hold.
-   The profile now denies `Agent(general-purpose)`.
+   The 0.20 to 0.26 profile denied `Agent(general-purpose)`.
+   Check the 0.27 deny list in `plugins/dotclaude/templates/settings.json` before you rely on this rule.
 
 ## The delegation share
 
@@ -117,9 +118,12 @@ dotclaude 0.20.4 checked each tip against the Claude Code docs or a measurement 
 | RTK | JetBrains measured 7.6% more cost. |
 | Graphify | It fails on large repositories. |
 | grepai | It needs embeddings from Ollama or OpenAI, and it has no measurement. |
-| Ponytail | JetBrains measured 10.3% less cost with no change in quality, but only when a SessionStart hook added its text. dotclaude adds its own short version of the idea at session start, with the `ponytail` option. |
+| Ponytail | JetBrains measured 10.3% less cost with no change in quality, but only when a SessionStart hook added its text. dotclaude 0.20 to 0.26 added its own short version of the idea at session start, with the `ponytail` option. 0.27.0 removed that option. |
 
-## Code search
+## Code search (0.20 to 0.26 history)
+
+0.27.0 has no CodeGraph hook and no search note.
+The measures below are the evidence for the 0.20.4 hook that 0.27.0 removed.
 
 **measured:** The transcripts of this machine include subagents.
 Shell `rg`, `grep`, and `find` calls outnumber `codegraph` calls (CLI and MCP):
@@ -155,4 +159,4 @@ Thus 0.20.4 adds the graph to the search result, as the GitNexus hooks do, and k
 
 - [Design](Design)
 - [Plans and models](Plans-and-Models)
-- [Evals](Evals)
+- [Eval history](Evals-History)

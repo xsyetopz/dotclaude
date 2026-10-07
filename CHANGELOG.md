@@ -10,6 +10,98 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-10-07
+
+0.27.0 is a breaking release.
+The core plugin is built again from an empty tree on the documented extension points of Claude Code 2.1.292:
+a settings profile, a forced output style, one hooks module, agents, and skills.
+The [Design](https://github.com/xsyetopz/dotclaude/wiki/Design) page gives the source of each decision.
+
+### Migration from 0.26
+
+- Install Node.js 22.18 or later, because the scripts and hooks no longer run on Bun.
+- Update, restart Claude Code, and run `/dotclaude:setup`.
+  Setup removes `includeGitInstructions: false`, `autoCompactWindow`, `advisorModel`, the 0.26 `subagentStatusLine` and its stub,
+  and the 0.26 block in `<config dir>/CLAUDE.md`, because they work against the new profile.
+  It makes a backup of each file before it writes.
+- The plugin options are gone, so the `/config` entries of dotclaude have no effect.
+- Handoff notes from 0.26 in `.claude/handoffs/` stay readable, and no hook writes new ones.
+
+### Added
+
+- Compaction is off: `autoCompactEnabled: false` and `DISABLE_COMPACT=1`, which also turns off `/compact`.
+- The context window is 300K tokens by `CLAUDE_CODE_MAX_CONTEXT_TOKENS=300000`,
+  which Claude Code honors only together with `DISABLE_COMPACT`.
+  At the limit the session stops, and the user runs `/clear`.
+  `CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000` makes `/context` and the context warnings use the same window.
+  Without it, Claude Code 2.1.292 uses 200K for Opus 5.5 there.
+- Auto memory is off: `autoMemoryEnabled: false`.
+- The forced `dotclaude` output style, with `keep-coding-instructions: false`,
+  together with `CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`.
+  It replaces the built-in coding instructions and the 0.26 spec injection, and the prompt cache holds it.
+- The sandbox is on, with network access only to GitHub and the package registries.
+- `templates/managed-settings.json` for users who want the compaction, memory, and sandbox keys enforced.
+  Setup prints the copy command and does not run it, because it needs `sudo`.
+  With it, the built-in guard `sec-default` loads and skips the `context_management` text of the module.
+- OpenSpec is a first-class integration.
+  Setup checks the `openspec` CLI, offers the install and `openspec init --tools claude`,
+  and the status line shows the active change with its task count.
+- The profile turns off the tools that it does not use, so that their schemas leave each request:
+  `enableArtifact: false`, `enableWorkflows: false`, and deny rules for `ScheduleWakeup` and `ReportFindings`.
+  `/code-review` then gives its findings as text.
+  In the sandbox, `/context` at the start of a session fell from 32k to 8.1k tokens, with the trimmed modder plugin.
+- The hook lab: `just lab` runs `claude plugin test plugins/dotclaude`,
+  which loads the hooks module and fires stubbed `tool.check` events.
+
+### Changed
+
+- Permissions ask only before dangerous commands, with native rules and no Bash parser:
+  force pushes, history rewrites, piped shells, `sudo`, publishes, public `gh` writes, and SQL drops.
+  Read-only git and the usual build and test commands are allowed.
+- One hooks module replaces the 0.26 command hooks.
+  It asks before a recursive `rm` outside the project,
+  and before the first call to a GitHub repository of another owner with an AI policy.
+  It keeps a deny of the engine and fails open.
+  With `DISABLE_COMPACT` set, its `prompt.section` handler replaces the `context_management` section of the system prompt,
+  which says that the system summarizes prior messages, with text that says compaction is off.
+  The built-in guard `sec-default` skips this handler on a machine with managed settings or a Team or Enterprise login.
+- In auto mode, the classifier can allow an ask of the module, so one classic PreToolUse hook, `hooks/auto-mode-guard.mjs`, asks again for the same calls.
+  It runs only in auto mode, only for commands that its `if` filters match, and needs Node.js.
+- The scripts and hooks of the core and `dotclaude-jev` plugins run on Node.js 22.18 or later, not on Bun.
+  Setup changes a `bun` status line command to `node`.
+  The `um` command of `dotclaude-modder` stays on Bun, because it uses the YAML parser of Bun.
+  The `allowed-tools` of the `second-opinion` skill allow only `node` with `jev.mjs`, not each `bun` command.
+  The `drive-web-browser` skill and the Browser page give `npm install -g agent-browser`.
+- A prompt audit against Opus 5.5 removed two numeric reply caps from the output style and the `reviewer` agent, and the `Reason:` line of the old spec format from the Jev note.
+  The modder skill says that a `/clear` also removes what is not in `MODLOG.md`.
+- `/dotclaude:handoff` is user-invoked only.
+  It writes a note that primes the next session: the goal, the constraints, the decisions, the rejected approaches, and the proof.
+- `maxEffortLevel` is `xhigh`, and the profile sets no effort level, so each model keeps its default.
+- The status line is one file, and it shows the context against the 300K window, yellow at 75% and red at 90%.
+- The add-on plugins work without the core plugin.
+  `dotclaude-browser` is skill-only, and `dotclaude-jev` gives its own session note.
+- `dotclaude-modder` has one skill, `mod-any-game`, and no session note.
+  The 8 other skills are step files in `references/` that Claude reads only at their step,
+  so the plugin adds one skill listing to each session, not nine.
+  The rules of the session note are in the skill.
+- `includeGitInstructions` stays at its default, and the profile sets `attribution.commit` and `attribution.pr`.
+
+### Removed
+
+- The operating spec, its SessionStart and SubagentStart injection, and `lib/terms.mjs`.
+- The compaction fork, the cold-cache note, and each hook that tells the user to run `/clear`.
+- The Bash, edit, secret-redaction, spawn, and attribution guards, and the dependency on `betterleaks`.
+- The CodeGraph augment, the `sembr` rewrap, the long-run note, the setup notice, and the Stop prompt hook.
+- The Ponytail integration and the `minimal-code` rule.
+  The output style has its own rule to write the least code that does the task.
+- All plugin options, the `Concise` output style, and the `contribute` skill.
+- The agents `translator`, `docs-writer`, `digest-writer`, `eval-designer`, `fuzz-engineer`, `infra-engineer`, and `reverse-engineer`.
+- The evals in `plugins/dotclaude/evals/` and `tools/compaction-report.mjs`.
+- `advisorModel` and `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`.
+  The advisor tool adds its instructions to each request, and each advisor call reads the whole context again.
+- The `reverse-engineer` agent of `dotclaude-modder`.
+  The `reverse-engineer-binary` skill in [xsyetopz/skills](https://github.com/xsyetopz/skills) replaces it.
+
 ## [0.26.0] - 2026-10-06
 
 ### Migration from 0.25
@@ -179,60 +271,11 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 - Clause 15 tells Claude what to do when `SendMessage` cannot continue an agent, such as an agent in a worktree that Claude Code lost.
   Claude starts one new agent with the worktree folder of the old agent, its progress file, and its diff, and the new agent does only the steps that are not done.
 
-## [0.23.2] - 2026-10-06
-
-### Fixed
-
-- Clause 13 of the Terms of Use, `Long runs`: when a background run stalls, or a run waits on a stale process, lock, or monitor, Claude stops that blocker and runs the step again, also when Claude did not start it.
-  Before, Claude could read the `shared_workspace` rule as a reason to stop, and end the turn with the task blocked.
-
-## [0.23.1] - 2026-10-06
-
-### Changed
-
-- dotclaude needs Claude Code 2.1.291 or later.
-  2.1.291 fixes a regression of 2.1.288 that could lose the last messages of a session at quit, and a regression of 2.1.290 that could drop answers to permission prompts in cloud sessions.
-
-## [0.23.0] - 2026-10-06
-
-### Added
-
-- Three agents:
-  - `translator` translates and localizes UI strings, docs, and string catalogs, such as `.xcstrings`, `.strings`, `.po`, and JSON or YAML locale files, and fixes defects in existing translations.
-    It keeps keys, placeholders, and markup byte for byte, and it lists the defects before it edits.
-    It has `Bash` only to run the validators of the project, such as `plutil -lint`, and it edits only with `Edit` or `Write`.
-    It runs on Sonnet 5.5 at medium effort.
-  - `docs-writer` writes or updates READMEs, guides, wiki pages, changelogs, docstrings, and examples to match the code.
-    It has no `Bash`, so it marks each run-time claim that it could not check.
-    It runs on Sonnet 5.5 at medium effort.
-  - `digest-writer` reads long material, such as files, logs, transcripts, threads, and git history, and writes a short digest of the facts that the brief asks for.
-    It is read-only, with `Bash` to read `git log` and similar output, and it runs on Haiku 4.5 without `CLAUDE.md`.
-- Clause 16 of the Terms of Use, `Questions to the user`: Claude asks each question to the user through `AskUserQuestion`, with options, and not in plain text.
-  The user can then pick an answer, and other hooks, such as the `dotclaude-jev` hook, can add facts to the question.
-  A new `Stop` hook, `hooks/stop/block-plain-questions.mjs`, blocks the end of a turn when one of the last 3 prose lines of the message ends in a question mark.
-  It skips code, headings, and quotes, and it does not block a second time in a row.
-
-### Changed
-
-- dotclaude needs Claude Code 2.1.290 or later.
-- In auto mode, the reminder of Claude Code 2.1.290 tells Claude to edit files with `sed`, heredocs, or scripts through `Bash`.
-  The hooks module puts the dotclaude edit rule in place of this text, so that the reminder agrees with the Bash guard.
-  The `guard_bash` option also turns this change off.
-- The working rules are rewritten in shorter words, and no rule is removed.
-  `RULES_MAX_BYTES` is 2,000 again, down from 2,200.
-  The rules now say that Claude changes a test or a limit only when the user asks, because a raised limit hides the defect.
-
-### Fixed
-
-- The Bash guard denies a `Bash` command that writes a project file: a redirect, `tee`, `sed -i`, `perl -i`, or script code with a write call.
-  A `Bash` write skips the diff that the user sees, the Claude Code checkpoints, and the dotclaude edit guard.
-  The deny tells Claude to edit with `Edit` or `Write`, and to put a temporary file in `$TMPDIR`.
-  A write to the temporary folder passes, and the body of a heredoc counts as data.
-
 ## Older Releases
 
 | Series | Releases |
 | --- | --- |
+| [0.23](https://github.com/xsyetopz/dotclaude/wiki/Release-0.23) | 0.23.2, 0.23.1, 0.23.0 |
 | [0.22](https://github.com/xsyetopz/dotclaude/wiki/Release-0.22) | 0.22.3, 0.22.2, 0.22.1, 0.22.0 |
 | [0.21](https://github.com/xsyetopz/dotclaude/wiki/Release-0.21) | 0.21.0 |
 | [0.20](https://github.com/xsyetopz/dotclaude/wiki/Release-0.20) | 0.20.8, 0.20.7, 0.20.6, 0.20.5, 0.20.4, 0.20.3, 0.20.2, 0.20.1, 0.20.0 |
@@ -256,4 +299,4 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 | [0.1 and 0.2](https://github.com/xsyetopz/dotclaude/wiki/Release-0.1-0.2) | 0.2.0, 0.1.0 |
 
 [unreleased]:
-  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.26.0...HEAD
+  https://github.com/xsyetopz/dotclaude/compare/dotclaude--v0.27.0...HEAD

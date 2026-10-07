@@ -25,8 +25,8 @@ Use it to see a hook, the status line, or an agent work in a real session before
    just sandbox
    ```
 
-1. Run `/dotclaude:setup` in the TUI to see the status line.
-   It writes the status line settings and the two stubs in `config/dotclaude/`.
+1. The script applies the dotclaude setup profile and the status line stub to `config/` on the first start.
+   It runs `skills/setup/scripts/settings.mjs --apply` for this, so you do not run `/dotclaude:setup`.
 1. Put more settings in `config/settings.json` when a test needs them.
 1. Remove the sandbox when you finish:
 
@@ -43,6 +43,7 @@ just sandbox --model claude-haiku-4-5 -p "prompt"
 
 - Arguments after `just sandbox` go to `claude`.
 - The script loads the checkout and each plugin in `plugins/`, such as `dotclaude-browser` and `dotclaude-jev`.
+- It loads the profile of `dotclaude` too, so the sandbox runs with the 300K window and no compaction.
 - `tools/sandbox.mjs` does the work, and `bun tools/sandbox.mjs` is the same without `just`.
 
 | Variable | Default | Use |
@@ -64,9 +65,10 @@ The native installer keeps each version at `~/.local/share/claude/versions/<vers
 
 - The script removes `ZDOTDIR` and `XDG_CONFIG_HOME` from its environment.
   Your global git config does not apply in the sandbox.
-- The `gh` login does not apply either, so a test of the git attribution sees no owner.
-  Set `GH_CONFIG_DIR=~/.config/gh` to give `gh` your login name.
+- The `gh` login does not apply either, because `gh` reads its config from `HOME`.
+  A test of the policy ask in [Contributions](Contributions) therefore sees no login name.
 - `gh` reads its token from the keychain with the real `HOME`, so a `gh api` call in the sandbox fails, such as the organization owner check.
+  The module fails open, so the policy ask does not show then.
 - The script removes the variables of a Claude Code session that runs the script.
   It removes each variable that has the value your own settings `env` gives it.
   A value that you set on the command line for the sandbox stays.
@@ -141,16 +143,16 @@ tmux kill-session -t sandbox
 - Wait some seconds after the start and after each prompt before you read the screen.
 - Send the text with `-l` and `Enter` in a second command.
   If you do not, tmux can read words of the text as key names.
-- Subagent rows show under the prompt when a background agent runs.
-  Ask for an agent with `run_in_background` to see them.
+- Ask for an agent with `run_in_background` to see the agent panel.
 
 ## Status line commands
 
-To test a status line script without a session, give it input on stdin:
+To test the status line script without a session, give it input on stdin.
+The script is `plugins/dotclaude/status-line/statusline.mjs`.
+The fields of the input are in the script and in the status line docs of Claude Code, so read them before you write the input.
 
 ```bash
-echo '{"columns":100,"tasks":[{"id":"a1","model":"claude-sonnet-5-5",
-  "tokenCount":5000}]}' | bun plugins/dotclaude/status-line/subagents.mjs
+echo '<input JSON>' | bun plugins/dotclaude/status-line/statusline.mjs
 ```
 
 Claude Code does not log a status line command that works.

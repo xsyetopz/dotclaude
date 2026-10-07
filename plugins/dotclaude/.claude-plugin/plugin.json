@@ -1,68 +1,12 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dotclaude",
-  "version": "0.26.0",
-  "description": "A small Claude Code plugin with guards, model and effort rules, compaction and cache notes, and role agents.",
+  "version": "0.27.0",
+  "description": "A Claude Code profile with compaction off, a 300K window, permission rules for dangerous commands, a lean system prompt, six role agents, handoff notes, and OpenSpec setup.",
   "author": {
     "name": "xsyetopz"
   },
   "repository": "https://github.com/xsyetopz/dotclaude",
   "license": "MIT",
-  "keywords": ["hooks", "guardrails", "safety", "agents", "subagents"],
-  "userConfig": {
-    "guard_bash": {
-      "type": "boolean",
-      "title": "Bash guard",
-      "description": "Ask before destructive commands: a forced push, a hard reset, `git clean -f`, discarded changes, a forced branch delete, `rm -r` of the home folder, the project, or a path outside it, device writes, `mkfs`, and a recursive `chmod 777`. Ask before a command that skips the git hooks, a publish of a package or an image, a `gh` write, and a database delete. Ask before a read of a secret file, and before `codegraph init` or `codegraph uninit`.",
-      "default": true
-    },
-    "guard_edit": {
-      "type": "boolean",
-      "title": "Edit guard",
-      "description": "Ask before edits that delete test assertions, add skip markers, touch generated files, or edit Claude settings files.",
-      "default": true
-    },
-    "guard_secrets": {
-      "type": "boolean",
-      "title": "Secret redaction",
-      "description": "Scan every tool output with Betterleaks and replace each secret it finds with `[REDACTED:<rule>]` before the model sees it. Needs `betterleaks` on `PATH`. Without it, output passes through and session start says so.",
-      "default": true
-    },
-    "guard_policy": {
-      "type": "boolean",
-      "title": "Project AI policy guard",
-      "description": "Ask before the first call of a session that reaches a project of another owner with an AI policy file (`CLAUDE.md`, `AGENTS.md`, or `AI_POLICY.md`): a fetch from a GitHub repository, or a path in a local clone outside the project. The prompt shows the policy. After a fetch from such a repository, show the policy to Claude. Needs `gh` for GitHub fetches.",
-      "default": true
-    },
-    "guard_agents": {
-      "type": "boolean",
-      "title": "Subagent guard",
-      "description": "Deny a subagent spawn that breaks the model and effort rules, with the reason.",
-      "default": true
-    },
-    "codegraph": {
-      "type": "boolean",
-      "title": "CodeGraph augment",
-      "description": "When a `Grep` call or a Bash `rg` or `grep` search looks for one symbol name in a project with a CodeGraph index, run `codegraph sync` if files changed since the last index, then add the callers and callees of that symbol to the search result. Adds nothing when the index has no function, method, or class with exactly that name. Rebuild an index in an old format with `codegraph index`. At session start in a git repository without an index, tell Claude to run `codegraph init`, which the Bash guard asks the user to approve. Needs `codegraph` on `PATH`.",
-      "default": true
-    },
-    "ponytail": {
-      "type": "boolean",
-      "title": "Minimal code rules",
-      "description": "At session start, tell Claude to build the minimum: no code that the task does not need, reuse before new code, and the standard library before a dependency. The idea comes from Ponytail.",
-      "default": true
-    },
-    "compaction_handoff": {
-      "type": "boolean",
-      "title": "Compaction handoff",
-      "description": "Before an automatic compaction of the main conversation, fork a handoff note, then stop and tell the user to run `/clear` and continue from the note.",
-      "default": true
-    },
-    "sembr": {
-      "type": "boolean",
-      "title": "Semantic line breaks",
-      "description": "Rewrap the prose of commit messages and `gh pr` or `gh issue` bodies with semantic line breaks before the command runs. After a `Write` or `Edit` of Markdown or code comments that break lines at a column, add the `sembr` text to the result. Needs `sembr` on `PATH`. Never rewrites a file.",
-      "default": true
-    }
-  }
+  "keywords": ["settings", "output-style", "agents", "handoff", "openspec"]
 }

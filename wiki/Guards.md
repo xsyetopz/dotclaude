@@ -1,84 +1,116 @@
 # Guards
 
-A guard is a hook of dotclaude that checks a tool call and denies it, asks you about it, or adds a note to its result.
-This page lists each guard, what to do when one fires, and how to turn one off.
+Since 0.27 dotclaude guards a session with four layers.
+Permission rules in the settings profile do most of the work.
+The sandbox limits what a command can reach.
+One hooks module covers the two cases that a rule cannot match.
+In auto mode, one classic hook gives the same asks, because the auto-mode classifier decides an ask of the module.
+This page lists each layer, what to do when one fires, and how to change one.
 
-## What each guard does
+## The layers
 
-All guards are in the `dotclaude` plugin.
-Rule numbers refer to the [operating spec](Operating-Spec).
-Rule 1.7 names the Bash guard, and the Edit, secret, and subagent guards have no rule of their own.
+| Layer | Where it lives | What it does |
+| --- | --- | --- |
+| Permission rules | `templates/settings.json`, applied by `/dotclaude:setup` | Deny, ask, and allow lists for tools and commands. |
+| Sandbox | `sandbox` in the same profile | Runs Bash commands in the Claude Code sandbox, with a list of allowed domains. |
+| Module guard | `hooks/mod.mjs`, with pure rules in `lib/guard.mjs` | One `tool.check` handler for a recursive `rm` outside the project and for the policy ask. |
+| Auto-mode guard | `hooks/auto-mode-guard.mjs`, with the same rules in `lib/guard.mjs` | A classic `PreToolUse` hook that gives the same asks in auto mode only. |
 
-| Guard | Option | Event | What it does | Rule |
-| --- | --- | --- | --- | --- |
-| Bash guard | `guard_bash` | `tool.call`, `PreToolUse` | Asks before `git push --force` (and `--force-with-lease`), `git reset --hard`, `git clean -f`, `git checkout` or `git restore` of files, `git branch -D`, `rm -r` outside the project or of the project or home folder, `dd` to a device, `mkfs`, `chmod -R 777`, `sudo`, and a read of `.env`, SSH key, or AWS credential files. | 1.7 |
-| Bash guard, side effects | `guard_bash` | `tool.call`, `PreToolUse` | Asks before a command that skips the git hooks (`--no-verify`, `git commit -n`, `core.hooksPath`, `HUSKY=0`, `LEFTHOOK=0`, `SKIP=`), a publish (`npm publish`, `cargo publish`, `docker push`, and similar, but not with `--dry-run`), a `gh` write (a verb that does not only read, or `gh api` with a method other than `GET` or with fields, but not a `gh api graphql` query without a mutation), and a database delete (`DROP`, `TRUNCATE`, `DELETE FROM`, `FLUSHALL`, `dropdb`, `prisma migrate reset`, `rails db:drop`, `manage.py flush`). It also reads the tool that `npx` or `bunx` runs. | 1.7 |
-| Bash guard, attribution | `guard_bash` | `tool.call`, `PreToolUse` | Denies a Claude `Co-Authored-By` line in a commit when your settings leave it out. Asks before a Claude attribution line in a repository of another owner. | 3.1, 3.2 |
-| Bash guard, CodeGraph | `guard_bash` | `tool.call`, `PreToolUse` | Asks before `codegraph init` and `codegraph uninit`. | 6.2 |
-| Edit guard | `guard_edit` | `tool.call`, `PreToolUse` | Asks before an edit that removes test assertions, adds a skip, `xfail`, `todo`, or focus marker to a test file, writes a `[REDACTED:` marker, or changes a generated file, a lockfile, or a Claude Code settings file. | none |
-| Secret redaction | `guard_secrets` | `tool.call` | Replaces each secret in a tool result with `[REDACTED:<rule>]`. Needs `betterleaks` on `PATH`. | none |
-| Policy guard | `guard_policy` | `PreToolUse`, `tool.call` | Asks before the first call of a session that reaches a project of another owner with a `CLAUDE.md`, `AGENTS.md`, or `AI_POLICY.md` file. Shows the policy to Claude after a GitHub fetch. | 9.1 |
-| Subagent guard | `guard_agents` | `agent.spawn` | Denies a subagent spawn that breaks the model and effort rules. | none |
-| Sembr hook | `sembr` | `tool.call` | Rewraps the message of a `git commit`, `gh pr`, or `gh issue` command before it runs. Adds a note after a `Write` or `Edit` of prose that breaks at a column. Needs `sembr` on `PATH`. | 7.1 |
-| CodeGraph augment | `codegraph` | `tool.call` | Adds callers and callees to a search for one symbol name. Does not deny or ask. | none |
+Deny rules are not a security boundary on their own, so the profile pairs them with the sandbox ([Design](Design)).
 
-> **Note:** The two plugins that you can add, [Browser](Browser) and [Second opinion](Second-Opinion), have no guard.
+## Permission rules
+
+| List | What it holds |
+| --- | --- |
+| deny | Reads of secret files, `rm -rf` of `/`, `/*`, `~`, and `~/*`, `mkfs`, `dd` to a device, and the `Agent(general-purpose)` agent. |
+| ask | Force pushes, `git reset --hard`, `git clean`, `git branch -D`, `git checkout --`, `git restore`, piped shells, `sudo`, publishes, `gh pr` and `gh issue` writes, `gh release`, and SQL drops and truncates. |
+| allow | Read-only `git` and `gh` commands, and the build and test runners (`bun`, `npm`, `pnpm`, `cargo`, `go`, `just`, `make`). |
+
+The profile also sets `disableBypassPermissionsMode`, so no mode skips these rules.
+The exact patterns are in `plugins/dotclaude/templates/settings.json`.
+
+## The sandbox
+
+The profile sets `sandbox.enabled` and `allowUnsandboxedCommands: false`.
+A command that fails in the sandbox does not retry outside it.
+These commands run outside the sandbox, because they need your credentials and the network: `git fetch`, `git pull`, `git push`, and `gh`.
+`allowedDomains` lists GitHub, npm, PyPI, crates.io, and `proxy.golang.org`.
+
+The optional managed settings add `sandbox.failIfUnavailable`, `disableBypassPermissionsMode`, and the deny list at system level.
+The setup skill prints the `sudo` command for them and never runs it.
+
+## The module guard
+
+`hooks/mod.mjs` registers one `tool.check` handler.
+It calls the engine first, and it returns a deny of the engine unchanged.
+
+| Case | What the module does |
+| --- | --- |
+| `rm` with a recursive flag, and a target outside the project root | Asks, and names the target. A target in the project, in `/tmp`, in `/private/tmp`, or in `$TMPDIR` keeps the verdict. A target with `$` or a backtick counts as outside. |
+| `git clone`, `gh`, `curl`, `wget`, or a `WebFetch` of a repository of another owner that has `CLAUDE.md`, `AGENTS.md`, or `AI_POLICY.md` | Asks once per session and per repository, and shows the policy text. See [Contributions](Contributions). |
+
+The module has no `.catch`, so it fails open.
+When `gh` is missing or a call fails, the verdict of the engine stands.
+A call for the policy has a 5-second timeout.
+
+The tests of the module are in `plugins/dotclaude/tests/mod.test.ts`, and `just lab` runs them with stubbed events.
+No command runs in them.
+See [Development](Development).
+
+## The auto-mode guard
+
+In auto mode, the classifier decides an ask of `tool.check`, and it can allow the call.
+An ask of a classic `PreToolUse` hook stops the call in auto mode (**measured**, 2.1.292, see [Claude mods](Claude-Mods#auto-mode-module-ask-against-classic-ask)).
+So `hooks/auto-mode-guard.mjs` runs the same rules from a classic hook.
+
+- It acts only when the `permission_mode` of the hook input is `auto`.
+  In each other mode it gives no output, so you see one ask, not two.
+- `hooks.json` gives it 7 Bash handlers with an `if` filter each: `rm`, `sudo`, `xargs`, `gh`, `git clone`, `curl`, and `wget`.
+  A filter keeps Claude Code from starting a process for other commands.
+  It also has one handler for `WebFetch`.
+- It keeps the repositories that it checked in a state file for each session, under `${CLAUDE_PLUGIN_DATA}/auto-mode-guard/`, or the temp folder when that variable is not set.
+  So the policy ask comes once per session and per repository, as in the module.
+- It fails open: an error gives no output.
+- An `if` filter matches the start of the command.
+  `xargs rm` and `sudo rm` have their own handlers, but a recursive `rm` in other forms, such as after `env` or in a subshell, can pass the filter.
+  The auto-mode classifier then decides the call.
+
+The 5 tests of the script are in `tests/dotclaude/auto-mode-guard.test.mjs`, with commands as strings.
+
+Auto mode ignores some allow rules of the profile, because they would bypass the classifier: `Bash(bun run *)`, `Bash(npm run *)`, and `Bash(pnpm run *)` (**measured**, debug log).
+In auto mode the classifier decides those commands.
+
+> **Note:** The two plugins that you can add, [Browser](Browser) and [Second opinion](Second-Opinion), add no guard.
 > The Jev hook only adds a pick to a question.
-> It never denies a call.
+> The modder plugin has a hook that denies a kill by process name ([Modder](Modder)).
 
-The Bash guard reads each part of a command that `&&`, `||`, `;`, `|`, or a newline splits.
-It also reads the script of `bash -c` and `sh -c` one level deep.
-The rules are in `plugins/dotclaude/lib/guards/`.
-
-## What to do when a guard denies a call
+## What to do when a call is denied
 
 A deny is a decision of you.
 Claude must not get the same result in another way.
 
 1. Read the reason in the deny message.
-   It names the rule.
 1. Change the call so that it follows the rule.
-   For example, remove the Claude trailer, or pick the model of the agent file.
-1. If the rule is wrong for your project, turn the guard off (see below).
+1. If the rule is wrong for your project, change the profile in your settings file and run `/dotclaude:setup` to see the difference.
 
-| Deny | Fix |
-| --- | --- |
-| Claude `Co-Authored-By` trailer when the settings leave it out | Remove the trailer from the commit message. |
-| Subagent model differs from the agent file | Omit `model`, or pick the agent that has the model that you need. |
-| Subagent model or effort outside the rules | Pick an allowed model and effort from [Parts](Parts#model-and-effort-rules). |
-
-## What to do when a guard asks
-
-An ask shows a prompt with the reason.
-In auto mode, the classic `PreToolUse` hook keeps the ask, so you still see the prompt ([Claude mods](Claude-Mods)).
+## What to do when a call asks
 
 1. Read the reason.
-   For the Bash guard it names the part of the command.
 1. Choose to allow or reject the call.
-1. For the policy guard, read the policy that the prompt shows before you allow.
+1. For the policy ask, read the policy that the prompt shows before you allow.
    If the policy forbids AI tools, reject the call.
-
-## Turn a guard off
-
-Each guard has an option that is on by default.
-
-1. Open `/config`.
-1. Find `dotclaude` and set the option from the table above to `false`.
-1. Start a new session.
-
-See [Options](Options) for the full list.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Secrets are not redacted | `betterleaks` is not on `PATH`. The result passes through, and session start says so. | Install `betterleaks`. |
-| Commit messages keep column breaks | `sembr` is not on `PATH`. | Install `sembr`. |
-| No policy prompt for a project | The project has no policy file, belongs to you, or is on a host other than GitHub. | None. The guard covers GitHub fetches and local clones. |
+| No ask for a recursive `rm` outside the project | Claude Code did not load the module, for example in `--bare` mode. | Start Claude Code without that mode. |
+| No ask for a recursive `rm` in auto mode | The command does not start with a word that an `if` filter of the auto-mode guard matches, or `node` is not on `PATH`. | Install Node.js 22.18 or later, or use the default mode for that work. |
+| No policy ask for a project | The project has no policy file, belongs to you, or is not on GitHub. `gh` can also be missing or logged out. | None for the first three. For the last, install `gh` and log in. |
+| A `git push` fails in the sandbox | The push runs outside the sandbox. The profile excludes it. | Check your git credentials. |
 
 ## Related pages
 
-- [Options](Options)
-- [Terms of Use](Terms-of-Use)
 - [Parts](Parts)
 - [Claude mods](Claude-Mods)
+- [Design](Design)

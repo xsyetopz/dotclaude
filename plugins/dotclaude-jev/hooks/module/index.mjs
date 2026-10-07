@@ -1,5 +1,5 @@
 // The hooks module of dotclaude-jev.
-// It acts on section 14 of the dotclaude operating spec:
+// It acts on the session note in `hooks/session-start/second-opinion.md`:
 // Jev picks before the user answers a question with options.
 // On each `AskUserQuestion`, the hook runs `jev.mjs ask` once. Jev sorts each
 // question into preference or facts, and picks from its options. A facts
@@ -79,7 +79,7 @@ export function register(on) {
       if (!request) return next(e);
       const run = await $.process.run(
         [
-          "bun",
+          "node",
           `${$.plugin.root}/skills/second-opinion/scripts/jev.mjs`,
           "ask",
           "--state",

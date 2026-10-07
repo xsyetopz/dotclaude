@@ -1,7 +1,8 @@
 # Evals history
 
 This page holds the per-version eval runs and the compaction bench.
-The suite and the current method are in [Evals](Evals).
+0.27.0 removed the eval suite, the Evals page, and `evals/`, so these runs are history.
+The 0.27 checks are `just check` and the hook lab ([Development](Development)).
 Labels: **measured** means a run on this machine, and **reported** means a claim from a user.
 
 ## Summary
@@ -200,6 +201,6 @@ The case is not written yet.
 
 ## Related pages
 
-- [Evals](Evals)
+- [Development](Development)
 - [Open items](Open-Items)
 - [Plans and models](Plans-and-Models)

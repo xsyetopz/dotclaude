@@ -1,10 +1,11 @@
 # Release History
 
-The current release line (0.23 and later) is in [CHANGELOG.md](https://github.com/xsyetopz/dotclaude/blob/main/CHANGELOG.md), newest first.
+The current release line (0.24 and later) is in [CHANGELOG.md](https://github.com/xsyetopz/dotclaude/blob/main/CHANGELOG.md), newest first.
 These pages hold the older lines, one page for each release line, with the changes of all patch versions merged.
 
 | Page | Dates | Summary |
 | --- | --- | --- |
+| [Release 0.23](Release-0.23) | 2026-10-06 | `translator`, `docs-writer`, and `digest-writer` agents. Clause for questions to the user. Bash guard deny for writes to project files. |
 | [Release 0.22](Release-0.22) | 2026-10-05 | New repository layout, `just release`, and a profile drift notice. Clauses for long runs, project AI policy, and subagent progress. |
 | [Release 0.21](Release-0.21) | 2026-10-05 | `sembr` line-break hook and guard for `[REDACTED:` edits. Stop verify gate removed. |
 | [Release 0.20](Release-0.20) | 2026-10-04 to 2026-10-05 | Full reset to 2,118 lines of runtime JavaScript. New status line, `dotclaude-jev` plugin, Terms of Use, and wiki. |

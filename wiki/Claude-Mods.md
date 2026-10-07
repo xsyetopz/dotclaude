@@ -1,21 +1,30 @@
 # Claude Mods
 
 This page answers one question: what does Claude Code let a plugin hooks module do, and which parts does dotclaude use?
-It is the evidence for the hooks module of Claude Code 2.1.288.
+It is the evidence for the hooks module of Claude Code 2.1.288, with the 0.27 use of it on top.
 
 ## Summary
 
 - Claude Code 2.1.287 and later can load a plugin "hooks module".
   Anthropic calls a plugin with such a module a mod.
-- dotclaude 0.22.2 uses the module in `plugins/dotclaude/hooks/module/index.mjs` for `tool.call`, `agent.spawn`, `prompt.submit`, `turn.complete`, `session.compact`, and `tool.check`.
-- It no longer uses the module for model-switch, config-change, or session-ledger hooks.
-  The rows and gaps that name other events are 0.19 evidence, and each says so.
-- The module gets no permission mode, and in auto mode the classifier can allow an ask of `tool.check`.
-  So the guards also have a classic `PreToolUse` hook.
+  The docs describe mods (**official**, `hooks.md`).
+- dotclaude 0.27.0 uses the module in `plugins/dotclaude/hooks/mod.mjs` for two events, `tool.check` and `prompt.section`.
+  The `tool.check` handler calls `next(e)` first and returns an engine deny unchanged.
+  Its pure rules are in `lib/guard.mjs`.
+- 0.27.0 has one classic `PreToolUse` command hook, `hooks/auto-mode-guard.mjs`, which acts only in auto mode.
+  It has no prompt hook on `Stop`.
+  The rows and sections below that name other events, `ask-guarded-calls.mjs`, or 0.19 to 0.26 parts are history, and each says so.
+- The module gets no permission mode, and in auto mode the classifier decides an ask of `tool.check` (**measured**, 2.1.292).
+  An ask of a classic hook stops the call in auto mode (**measured**, 2.1.292).
+  See [Auto mode](#auto-mode-module-ask-against-classic-ask).
+- Where the built-in guard `sec-default` loads, it skips the `prompt.section` hook of a user's mod (**measured**, 2.1.292).
+  See [The built-in guard](#the-built-in-guard-sec-default).
 - The API is early access, so each dotclaude release names one Claude Code version.
+  The mods API can change between releases.
 - [Parts](Parts) lists what the module does.
 
-Labels: **official** (Anthropic docs and files), **binary** (the Claude Code bundle), **measured** (a run on this machine).
+Labels: **official** (Anthropic docs and files), **binary** (the Claude Code bundle, read only), **measured** (a run on this machine).
+This page quotes only short strings from the bundle, and it gives no bundle code.
 
 ## What a mod is
 
@@ -32,7 +41,45 @@ Labels: **official** (Anthropic docs and files), **binary** (the Claude Code bun
 | `sec-default` | It loads for Team and Enterprise users and on machines with managed settings. | **official**, `plugins/mods/admin` |
 
 Where `sec-default` loads, it sends the `classic.*` events past the mods that a user installs (**binary**).
-So dotclaude uses only native events.
+So the module of dotclaude uses only native events.
+
+## The built-in guard (`sec-default`)
+
+The [admin page](https://code.claude.com/docs/en/plugins/mods/admin) of the docs gives these rules (**official**):
+
+- The guard loads when the machine has managed settings, or when the user signs in with a Team or Enterprise plan.
+  A user cannot turn it off.
+- "The guard protects what you manage."
+  A user's mod cannot change the system prompt, managed hooks, managed instructions, or the settings that a mod reads.
+- A user's mod can still deny a call, and it can approve a call that an `ask` rule or a non-managed `PreToolUse` hook would stop.
+  "In auto mode, a call the mod approves runs without a classifier check."
+- A plugin that Claude Code copies into its cache counts as a user's plugin, also when managed `enabledPlugins` turns it on.
+  This covers each plugin from a GitHub, git, URL, or npm source.
+- A plugin counts as the organization's only when managed settings name its marketplace as a local folder by absolute path (`extraKnownMarketplaces`), the marketplace lists it by a relative path, and managed `enabledPlugins` turns it on.
+- `prependPlugins` in managed settings sets the order of the organization's mods.
+  The list replaces the default, so it must name `sec-default@builtin`.
+- The source of the guard is public in [`mods/sec-default`](https://github.com/anthropics/claude-code/tree/main/mods/sec-default).
+
+On this machine, with Claude Code 2.1.292 (**measured**):
+
+- The machine had a managed settings file with only `fastMode` and `availableModels`.
+  That was enough to load the guard.
+- The debug log said that the `prompt.section` hook of dotclaude was bypassed by `cc-plugin-sec-default` at tier `user`.
+  So the replacement text of `context_management` did not reach the prompt.
+- The `tool.check` hook of dotclaude still ran, and its ask reached the user.
+- The classic `PreToolUse` command hook of the plugin also ran.
+
+dotclaude installs from GitHub, so it is always a user's mod.
+To let its `prompt.section` hook run on a machine with the guard, do one of these (**not verified**, both need `sudo`):
+
+1. Remove the managed settings files, and keep their keys in user settings.
+   Without managed settings and without a Team or Enterprise login, the guard does not load.
+1. Copy the marketplace to a folder that only an administrator can write.
+   In managed settings, name that folder in `extraKnownMarketplaces`, set `enabledPlugins` for `dotclaude@dotclaude`, and set `prependPlugins` to `["sec-default@builtin", "dotclaude@dotclaude"]`.
+
+The optional `templates/managed-settings.json` of dotclaude is a managed settings file.
+So when you install it, the guard loads, and the `context_management` text of dotclaude goes away.
+The forced output style still says that compaction is off.
 
 ## The gate
 
@@ -51,25 +98,29 @@ Claude Code refuses a module for one of these reasons (**binary**):
 ## Order
 
 - The chain order is managed settings hooks, then hooks modules, then the other settings hooks (**official**, d.ts `ClassicEventOf`).
-  So a dotclaude module runs before the dotclaude classic hooks.
+  So a dotclaude module runs before classic hooks of other plugins.
 - `sec-default` is outermost, unless managed `prependPlugins` changes the order (**official**, `mods/README.md`).
 
-## Events that dotclaude uses
+## The event that dotclaude uses
 
 | Work | Event | Evidence |
 | --- | --- | --- |
-| Guards, secret redaction, CodeGraph notes | `tool.call` | A failed call returns `{ isError, result, text, ref, context }`, and `text` is what the model reads (**binary**). |
-| Keep an ask of the guards | `tool.check` | The hook returns the ask of the guard unless the engine denies (`plugins/dotclaude/hooks/module/index.mjs`). |
-| Spawn rules | `agent.spawn` | A `{ deny }` result refuses the spawn with a reason (`plugins/dotclaude/hooks/module/index.mjs`). |
-| Cold-cache note | `prompt.submit`, `turn.complete` | A hook attaches context "on the way down", in the input to `next` (**official**, d.ts). `turn.complete` stores the time of the last turn. |
-| Compaction instruction and handoff fork | `session.compact` | A `precompute` installs nothing, and the real compaction fires the event again (**official**, d.ts). The fork runs before `next`, so it sees the whole conversation. |
+| Ask for a recursive `rm` outside the project, and the policy ask | `tool.check` | The hook calls `next(e)`, returns an engine deny unchanged, and otherwise returns an ask (`plugins/dotclaude/hooks/mod.mjs`). Lab tests in `tests/mod.test.ts` cover it. |
+| Replace the `context_management` section of the system prompt | `prompt.section` with the matcher `{ name: "context_management" }` | The hook returns `{ text }` when `DISABLE_COMPACT` is set, and calls `next(e)` otherwise. The text is the same on each call, so the prompt cache stays. Lab tests cover both cases. |
 
-- The guards also have a classic `PreToolUse` hook, because a module ask does not hold in auto mode (see [Gaps](#gaps)).
-- `SessionStart` stays a classic command hook, because `session.start` does not fire after `/clear`, `/resume`, or a compaction, and it cannot add context (**official**, d.ts).
+- The module has no `.catch`, so a failure gives no ask and the verdict of the engine stands.
+- `session.cwd`, `session.root`, `session.id`, `env`, and `process.run` are the calls that the module makes, and the lab stubs each one.
+- A section has an `id`, a `text`, and a `scope` of `shared` or `session` (**official**, d.ts).
+  The `session` scope has `context_management`, which says that the system summarizes prior messages (**binary**).
+  With `DISABLE_COMPACT`, that is false.
+- `prompt.compose` sees all sections at once.
+  dotclaude needs one section, so it uses `prompt.section`.
+- `SessionStart` of the optional plugins stays a classic command hook, because `session.start` does not fire after `/clear`, `/resume`, or a compaction, and it cannot add context (**official**, d.ts).
 
-## Events that 0.19 used
+## Events that 0.19 to 0.26 used
 
-0.19 also used these events, and 0.20.0 removed each use.
+0.19 to 0.26 also used these events, and 0.27.0 uses none of them.
+The first rows are 0.19 evidence that 0.20.0 removed, and the later releases used `tool.call`, `agent.spawn`, `prompt.submit`, `turn.complete`, and `session.compact` for guards, spawn rules, the cold-cache note, and the compaction handoff.
 
 | Work | Event | Evidence |
 | --- | --- | --- |
@@ -87,17 +138,35 @@ No native event exists for the first five.
 
 | Gap | Effect on dotclaude |
 | --- | --- |
-| No permission mode in the module | The guards also run as a classic hook. |
-| The auto-mode classifier can allow an ask of `tool.check` | `ask-guarded-calls.mjs` gives the asks again. |
+| No permission mode in the module | The 0.27 module cannot tell auto mode from another mode. |
+| The auto-mode classifier can allow an ask of `tool.check` | `hooks/auto-mode-guard.mjs` gives the same ask from a classic hook in auto mode. |
+| `sec-default` skips the `prompt.section` hook of a user's mod | On a machine with managed settings or a Team or Enterprise login, the `context_management` text of dotclaude does not load. |
 | A classic `allow` is dropped | Matters only for `Agent` and `SendMessage`. |
-| An action that throws is skipped, with no log | The module catches errors. |
-| `$.fs.write` is not atomic | The module cannot write a file atomically. |
-| `$.session.cwd()` differs in a worktree | The module keeps the first cwd as the project. |
+| An action that throws is skipped, with no log | The 0.27 module fails open on purpose. |
+| `$.fs.write` is not atomic | The module cannot write a file atomically, and 0.27 writes none. |
+| `$.session.cwd()` differs in a worktree | 0.19 to 0.26 kept the first cwd as the project. The 0.27 test stubs `session.cwd` and `session.root`. |
 | The `Notification` input of an `AskUserQuestion` dialog looks like a permission dialog | 0.20.0 removed permission reminders. |
-| `$.model.fork` fails after `--continue` | The first fork gives `nothing-to-fork`. |
+| `$.model.fork` fails after `--continue` | The first fork gives `nothing-to-fork`. 0.27 does not fork. |
+
+### Auto mode: module ask against classic ask
+
+Measured on Claude Code 2.1.292 with `-p --permission-mode auto` in `just sandbox`:
+
+- A `tool.check` ask of the module went to the auto-mode classifier, and the classifier allowed the call.
+- The d.ts says that `ask` "puts it to the mode's decider (the dialog, the auto-mode classifier, a headless host)" (**official**).
+- A classic `PreToolUse` hook that returned `permissionDecision: "ask"` stopped the call.
+  In `-p`, the call was in `permission_denials`, and the target of `rm -r` outside the project was still there.
+- The `if` field of a classic hook works as a filter.
+  The debug log has "Skipping hook due to if condition … not matching" for each handler whose pattern did not match.
+  So the 7 Bash handlers of `auto-mode-guard.mjs` start one process only for `rm`, `sudo`, `xargs`, `gh`, `git clone`, `curl`, and `wget`.
+- The `permission_mode` field of the classic hook input is `auto` in auto mode.
+  The script gives no output in each other mode, so the module alone decides there, and the user sees one ask, not two.
+- In auto mode, Claude Code ignores some allow rules as dangerous, because they "bypass the classifier".
+  The debug log named `Bash(bun run *)`, `Bash(npm run *)`, and `Bash(pnpm run *)`.
+  The classifier decides those commands in auto mode.
 
 <details>
-<summary>Permission mode and the auto-mode classifier</summary>
+<summary>Permission mode and the auto-mode classifier (0.19 to 0.26)</summary>
 
 - The module gets no permission mode.
   No field on `tool.call` or `tool.check` has it, and `/config` has only the default mode (**official**, d.ts).
@@ -151,7 +220,7 @@ No native event exists for the first five.
 - 2.1.288 fixed it (**official**, release notes).
   The note says: "Fixed a plugin's `tool.call` hook making Bash fail and file searches read the wrong folder in subagents that run in a worktree".
   On 2.1.288, 0 calls failed (**measured**).
-- dotclaude required 2.1.288 for this reason, and the README now requires 2.1.291.
+- dotclaude required 2.1.288 for this reason, and 0.27.0 requires 2.1.292.
 
 </details>
 
@@ -168,84 +237,9 @@ No native event exists for the first five.
 
 </details>
 
-## Prompt hooks on Stop
-
-dotclaude uses a classic hook with `"type": "prompt"` on `Stop` for rule 12.1 of the [operating spec](Operating-Spec).
-0.26.0 removed the same hook on `SubagentStop`, because each call sends the transcript, about 46k tokens in the mean.
-These facts are from the Claude Code 2.1.292 binary (**binary**), read only:
-
-- Claude Code sends the hook `prompt` as a condition, after the words "has the following stopping condition been satisfied? Answer based on transcript evidence only."
-  Stop and SubagentStop get their own system prompt for this.
-- The model is the hook `model` field, else `ANTHROPIC_SMALL_FAST_MODEL`, else Haiku in most setups.
-- The default timeout is 30 seconds.
-- The answer schema is `ok`, `reason`, and `impossible`, and `ok` and `reason` are required.
-  An `ok: false` answer on Stop or SubagentStop blocks, and Claude gets the reason and continues.
-  With `impossible: true`, the stop goes through.
-- The next stop in the turn has `stop_hook_active: true`.
-- A timeout, an API error, invalid JSON, or a schema failure does not block, so the hook fails open.
-- Claude Code ends the turn after 8 consecutive blocks from Stop hooks, and shows a warning.
-  `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` changes the cap, and a value of 0 or less removes it.
-- Each query loop keeps its own count of blocks, and a subagent runs its own loop.
-  The count goes back to 0 when Claude calls a tool.
-  At the cap, Claude Code shows the warning only for the main agent.
-
-These facts are from live tests of 2.1.292 in `just sandbox` with Haiku 4.5 (**tested**):
-
-- A `"type": "prompt"` hook in a plugin `hooks.json` runs on Stop and on SubagentStop.
-  The 2.1.0 changelog added prompt hooks from plugins.
-  The bug in [issue #13155](https://github.com/anthropics/claude-code/issues/13155) does not occur on 2.1.292.
-- The evaluator model is `claude-haiku-4-5`.
-  It gets the transcript, and `$ARGUMENTS` in the prompt becomes the hook input JSON.
-- On a block, Claude gets `Stop hook feedback:`, then the full hook prompt in square brackets, then the `reason`.
-  The prompt in this text has `$ARGUMENTS`, not the hook input.
-  Thus a long prompt adds its full length to the context at each block, and Claude reads each rule of the prompt, also the rules that let a message through.
-  Keep the prompt short, and write it as a rule that Claude can read.
-- The model writes its own `reason`, and does not copy a sample reason from the prompt.
-- A SubagentStop hook that always blocks blocked a subagent 8 times.
-  At the 9th block, the subagent ended, and the main agent got no warning.
-  The main agent had no block before, so the test does not show that the two counts are separate.
-- The prompt of rule 12.1 had about 1,150 characters when it was tested.
-  In one run of each of 7 sample reports, it gave the correct result for 6:
-  - It let through a report that skipped a step at the request of the user.
-  - It let through a report with a passing check, and a report with a **Not verified** list.
-  - It blocked a report that called a fix done, apart from a flaky test.
-  - It blocked a report that called a slice done with 1 failed test from another agent.
-  - It blocked a report that called a fix done and also put the fix under **Not verified**.
-  - It blocked an open item that "may already be done", although the prompt lets such an item through.
-    The rule to block when the model is not sure is the probable cause.
-- At the next stop, `stop_hook_active` was `true`, and the hook let the stop through.
-- On 2026-10-07, the retry after a block repeated the claim "Done, all tests pass" with no test run, and the hook let it through.
-  The same message with `stop_hook_active: false` was blocked in 3 of 3 runs.
-  Thus the rule "If `stop_hook_active` is `true`, return {"ok": true}" lets one retry through.
-  This is a known limit, and the rule stays, because it stops a loop of blocks.
-- On 2026-10-07, a message that only asked the user for approval got `ok: false` with a reason that found no break.
-  In 3 more runs of the same stop, and in 4 replays of the prompt, each answer was `ok: true`.
-- Claude Code puts the prompt after this text: "Based on the conversation transcript above, has the following stopping condition been satisfied? Answer based on transcript evidence only."
-  Thus the evaluator model judges a "stopping condition" and also sees the transcript.
-  The probable cause of the false block is that the model judged whether the task of the user was complete, and not the claims of the message.
-  This cause is not verified.
-  The replays with `-p` had no such text and no transcript, so they did not show the false block.
-- On 2026-10-07, 10 runs of each prompt version in the sandbox, on `claude-haiku-4-5`, gave these false blocks on a message that asked for approval:
-
-  | Prompt version | False blocks, first stops | False blocks, retries |
-  | --- | --- | --- |
-  | Old prompt, 1,859 characters | 2 of 10 | 1 |
-  | "Met, unless …" wording | 5 of 10 | 0 |
-  | Stopping condition, 1,498 characters | 0 of 10 | 0 of 7 |
-
-- The new prompt states the rule as the stopping condition, and says that the condition is about the claims in `last_assistant_message`.
-  A question, a plan, a request for approval, or a report of open work satisfies it.
-  A **Not verified** part satisfies it only with the reason that its check cannot run.
-  The `reason` tells the agent to run the check and to fix the part until the check passes, and does not offer the **Not verified** list as an exit.
-- With the new prompt, 2 messages that said "Done, add.js is fixed and all tests pass" with no check were both blocked.
-  In 3 more runs, the agent only asked for approval to write the file, and the hook correctly let the stop through.
-  The sample of true positives is small.
-
-The [hooks doc](https://code.claude.com/docs/en/hooks) says that the count goes back to 0 at each tool call.
-The [environment variables doc](https://code.claude.com/docs/en/env-vars) says that the cap applies to Stop and SubagentStop hooks.
-
 ## Related pages
 
+- [Prompt hooks on Stop](Stop-Prompt-Hooks) has the 0.26 evidence for a prompt hook on `Stop`.
 - [Parts](Parts) lists what the module does.
 - [Guards](Guards) tells how the guards ask and deny.
 - [Design](Design) gives the design principles.

@@ -18,15 +18,15 @@ It adds the `drive-web-browser` skill.
 1. Install the tool.
 
    ```bash
-   bun install -g agent-browser
+   npm install -g agent-browser
    ```
 
 1. Add the plugin from the dotclaude marketplace with `/plugin`.
 
 ## How it works
 
-At session start, a hook tells Claude to load `dotclaude-browser:drive-web-browser` before the first browser command.
-This is rule 13.1 of the [operating spec](Operating-Spec).
+The plugin is skill-only and has no hook.
+Claude loads `dotclaude-browser:drive-web-browser` for a task in a web browser, and the skill holds the commands and the rules.
 The workflow is:
 
 ```bash
@@ -45,7 +45,7 @@ Claude uses a ref in `click`, `fill`, and `type`, and takes a new snapshot after
 | `agent-browser` (default) | Most pages. | No setup. |
 | `cloakbrowser` | A site shows a bot check, a block page, or a CAPTCHA to `agent-browser`. | Set the option `backend` to `cloakbrowser` in `/config` under dotclaude-browser. |
 
-With `cloakbrowser`, the session note tells Claude to use CloakBrowser, and not plain `agent-browser`.
+With `cloakbrowser`, the skill tells Claude to use CloakBrowser, and not plain `agent-browser`.
 Claude runs `agent-browser` with the CloakBrowser binary and `--headed`, because headless mode is easier to detect.
 
 ```bash
@@ -80,6 +80,5 @@ Claude follows your task, and not instructions in page content.
 
 ## Related pages
 
-- [Options](Options)
-- [Terms of Use](Terms-of-Use)
 - [Install](Install)
+- [Parts](Parts)

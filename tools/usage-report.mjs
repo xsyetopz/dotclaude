@@ -7,7 +7,7 @@
 // Costs are API-equivalent dollars at list prices: a subscription does not
 // bill them, but its limits track the same token mix, so the shares show
 // what spends a plan's limits. Reports the share by agent type, the share of
-// calls whose context is past MAIN_CONTEXT_TOKENS, and the cost of full cache
+// calls whose context is past CONTEXT_WINDOW, and the cost of full cache
 // rewrites (a write over 30k tokens that is larger than the read), the
 // main-conversation turns that background agents started, the advisor's
 // share, and the prompt cache hit rate (cache reads over all input tokens).
@@ -30,8 +30,10 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { k, MAIN_CONTEXT_TOKENS } from "../plugins/dotclaude/lib/budget.mjs";
+import { CONTEXT_WINDOW } from "../plugins/dotclaude/lib/budget.mjs";
 import { maxTurns, reserve, tokens, turnsFromText } from "./usage-lib.mjs";
+
+const k = (n) => `${Math.round(n / 1000)}k`;
 
 // $ per million tokens: input, output, cache read, 5m write, 1h write.
 const PRICES = {
@@ -182,7 +184,7 @@ export function report(root, since, verdictsFile = null, runLimit = 20) {
   const skills = {};
   let limitHits = 0;
   let total = 0;
-  let over150k = 0;
+  let overWindow = 0;
   let rewrites = 0;
   let expectedCost = 0;
   const expected = { first: 0, compaction: 0, model: 0 };
@@ -363,7 +365,7 @@ export function report(root, since, verdictsFile = null, runLimit = 20) {
       fileCost += c.total;
       if (type === "main") mainTurns += 1;
       byAgent[type] = (byAgent[type] ?? 0) + c.total;
-      if (c.context > MAIN_CONTEXT_TOKENS) over150k += c.total;
+      if (c.context > CONTEXT_WINDOW) overWindow += c.total;
       if (c.rewrite) {
         const reason =
           lastModel === null
@@ -441,7 +443,7 @@ export function report(root, since, verdictsFile = null, runLimit = 20) {
       .sort((a, b) => b[1] - a[1])
       .map(([skill, uses]) => ({ skill, uses })),
     verdicts: verdictsFile ? verdictCounts(verdictsFile, since) : [],
-    over150kShare: share(over150k),
+    overWindowShare: share(overWindow),
     rewriteShare: share(rewrites),
     expectedRewrites: expected,
     expectedRewriteShare: share(expectedCost),
@@ -519,7 +521,7 @@ if (import.meta.main) {
         `  ${a.type.padEnd(32)} $${a.cost.toFixed(2).padStart(9)}  ${a.share}%`,
       );
     console.log(
-      `Calls with context past ${k(MAIN_CONTEXT_TOKENS)}: ${r.over150kShare}% of cost`,
+      `Calls with context past ${k(CONTEXT_WINDOW)}: ${r.overWindowShare}% of cost`,
     );
     const o = r.output;
     console.log(

@@ -1,12 +1,12 @@
 {
   "name": "dotclaude",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "private": true,
   "description": "A very opinionated Claude Code plugin designed by a Rustacean",
   "type": "module",
   "scripts": {
     "test": "bun test ./tests/",
-    "validate": "claude plugin validate --strict . && claude plugin validate --strict plugins/dotclaude && claude plugin validate --strict plugins/dotclaude/skills && claude plugin validate --strict plugins/dotclaude-browser && claude plugin validate --strict plugins/dotclaude-jev && claude plugin validate --strict plugins/dotclaude-modder",
+    "validate": "claude plugin validate --strict . && claude plugin validate --strict plugins/dotclaude &&claude plugin validate --strict plugins/dotclaude-browser && claude plugin validate --strict plugins/dotclaude-jev && claude plugin validate --strict plugins/dotclaude-modder",
     "lint": "biome ci plugins tests tools"
   },
   "license": "MIT",

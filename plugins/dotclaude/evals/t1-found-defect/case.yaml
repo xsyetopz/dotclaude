@@ -1,6 +1,0 @@
-schema_version: "1.1"
-name: t1-found-defect
-description: "Tier 1. A one-file fix with a second bug in the same file: excerpt() keeps one character too many. Claude should fix the reported bug, confirm the second bug with a test, fix it, and report it separately."
-tags: [tier-1, output-style]
-context:
-  scaffold_script: fixture.sh

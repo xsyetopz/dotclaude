@@ -1,7 +1,7 @@
 ---
 name: second-opinion
 description: Gets a calibrated second opinion from TypeSafe Jev, such as a yes or no check, a pick from your options, or a rating on a scale. Use before you act on a close call, and to check a technical decision of the user against the facts of the codebase. Not for questions that only the user can answer.
-allowed-tools: Bash(bun *)
+allowed-tools: Bash(node *jev.mjs*)
 ---
 
 <task>
@@ -25,9 +25,9 @@ Jev gives an opinion to you, and it does not answer for the user.
 
 <commands>
 ```bash
-bun "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" yes "<question>" --state <file>
-bun "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" pick "<question>" <key>=<description> <key>=<description> --state <file>
-bun "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" rate "<question>" <lowest level> ... <highest level> --state <file>
+node "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" yes "<question>" --state <file>
+node "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" pick "<question>" <key>=<description> <key>=<description> --state <file>
+node "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" rate "<question>" <lowest level> ... <highest level> --state <file>
 ```
 
 - `--state` takes a file, `-` for stdin, or the text itself.
@@ -51,7 +51,7 @@ A decision that facts show to be bad costs the most when the code is built on it
 1. Run the check:
 
    ```bash
-   bun "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" ask --state <state file> < "${CLAUDE_SKILL_DIR}/decision.json"
+   node "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" ask --state <state file> < "${CLAUDE_SKILL_DIR}/decision.json"
    ```
 
 1. Read the two answers:

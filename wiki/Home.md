@@ -2,17 +2,19 @@
 
 dotclaude is an opinionated Claude Code plugin marketplace for software engineering.
 It keeps only the parts that Claude Code does not cover, and it optimizes for the most quality per unit of usage quota, not for speed.
+Since 0.27 the core plugin uses only official extension points: settings, permission rules, the sandbox, one output style, agents, skills, and one hooks module.
 If Claude does something because of dotclaude and you ask "why did you do that?", the answer is in these pages.
 
 ## What it does
 
-- Asks before destructive commands and before edits that weaken tests.
-- Redacts secrets from tool output.
-- Denies a subagent spawn that breaks the model and effort rules.
-- Writes a handoff note before a compaction, so a fresh session can continue.
-- Tells Claude when the prompt cache expired.
-- Shows model, effort, context, cache expiry, and usage limits in a status line.
-- Adds optional plugins for a browser (`dotclaude-browser`) and a second opinion (`dotclaude-jev`).
+- Sets permission rules and the sandbox, so that Claude Code asks before destructive, public, and secret-reading actions.
+- Asks before a recursive `rm` outside the project, and before the first contact with a repository of another owner that has an AI policy file.
+- Turns off compaction and sets a 300K context window, so that a session stops at the limit and you start fresh with `/clear`.
+- Forces one output style over the simple system prompt.
+- Gives Claude six agents with a model, an effort, and a turn limit each.
+- Writes a handoff note on request (`/dotclaude:handoff`), and works with [OpenSpec](OpenSpec) for the task list.
+- Shows model, effort, context, the OpenSpec change, and the 5-hour limit in a status line.
+- Adds optional plugins for a browser (`dotclaude-browser`), a second opinion (`dotclaude-jev`), and game modding (`dotclaude-modder`).
 
 ## The position
 
@@ -20,9 +22,9 @@ If Claude does something because of dotclaude and you ask "why did you do that?"
 | --- | --- |
 | Quality per quota over speed | Usage limits stop work. dotclaude spends quota where it buys quality, and it locks fast mode off. |
 | Quality over quantity | One checked change is worth more than several unchecked changes. Claude reproduces a bug before it fixes it, and it reports what it did not check. |
-| Mechanisms over prose | A rule that a hook enforces holds. A rule that only a prompt states did not hold in the measured week (see [Usage evidence](Usage-Evidence)). |
+| Official points over runtime code | When Claude Code has a setting, a rule, or a hook for a need, dotclaude uses it and writes no runtime code. |
 | Evidence over habit | Each bound comes from a measurement, an official source, or a reverse-read of the Claude Code binary. |
-| The user decides | Hooks ask before hard-to-reverse or public actions, and they never approve anything. The setup skill shows every change and makes a backup first. |
+| The user decides | Rules ask before hard-to-reverse or public actions, and they never approve anything. The setup skill shows every change and makes a backup first. |
 
 ## Next steps
 
@@ -30,16 +32,14 @@ If Claude does something because of dotclaude and you ask "why did you do that?"
 | --- | --- |
 | [Install](Install) | Install the marketplace and the plugins. |
 | [Quickstart](Quickstart) | See what happens in a first session. |
-| [Guards](Guards) | Learn what the guards ask about. |
+| [Guards](Guards) | Learn what asks, what denies, and what the sandbox does. |
 | [Handoffs](Handoffs) | Carry work across `/clear`. |
+| [OpenSpec](OpenSpec) | Keep the task list in OpenSpec. |
 | [Browser](Browser) | Drive a browser. |
 | [Second opinion](Second-Opinion) | Get a second opinion from Jev. |
 | [Modder](Modder) | Mod a PC game that you own. |
 | [Contributions](Contributions) | Draft work for projects that you do not own. |
-| [Options](Options) | Turn parts on and off. |
-| [Parts](Parts) | Find each part, its event, and its bound. |
-| [Operating spec](Operating-Spec) | Read the rules that dotclaude gives to Claude. |
-| [Terms of Use](Terms-of-Use) | See how the spec reaches an agent and how each hook enforces a rule. |
+| [Parts](Parts) | Find each part, its file, and its bound. |
 | [Development](Development) and [Sandbox](Sandbox) | Change dotclaude and test a checkout. |
 | [Attributions](Attributions) | See the projects whose ideas dotclaude reimplements. |
 
@@ -47,14 +47,14 @@ If Claude does something because of dotclaude and you ask "why did you do that?"
 
 | Page | What it holds |
 | --- | --- |
-| [Design](Design) | Design principles, enforced usage bounds, and rejected alternatives. |
+| [Design](Design) | The 0.27 rebuild, design principles, and rejected alternatives. |
 | [Usage evidence](Usage-Evidence) | Where one Max 20x week of usage went, and what that means on Pro. |
-| [Plans and models](Plans-and-Models) | Plan detection, prices, model fit, and effort. |
-| [Prompt surface](Prompt-Surface) | What a request contains, the lean prompt, and the working rules. |
-| [Evals](Evals) | The behavior eval suites and their results. |
+| [Plans and models](Plans-and-Models) | Prices, model fit, and effort. |
+| [Prompt surface](Prompt-Surface) | What a request contains, the simple prompt, and the forced style. |
+| [Eval history](Evals-History) | The behavior eval suites of the 0.4 to 0.26 releases. |
 | [Claude mods](Claude-Mods) | The plugin hooks modules of Claude Code, and the gaps. |
 | [Open items](Open-Items) | Work still to measure or decide. |
-| [Release history](Release-History) | What changed in each release, and why. |
+| [Release history](Release-History) | What changed in each older release, and why. |
 
 The [CHANGELOG](https://github.com/xsyetopz/dotclaude/blob/main/CHANGELOG.md) lists the current release.
 
@@ -72,6 +72,7 @@ A choice with no label is the maintainer's decision, and the page says so.
 | reported | user reports, weighed by score and agreement |
 | inference | a conclusion from the facts above |
 
-The facts date from 2026-09-26 to 2026-10-04 and Claude Code 2.1.283 to 2.1.289.
+The 0.27 facts date from Claude Code 2.1.292.
+The older evidence dates from 2026-09-26 to 2026-10-04 and Claude Code 2.1.283 to 2.1.289.
 Dollar figures are API-equivalent list prices.
 How a subscription weights cache reads against output is not published.

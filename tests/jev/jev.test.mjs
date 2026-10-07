@@ -5,7 +5,6 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { rules } from "../../plugins/dotclaude/lib/terms.mjs";
 import {
   buildBody,
   call,
@@ -150,6 +149,7 @@ test("the session hook prints the note that sends decisions through Jev", () => 
     "utf8",
   );
   expect(note).toContain("`dotclaude-jev:second-opinion`");
-  expect(note).toContain(rules("second-opinion"));
+  expect(note).toContain("`TYPESAFE_API_KEY`");
+  expect(note).not.toContain("dotclaude_spec");
   expect(note).not.toContain(";");
 });

@@ -159,7 +159,7 @@ A version in parentheses marks a later patch of this line, and an entry with no 
   It now prints a warning for each such case.
   For a one-case result it printed `NaN%` and left out the comparison with the run without the plugin.
   It now gives the pass rate and the difference, and it says that one case gives no interval.
-- Eval commands in [Development](Development#evals) (`docs/development.md`): set `--judge-model sonnet`, because the default Haiku judge failed a right `t4-slices` reply 3 times out of 3.
+- Eval commands in the Development page (`docs/development.md`): set `--judge-model sonnet`, because the default Haiku judge failed a right `t4-slices` reply 3 times out of 3.
 - `evals-heldout/README.md`: its judge is now Sonnet 5.5, not Opus 5.5, because a model prefers its own output.
 - `/dotclaude:slices`: let Claude end its setup with a choice between the loop and a direct change, and recommend the direct change (one of three Opus 5.5 eval runs).
   The skill now asks the user to approve the slice list, with at most one sentence of advice.

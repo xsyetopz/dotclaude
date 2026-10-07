@@ -6,6 +6,7 @@ It writes no text or code, and it gives probabilities.
 
 ## Before you begin
 
+1. Install [Node.js](https://nodejs.org) 22.18 or later.
 1. Get an API key at <https://console.typesafe.ai>.
 1. Export the key before Claude Code starts.
 
@@ -22,7 +23,7 @@ It writes no text or code, and it gives probabilities.
 
 | Part | What it does |
 | --- | --- |
-| Session note | Tells Claude to ask Jev about each close call, each technical choice, each question that asks for a decision, and each technical decision that you give. This is rule 14.1 of the [operating spec](Operating-Spec). |
+| Session note | Tells Claude to ask Jev about each close call, each technical choice, each question that asks for a decision, and each technical decision that you give. The `SessionStart` hook of the plugin prints `hooks/session-start/second-opinion.md`. |
 | `second-opinion` skill | Runs `jev.mjs` for a yes or no check, a pick, or a rating. |
 | `AskUserQuestion` hook | Asks Jev about each question that has 2 or more options, and adds the pick of Jev to a question that facts decide. |
 
@@ -44,9 +45,9 @@ Without `TYPESAFE_API_KEY`, or when Jev fails or takes more than 45 seconds, the
 ## The skill commands
 
 ```bash
-bun "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" yes "<question>" --state <file>
-bun "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" pick "<question>" <key>=<description> <key>=<description> --state <file>
-bun "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" rate "<question>" <lowest level> ... <highest level> --state <file>
+node "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" yes "<question>" --state <file>
+node "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" pick "<question>" <key>=<description> <key>=<description> --state <file>
+node "${CLAUDE_SKILL_DIR}/scripts/jev.mjs" rate "<question>" <lowest level> ... <highest level> --state <file>
 ```
 
 | Command | Input |
@@ -88,6 +89,5 @@ When you give a technical decision, Claude checks it with `decision.json` before
 
 ## Related pages
 
-- [Options](Options)
-- [Terms of Use](Terms-of-Use)
+- [Install](Install)
 - [Guards](Guards)

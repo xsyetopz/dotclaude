@@ -12,7 +12,5 @@ process.env.TMPDIR = root;
 // On Windows, `os.tmpdir()` reads `TEMP` and `TMP`, not `TMPDIR`.
 process.env.TEMP = root;
 process.env.TMP = root;
-// The AI policy check must not reach the network from a test.
-process.env.DOTCLAUDE_OFFLINE = "1";
 // A preloaded afterAll runs once, after every test file.
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }));

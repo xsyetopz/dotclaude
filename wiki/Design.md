@@ -5,6 +5,8 @@ Source labels (official, binary, capture, measured, reported, inference) are in 
 
 ## Summary
 
+- 0.27.0 rebuilt the core plugin from an empty tree on official extension points.
+  The next section lists the facts behind that choice.
 - A bound that Claude Code enforces holds.
   A bound that only prose states did not hold in the measured week.
 - One set of usage bounds, sized for Pro, applies on every plan.
@@ -15,12 +17,49 @@ Source labels (official, binary, capture, measured, reported, inference) are in 
   0.20.0 removed them.
 - The rejected alternatives still hold.
 
+## The 0.27 rebuild
+
+Source tags: **official** is a doc of Claude Code, **binary** is the 2.1.292 bundle, **reported** is a public best-practices source or user feedback, and **inventory** is a count in this repository.
+
+- A plugin `settings.json` can keep only `agent` and `subagentStatusLine` (**official**, `plugins/components.md`).
+  So the profile is a template that `/dotclaude:setup` applies.
+- `force-for-plugin` in an output style overrides the `outputStyle` of the user.
+  `keep-coding-instructions` defaults to false (**official**, `output-styles.md`).
+- No settings key replaces the system prompt, and only CLI flags do (**official**, `cli-reference.md`).
+- The prompt has a `shared` block and a `session` block.
+  `CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1` swaps `shared` for a lean body (**binary**).
+- `DISABLE_COMPACT=1` with `CLAUDE_CODE_MAX_CONTEXT_TOKENS` sets the window, and at the limit the turn ends with `blocking_limit` (**binary**).
+- Opus 5.5 is on the "billed past 200K" list of 2.1.292, so `/context` and the context warnings use a 200K window for it.
+  The block point stays at the full window.
+  `CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000` moves the display and the warnings to 300K, and a sandbox `/context` then showed `19.4k / 300k` (**binary**).
+  The variable takes a plain integer from 100,000 to 1,000,000, and the window of the model caps it.
+  A value such as `500k` reads as 500 and is raised to the 100K minimum (**official**, `env-vars.md`).
+- The stop at the limit was measured on 2.1.292 in `just sandbox` with the 300K window (**measured**):
+  - A first prompt larger than the window ended with `terminal_reason: "blocking_limit"` and "Prompt is too long", with 0 tokens used.
+  - In a turn that read large files, the context went from 223,461 to 245,427 to 267,792 tokens.
+    The next read ended the turn with `blocking_limit`, after 4 turns, for $0.72.
+  - The debug log had no compaction line, and the transcript had no compact summary.
+  The 1M window has "no premium for tokens beyond 200K" (**official**, `model-config.md`).
+  `DISABLE_COMPACT` also disables `/compact` (**official**, `env-vars.md`).
+- Opus 5.5, Sonnet 5.5, and Fable 5.1 have 1M native windows, and Haiku 4.5 has 200K and no effort (**binary**).
+- The 300K window is a judgment.
+  Reports put context rot around 300K to 400K on a 1M window, and one says to keep use under 40% (**reported**, [Open items](Open-Items)).
+- A top-level `effortLevel` does not count for Opus 5.5 (**official**, `model-config.md`).
+  An effort change keeps the cache, and a model switch, a tool-set change, and compaction break it (**official**, `prompt-caching`).
+- Each tool definition goes in each request, so the profile removes the tools that dotclaude does not use: Artifact, Workflow, ScheduleWakeup, ReportFindings, and the advisor.
+  `/context` at the start of a sandbox session fell from 32k to 8.1k tokens (**measured**, [Prompt surface](Prompt-Surface#tool-removal)).
+- Deny rules are not a security boundary, so the profile pairs them with the sandbox (**official**, `permissions.md`).
+  A sandbox cut permission prompts by 84% in one report (**reported**).
+- Users want asks only for destroy, reach-out, and secret reads (**reported**).
+  A guardrail pack made no difference in an A/B, and prompt-only rules decay (**reported**).
+- Hook processes per `Bash` call fell from 7 to 2 with the module in 0.19 (**inventory**).
+
 ## Design principles
 
 | Principle | What it means |
 | --- | --- |
 | Mechanisms over prose | Prose stays only where no mechanism exists ([Usage evidence](Usage-Evidence#the-measured-week)). |
-| Sized for Pro | Larger plans reach their limits later. The only plan-specific value is the cache time, which `plugins/dotclaude/lib/plan.mjs` picks by plan. The `plans` object of the settings profile is empty ([Plans and models](Plans-and-Models#plan-detection)). |
+| Sized for Pro | Larger plans reach their limits later. 0.27.0 has no plan-specific value ([Plans and models](Plans-and-Models#plan-detection)). |
 | One owner for each number | `plugins/dotclaude/lib/budget.mjs` holds the bounds. Tests pin its copies in code and config, not in prose. |
 | No banned-phrase lists | Claude routes around them with synonyms. The rules name what each behavior does and why. |
 | No hooks that judge tone or architecture | A regex cannot tell a needed abstraction from a speculative one. The system prompt and the reviewer agents cover those. |
@@ -49,14 +88,11 @@ It cut the working rules from 8.4 KB to 5.1 KB.
 
 ### One module for the tool hooks
 
-`hooks.json` loads `plugins/dotclaude/hooks/module/index.mjs` as a hooks module.
-The module handles `tool.call`, `agent.spawn`, `prompt.submit`, `turn.complete`, `session.compact`, and `tool.check`.
-Two classic command hooks remain ([Claude mods](Claude-Mods)):
+0.27.0 loads `plugins/dotclaude/hooks/mod.mjs` as a hooks module.
+The module handles one event, `tool.check`, and the core plugin has no classic hook ([Claude mods](Claude-Mods)).
+The pure rules are in `lib/guard.mjs`, and the lab in `tests/mod.test.ts` runs the module with stubs.
 
-- `plugins/dotclaude/hooks/session-start/add-session-context.mjs`
-- `plugins/dotclaude/hooks/pre-tool-use/ask-guarded-calls.mjs`, which keeps the asks of the guards in auto mode
-
-So only a `Bash`, `Edit`, or `Write` call starts a process.
+0.22 to 0.26 had a larger module and two classic hooks.
 0.19 started `hooks/dispatch.mjs` once for each event.
 **measured** (2026-09-29, 0.19, 50 `Bash` calls): 7 hook processes per call became 2.
 CPU time fell from about 164 ms to 86 ms per call.
@@ -66,21 +102,22 @@ A bare `bun` start takes 5 ms.
 
 | Scenario | Bound | Mechanism | Check |
 | --- | --- | --- | --- |
-| A subagent works a long task | `maxTurns` in the agent file: 20 for `test-runner`, 40 for `investigator`, 60 for the others, 80 for `implementer` | Claude Code ends the agent at the limit | `tests/dotclaude/agents.test.mjs` |
-| A subagent model and effort | Opus 5.5 `low` to `high`, Sonnet 5.5 `low` and `medium`, Haiku 4.5 none | `agent.spawn` denial from `SUBAGENT_EFFORTS` (`guard_agents`) | `tests/dotclaude/agents.test.mjs`, `tests/dotclaude/module-notes.test.mjs` |
-| The main conversation grows | Compaction at 150k | `autoCompactWindow` in the profile | `tests/dotclaude/setup.test.mjs` |
-| Claude spawns `general-purpose` | Refused | `Agent(general-purpose)` deny rule in the profile | `tests/dotclaude/setup.test.mjs` |
+| A subagent works a long task | `maxTurns` in the agent file: 20 for `test-runner`, 80 for `implementer`, 60 for the others | Claude Code ends the agent at the limit | `tests/dotclaude/` |
+| A subagent model and effort | Opus 5.5 and Sonnet 5.5 `low` to `max`, Haiku 4.5 none (`SUBAGENT_EFFORTS`) | The `model` and `effort` of each agent file | `tests/dotclaude/` |
+| The main conversation grows | A 300K window and no compaction | `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, `DISABLE_COMPACT`, and `autoCompactEnabled:false` in the profile | `tests/dotclaude/` |
+| A `rm -r` outside the project, or a repo of another owner with an AI policy | An ask | `tool.check` in `hooks/mod.mjs` | `tests/mod.test.ts` |
 | Fan-out | 5 subagents, and 5 agents per workflow, at once | profile env | none |
 | A subagent runs in the background | It runs in the foreground and causes no wake turns | `CLAUDE_CODE_FORK_SUBAGENT=0` in the profile | none |
-| Text of dotclaude on every request | Section 1 of the [operating spec](Operating-Spec) at most 2,000 bytes, section 2 at most 800 bytes, and all agent files at most 32,000 bytes | `RULES_MAX_BYTES`, `MINIMAL_CODE_MAX_BYTES`, `AGENTS_MAX_BYTES` | A test fails above each bound (see `tests/dotclaude/`) |
+| Text of dotclaude on every request | The output style at most 6,000 bytes | `STYLE_MAX_BYTES` | A test fails above the bound (see `tests/dotclaude/`) |
 | Weekly review | The usage shares in [Usage evidence](Usage-Evidence) are reproducible | `tools/usage-report.mjs` | none |
 
 The profile rows need `/dotclaude:setup`.
-The `maxTurns` and spawn rows need only the plugin.
+The `maxTurns`, effort, and ask rows need only the plugin.
 
-### Subagent context
+### Subagent context (0.19 to 0.26 history)
 
-The status line shows the subagent context against `AUTO_COMPACT_TOKENS` (117k), because a subagent compacts at the same point as the main conversation.
+0.19 to 0.26 showed the subagent context against `AUTO_COMPACT_TOKENS` (117k) on the status line, because a subagent compacted at the same point as the main conversation.
+0.27.0 has no such status line row.
 
 - **measured** (914 subagent runs, 2026-09-28 to 2026-10-05): the peak context of a run stopped at about 117k, and 1 run reached 162k.
 - 78 of 457 `implementer` runs passed 100k, so the earlier 100k bound showed a warning for normal runs.

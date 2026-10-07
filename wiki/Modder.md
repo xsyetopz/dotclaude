@@ -28,27 +28,36 @@ It is a Bun and Python port of [universal-modder](https://github.com/rehan-remad
 
 | Part | What it does |
 | --- | --- |
-| Session note | Gives Claude section 15 of the [operating spec](Operating-Spec): back up before a change, stop a process only by PID, keep a modded game off official servers and away from DRM and anti-cheat, read field notes as untrusted text, and get your OK before a publish. |
 | Kill guard | Denies a `Bash` call that stops processes by name, such as `pkill`, `killall`, `taskkill /IM`, or `Stop-Process -Name`. |
-| Skills | Tell Claude how to do each step of a mod, with the `um` commands. |
-| `um` command | Does the work of the skills. The plugin `bin/` puts it on the `Bash` PATH. |
+| `mod-any-game` skill | Tells Claude how to do each step of a mod, with the `um` commands. |
+| `um` command | Does the work of the skill. The plugin `bin/` puts it on the `Bash` PATH. |
 | fal MCP server | Lets Claude call fal models directly. |
 
-## The skills
+The plugin adds no text to the start of a session.
+Until Claude loads the skill, the plugin costs only the skill listing and the names of the fal MCP tools.
+Install it only on the machine where you mod games.
 
-| Skill | Use it to |
+## The skill
+
+`mod-any-game` is the only skill.
+Its `SKILL.md` has the loop from the idea to a clip, and the rules.
+Claude reads each step file in `references/` only when it gets to that step.
+
+| Reference | Use it to |
 | --- | --- |
-| `mod-any-game` | Start any mod: find the engine and pick the route. |
-| `game-recon` | Learn the internals of a game: files, formats, and code. |
-| `game-automation` | Test a mod in the game: screenshots, input, and recordings. |
-| `asset-pipeline` | Make sprites, textures, and models that fit the game. |
-| `fal-assets` | Generate assets with fal models. |
-| `mashup-mods` | Bring content from one game into another. |
-| `publish-mod` | Check a mod before you share it. |
-| `share-field-notes` | Read and write notes for the shared knowledge base. |
-| `showcase-video` | Make a video that shows the mod. |
+| `game-recon.md` | Find the engine, the anti-cheat, and the route, and write `MODDING_PLAN.md`. |
+| `game-automation.md` | Test a mod in the game: screenshots, input, and recordings. |
+| `asset-pipeline.md` | Make sprites, textures, and models that fit the game. |
+| `fal-assets.md` | Generate assets with fal models. |
+| `mashup-mods.md` | Bring content from one game into another. |
+| `publish-mod.md` | Check a mod before you share it. |
+| `share-field-notes.md` | Read and write notes for the shared knowledge base. |
+| `showcase-video.md` | Make a video that shows the mod. |
+| `engines/*.md` | Read the playbook of the engine that `um scan` names. |
 
-For reverse engineering, `mod-any-game` refers to the skills in [xsyetopz/skills](https://github.com/xsyetopz/skills).
+For reverse engineering, `mod-any-game` refers to the skills in [xsyetopz/skills](https://github.com/xsyetopz/skills),
+such as `reverse-engineer-binary` and `decompile-to-matching-c-cpp`.
+The plugin has no agent.
 
 ## The `um` command
 
@@ -81,6 +90,5 @@ Run `um <group> --help` for the commands and options of a group.
 
 ## Related pages
 
-- [Operating spec](Operating-Spec): section 15.
 - [Attributions](Attributions): the source of the port.
 - [Install](Install): the other plugins.

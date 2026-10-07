@@ -145,7 +145,7 @@ Facts that took time:
 
 Projects in September 2026 include skateboarding in MW2, Minecraft inside Skyrim, Elden Ring, and Mario 64, and Black Ops 2 inside Minecraft.
 Another is a Majora's Mask recomp that Opus extended.
-The `mashup-mods` skill covers them.
+`mashup-mods.md` covers them.
 
 - The largest ones are reimplementations, not injection hacks.
   - IW4L is a Rust MW2 runtime that reads the MW2 files of the user.

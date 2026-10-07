@@ -7,59 +7,55 @@ It assumes that you finished [Install](Install).
 
 | What | When |
 | --- | --- |
-| Status line | After `/dotclaude:setup`. It shows model, effort, context against the compaction point, cache expiry, and usage limits. |
-| Setup notice | At startup, when your setup differs from the profile of the plugin version. |
-| Operating spec | Claude gets its rules as context. You do not see them. |
+| Status line | After `/dotclaude:setup`. It shows model, effort, context against the 300K window, the OpenSpec change, and the 5-hour limit. |
+| Output style | Always. The plugin forces the `dotclaude` style over the simple system prompt. You do not see it. |
 
-The setup notice has this form:
+The status line has this form, with parts joined by ` · `:
 
 ```text
-dotclaude 0.22.2: your setup differs from the profile in 2 settings.
-Run /dotclaude:setup to see and apply the changes.
+Opus 5.5 xhigh · 84K/300K 28% · add-login 3/7 · 5h 41%
 ```
 
-The operating spec says that you installed dotclaude, so its rules apply, and that a deny from a hook is your decision.
-A rule with a hook is enforced.
-See [Operating spec](Operating-Spec).
+The context part turns yellow at 75% and red at 90% of the window.
+The `5h` part uses the same colors.
+The OpenSpec part shows the newest change with a `tasks.md` that is not archived, as `id done/total`.
+The status line calls no model, no network, and no CLI.
 
 ## What happens in a session
 
-### A guard asks
+### A permission rule asks
 
-Claude plans `rm -r` on a folder outside the project.
-The Bash guard asks you first and gives the reason, for example `The target is outside the project.`
-You decide.
-Hooks never approve a command for you.
+Claude plans a force push, a `git reset --hard`, a package publish, or a write to a pull request or an issue.
+Claude Code asks you first, because the settings profile has an `ask` rule for it.
+It denies a read of secrets and a `rm -rf` of the root or your home.
 See [Guards](Guards).
 
-### A test edit asks
+### A recursive rm outside the project asks
 
-Claude edits a test file and removes an assertion.
-The edit guard asks, for example `The edit removes 1 assertion(s) from the test file a.test.mjs.`
-It asks the same way when an edit adds a `skip`, `xfail`, `todo`, or focus marker.
+Claude plans `rm -r` on a folder outside the project root.
+The hooks module asks you first and names the target.
+A target in the project, in `/tmp`, in `/private/tmp`, or in `$TMPDIR` goes on.
+A target with `$` or a backtick counts as outside.
+You decide.
+The module never approves a command for you.
 
-### A secret is redacted
+### A policy ask for a repository of another owner
 
-A tool output has a secret.
-Claude sees `[REDACTED:<rule>]` in its place.
-This needs `betterleaks` on `PATH`.
+Claude runs `git clone`, `gh`, `curl`, or `wget` on a repository of another owner, or fetches its page.
+The repository has a `CLAUDE.md`, `AGENTS.md`, or `AI_POLICY.md`.
+The module asks once per session and per repository, and it shows the policy text, cut at 2,000 characters.
+See [Contributions](Contributions).
 
-### A handoff note before compaction
+### The context limit
 
-Before an automatic compaction, dotclaude forks a handoff note into `.claude/handoffs/`.
-Claude then stops and tells you to run `/clear`.
-The next session gets a pointer to the newest open note.
-You can write a note yourself with `/dotclaude:handoff`.
+Compaction is off.
+When the session reaches 300K tokens, it stops.
+Write a note with `/dotclaude:handoff` before that, then run `/clear`.
+No hook tells you to run `/clear`.
 See [Handoffs](Handoffs).
-
-### A cold cache note
-
-You resume a session after the prompt cache expired, and the context is large.
-Claude tells you in its first reply that the next prompt writes the context to the cache again.
-Run `/clear` instead when the task is done.
 
 ## Next steps
 
-- [Guards](Guards): see what the guards ask about.
+- [Guards](Guards): see what asks, what denies, and what the sandbox does.
 - [Handoffs](Handoffs): carry work across `/clear`.
-- [Options](Options): turn each part on or off.
+- [OpenSpec](OpenSpec): keep the task list in a change.

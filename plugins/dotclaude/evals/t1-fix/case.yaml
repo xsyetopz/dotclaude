@@ -1,6 +1,0 @@
-schema_version: "1.1"
-name: t1-fix
-description: "Tier 1. A one-file fix: slugify() keeps runs of separators. The hidden oracle tests inputs that the visible test does not."
-tags: [tier-1, output-style]
-context:
-  scaffold_script: fixture.sh

@@ -1,50 +1,68 @@
 ---
 name: handoff
-description: Writes a handoff note so a fresh session can continue the task, and reads a note to continue earlier work. Use when the user wants to hand off, pause, or save progress before `/clear` or `/compact`, at a task boundary with open work, or when the user asks to continue earlier work.
-argument-hint: "[output path, default .claude/handoffs/<YYYY-MM-DD-HHMM>-<topic>.md]"
+description: Writes a handoff note that primes a fresh session after `/clear`, or lists and removes notes.
+disable-model-invocation: true
+argument-hint: "[slug] | --list | --rm <slug>"
+allowed-tools: Bash(git status*) Bash(git diff --stat*) Bash(git log --oneline*) Bash(git rev-parse*) Bash(git check-ignore*) Bash(ls *.claude/handoffs*)
 ---
 
-<continue>
-When the user asks to continue earlier work, read the handoff note first.
-Then compare it with `git status` and `git log --oneline -5` before you act, because later commits and edits make parts of a note stale.
-Where they differ, the repository is correct.
-</continue>
+<task>
+Compaction is off, so `/clear` is the reset, and this note is what the next session knows.
+Write it as a prime for the next session, not as a summary of this one:
+the next session needs the goal, the constraints, the decisions, and the proof, not the story.
+</task>
+
+<arguments>
+Read `$ARGUMENTS`:
+
+- `--list`: list `.claude/handoffs/*.md` with the `status` and `written` lines of each note, then stop.
+- `--rm <slug>`: delete `.claude/handoffs/<slug>.md` with the permission prompt, then stop.
+- `<slug>`: write `.claude/handoffs/<slug>.md`.
+- empty: write the note with a slug of two to four lowercase words that name the task.
+
+A second note with the same slug replaces the first, so the notes do not pile up.
+</arguments>
 
 <write>
-Write the note to `$ARGUMENTS`, or to a new `.claude/handoffs/<YYYY-MM-DD-HHMM>-<topic>.md` with the UTC time and a topic of two to four lowercase words.
 First run `git status --short`, `git diff --stat HEAD`, `git log --oneline -5`, and `git rev-parse --abbrev-ref HEAD`.
-Write only what you verified or what the user said, and mark each other item as unverified, because the next session reads the note as fact.
-Name a changed file as the work of the user only when no call of this session changed it.
+Write only what you verified in this session or what the user said.
+Mark each other item as unverified, because the next session reads the note as fact.
+A file is the work of the user when no call of this session changed it.
+
+When `openspec/changes/<id>/tasks.md` exists for the task, name the change id.
+Do not copy its tasks, because `tasks.md` holds their status and `/opsx:apply` continues from the first open task.
+Then the note holds only what `tasks.md` does not: constraints, decisions, rejected approaches, and proof commands.
+
 Start with this front matter:
 
 ```yaml
 ---
-status: in-progress # or blocked, done, or superseded
+status: in-progress # or blocked, done
 branch: <current branch>
 head: <short sha of HEAD>
 written: <UTC time, ISO 8601>
+openspec: <change id, or none>
 ---
 ```
 
-Then use these sections, and skip a section only when it is empty:
+Then use these sections, and leave out a section only when it is empty:
 
-1. **Goal**: the request of the user and each later constraint, quoted exactly.
-   End with a **Done when** line: the observable result that completes the task.
-1. **State**: what is done, with file paths and the check that passed for each part.
-   Mark partial work (a file left mid-edit, a background job), because the next session takes the rest as complete.
-1. **Decisions**: each choice with its reason, and the rejected options with theirs.
-1. **Open**: the remaining steps in order, with each question that waits for the user.
-   Give each item its reason and its owner: the user or the next session.
-   Do an item that was open in an earlier note, or ask the user about it, because an item with no decision never closes.
-1. **Details**: exact errors, commands, IDs, and `file:line` locations that are hard to find again.
+1. **Goal**: the request of the user, quoted exactly, and each later constraint of the user.
+   End with **Done when**: the check that proves the task is complete.
+1. **Decisions**: each choice with its reason.
+1. **Rejected**: each approach that was tried or considered and dropped, with the reason, so that the next session does not try it again.
+1. **Items**: each part of the work with its status and the command that proves it.
+   A status of done needs that command and its result from this session.
+   Mark partial work, such as a file left mid-edit or a background job.
+1. **Files**: the files that this session changed.
+1. **Next**: the next step, and each question that waits for the user, with its owner.
 
-Keep the note under about 80 lines, with file paths and not file contents.
+Keep the note under about 60 lines.
+Give file paths and `file:line` locations, not file contents.
 </write>
 
 <close>
-Set `status: done` only when **Open** is empty.
-When the note continues an earlier note that is `in-progress` or `blocked`, copy its open items and set its status to `superseded`.
-When `git check-ignore -q <path>` exits 1, add the path to `.git/info/exclude` and not to `.gitignore`, because `.gitignore` is a tracked file, and tell the user.
-Then give the path and a short prompt for the session after `/clear`.
-The prompt names the next step and the note as `@` and its absolute path, in quotes when the path has a space.
+When `git check-ignore -q .claude/handoffs/<slug>.md` exits 1, tell the user that git tracks the note, and that `.git/info/exclude` can ignore it.
+Then give the note path, and a prompt for the session after `/clear` that names the next step and ends with `@` and the absolute path of the note.
+With an OpenSpec change, the prompt starts with `/opsx:apply <id>`.
 </close>

@@ -8,27 +8,26 @@ Source labels (official, binary, capture, measured, reported, inference) are in 
 - The current model and effort rules are in [Parts](Parts#model-and-effort-rules).
 - 0.20.0 removed Fable from `availableModels`, plan detection as a policy, and the model lock.
   This page keeps the 0.19 policy as history.
-- Plan detection came back in a smaller form.
-  `plugins/dotclaude/lib/plan.mjs` sets the cache time and adds a SessionStart note on `api`.
-- Opus 5.5 is the default.
-  Sonnet 5.5 is a plan-following subagent.
-  Haiku 4.5 does scoped reading and relay work.
-- `maxEffortLevel` is `high`.
-  Subagent effort levels come from `SUBAGENT_EFFORTS`.
+- 0.27.0 has no plan detection.
+  `lib/plan.mjs` and the `plans` object of the profile are gone, and the usage bounds in `lib/budget.mjs` are the same on every plan.
+- Opus 5.5 is the default model in the profile.
+  0.27.0 has no advisor, and setup removes the 0.26 `advisorModel`.
+  Sonnet 5.5 is the model of four subagents and of `CLAUDE_CODE_SUBAGENT_MODEL`.
+  Haiku 4.5 runs `test-runner`.
+- `maxEffortLevel` is `xhigh`, and the profile sets no `effortLevel`.
+  Subagent effort levels come from `SUBAGENT_EFFORTS` in `plugins/dotclaude/lib/budget.mjs`.
 
 ## Plan detection
 
-`plugins/dotclaude/lib/plan.mjs` reads `oauthAccount` in `~/.claude.json`.
-It does not use the keychain token.
-It returns `api`, `pro`, `max5`, `max20`, `team`, `enterprise`, or `unknown`.
-It sets the cache time (**official**: 5 minutes on `api`, 1 hour on a subscription) and adds a SessionStart note on `api`.
-
-`plugins/dotclaude/templates/settings.json` has a `plans` object for per-plan overrides.
-The object is empty, because the usage bounds are sized for Pro on every plan ([Design](Design)).
+0.27.0 does not detect the plan.
+Plan detection was a 0.20 to 0.26 part (`lib/plan.mjs`).
+It read `oauthAccount` in `~/.claude.json`, and it set the cache time and a SessionStart note on `api`.
+0.27.0 removed it, and the code no longer holds a per-plan value.
 No evidence supports a plan-specific value.
-An override needs a cited difference on this page first.
+A new override needs a cited difference on this page first.
 
 0.19 chose the policy in the next section with the option `model_plan: auto`, which 0.20.0 removed.
+The fields below are from the 0.19 evidence.
 
 | Field | Values seen |
 | --- | --- |
@@ -101,13 +100,14 @@ API list prices per million tokens (**official**):
 | **official** | A 1-hour cache write costs 2x the input price. Cache reads cost 0.1x, but 0.05x on Opus 5.5 and 0.025x on Fable 5.1. |
 | **official** | In Claude Code, the cache of the main conversation lives 1 hour on a subscription within its limits. It lives 5 minutes on usage credits or an API key. Subagents use 5 minutes. |
 | **official** | `/model` loses the whole cache. An effort change and the advisor toggle keep it. `/rewind` and forks read the existing cache. |
-| **binary** | From Claude Code 2.1.287, the SessionStart input for `resume` and `fork` has `seconds_since_last_response`, `context_tokens`, `prompt_cache_likely_expired`, and `estimated_cache_write_usd`. dotclaude uses them on `resume` to tell the user before the first prompt. |
+| **binary** | From Claude Code 2.1.287, the SessionStart input for `resume` and `fork` has `seconds_since_last_response`, `context_tokens`, `prompt_cache_likely_expired`, and `estimated_cache_write_usd`. dotclaude 0.20 to 0.26 used them on `resume`, and 0.27.0 does not. |
 | **reported** | One user found that turns more than 1 hour after the last turn were 1.6% of turns and 80% of cache writes. |
 | **measured** | A one-word Fable reply from a fresh `claude -p` context cost $0.47. Every fresh Fable context, such as a subagent, pays this fixed cost. |
 
 A prompt after the TTL, and a `/compact` after it, write the whole context again.
-dotclaude tells Claude, and so the user, when a resumed session has an expired cache.
-It also tells them when a prompt comes after the cache time of the plan (`plugins/dotclaude/lib/cache.mjs`).
+0.20 to 0.26 told Claude, and so the user, about an expired cache.
+0.27.0 has no cache note.
+It turns compaction off, and `promptCacheTtl` is `5m` in the profile.
 
 ### Advisor cost
 
@@ -119,7 +119,7 @@ It also tells them when a prompt comes after the cache time of the plan (`plugin
   A Fable 5.1 advisor over Opus 5.5 at high effort scored 1.7 points more for about 2.1 times the cost.
   Opus 5.5 at xhigh alone scored 91.1%.
   Low effort with an advisor scored 7 points less.
-- dotclaude keeps `advisorModel` on Opus 5.5.
+- 0.27.0 removes `advisorModel` (decision of the user).
 
 ## Model fit
 
@@ -134,13 +134,14 @@ This section weighs **reported** experience and the guidance of Anthropic.
 
 ### The advisor
 
-The profile keeps `advisorModel` on Opus 5.5.
-The prompt of the advisor tool asks for a call before the work and a call before "done" on each task of several steps.
+0.20 to 0.26 set `advisorModel` to Opus 5.5.
+0.27.0 removes it, and `/dotclaude:setup` deletes the 0.26 value.
 
-- A Fable advisor would make Fable routine work.
-- It would cost 2.5x the price of calls that already read the whole context uncached.
+- The instructions of the advisor tool go in each request.
+- The prompt of the tool asks for a call before the work and a call before "done" on each task of several steps.
+- Each call reads the whole context without the cache (see [Advisor cost](#advisor-cost)).
 - Claude Code 2.1.283 turns the advisor off when it is less capable than the main model.
-  A session switched to Fable 5.1 therefore has no advisor.
+  A session switched to Fable 5.1 therefore had no advisor.
 
 ### Sonnet 5.5
 
@@ -151,9 +152,10 @@ Sonnet 5.5 replaced Sonnet 5 in 0.11.0.
 - Its effort levels are recalibrated.
   At `low`, it sometimes reports a change as done without a check (**official**).
 - dotclaude uses it for `implementer`, which took the work of the removed `mechanical-worker` in 0.20.0.
-  dotclaude adds a reminder about scope and checks.
-- From 0.17.1, `reviewer` and `debugger` also use it, at `high` until 0.20.0 and at `medium` since.
-  In the 0.17.1 evals, they passed the review and debug cases as often as Opus 5.5 at about 55% of the cost ([Evals](Evals)).
+- In 0.27.0, `investigator`, `web-researcher`, `implementer`, and `debugger` use it at `medium`.
+  `reviewer` uses Opus 5.5 at `high` ([Parts](Parts#model-and-effort-rules)).
+- From 0.17.1 to 0.26, `reviewer` and `debugger` also used it, at `high` until 0.20.0 and at `medium` since.
+  In the 0.17.1 evals, they passed the review and debug cases as often as Opus 5.5 at about 55% of the cost ([Eval history](Evals-History)).
 - Claude Code has separate weekly limits for Opus and Sonnet on Pro and Max.
   Sonnet agents can therefore continue work after the Opus limit.
 - In one test of 35 bug-fix tasks by a user, both models fixed 34.
@@ -217,11 +219,12 @@ Each pair is score and cost per task:
 
 | Setting | Value and reason |
 | --- | --- |
-| `maxEffortLevel` | `"high"`, which blocks `xhigh` and `max`. 0.19 set `xhigh`, which blocked only `max`. The claude.ai effort picker warns that `max` uses about 5.5x the usage on Opus 5.5 and 3.5x on Fable 5.1. |
-| `SUBAGENT_EFFORTS` | In `plugins/dotclaude/lib/budget.mjs`: Opus 5.5 `low` to `high`, Sonnet 5.5 `low` and `medium`, Haiku 4.5 none. `agent.spawn` denies a spawn that breaks the table. |
+| `maxEffortLevel` | `"xhigh"` in the profile, which blocks only `max`. 0.20 to 0.26 set `high`. The claude.ai effort picker warns that `max` uses about 5.5x the usage on Opus 5.5 and 3.5x on Fable 5.1. |
+| `effortLevel` | Not set. A top-level `effortLevel` does not count for Opus 5.5 (**official**, `model-config.md`). |
+| `SUBAGENT_EFFORTS` | In `plugins/dotclaude/lib/budget.mjs`: Opus 5.5 and Sonnet 5.5 `low` to `max`, Haiku 4.5 none. The `effort` of each agent file sets the value, and 0.27.0 has no `agent.spawn` check. |
 
 - **binary:** no hook event fires on an effort change, so the main session is not covered.
-  The status line warns about it.
+  The status line shows the model and the effort.
 - **official:** Effort can change per turn without a cache miss on Opus 5.5 and Fable 5.1 (code.claude.com/docs/en/prompt-caching).
 - **official:** Claude Code defaults Opus 5.5 and Sonnet 5.5 to `medium`.
   The API default is `high` for Sonnet 5.5 and `medium` for Opus 5.5.
@@ -239,4 +242,4 @@ Each pair is score and cost per task:
 - [Parts](Parts#model-and-effort-rules)
 - [Design](Design)
 - [Usage evidence](Usage-Evidence)
-- [Evals](Evals)
+- [Eval history](Evals-History)

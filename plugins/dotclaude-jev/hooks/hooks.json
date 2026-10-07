@@ -1,5 +1,5 @@
 {
-  "description": "dotclaude-jev: give Claude section 14 of the dotclaude operating spec at session start, and add the Jev pick to each `AskUserQuestion` question that facts decide",
+  "description": "dotclaude-jev: give Claude the second-opinion note at session start, and add the Jev pick to each `AskUserQuestion` question that facts decide",
   "modules": ["./module/index.mjs"],
   "hooks": {
     "SessionStart": [

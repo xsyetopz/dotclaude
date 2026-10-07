@@ -53,7 +53,7 @@ Look-alike repositories with a zip in their releases are a common way to spread 
   Use LOOT to sort, and check conflicts in xEdit (red means conflict).
 - A bridge pattern works well.
   A small SKSE or xNVSE plugin captures events and calls a heavier backend outside the process over localhost (file drop or HTTP).
-  AI-NPC mods and cross-game passthrough mods use it (see the `mashup-mods` skill).
+  AI-NPC mods and cross-game passthrough mods use it (see `../mashup-mods.md`).
 
 ## Pitfalls
 

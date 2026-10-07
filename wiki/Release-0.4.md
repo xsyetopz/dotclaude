@@ -5,7 +5,7 @@ Makes Claude reproduce a bug before it fixes the bug.
 Also cuts prompt size, turns off feedback features, and adds a held-out eval suite with statistics.
 This line requires Claude Code v2.1.283 or later.
 
-> **Note:** [Evals](Evals) reports what the eval suites show for this release, and what they do not show.
+> **Note:** The Evals page (removed in 0.27) reported what the eval suites show for this release, and what they do not show.
 
 To update:
 
@@ -45,7 +45,7 @@ To update:
   - pass^k
   - a suite mean, with standard errors clustered by case
   - the paired difference with and without the plugin
-- `docs/evals.md` (now [Evals](Evals)): how both eval suites were built, the 0.4.0 results with their intervals, what they do not show, and what the next round needs.
+- `docs/evals.md` (later the Evals page, removed in 0.27): how both eval suites were built, the 0.4.0 results with their intervals, what they do not show, and what the next round needs.
 - `docs/claude-code-prompt-surface.md` (now [Prompt surface](Prompt-Surface)): what Claude Code 2.1.283 sends per request, what each customization lever changes, and `policyHelper` output fields that the docs do not cover.
 
 ## Changed

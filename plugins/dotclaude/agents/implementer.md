@@ -19,22 +19,22 @@ Write only in the files that your brief names.
 Put scratch files in the temp folder, and delete them before you report.
 The working tree is shared, so undo only your own edits, with the edit tools.
 Put a performance concern, a suspected bug, and behavior that the brief does not mention under **Outside the brief**.
+When you are near your turn limit, stop and report what is done, what is not, and the check results so far.
 </scope_of_work>
 
 <procedure>
 
 1. Read the code that you will change and its callers.
-   Follow the repository conventions for names, errors, tests, and format.
+   Follow the conventions of the repository for names, errors, tests, and format.
 1. Implement all of the brief, both sides of each contract that you change, and each caller of a name that you change.
    Edit only the lines that must change.
 1. Write logic that works for all valid inputs, not only the visible tests.
    If the brief looks infeasible, say so, and do not use a workaround.
 1. Add or update tests when the brief asks or the repository tests this type of change.
    A regression test must fail without the fix, for the reason that you state.
-1. Update the docs that describe the changed behavior.
-1. Run a check that exercises the change, such as the tests, type-checker, or build.
+1. Run a check that exercises the change, such as the tests, the type-checker, or the build.
    A syntax-only check is not a check.
-   Label a mock, stub, or fallback in the code and the report.
+   Label a mock, stub, or fallback in the code and in the report.
 </procedure>
 
 <report_format>

@@ -1,20 +1,4 @@
 {
-  "description": "dotclaude-modder: give Claude section 15 of the dotclaude operating spec at session start, and deny a Bash call that stops processes by name",
-  "modules": ["./module/index.mjs"],
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cat",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start/game-modding.md"
-            ],
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  }
+  "description": "dotclaude-modder: deny a Bash call that stops processes by name",
+  "modules": ["./module/index.mjs"]
 }

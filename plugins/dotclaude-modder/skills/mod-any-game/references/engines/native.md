@@ -60,7 +60,7 @@ Do not work on games with anti-cheat (see `safety.md`).
 When you understand enough of the game, you can rewrite the engine (IW4L for MW2, in Rust).
 Such projects read the game files of the user, and the original binary is the oracle.
 Others decompile function by function with a byte-matching harness.
-See `retro-decomp.md` and the `mashup-mods` skill.
+See `retro-decomp.md` and `../mashup-mods.md`.
 
 ## Pitfalls
 

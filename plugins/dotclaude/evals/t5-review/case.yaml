@@ -1,6 +1,0 @@
-schema_version: "1.1"
-name: t5-review
-description: "Tier 5, role. Review a commit with three planted defects and one correct loop that looks wrong. Claude should find all three, leave the loop alone, and change nothing."
-tags: [tier-5, role, review]
-context:
-  scaffold_script: fixture.sh

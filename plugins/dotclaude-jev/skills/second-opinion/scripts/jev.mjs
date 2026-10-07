@@ -1,15 +1,16 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 // A second opinion from TypeSafe Jev, a decision model that answers typed questions about a state:
 // yes or no, one option from a set, or a level on a scale.
 // The verbs follow the `jev` CLI by pedramamini (MIT).
 // The code is our own.
 //
-//   bun jev.mjs yes  "<question>" [--state <file | - | text>]
-//   bun jev.mjs pick "<question>" <option>[=<description>]... [--state ...]
-//   bun jev.mjs rate "<question>" <level>... [--state ...]
-//   bun jev.mjs ask  [--state ...] < request.json
+//   node jev.mjs yes  "<question>" [--state <file | - | text>]
+//   node jev.mjs pick "<question>" <option>[=<description>]... [--state ...]
+//   node jev.mjs rate "<question>" <level>... [--state ...]
+//   node jev.mjs ask  [--state ...] < request.json
 
 import { existsSync, readFileSync } from "node:fs";
+import { setTimeout as sleepMs } from "node:timers/promises";
 
 const API = "https://api.typesafe.ai/v1/systemone";
 const MODEL = "jev-latest";
@@ -138,7 +139,7 @@ export function format(kind, answers) {
 export async function call(
   body,
   key,
-  { fetchFn = fetch, sleep = Bun.sleep } = {},
+  { fetchFn = fetch, sleep = sleepMs } = {},
 ) {
   for (let i = 0; ; i++) {
     const res = await fetchFn(API, {

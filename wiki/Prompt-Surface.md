@@ -2,21 +2,55 @@
 
 This page shows what a Claude Code request contains and where a plugin can add or remove text.
 Source labels (official, binary, capture, measured, reported, inference, tested) are in [Home](Home).
+The sizes in the capture sections come from 2.1.283 to 2.1.289, and they are the latest measured sizes.
 
 ## Summary
 
+- Since 0.27.0, the core plugin gives Claude one text of its own: the forced output style `output-styles/dotclaude.md` (bound `STYLE_MAX_BYTES`, 6,000 bytes).
+  No SessionStart hook of the core plugin adds context.
+- The profile turns on the simple prompt with `CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`.
+- The style has `force-for-plugin: true` and `keep-coding-instructions: false`.
+  `force-for-plugin` overrides the `outputStyle` that the user set (**official**).
+  `keep-coding-instructions` defaults to false (**official**).
+- Only CLI flags replace the system prompt, and no settings key does (**official**).
+  A plugin cannot pass flags.
 - A request is 122 KB in an interactive session with tool search on (**capture**).
   Without tool search it is 205 KB.
-- Only the `--system-prompt-file` flag replaces the built-in prompt, and a plugin cannot pass flags.
-- The profile turns on the lean prompt with `CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`.
-- Hook context and output styles arrive in the role-`system` message, the closest position that a plugin can reach.
-- Since 0.26.0, section 1 of the [operating spec](Operating-Spec) in `plugins/dotclaude/lib/terms.mjs` holds the working rules (bound `RULES_MAX_BYTES`, 2,000 bytes).
-  Only the `Concise` output style stays.
-  `Explanatory`, `Learning`, and `Proactive` are removed.
+
+## The simple prompt plus the forced style
+
+The system prompt has a `shared` block and a `session` block (**binary**, 2.1.292).
+`CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1` swaps the `shared` block for a short `lean_body`.
+The forced style then adds the dotclaude rules.
+
+The `context_management` section of the `session` block says that the system summarizes prior messages when the context grows long (**binary**, 2.1.292).
+That is wrong in a dotclaude session, because the profile turns compaction off.
+Two parts correct it:
+
+- The hooks module replaces the section with a `prompt.section` hook when `DISABLE_COMPACT` is set.
+  The new text says that compaction is off, that the session stops at the limit, and that OpenSpec checkboxes and commits keep the state across `/clear`.
+  The text is the same on each call, so the prompt cache stays.
+  On a machine where the built-in guard `sec-default` loads, the guard skips this hook (**measured**, see [Claude mods](Claude-Mods#the-built-in-guard-sec-default)).
+- The `context` section of the style says the same, and it loads in each case.
+
+The shared block has the sections `intro`, `system`, `doing_tasks`, `actions`, `tools`, and `tone` (**binary**).
+The simple prompt replaces them with `lean_body`.
+
+| Section of the style | What it tells Claude |
+| --- | --- |
+| `doing_tasks` | How to work on a task. |
+| `verification` | Check a claim before a report. |
+| `actions` | How to treat actions that are hard to reverse. |
+| `context` | The window, the end of the session, and OpenSpec: `/opsx:propose`, `/opsx:apply`, and `tasks.md`. |
+| `subagents` | Delegate long reads, and give each subagent a full brief. |
+| `reports` | What a final report holds. |
+
+Verify the exact text in `output-styles/dotclaude.md`.
+This page describes its sections and not its words.
 
 ## What a request contains
 
-An interactive session has plugins, MCP servers, and the dotclaude output style, with tool search on (**capture**):
+An interactive session has plugins, MCP servers, and an output style, with tool search on (**capture**):
 
 | Part | Size | Contents | Replaced by `--system-prompt-file` |
 | --- | ---: | --- | --- |
@@ -30,123 +64,43 @@ An interactive session has plugins, MCP servers, and the dotclaude output style,
 Without tool search, all 38 tools load in full, which is a 205 KB request.
 Tool search is off by default when `ANTHROPIC_BASE_URL` points to another host.
 
-## The lean prompt
+## The simple prompt switch
 
-The profile sets `CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1`.
-The first match in this list decides the prompt (**binary**):
+The first match in this list decides the prompt (**binary**, 2.1.288):
 
-1. The variable is truthy: lean.
+1. The variable is truthy: simple.
 1. The variable is `0` or `false`: full.
-1. The provider is Bedrock, Vertex, or Foundry: lean.
-1. The feature flag `tengu_velvet_tide` is on: lean.
+1. The provider is Bedrock, Vertex, or Foundry: simple.
+1. The feature flag `tengu_velvet_tide` is on: simple.
 1. The feature flag `simple_system_prompt` decides.
 
-The lean prompt drops the long system bullets, the coding rules, "Executing actions with care", the task-tool section, and the tone section.
+The simple prompt drops the long system bullets, the coding rules, "Executing actions with care", the task-tool section, and the tone section.
 It keeps a one-line form of the first four.
 The same switch sends shorter descriptions for Glob, Grep, Write, and WebSearch.
 
-## The working rules
-
-Only the `--system-prompt-file` flag replaces the built-in prompt.
-No setting or environment variable does (**binary**, all settings keys and `CLAUDE_CODE_*` names with SYSTEM, PROMPT, or STYLE).
-A plugin cannot pass flags.
+## How the rules reached Claude in older releases
 
 | Version | How the rules reached Claude |
 | --- | --- |
-| 0.16 | A `claude` shell function passed the flag with a 4.3k-token replacement prompt. The prompt and style took about 4.9k tokens. |
-| 0.17 | Removed the shell function. The profile turns on the lean prompt, and the rules sit in an output style. Auto memory is off in the profile, and the rules have no `# Memory` section. |
-| 0.18 | A SessionStart hook, `add-working-rules.mjs`, about 7 KB (`LIMITS.workingRulesBytes`). |
-| 0.20.0 | `plugins/dotclaude/hooks/session-start/add-session-context.mjs` adds `plugins/dotclaude/templates/context/working-rules.md`. The hook also adds `minimal-code.md` from the same folder unless the option `ponytail` is `false`. Auto memory stays on, and `/dotclaude:setup` lists the memory files to review. |
-| 0.26.0 | The same hook renders the sections of the operating spec from `plugins/dotclaude/lib/terms.mjs`, and `templates/context/` is gone. Section 1 holds the working rules, and section 2 holds the minimal code rules unless the option `ponytail` is `false`. |
+| 0.16 | A `claude` shell function passed `--system-prompt-file` with a 4.3k-token replacement prompt. |
+| 0.17 | The profile turned on the lean prompt, and the rules sat in an output style. |
+| 0.18 to 0.26 | A SessionStart hook added the rules. In 0.26 it rendered the sections of an operating spec from `lib/terms.mjs`. |
+| 0.27 | The forced output style only. No SessionStart context from the core plugin. |
 
-The working rules in 0.19 were the text in `add-working-rules.mjs`.
-The 0.20.0 file had 2,197 bytes against a bound of 2,200.
-The rendered section 1 of the 0.26.0 spec has the bound `RULES_MAX_BYTES` (2,000 bytes).
-
-- The 2.1.287 prompt has the `<pasted_content>` rule, the `/<skill-name>` and `! <command>` guidance, and the rule on hard-to-reverse actions (**binary**).
-  So the rules keep only the parts of the approval rule that are dotclaude's own.
-- The rules still have no memory section.
-- The header and identity line are always sent (**capture**).
-
-The published model system prompts of Anthropic are the prompts of the Claude apps, not of Claude Code.
-Use them for tag structure only.
+The `dotclaude-jev` plugin still adds a short SessionStart note with a `cat` command.
+The `dotclaude-modder` plugin adds none from 0.27.
 
 ## Output styles and hook context
 
-An output style arrives in the role-`system` message, not in the `system` blocks (**capture**).
+An output style arrives in the role-`system` message, not in the `system` blocks (**capture**, 2.1.283).
 The docs say that the style is "appended to the end of the system prompt", which 2.1.283 does not do.
 
 - `keep-coding-instructions` changes only the full prompt.
   The lean prompt has no coding instructions, and the flag does not add them (**binary**, 2.1.286).
-  With the 0.16 replacement prompt, `true` sent the same request as `false` (**capture**).
 - The `additionalContext` of a SessionStart hook arrives in the same role-`system` message as the output style (**capture**, 2.1.288).
-  So text from a hook has the same position as a style, and it applies with every style and with no style.
-- This is why the working rules moved from the styles to a hook.
-  The one style left, `Concise`, holds only reply-style rules.
-
-### SessionStart context in 2.1.288
-
 - Claude Code keeps at most about 10,000 bytes of output from each hook command (**binary**).
-  The limit applies per command, not per event.
-  In 0.19 the rules had their own command in `hooks.json`, and the other SessionStart actions shared the command of the dispatcher.
-  Since 0.20.0, one command adds the rules and the notes (in 0.26.0, `add-session-context.mjs`).
-- After `/compact` or an automatic compaction, Claude Code runs the hook again with source `compact`, and it drops the copy from startup (**capture**).
-  So the rules come back after each compaction, and the text is not sent twice.
-- With `--resume`, the earlier copy stays in the transcript, so a new copy would be a duplicate.
-  The hook adds the rules only for the sources `startup`, `clear`, and `compact`.
-  A `resume` gets only the cold-cache note, when the cache has expired.
-- No setting or hook output appends text to the built-in system prompt itself.
-  The role-`system` message is the closest position that a plugin can reach.
-
-## Built-in plugins
-
-Claude Code 2.1.288 ships built-in plugins with ids of the form `cc-plugin-<name>@builtin` (**binary**).
-The short form `<name>@builtin` also resolves.
-`enabledPlugins` in settings turns each one on or off.
-
-| Plugin | Note |
-| --- | --- |
-| `tips`, `mermaid`, `diff`, `mods-guide`, `claude-test`, `responsive-mode`, `plugin-authoring`, `agents-md` | Switch in `enabledPlugins`. |
-| `telemetry` | On by default. |
-| `you-should-know` | Off by default. See below. |
-| `sec-default` | Reads its switch only from managed policy. |
-
-0.19 had a setup switch `builtin-plugins` that turned `you-should-know` on and the others off.
-0.20.0 removed it, and the profile sets no `enabledPlugins`.
-
-<details>
-<summary>How you-should-know starts</summary>
-
-- The 2.1.287 release notes say that it needs a first-party session with telemetry on.
-- Its registration checks a feature flag, `tengu_jolly_dewdrop`, and three compliance modes (HIPAA, ZDR, LDR).
-  It does not check the `telemetry` plugin (**binary**).
-- The flag comes from the feature-flag request, which the telemetry settings control.
-- `you-should-know` runs when the `telemetry` plugin is off (**tested**, 2.1.288).
-  In a headless session with `cc-plugin-telemetry@builtin: false`, the debug log showed the plugin admitted.
-  It also showed the `prompt.submit`, `turn.step`, and `session.end` hooks of the plugin run.
-- Its `telemetry.log` and `telemetry.mark` calls then go to no handler, and nothing is sent.
-
-</details>
-
-## Skill listing and claude.ai connectors
-
-Settings keys that change the skill listing (**binary**, 2.1.288):
-
-| Key | Effect |
-| --- | --- |
-| `disableBundledSkills` | removes the skills that ship with Claude Code |
-| `skillOverrides` | per skill: `on`, `name-only`, `user-invocable-only`, or `off` |
-| `skillListingMaxDescChars` | cuts each description to this many characters (default 1536) |
-| `skillListingBudgetFraction` | the share of the context window for the whole listing |
-
-- Skills synced from a claude.ai account have names of the form `anthropic-skills:<name>`, and `skillOverrides` matches that name.
-- The setup profile sets `anthropic-skills:docs`, `docx`, `pdf`, `pptx`, and `xlsx` to `off` (**binary**, 2.1.289).
-- `disableBundledSkills` does not remove these skills, because they come from claude.ai and do not ship with Claude Code.
-- `disableClaudeAiConnectors` removes the MCP connectors of a claude.ai account.
-  The profile does not set it, so connectors such as Claude Docs and alphaXiv stay.
-- A `true` value in any settings source wins.
-  A project can turn the connectors off, but a project `false` cannot turn them on again after a user `true`.
-  So the maintainer turns them off only for this repository, in `.claude/settings.local.json`.
+- After a compaction, Claude Code runs a SessionStart hook again with source `compact`, and it drops the copy from startup (**capture**).
+  The 0.27 profile turns compaction off, so a session does not reach this case.
 
 ## Tool removal
 
@@ -164,6 +118,20 @@ Only a loaded tool saves much, because a deferred tool costs one name.
 | Bash | 2237 |
 | ReportFindings | 2177 |
 
+The 0.27 profile denies `Agent(general-purpose)`, which is a pattern and not a bare tool name.
+
+The 0.27 profile removes four unused tools (**binary**, 2.1.292):
+
+- `enableArtifact: false` removes Artifact, and `enableWorkflows: false` removes Workflow.
+- ScheduleWakeup has no setting, so the profile denies it by name.
+- The profile also denies ReportFindings.
+  `/code-review` uses it only when `CLAUDE_CODE_REPORT_FINDINGS` is set and the tool is present.
+  Otherwise `/code-review` gives its findings as text.
+
+With these switches, the profile without the advisor, and only one modder skill, `/context` at the start of a sandbox session fell from 32k to 8.1k tokens (**measured**).
+Of the 8.1k, the loaded tools are 5.3k and the system prompt is 1.6k.
+The deferred tools (16.1k in `/context`) send only their names until Claude loads one.
+
 ## Undocumented surfaces
 
 - `--append-subagent-system-prompt[-file]` works only with `-p` (**official**).
@@ -172,9 +140,9 @@ Only a loaded tool saves much, because a deferred tool costs one name.
 - The `policyHelper` output accepts two optional strings besides `managedSettings`: `appendSystemPrompt` and `claudeMd` (**binary**).
   They append text and cannot replace the prompt.
   Nobody has run them end to end.
-- The Glob tool runs `rg --files --no-ignore --hidden` unless `CLAUDE_CODE_GLOB_NO_IGNORE` or `CLAUDE_CODE_GLOB_HIDDEN` is `false` (**binary**, **measured**).
-  The Grep tool skips gitignored files.
-  The profile sets `CLAUDE_CODE_GLOB_NO_IGNORE=false`.
+- The `prompt.section` and `prompt.compose` mod events can change sections of the system prompt (**official**, d.ts).
+  dotclaude uses `prompt.section` for one section, `context_management`.
+  See [Claude mods](Claude-Mods).
 
 ## Capture method
 
@@ -189,12 +157,6 @@ ENABLE_TOOL_SEARCH=true ANTHROPIC_BASE_URL=http://127.0.0.1:18771 \
 - `script` gives the CLI a terminal, so it runs interactively.
 - To measure print mode, remove `script` and add `-p`.
 - The request bodies contain the `CLAUDE.md` of the user, so this page reports only structure and sizes.
-
-## Count the injected text
-
-`scripts/count-tokens.mjs` counted the tokens of the working rules, the output styles, and the agent prompts.
-0.20.0 removed it, because the features that it served are gone.
-A test bounds the rendered section 1 of the operating spec in bytes (`RULES_MAX_BYTES`).
 
 ## Related pages
 

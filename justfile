@@ -16,8 +16,12 @@ lint:
 validate:
     bun run validate
 
-# Everything CI runs, plus plugin validation
-check: lint test validate
+# Run the hook lab: the tests of each plugin hooks module, with stubbed Claude Code events
+lab:
+    claude plugin test plugins/dotclaude
+
+# Everything CI runs, plus plugin validation and the hook lab
+check: lint test validate lab
 
 # Run Claude Code with this checkout as its plugin, in a sandbox config apart from yours; extra arguments go to claude
 sandbox *args:
@@ -69,9 +73,3 @@ release *flags:
     if [[ "${1:-}" == --dry-run ]]; then exit 0; fi
     for p in plugins/*/; do claude plugin tag "$p"; done
     git push --atomic origin "${tags[@]/#/refs/tags/}"
-
-# Run the investigator and web-researcher role cases with the agent at a model (opus or sonnet) and effort; this spends usage
-eval-agent model effort runs="10":
-    CLAUDE_CODE_SUBAGENT_MODEL=claude-{{ model }}-5-5 CLAUDE_CODE_EFFORT_LEVEL={{ effort }} claude plugin eval plugins/dotclaude --model opus --judge-model sonnet --runs {{ runs }} --ablation none --scaffold --allow-tools Bash WebFetch WebSearch --keep-temp --tag agent-role --json plugins/dotclaude/evals/results/agents-{{ model }}-{{ effort }}.json
-    bun plugins/dotclaude/evals/oracle.mjs plugins/dotclaude/evals/results/agents-{{ model }}-{{ effort }}.json
-    bun plugins/dotclaude/evals/report.mjs plugins/dotclaude/evals/results/agents-{{ model }}-{{ effort }}.json

@@ -1,17 +1,22 @@
 # AGENTS.md
 
-A Claude Code plugin marketplace in Bun ESM.
-The core plugin is in `plugins/dotclaude/`, next to the `dotclaude-browser` and `dotclaude-jev` plugins.
+A Claude Code plugin marketplace in ESM.
+The scripts in `plugins/` run on Node.js 22.18 or later, so they use only `node:` modules.
+The `um` command of `dotclaude-modder` runs on Bun, and the tests and `tools/` run on Bun.
+The core plugin is in `plugins/dotclaude/`, next to the `dotclaude-browser`, `dotclaude-jev`, and `dotclaude-modder` plugins.
+Each add-on plugin works without the core plugin, so it does not import from `plugins/dotclaude/`.
 Only `plugins/` ships to users.
-`claude plugin eval` reads cases only inside the plugin, so the eval cases are in `plugins/dotclaude/evals/`.
 `tests/` has one folder for each plugin, and `tools/` holds the repository scripts.
+`plugins/dotclaude/tests/` holds the hook lab, which `claude plugin test` runs against the hooks module.
 Docs, design, and evidence: the [wiki](https://github.com/xsyetopz/dotclaude/wiki), with its source in `wiki/`.
 
 ## Commands (repository root)
 
-- `just check` runs lint, tests, and validation.
+- `just check` runs lint, tests, validation, and the hook lab.
   It must pass before done.
-- `bun test tests/dotclaude/bash-guard.test.mjs` runs one test file.
+- `bun test tests/dotclaude/guard.test.mjs` runs one test file.
+- `just lab` runs the hook lab: the tests of the hooks module with stubbed Claude Code events.
+  Test each change to `hooks/mod.mjs` there before a live session.
 - `bunx markdownlint-cli2 README.md` lints Markdown.
   Headings and code blocks have a 100-column bound.
 - `just sandbox` runs Claude Code with this checkout in a separate config.
@@ -32,8 +37,6 @@ Docs, design, and evidence: the [wiki](https://github.com/xsyetopz/dotclaude/wik
   Tests pin its copies in code and config, not in prose.
 - Do not write runtime JavaScript (`plugins/`) for a feature that the latest Claude Code has.
   When Claude Code has a setting, a hook, or another extension point for a need, use it.
-- Each note to an agent is a clause of the dotclaude Terms of Use.
-  Add the clause to `plugins/dotclaude/lib/terms.mjs` and `wiki/Terms-of-Use.md`, and enforce it with a hook when a hook can see a break of it.
 - In `plugins/dotclaude/`, `lib/` imports only itself.
   `hooks/`, `status-line/`, and the skill scripts import only `lib/` and their own folder.
 - Tests give commands to the guards as strings.
