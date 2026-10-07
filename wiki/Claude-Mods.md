@@ -218,6 +218,10 @@ These facts are from live tests of 2.1.292 in `just sandbox` with Haiku 4.5 (**t
   The same message with `stop_hook_active: false` was blocked in 3 of 3 runs.
   Thus the rule "If `stop_hook_active` is `true`, return {"ok": true}" lets one retry through.
   This is a known limit, and the rule stays, because it stops a loop of blocks.
+- On 2026-10-07, a message that only asked the user for approval got `ok: false` with a reason that found no break.
+  In 3 more runs of the same stop, and in 4 replays of the prompt, each answer was `ok: true`.
+  Thus the false block occurred in 1 of 4 first stops, and its cause is not known.
+  It stays open for the next session, which measures it with more runs.
 
 The [hooks doc](https://code.claude.com/docs/en/hooks) says that the count goes back to 0 at each tool call.
 The [environment variables doc](https://code.claude.com/docs/en/env-vars) says that the cap applies to Stop and SubagentStop hooks.
