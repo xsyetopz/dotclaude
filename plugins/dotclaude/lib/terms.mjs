@@ -290,7 +290,7 @@ export const SECTIONS = [
       {
         id: "sub-report",
         level: "MUST",
-        text: "start the report with `Done` or `Not done`, and put each part with no passing check in a **Not verified** list with the reason.",
+        text: "start the report with `Done` or `Not done`.\nWhen the check of a part fails, fix the part and run the check again.\nPut a part under **Not verified** only when its check cannot run, and give the reason.",
       },
       {
         id: "progress-write",
@@ -324,7 +324,7 @@ export const SECTIONS = [
       {
         id: "done-claim",
         level: "MUST",
-        text: "call a part done only when a check that exercises it passed in this session.\nPut each other part in a **Not verified** list with the reason.",
+        text: "call a part done only when a check that exercises it passed in this session.\nWhen the check of a part fails, fix the part and run the check again.\nPut a part under **Not verified** only when its check cannot run, and give the reason.",
       },
       {
         id: "no-limit-change",

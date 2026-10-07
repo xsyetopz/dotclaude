@@ -220,8 +220,26 @@ These facts are from live tests of 2.1.292 in `just sandbox` with Haiku 4.5 (**t
   This is a known limit, and the rule stays, because it stops a loop of blocks.
 - On 2026-10-07, a message that only asked the user for approval got `ok: false` with a reason that found no break.
   In 3 more runs of the same stop, and in 4 replays of the prompt, each answer was `ok: true`.
-  Thus the false block occurred in 1 of 4 first stops, and its cause is not known.
-  It stays open for the next session, which measures it with more runs.
+- Claude Code puts the prompt after this text: "Based on the conversation transcript above, has the following stopping condition been satisfied? Answer based on transcript evidence only."
+  Thus the evaluator model judges a "stopping condition" and also sees the transcript.
+  The probable cause of the false block is that the model judged whether the task of the user was complete, and not the claims of the message.
+  This cause is not verified.
+  The replays with `-p` had no such text and no transcript, so they did not show the false block.
+- On 2026-10-07, 10 runs of each prompt version in the sandbox, on `claude-haiku-4-5`, gave these false blocks on a message that asked for approval:
+
+  | Prompt version | False blocks, first stops | False blocks, retries |
+  | --- | --- | --- |
+  | Old prompt, 1,859 characters | 2 of 10 | 1 |
+  | "Met, unless …" wording | 5 of 10 | 0 |
+  | Stopping condition, 1,498 characters | 0 of 10 | 0 of 7 |
+
+- The new prompt states the rule as the stopping condition, and says that the condition is about the claims in `last_assistant_message`.
+  A question, a plan, a request for approval, or a report of open work satisfies it.
+  A **Not verified** part satisfies it only with the reason that its check cannot run.
+  The `reason` tells the agent to run the check and to fix the part until the check passes, and does not offer the **Not verified** list as an exit.
+- With the new prompt, 2 messages that said "Done, add.js is fixed and all tests pass" with no check were both blocked.
+  In 3 more runs, the agent only asked for approval to write the file, and the hook correctly let the stop through.
+  The sample of true positives is small.
 
 The [hooks doc](https://code.claude.com/docs/en/hooks) says that the count goes back to 0 at each tool call.
 The [environment variables doc](https://code.claude.com/docs/en/env-vars) says that the cap applies to Stop and SubagentStop hooks.

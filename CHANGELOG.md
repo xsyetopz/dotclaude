@@ -46,7 +46,10 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 - The agent prompts are about half as long (66 KB to less than 32 KB), and a test keeps all agent files together at 32,000 bytes or less (`AGENTS_MAX_BYTES`).
   They lose the rules that the SubagentStart context now gives each subagent: defects, checks, the turn budget, denies, and the report start.
   They also lose examples and repeated points.
-  A new subagent rule tells each subagent to start its report with `Done` or `Not done`, and to list each part with no passing check under **Not verified**.
+  A new subagent rule tells each subagent to start its report with `Done` or `Not done`.
+- Rules 10.6 and 12.1 do not offer the **Not verified** list as an exit.
+  When the check of a part fails, the agent fixes the part and runs the check again.
+  A part goes under **Not verified** only when its check cannot run.
 - Text from outside (AI policy files, CodeGraph index data, and `um kb` field notes) goes to Claude in its own tag, with each `<` escaped, so that the text cannot close the tag.
   The Stop prompt hook puts its input in a `hook_input` tag first, and asks for only the JSON object.
   Wrapper tags around one short block are removed.
@@ -73,6 +76,11 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
   In a replay of 32 real messages and 5 breaks with the transcript, the system prompt, and the model of Claude Code 2.1.292, false blocks went from 4 of 32 to 2 of 32, and the hook caught 5 of 5 breaks.
   Transcripts do not record `background_tasks` and `session_crons`, so the replay sent them empty.
   A second replay of one real progress report and one false done claim, each with `background_tasks` empty and with a running `just check`, gave the correct result in 4 of 4 runs.
+- The clause 18 prompt hook on `Stop` blocked a message that only asked the user for approval.
+  The prompt now states rule 12.1 as a stopping condition about the claims of the last message, and not about whether the task is complete.
+  In 10 sandbox runs on Claude Haiku 4.5, the false blocks went from 2 to 0, and 2 of 2 unchecked done claims were still blocked.
+  The block reason tells the agent to run the check and fix the part, and does not offer the **Not verified** list as an exit.
+  The prompt went from 1,859 to 1,498 characters.
 - The Bash guard denied a write to a temporary file as a write to a project file.
   It now ignores module paths in `import`, `from`, and `require`, and follows `cd` from part to part of a command, so that `cd "$TMPDIR/x" && … > out.txt` writes to `$TMPDIR`.
 

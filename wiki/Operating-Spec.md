@@ -102,7 +102,7 @@ Only subagents get this section.
 | 10.3 | MUST | all | Fix a defect at its cause, and report each defect outside the brief with its file, command, and output. | none |
 | 10.4 | MUST | all | Call a part done only when a check that exercises it passed. Run your checks before you use 3/4 of your turns. | none |
 | 10.5 | MUST NOT | all | Change a test or a limit unless the brief says so. | none |
-| 10.6 | MUST | all | Start the report with `Done` or `Not done`, and put each part with no passing check in a **Not verified** list with the reason. | none |
+| 10.6 | MUST | all | Start the report with `Done` or `Not done`. When the check of a part fails, fix the part and run the check again. Put a part under **Not verified** only when its check cannot run, and give the reason. | none |
 | 10.7 | MUST | all | Add one line to `<progress file>` after each step, such as `done: <step> \| next: <step>`, with no secrets. An agent that stops at its turn limit gives no report, and the main agent reads this file. | none |
 
 ## 11 Questions
@@ -116,7 +116,7 @@ Only subagents get this section.
 
 | Rule | Level | Agents | Text | Hook |
 | --- | --- | --- | --- | --- |
-| 12.1 | MUST | all | Call a part done only when a check that exercises it passed in this session. Put each other part in a **Not verified** list with the reason. | none |
+| 12.1 | MUST | all | Call a part done only when a check that exercises it passed in this session. When the check of a part fails, fix the part and run the check again. Put a part under **Not verified** only when its check cannot run, and give the reason. | none |
 | 12.2 | MUST NOT | all | Change a test or a limit unless the user asks, because a raised limit hides the defect. | none |
 | 12.3 | MUST | all | Call a check "flaky" only with a named cause and a passing rerun. | none |
 | 12.4 | MUST | all | Give each open item its reason and owner (the user or the next session). "Out of scope" and "pre-existing" are not reasons. | none |
