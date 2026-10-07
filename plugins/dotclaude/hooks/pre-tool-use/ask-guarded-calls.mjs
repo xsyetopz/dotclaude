@@ -26,6 +26,7 @@ import {
   POLICY_FILES,
   policyCommand,
   policyReason,
+  policySection,
   within,
 } from "../../lib/guards/policy.mjs";
 
@@ -161,10 +162,10 @@ if (import.meta.main) {
   } catch {
     // No input: no decision.
   }
+  const policy = await policyAsk(data).catch(() => undefined);
   const reason =
-    [askReason(data), await policyAsk(data).catch(() => undefined)]
-      .filter(Boolean)
-      .join(" ") || undefined;
+    [askReason(data), policy].filter(Boolean).join(" ") || undefined;
+  // Only the user sees an ask reason, so Claude gets the policy as context.
   if (reason)
     process.stdout.write(
       JSON.stringify({
@@ -172,6 +173,9 @@ if (import.meta.main) {
           hookEventName: "PreToolUse",
           permissionDecision: "ask",
           permissionDecisionReason: reason,
+          ...(policy && {
+            additionalContext: `${policySection()}\n\n${policy}`,
+          }),
         },
       }),
     );

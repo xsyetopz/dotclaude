@@ -92,11 +92,8 @@ export async function resolveRoot(explicit, remote = false) {
 }
 
 export function untrusted(text, source) {
-  // A note must not close the tag, and it must not open a fake one.
-  const safe = text.replace(
-    /<(\/?)untrusted_field_note/gi,
-    "&lt;$1untrusted_field_note",
-  );
+  // A note must not close the tag or open a fake one, and each tag starts with `<`.
+  const safe = text.replace(/</g, "&lt;");
   const src = source.replace(/["<>\r\n]/g, "_");
   return `<untrusted_field_note source="${src}">\n${safe}\n</untrusted_field_note>`;
 }

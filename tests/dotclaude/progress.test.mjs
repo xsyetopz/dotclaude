@@ -1,5 +1,5 @@
-// The subagent progress clause: the progress file of each subagent,
-// and the clause for the main agent at session start.
+// The subagent rules of the operating spec: the progress file of each subagent,
+// and the subagent section that the main agent does not get at session start.
 
 import { expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
@@ -11,12 +11,17 @@ import {
   SUBAGENT_CONTEXT,
 } from "../../plugins/dotclaude/hooks/subagent-start/add-subagent-context.mjs";
 import {
-  MAIN_PROGRESS,
   PROGRESS_DIR,
   progressFile,
-  subagentProgress,
 } from "../../plugins/dotclaude/lib/notes/progress.mjs";
-import { clauseTag } from "../../plugins/dotclaude/lib/terms.mjs";
+import {
+  rules,
+  SPEC,
+  section,
+  sectionTag,
+} from "../../plugins/dotclaude/lib/terms.mjs";
+
+const ID = "subagent-progress";
 
 test("a progress file is named by a safe agent ID only", () => {
   expect(progressFile("a1")).toBe(join(PROGRESS_DIR, "a1.md"));
@@ -25,28 +30,30 @@ test("a progress file is named by a safe agent ID only", () => {
 });
 
 test("each subagent gets the path of its progress file", () => {
-  expect(contextFor({ agent_id: "a1" })).toBe(
-    `${SUBAGENT_CONTEXT}\n\n${subagentProgress(progressFile("a1"))}`,
-  );
+  const file = progressFile("a1");
+  const context = contextFor({ agent_id: "a1" });
+  expect(context).toStartWith(`${SPEC}\n\n${sectionTag(ID)}`);
+  expect(context).toContain(`add one line to \`${file}\``);
+  expect(context).not.toContain("<progress file>");
   expect(contextFor({ agent_id: "../x" })).toBe(SUBAGENT_CONTEXT);
   expect(contextFor({})).toBe(SUBAGENT_CONTEXT);
 });
 
-test("the main agent gets the progress clause", () => {
+test("a subagent without a progress file gets the other subagent rules", () => {
+  expect(SUBAGENT_CONTEXT).toStartWith(`${SPEC}\n\n${sectionTag(ID)}`);
+  expect(SUBAGENT_CONTEXT).toContain("**Not verified**");
+  expect(SUBAGENT_CONTEXT).not.toContain("progress file");
+  expect(SUBAGENT_CONTEXT).not.toContain("<progress file>");
+});
+
+test("the main agent does not get the subagent section", () => {
   const root = mkdtempSync(join(tmpdir(), "ss-"));
-  expect(sessionContext({ source: "startup" }, root, "max")).toContain(
-    MAIN_PROGRESS,
-  );
+  const text = sessionContext({ source: "startup" }, root, "max").join("\n");
+  expect(text).not.toContain(sectionTag(ID));
+  expect(text).not.toContain(section(ID, rules(ID)));
 });
 
-test("the main clause says what to do when SendMessage cannot continue an agent", () => {
-  expect(MAIN_PROGRESS).toContain("If `SendMessage` cannot continue the agent");
-  expect(MAIN_PROGRESS).toContain("do only the steps that are not done");
-});
-
-test("each progress clause is clause 15 and has no semicolon", () => {
-  for (const text of [MAIN_PROGRESS, subagentProgress(progressFile("a1"))]) {
-    expect(text).toStartWith(clauseTag("subagent-progress"));
+test("the subagent contexts have no semicolon", () => {
+  for (const text of [SUBAGENT_CONTEXT, contextFor({ agent_id: "a1" })])
     expect(text).not.toContain(";");
-  }
 });

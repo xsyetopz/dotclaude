@@ -35,13 +35,8 @@ import {
   TRAILER_OFF_REASON,
   trailerOff,
 } from "../../lib/guards/attribution.mjs";
-import {
-  askFor,
-  autoModeText,
-  isCommit,
-  writeFor,
-} from "../../lib/guards/bash.mjs";
-import { editReasons, PUBLISH_PLUGIN_REASON } from "../../lib/guards/edit.mjs";
+import { autoModeText, isCommit, writeFor } from "../../lib/guards/bash.mjs";
+import { PUBLISH_PLUGIN_REASON } from "../../lib/guards/edit.mjs";
 import {
   fetchedRepos,
   POLICY_FILES,
@@ -89,8 +84,6 @@ import {
   claudeJsonPath,
   detectPlan,
 } from "../../lib/plan.mjs";
-
-const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 
 let plan;
 /** The plan of the user, read once for each session. */
@@ -145,19 +138,12 @@ async function writeDenial($, e, options) {
   return findingText(writeFor(String(e.command ?? ""), await bashContext($)));
 }
 
-/** The reason to ask about a tool call, or undefined. */
-async function askReason($, e, options) {
-  if (e.tool === "Bash" && enabled(options, "guard_bash"))
-    return findingText(askFor(String(e.command ?? ""), await bashContext($)));
-  if (EDIT_TOOLS.has(e.tool) && enabled(options, "guard_edit")) {
-    const existing =
-      e.tool === "Write" && e.file_path
-        ? await $.fs.read(e.file_path).catch(() => null)
-        : null;
-    return editReasons(e.tool, e, existing).join(" ") || undefined;
-  }
-  if (e.tool === "PublishPlugin") return PUBLISH_PLUGIN_REASON;
-  return undefined;
+/**
+ * The reason to ask about a tool call, or undefined.
+ * The Bash and edit asks are in `pre-tool-use/ask-guarded-calls.mjs`, which also runs in auto mode.
+ */
+async function askReason(e) {
+  return e.tool === "PublishPlugin" ? PUBLISH_PLUGIN_REASON : undefined;
 }
 
 /** The output of `argv` in `cwd`, or null when it fails. */
@@ -446,7 +432,7 @@ export function register(on, options) {
     if (deny) return { deny };
     const id = e.tool_use_id;
     const [reason, trailer, command] = await Promise.all([
-      askReason($, e, options).catch(() => undefined),
+      askReason(e),
       trailerVerdict($, e, options).catch(() => undefined),
       messageCommand($, e, options).catch(() => undefined),
     ]);
@@ -562,6 +548,10 @@ export function register(on, options) {
       ...e,
       instructions: [e.instructions, COMPACT_TEXT].filter(Boolean).join("\n\n"),
     });
+    // The compaction writes a new cache, also the native idle compaction,
+    // so the idle time of the cold-cache note starts again here.
+    if (!e.agentId)
+      await $.store.set("last-turn-ms", Date.now()).catch(() => {});
     return handoff && r?.messages
       ? {
           ...r,

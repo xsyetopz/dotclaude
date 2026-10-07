@@ -126,7 +126,7 @@ test("the compaction adds the open-request instruction and a handoff note", asyn
   expect(files[path]).toContain("status: in-progress");
   const row = r.messages.at(-1).text;
   expect(row).toContain(path);
-  expect(row).toContain("Do not continue the task");
+  expect(row).toContain("MUST NOT continue the task");
   expect(row).toContain("run `/clear`");
   expect(row).toContain(`\`@${path}\``);
   expect(row).not.toContain("Continue from the handoff note");
@@ -184,6 +184,18 @@ test("a prompt after the cache TTL gets the cold-cache note", async () => {
   expect(r.context[0]).toContain("/clear");
   const mid = await h["prompt.submit"]($, { text: "go", turnId: "t" }, pass);
   expect(mid.context).toBeUndefined();
+});
+
+test("a compaction of the main agent starts the idle time again", async () => {
+  const { $, store } = engine({ fork: { isAnswered: false } });
+  const h = load();
+  const next = async () => ({ messages: [] });
+  store["last-turn-ms"] = Date.now() - CACHE_TTL_MS - 60_000;
+  await h["session.compact"]($, { trigger: "auto", agentId: "a1" }, next);
+  expect(Date.now() - store["last-turn-ms"]).toBeGreaterThan(CACHE_TTL_MS);
+  await h["session.compact"]($, { trigger: "auto" }, next);
+  const e = { text: "go" };
+  expect(await h["prompt.submit"]($, e, pass)).toBe(e);
 });
 
 test("a subagent turn does not set the last-turn time", async () => {

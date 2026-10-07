@@ -1,20 +1,19 @@
-// SubagentStart: gives each subagent the project AI policy clause and its progress file.
-// A subagent does not see the SessionStart context,
-// and a research subagent once fetched the code of a project whose policy forbids AI tools.
+// SubagentStart: gives each subagent the subagent rules of the dotclaude operating spec, and its progress file.
+// A subagent does not see the SessionStart context.
 // A subagent that stops at its turn limit delivers no report,
 // so it adds its progress to a file that the main agent can read.
 
 import fs from "node:fs";
-import { POLICY_CLAUSE } from "../../lib/guards/policy.mjs";
-import { knownDefectsClause } from "../../lib/notes/defects.mjs";
-import {
-  PROGRESS_DIR,
-  progressFile,
-  subagentProgress,
-} from "../../lib/notes/progress.mjs";
-import { TERMS_OF_USE } from "../../lib/terms.mjs";
+import { PROGRESS_DIR, progressFile } from "../../lib/notes/progress.mjs";
+import { rules, SECTIONS, SPEC, section } from "../../lib/terms.mjs";
 
-export const SUBAGENT_CONTEXT = `${TERMS_OF_USE}\n\n${POLICY_CLAUSE}\n\n${knownDefectsClause()}`;
+const ID = "subagent-progress";
+const withoutFile = SECTIONS.find((s) => s.id === ID)
+  .rules.map((r) => r.id)
+  .filter((id) => id !== "progress-write");
+const context = (text) => `${SPEC}\n\n${section(ID, text)}`;
+
+export const SUBAGENT_CONTEXT = context(rules(ID, { only: withoutFile }));
 
 /** The context for the SubagentStart input `data`. */
 export function contextFor(data) {
@@ -25,7 +24,7 @@ export function contextFor(data) {
   } catch {
     return SUBAGENT_CONTEXT;
   }
-  return `${SUBAGENT_CONTEXT}\n\n${subagentProgress(file)}`;
+  return context(rules(ID).replace("<progress file>", file));
 }
 
 if (import.meta.main) {

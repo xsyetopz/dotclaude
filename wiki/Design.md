@@ -72,7 +72,7 @@ A bare `bun` start takes 5 ms.
 | Claude spawns `general-purpose` | Refused | `Agent(general-purpose)` deny rule in the profile | `tests/dotclaude/setup.test.mjs` |
 | Fan-out | 5 subagents, and 5 agents per workflow, at once | profile env | none |
 | A subagent runs in the background | It runs in the foreground and causes no wake turns | `CLAUDE_CODE_FORK_SUBAGENT=0` in the profile | none |
-| Text of dotclaude on every request | `working-rules.md` at most 2,000 bytes | `RULES_MAX_BYTES` | `tests/dotclaude/session-start.test.mjs` |
+| Text of dotclaude on every request | Section 1 of the [operating spec](Operating-Spec) at most 2,000 bytes, section 2 at most 800 bytes, and all agent files at most 32,000 bytes | `RULES_MAX_BYTES`, `MINIMAL_CODE_MAX_BYTES`, `AGENTS_MAX_BYTES` | A test fails above each bound (see `tests/dotclaude/`) |
 | Weekly review | The usage shares in [Usage evidence](Usage-Evidence) are reproducible | `tools/usage-report.mjs` | none |
 
 The profile rows need `/dotclaude:setup`.
@@ -185,6 +185,15 @@ It also tells Claude to match the work to the agent descriptions.
 - The rule is gone, so no one measured whether it changed this share.
 
 </details>
+
+## The 5-minute main cache
+
+The settings profile (`plugins/dotclaude/templates/settings.json`) sets `promptCacheTtl` to `"5m"`.
+
+- **measured:** In 7 days of transcripts, 98.7% of the calls of the main agent came 5 minutes or less after the call before.
+- At API prices, the 5-minute cache would have cost 8.5% less than the 1-hour cache.
+- A 5-minute write costs 1.25x, and a 1-hour write costs 2x (see the subagent numbers below).
+  So the 1-hour cache pays only when a pause of 5 to 60 minutes is common.
 
 ## Rejected alternatives
 

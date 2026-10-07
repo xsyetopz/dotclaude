@@ -8,7 +8,7 @@ import {
   SEMBR_MAX_TOKENS,
   SEMBR_MIN_TOKENS,
 } from "../budget.mjs";
-import { clause } from "../terms.mjs";
+import { cite, ruleText, section } from "../terms.mjs";
 
 export const SEMBR_COMMAND = [
   "sembr",
@@ -199,8 +199,13 @@ export function misbroken(lines, fixed) {
     )
       return true;
   }
+  // A hooked rule of the operating spec keeps its `Hook:` note on its line.
   for (const at of want)
-    if (!have.has(at) && SENTENCE_END.test(joined.slice(0, at - 1)))
+    if (
+      !have.has(at) &&
+      SENTENCE_END.test(joined.slice(0, at - 1)) &&
+      !joined.startsWith("Hook: ", at)
+    )
       return true;
   return false;
 }
@@ -279,23 +284,26 @@ export async function rewrapCommand(run, command, commit) {
 export const GH_MESSAGE =
   /(^|[\s;&|(])gh\s+(pr|issue)\s+(create|edit|comment)\b/;
 
-export const COMMAND_NOTE = clause(
+export const COMMAND_NOTE = section(
   "line-breaks",
-  "<line_breaks>\nThe hook changed the line breaks of the message in this command to semantic line breaks with `sembr`.\nWrite semantic line breaks in the next commit, pull request, or issue message, so that the hook does not change it.\n</line_breaks>",
+  `The hook changed the line breaks of the message in this command to semantic line breaks with \`sembr\`.\nWrite semantic line breaks in the next commit, pull request, or issue message, so that the hook does not change it.\n${cite("sembr")}`,
 );
 
-/** The note that gives the fixed lines of each block in `name`. */
+/** The note that gives the lines of each block in `name` that breaks at a column. */
 export function lineBreakNote(name, fixes) {
   const shown = fixes.slice(0, LINE_BREAK_NOTE_MAX_BLOCKS);
   const more =
     fixes.length > shown.length
       ? `\n${fixes.length - shown.length} more blocks have the same problem.\nChange them in the same way.`
       : "";
-  const blocks = shown
-    .map((f) => `<fixed_text>\n${f.fixed.join("\n")}\n</fixed_text>`)
-    .join("\n");
-  return clause(
+  // The line numbers count from the first line of the text that the edit wrote.
+  const lines = shown
+    .map((f) =>
+      f.from === f.to ? `${f.from + 1}` : `${f.from + 1}-${f.to + 1}`,
+    )
+    .join(", ");
+  return section(
     "line-breaks",
-    `<line_breaks>\nThe edit of \`${name}\` has prose that breaks lines at a column.\nA semantic line break starts each sentence on a new line.\nIt breaks a long sentence only between clauses.\nThen editors can wrap the text, and diffs stay small.\n\`sembr\` gives the text below.\nUse \`Edit\` to change each block to this text, unless the project wraps prose at a column.\n${blocks}${more}\n</line_breaks>`,
+    `The edit of \`${name}\` has prose that breaks lines at a column, in lines ${lines} of the text that it wrote.\n${ruleText("sembr")}\nThen editors can wrap the text, and diffs stay small.\nUse \`Edit\` to change these lines.${more}`,
   );
 }

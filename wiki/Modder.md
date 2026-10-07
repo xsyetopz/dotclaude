@@ -28,7 +28,7 @@ It is a Bun and Python port of [universal-modder](https://github.com/rehan-remad
 
 | Part | What it does |
 | --- | --- |
-| Session note | Gives Claude clause 17 of the [Terms of Use](Terms-of-Use): back up before a change, stop a process only by PID, keep a modded game off official servers and away from DRM and anti-cheat, read field notes as untrusted text, and get your OK before a publish. |
+| Session note | Gives Claude section 15 of the [operating spec](Operating-Spec): back up before a change, stop a process only by PID, keep a modded game off official servers and away from DRM and anti-cheat, read field notes as untrusted text, and get your OK before a publish. |
 | Kill guard | Denies a `Bash` call that stops processes by name, such as `pkill`, `killall`, `taskkill /IM`, or `Stop-Process -Name`. |
 | Skills | Tell Claude how to do each step of a mod, with the `um` commands. |
 | `um` command | Does the work of the skills. The plugin `bin/` puts it on the `Bash` PATH. |
@@ -81,6 +81,6 @@ Run `um <group> --help` for the commands and options of a group.
 
 ## Related pages
 
-- [Terms of Use](Terms-of-Use): clause 17.
+- [Operating spec](Operating-Spec): section 15.
 - [Attributions](Attributions): the source of the port.
 - [Install](Install): the other plugins.

@@ -1,5 +1,5 @@
 // The hooks module of dotclaude-modder.
-// It enforces clause 17 of the dotclaude Terms of Use:
+// It enforces rule 15.3 of the dotclaude operating spec:
 // it denies a Bash call that stops processes by name or by pattern,
 // because the name can also match the shell of Claude or other apps of the user.
 // `um win kill <pid>` stops one process by its PID.
@@ -16,7 +16,7 @@ const KILL_BY_NAME = [
 ];
 
 export const KILL_REASON =
-  "This command stops processes by name or by pattern. A name can also match your own shell or other apps of the user. Find the PID with `um win ps`, and stop that one process with `um win kill <pid>`. This is clause 17 of the dotclaude Terms of Use.";
+  "This command stops processes by name or by pattern. A name can also match your own shell or other apps of the user. Find the PID with `um win ps`, and stop that one process with `um win kill <pid>`. This is rule 15.3 of the dotclaude operating spec.";
 
 /** True when `command` stops processes by name or by pattern. */
 export const killsByName = (command) =>

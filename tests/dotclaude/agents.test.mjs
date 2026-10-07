@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
-import { SUBAGENT_EFFORTS } from "../../plugins/dotclaude/lib/budget.mjs";
+import {
+  AGENTS_MAX_BYTES,
+  SUBAGENT_EFFORTS,
+} from "../../plugins/dotclaude/lib/budget.mjs";
 import { spawnDenial } from "../../plugins/dotclaude/lib/guards/agents.mjs";
 
 const DIR = new URL("../../plugins/dotclaude/agents/", import.meta.url);
@@ -42,6 +45,14 @@ const agents = Object.fromEntries(
 
 test("exactly the expected agents exist", () => {
   expect(Object.keys(agents).sort()).toEqual(EXPECTED);
+});
+
+test("the agent files fit the byte limit together", () => {
+  const bytes = files.reduce(
+    (sum, f) => sum + readFileSync(new URL(f, DIR)).length,
+    0,
+  );
+  expect(bytes).toBeLessThanOrEqual(AGENTS_MAX_BYTES);
 });
 
 test("each agent name matches its file name", () => {

@@ -170,7 +170,7 @@ No native event exists for the first five.
 
 ## Prompt hooks on Stop
 
-dotclaude uses a classic hook with `"type": "prompt"` on `Stop` for clause 18.
+dotclaude uses a classic hook with `"type": "prompt"` on `Stop` for rule 12.1 of the [operating spec](Operating-Spec).
 0.26.0 removed the same hook on `SubagentStop`, because each call sends the transcript, about 46k tokens in the mean.
 These facts are from the Claude Code 2.1.292 binary (**binary**), read only:
 
@@ -204,7 +204,7 @@ These facts are from live tests of 2.1.292 in `just sandbox` with Haiku 4.5 (**t
 - A SubagentStop hook that always blocks blocked a subagent 8 times.
   At the 9th block, the subagent ended, and the main agent got no warning.
   The main agent had no block before, so the test does not show that the two counts are separate.
-- The clause 18 prompt has about 1,150 characters.
+- The prompt of rule 12.1 had about 1,150 characters when it was tested.
   In one run of each of 7 sample reports, it gave the correct result for 6:
   - It let through a report that skipped a step at the request of the user.
   - It let through a report with a passing check, and a report with a **Not verified** list.

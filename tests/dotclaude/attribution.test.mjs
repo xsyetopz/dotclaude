@@ -78,7 +78,7 @@ test("the attribution settings change or remove the lines", () => {
   });
   expect(note).toContain("Assisted-by: Claude");
   expect(note).not.toContain("Co-Authored-By");
-  expect(note).not.toContain("pull request");
+  expect(note).not.toContain("End each pull request body");
   expect(
     attributionNote("claude-opus-5-5", { ...OFF, includeCoAuthoredBy: false }),
   ).toBeNull();

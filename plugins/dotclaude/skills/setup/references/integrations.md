@@ -46,7 +46,7 @@ A plugin that declares its servers only in its own repository, such as `liquid-l
 ## sembr
 
 [sembr](https://github.com/admk/sembr) puts semantic line breaks in prose with a small language model.
-The rule in the Terms of Use alone did not stop Claude from breaking prose at a column.
+The rule in the operating spec alone did not stop Claude from breaking prose at a column.
 Thus the dotclaude hooks module runs `sembr` on the prose that Claude writes:
 
 - Before a `git commit`, `gh pr`, or `gh issue` command runs, the hook rewraps its message and tells Claude.

@@ -1,7 +1,5 @@
 // The pointer to the newest open handoff note.
 
-import { clause } from "../terms.mjs";
-
 /** The `key: value` pairs of a note's leading front matter. */
 export function frontMatter(text) {
   const out = {};
@@ -25,22 +23,10 @@ export function newestOpen(notes) {
 }
 
 /**
- * When an agent may close a note.
- * An agent once set `done` on a note whose Open list still had items, and the items were lost.
+ * The SessionStart pointer to the open handoff `note`.
+ * The `handoff` skill gives the rules to read, write, and close a note.
  */
-export const CLOSE_RULE =
-  "Set the `status` of the note to `done` only when each item in its **Open** section is done.\nIf you copy the open items into a newer note, set the status to `superseded`.\nIf an item is still open, keep the status `in-progress`.";
-
-/**
- * What each open item needs.
- * Open items once moved from note to note with no reason and no owner.
- */
-export const OPEN_RULE =
-  "Give each item in **Open** the reason that it stays open, and its owner (the user, or the next session).\nIf an item was open in an earlier note, do it in this session, or ask the user about it through `AskUserQuestion`, because an item that moves from note to note with no decision never closes.";
-
-/** The SessionStart context that points at `note`. */
-export const pointer = ({ name, meta }) =>
-  clause(
-    "handoff",
-    `<handoff>\nAn earlier session left a handoff note at \`.claude/handoffs/${name}\`${meta.written ? ` (written ${meta.written})` : ""}.\nWhen the user asks to continue earlier work, read the note first.\nThen compare it with \`git status\` and \`git log --oneline -5\` before you act, because later commits and edits make parts of it stale.\nWhere they differ, the repository is correct.\n${CLOSE_RULE}\n${OPEN_RULE}\n</handoff>`,
-  );
+export function handoffPointer({ name, meta }) {
+  const written = meta.written ? ` (written ${meta.written})` : "";
+  return `An earlier session left a handoff note at \`.claude/handoffs/${name}\`${written}.\nWhen the user asks to continue earlier work, load the \`dotclaude:handoff\` skill and read the note first.`;
+}

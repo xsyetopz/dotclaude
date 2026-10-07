@@ -182,7 +182,7 @@ test("rewrapCommand keeps the subject and the trailer", async () => {
   );
 });
 
-test("lineBreakNote gives the fixed text of each block", async () => {
+test("lineBreakNote gives the line numbers of each block, and not its text", async () => {
   const fixes = await lineBreakFixes(
     stub,
     "The note goes to the\nfolder, because the hook reads it.",
@@ -190,9 +190,8 @@ test("lineBreakNote gives the fixed text of each block", async () => {
   );
   const note = lineBreakNote("Home.md", fixes);
   expect(note).toContain("`Home.md`");
-  expect(note).toContain(
-    "<fixed_text>\nThe note goes to the folder,\nbecause the hook reads it.\n</fixed_text>",
-  );
+  expect(note).toContain("lines 1-2");
+  expect(note).not.toContain("because the hook reads it");
 });
 
 /** A fake of the engine's `$` with the stub sembr. It is a test double. */
@@ -248,7 +247,7 @@ test("a commit gets semantic line breaks before it runs", async () => {
 test("an Edit of Markdown that breaks at a column gets the note", async () => {
   const { r, seen } = await toolCall({}, engine(), EDIT);
   expect(seen).toEqual(EDIT);
-  expect(r.context.join("\n")).toContain("<fixed_text>");
+  expect(r.context.join("\n")).toContain("lines 1-2");
 });
 
 test("the sembr option off or a missing sembr changes nothing", async () => {

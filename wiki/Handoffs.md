@@ -89,7 +89,7 @@ Each subagent adds one line after each step to `dotclaude-progress/<agent ID>.md
 When an agent stops at its limit, the main agent reads the file and sends the next step with `SendMessage`.
 When `SendMessage` cannot continue the agent, such as an agent in a worktree that Claude Code lost, the main agent starts one new agent.
 The new agent gets the worktree folder of the old agent, the progress file, and the diff, and it does only the steps that are not done.
-This is clause 15 of the [Terms of Use](Terms-of-Use).
+This is rule 10.7 of the [operating spec](Operating-Spec).
 
 ```bash
 echo 'done: <step> | next: <step>' >> <progress file>

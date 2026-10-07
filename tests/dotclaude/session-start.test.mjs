@@ -18,16 +18,15 @@ import {
   MINIMAL_CODE_MAX_BYTES,
   RULES_MAX_BYTES,
 } from "../../plugins/dotclaude/lib/budget.mjs";
-import { clauseTag } from "../../plugins/dotclaude/lib/terms.mjs";
+import {
+  rules,
+  SPEC,
+  section,
+  sectionTag,
+} from "../../plugins/dotclaude/lib/terms.mjs";
 
-const RULES = join(
-  import.meta.dir,
-  "../../plugins/dotclaude/templates/context/working-rules.md",
-);
-const MINIMAL_CODE = join(
-  import.meta.dir,
-  "../../plugins/dotclaude/templates/context/minimal-code.md",
-);
+const RULES = section("working-rules", rules("working-rules"));
+const MINIMAL_CODE = section("minimal-code", rules("minimal-code"));
 
 function project(notes) {
   const root = mkdtempSync(join(tmpdir(), "ss-"));
@@ -40,29 +39,32 @@ function project(notes) {
   return root;
 }
 
-test("working-rules.md stays within its byte limit and keeps semicolons out", () => {
-  const text = readFileSync(RULES);
-  expect(text.length).toBeLessThanOrEqual(RULES_MAX_BYTES);
-  expect(text.toString()).not.toContain(";");
+test("the working rules stay within their byte limit and keep semicolons out", () => {
+  expect(Buffer.byteLength(RULES)).toBeLessThanOrEqual(RULES_MAX_BYTES);
+  expect(RULES).not.toContain(";");
 });
 
-test("working-rules.md asks for semantic line breaks, not column breaks", () => {
-  const text = readFileSync(RULES, "utf8");
-  expect(text).toContain("start each sentence on a new line");
-  expect(text).toContain("Do not break lines at a column");
+test("the line break rule asks for semantic line breaks, not column breaks", () => {
+  const text = rules("line-breaks");
+  expect(text).toContain("start each sentence of prose on a new line");
+  expect(text).toContain("break a long one only between clauses");
 });
 
-test("startup, clear, and compact add the rules", () => {
+test("startup, clear, and compact add the spec sections", () => {
   const root = project({});
   for (const source of ["startup", "clear", "compact"]) {
-    const [rules, longRuns] = contextFor({ source }, root);
-    expect(rules).toContain("<working_rules>");
-    expect(longRuns).toContain("<long_runs>");
-    expect(longRuns).toContain("time one run of the step");
-    expect(longRuns).toContain("also when you did not start it");
-    expect(
-      contextFor({ source }, root).find((p) => p.includes("<user_questions>")),
-    ).toStartWith(clauseTag("user-questions"));
+    const [first, ...rest] = contextFor({ source }, root);
+    expect(first).toBe(`${SPEC}\n\n${RULES}`);
+    expect(rest).toContain(MINIMAL_CODE);
+    const longRuns = rest.find((p) => p.startsWith(sectionTag("long-runs")));
+    expect(longRuns).toBe(section("long-runs", rules("long-runs")));
+    expect(longRuns).toContain("time one run before a loop");
+    expect(rest.find((p) => p.startsWith(sectionTag("questions")))).toBe(
+      section("questions", rules("questions")),
+    );
+    expect(rest.find((p) => p.startsWith(sectionTag("known-defects")))).toBe(
+      section("known-defects", rules("known-defects")),
+    );
   }
   expect(contextFor({ source: "resume" }, root)).toEqual([]);
 });
@@ -75,25 +77,27 @@ test("startup and clear point at the newest in-progress note only", () => {
   });
   const pointer = contextFor({ source: "startup" }, root).at(-1);
   expect(pointer).toContain("2026-10-03-0900-b.md");
-  expect(pointer).toContain(
-    "`done` only when each item in its **Open** section is done",
-  );
-  expect(contextFor({ source: "compact" }, root)).toHaveLength(7);
+  expect(pointer).not.toContain("2026-10-04-0900-c.md");
+  expect(pointer).not.toContain("2026-10-01-0900-a.md");
+  const base = contextFor({ source: "compact" }, root);
+  expect(base).not.toContain(pointer);
+  expect(contextFor({ source: "startup" }, root)).toEqual([...base, pointer]);
   expect(
     contextFor({ source: "startup" }, project({ "a.md": "done" })),
-  ).toHaveLength(7);
+  ).toEqual(base);
 });
 
 test("the minimal code rules are on unless the plugin option is false", () => {
-  const text = readFileSync(MINIMAL_CODE);
-  expect(text.length).toBeLessThanOrEqual(MINIMAL_CODE_MAX_BYTES);
-  expect(text.toString()).not.toContain(";");
+  expect(Buffer.byteLength(MINIMAL_CODE)).toBeLessThanOrEqual(
+    MINIMAL_CODE_MAX_BYTES,
+  );
+  expect(MINIMAL_CODE).not.toContain(";");
   const root = project({});
   const parts = (option) =>
-    contextFor({ source: "startup" }, root, "max20", option).join("\n");
-  expect(parts(undefined)).toContain("<minimal_code>");
-  expect(parts("true")).toContain("<minimal_code>");
-  expect(parts("false")).not.toContain("<minimal_code>");
+    contextFor({ source: "startup" }, root, "max20", option);
+  expect(parts(undefined)).toContain(MINIMAL_CODE);
+  expect(parts("true")).toContain(MINIMAL_CODE);
+  expect(parts("false")).not.toContain(MINIMAL_CODE);
 });
 
 test("a git repository without a CodeGraph index needs one when `codegraph` runs", () => {
@@ -119,7 +123,7 @@ test("the CodeGraph option set to false leaves out the init note", () => {
     undefined,
     "false",
   ).join("\n");
-  expect(text).not.toContain("<codegraph_index>");
+  expect(text).not.toContain(sectionTag("codegraph"));
 });
 
 test("a resume with an expired cache names the cost and the advice", () => {

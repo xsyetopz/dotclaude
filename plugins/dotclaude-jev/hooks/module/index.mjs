@@ -1,5 +1,6 @@
-// The hooks module of dotclaude-jev. It enforces clause 10 of the dotclaude
-// Terms of Use: Jev picks before the user answers a question with options.
+// The hooks module of dotclaude-jev.
+// It acts on section 14 of the dotclaude operating spec:
+// Jev picks before the user answers a question with options.
 // On each `AskUserQuestion`, the hook runs `jev.mjs ask` once. Jev sorts each
 // question into preference or facts, and picks from its options. A facts
 // question shows the pick of Jev and its confidence to the user. A question

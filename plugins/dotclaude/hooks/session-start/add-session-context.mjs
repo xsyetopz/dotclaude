@@ -1,10 +1,10 @@
-// SessionStart: adds context. A resumed session with an expired prompt cache
-// and a large context gets the cost advice. A new, cleared, or compacted session gets the working
-// rules, the long-run rules, the project AI policy, the subagent progress rules, and the minimal code rules, and a new or cleared one also gets the
-// pointer to the newest open handoff note. A session in a git repository also
-// gets the git attribution note, and the CodeGraph init note when the
-// repository has no index. At startup, the user gets a note when the
-// setup differs from the profile of this plugin version.
+// SessionStart: adds context.
+// A resumed session with an expired prompt cache and a large context gets the cost advice.
+// A new, cleared, or compacted session gets the sections of the dotclaude operating spec for the main agent.
+// A session in a git repository also gets the git attribution note.
+// A new or cleared session also gets a pointer to the newest open handoff note,
+// and the CodeGraph init note when the repository has no index.
+// At startup, the user gets a note when the setup differs from the profile of this plugin version.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -21,12 +21,9 @@ import {
   ownRepo,
   settingsPaths,
 } from "../../lib/guards/attribution.mjs";
-import { POLICY_CLAUSE } from "../../lib/guards/policy.mjs";
-import { resumeNote } from "../../lib/notes/cache.mjs";
+import { API_NOTE, resumeNote } from "../../lib/notes/cache.mjs";
 import { initNote } from "../../lib/notes/codegraph.mjs";
-import { knownDefectsClause } from "../../lib/notes/defects.mjs";
-import { newestOpen, pointer } from "../../lib/notes/handoff.mjs";
-import { MAIN_PROGRESS } from "../../lib/notes/progress.mjs";
+import { handoffPointer, newestOpen } from "../../lib/notes/handoff.mjs";
 import { accountFrom, claudeJsonPath, detectPlan } from "../../lib/plan.mjs";
 import {
   LAUNCHERS,
@@ -36,7 +33,7 @@ import {
   staleSetupNote,
   withClaudeMdBlock,
 } from "../../lib/setup/diff.mjs";
-import { clause, TERMS_OF_USE } from "../../lib/terms.mjs";
+import { rules, SPEC, section } from "../../lib/terms.mjs";
 
 /** The plan from the environment and the account in `.claude.json`. */
 function localPlan(env = { HOME: os.homedir(), ...process.env }) {
@@ -81,10 +78,8 @@ export function gitNote(model, root, exec = run, env = process.env) {
 
 const PLUGIN_ROOT = path.join(import.meta.dirname, "..", "..");
 const TEMPLATES = path.join(PLUGIN_ROOT, "templates");
-const RULES = path.join(TEMPLATES, "context", "working-rules.md");
-// The idea of Ponytail (github.com/DietrichGebert/ponytail, MIT) in our words.
-const MINIMAL_CODE = path.join(TEMPLATES, "context", "minimal-code.md");
-const LONG_RUNS = path.join(TEMPLATES, "context", "long-runs.md");
+
+const ruleSection = (id) => section(id, rules(id));
 
 function notesIn(dir) {
   try {
@@ -99,17 +94,6 @@ function notesIn(dir) {
     return [];
   }
 }
-
-// Only the API plan changes a decision: its prompt cache lives 5 minutes.
-const API_NOTE = clause(
-  "api-plan",
-  "<claude_plan>\nThe plan of the user is pay-per-token API.\nThe prompt cache of this plan lives 5 minutes.\nAfter a pause of more than 5 minutes, the next prompt writes the whole context again.\nBefore a long wait, finish the step or write a handoff note.\n</claude_plan>",
-);
-
-const USER_QUESTIONS = clause(
-  "user-questions",
-  "<user_questions>\nAsk each question to the user through `AskUserQuestion`, with options, and not in plain text.\nThen the user can pick an answer.\nOther hooks can also add facts to the question.\n</user_questions>",
-);
 
 /**
  * The context parts for the SessionStart input `data`. The plugin option
@@ -130,36 +114,21 @@ export function contextFor(
       ? [resumeNote(data)]
       : [];
   if (!["startup", "clear", "compact"].includes(data.source)) return [];
-  const parts = [
-    `${TERMS_OF_USE}\n\n${clause("working-rules", `<working_rules>\n${fs.readFileSync(RULES, "utf8").trim()}\n</working_rules>`)}`,
-  ];
+  const parts = [`${SPEC}\n\n${ruleSection("working-rules")}`];
+  // The idea of Ponytail (github.com/DietrichGebert/ponytail, MIT) in our words.
+  if (ponytail !== "false") parts.push(ruleSection("minimal-code"));
   parts.push(
-    clause(
-      "long-runs",
-      `<long_runs>\n${fs.readFileSync(LONG_RUNS, "utf8").trim()}\n</long_runs>`,
-    ),
+    ruleSection("known-defects"),
+    ruleSection("long-runs"),
+    ruleSection("questions"),
   );
-  parts.push(
-    POLICY_CLAUSE,
-    MAIN_PROGRESS,
-    USER_QUESTIONS,
-    knownDefectsClause(),
-  );
-  if (ponytail !== "false")
-    parts.push(
-      clause(
-        "minimal-code",
-        `<minimal_code>\n${fs.readFileSync(MINIMAL_CODE, "utf8").trim()}\n</minimal_code>`,
-      ),
-    );
   if (plan === "api") parts.push(API_NOTE);
   const attribution = gitNote(data.model, root);
   if (attribution) parts.push(attribution);
-  const open =
-    data.source === "compact"
-      ? undefined
-      : newestOpen(notesIn(path.join(root, ".claude", "handoffs")));
-  if (open) parts.push(pointer(open));
+  // After a compaction, the summary keeps the note and the CodeGraph advice.
+  if (data.source === "compact") return parts;
+  const open = newestOpen(notesIn(path.join(root, ".claude", "handoffs")));
+  if (open) parts.push(handoffPointer(open));
   if (codegraph !== "false" && needsIndex(root)) parts.push(initNote(root));
   return parts;
 }

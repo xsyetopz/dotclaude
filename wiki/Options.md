@@ -15,18 +15,19 @@ A boolean option is on unless you set it to `false`.
 ## dotclaude
 
 All options are boolean, and the default is `true`.
+Rule numbers refer to the [operating spec](Operating-Spec).
 
-| Option | What it does | Clause |
+| Option | What it does | Rule |
 | --- | --- | --- |
-| `guard_bash` | Asks before destructive `git`, file system, and device commands, `sudo`, a read of a secret file, a git hook bypass, a publish, a `gh` write, and a database delete. Also covers the Claude trailer check and the `codegraph init` ask. | 1, 3, 12 |
-| `guard_edit` | Asks before an edit that deletes test assertions, adds skip markers, touches generated files, or edits Claude settings files. | 1 |
-| `guard_secrets` | Replaces each secret in a tool result with `[REDACTED:<rule>]`. Needs `betterleaks` on `PATH`. | 1 |
-| `guard_policy` | Asks before the first call that reaches a project of another owner with an AI policy file. Needs `gh` for GitHub fetches. | 14 |
-| `guard_agents` | Denies a subagent spawn that breaks the model and effort rules. | 1 |
-| `codegraph` | Adds callers and callees to a search for one symbol name, and tells Claude to run `codegraph init` in a git repository without an index. Needs `codegraph` on `PATH`. | 8, 12 |
-| `ponytail` | At session start, tells Claude to build the minimum code. | 2 |
-| `compaction_handoff` | Before an automatic compaction, writes a handoff note, then stops and tells you to run `/clear`. | 6 |
-| `sembr` | Rewraps commit and `gh` messages with semantic line breaks, and adds a note after an edit of prose that breaks at a column. Needs `sembr` on `PATH`. | 11 |
+| `guard_bash` | Asks before destructive `git`, file system, and device commands, `sudo`, a read of a secret file, a git hook bypass, a publish, a `gh` write, and a database delete. Also covers the Claude trailer check and the `codegraph init` ask. | 1.7, 3.1, 3.2, 6.2 |
+| `guard_edit` | Asks before an edit that deletes test assertions, adds skip markers, touches generated files, or edits Claude settings files. | none |
+| `guard_secrets` | Replaces each secret in a tool result with `[REDACTED:<rule>]`. Needs `betterleaks` on `PATH`. | none |
+| `guard_policy` | Asks before the first call that reaches a project of another owner with an AI policy file. Needs `gh` for GitHub fetches. | 9.1 |
+| `guard_agents` | Denies a subagent spawn that breaks the model and effort rules. | none |
+| `codegraph` | Adds callers and callees to a search for one symbol name, and tells Claude to run `codegraph init` in a git repository without an index. Needs `codegraph` on `PATH`. | 6.2 |
+| `ponytail` | At session start, tells Claude to build the minimum code. | 2.1 |
+| `compaction_handoff` | Before an automatic compaction, writes a handoff note, then stops and tells you to run `/clear`. | 5.7 |
+| `sembr` | Rewraps commit and `gh` messages with semantic line breaks, and adds a note after an edit of prose that breaks at a column. Needs `sembr` on `PATH`. | 7.1 |
 
 ## dotclaude-browser
 

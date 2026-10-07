@@ -1,20 +1,12 @@
 // The text and the note file of a compaction.
 
-import { clause, clauseTag } from "../terms.mjs";
+import { ruleNo, ruleText, section } from "../terms.mjs";
 
-// The default summary text says to continue without asking. A model then
-// acted on a plan that the user had not approved.
-export const COMPACT_TEXT = `${clauseTag("compaction")}
-<open_request>
-If the last request of the user asked for a plan, asked a question, or asked for approval, write in the summary that this request is still open.
-Also write that the next turn waits for the user.
-The user did not approve a plan that the conversation only describes.
-So the next turn waits, and it does not carry out the plan.
-</open_request>
-</dotclaude_terms>`;
+// The default summary text says to continue without asking.
+// A model then acted on a plan that the user had not approved.
+export const COMPACT_TEXT = section("handoffs", ruleText("open-request"));
 
-export const HANDOFF_PROMPT = `<handoff_request>
-Write a handoff note for a fresh session that continues this task.
+export const HANDOFF_PROMPT = `Write a handoff note for a fresh session that continues this task.
 The conversation is about to be compacted.
 The user then runs \`/clear\`, and a fresh session starts from this note.
 Write only what you verified or what the user said.
@@ -33,11 +25,10 @@ List each choice and its reason, and each option that you rejected.
 ## Open
 List the remaining steps in order, and each question that waits for the user.
 Give each item the reason that it stays open, and its owner (the user, or the next session).
-If an item was open in an earlier note, do it in this session, or ask the user about it through \`AskUserQuestion\`.
+If an item was open in an earlier note, do it in this session, or ask the user about it (rule ${ruleNo("ask-tool")}).
 
 ## Details
-List exact errors, commands, IDs, and \`file:line\` locations.
-</handoff_request>`;
+List exact errors, commands, IDs, and \`file:line\` locations.`;
 
 /** The note path: UTC `yyyy-mm-dd-HHMM`, as in `2026-10-04-0213-compaction.md`. */
 export const handoffPath = (root, at) =>
@@ -73,20 +64,12 @@ export const handoffRow = (path) => {
   const mention = /\s/.test(path) ? `@"${path}"` : `@${path}`;
   return {
     role: "user",
-    text: clause(
-      "handoff",
-      `<compaction_handoff path="${path}">
-The conversation was compacted, and a handoff note for this task is at \`.claude/handoffs/${name}\`.
-Do not continue the task in this context.
-Each turn reads the whole compacted context again, and a fresh session after \`/clear\` starts small.
-Do not use a tool, because a tool call continues the task.
-Send one short reply to the user, then stop.
-In the reply, tell the user that the note is at \`.claude/handoffs/${name}\`.
-Tell the user to run \`/clear\`, and then to send a prompt that you write.
-Write a short prompt that names the next step of the task.
+    text: section(
+      "handoffs",
+      `The conversation was compacted, and a handoff note for this task is at \`.claude/handoffs/${name}\`.
+${ruleText("compaction-stop")}
 End the prompt with \`${mention}\`.
-The \`@\` and the absolute path make Claude Code read the note into the fresh session.
-</compaction_handoff>`,
+The \`@\` and the absolute path make Claude Code read the note into the fresh session.`,
     ),
     toolUses: [],
   };

@@ -1,6 +1,6 @@
-// dotclaude Terms of Use: each note to an agent is a clause, the plugins use
-// the tags of the clause list, the wiki lists the same clauses, and the
-// dotclaude-jev module adds the pick of Jev for clause 10.
+// The dotclaude operating spec: each note to an agent is a section of it,
+// the plugins use the tags and rules of the section list,
+// and the dotclaude-jev module adds the pick of Jev for the second opinion section.
 
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -14,23 +14,30 @@ import {
   COMPACT_TEXT,
   handoffRow,
 } from "../../plugins/dotclaude/lib/notes/compact.mjs";
-import { pointer } from "../../plugins/dotclaude/lib/notes/handoff.mjs";
+import { handoffPointer } from "../../plugins/dotclaude/lib/notes/handoff.mjs";
 import {
-  clauseTag,
-  TERMS,
-  TERMS_OF_USE,
+  cite,
+  ruleNo,
+  rules,
+  ruleText,
+  SECTIONS,
+  SPEC,
+  section,
+  sectionTag,
 } from "../../plugins/dotclaude/lib/terms.mjs";
-import { CLAUSE_TAG } from "../../plugins/dotclaude-browser/hooks/session-start/add-browser-notes.mjs";
+import {
+  LOAD_SKILL,
+  SECTION_TAG,
+} from "../../plugins/dotclaude-browser/hooks/session-start/add-browser-notes.mjs";
 import { register } from "../../plugins/dotclaude-jev/hooks/module/index.mjs";
 
 const root = join(import.meta.dir, "..", "..");
 const read = (file) => readFileSync(join(root, file), "utf8");
 
-test("each note of dotclaude is a clause", () => {
+test("each note of dotclaude is a section of the spec", () => {
   const notes = {
-    "cold-cache": [idleNote(400_000), resumeNote({})],
-    handoff: [pointer({ name: "n.md", meta: {} }), handoffRow("/p/n.md").text],
-    compaction: [COMPACT_TEXT],
+    "prompt-cache": [idleNote(400_000), resumeNote({})],
+    handoffs: [handoffRow("/p/n.md").text, COMPACT_TEXT],
     codegraph: [
       graphNote(
         { name: "f", kind: "function", filePath: "a.mjs", startLine: 1 },
@@ -40,26 +47,78 @@ test("each note of dotclaude is a clause", () => {
   };
   for (const [id, texts] of Object.entries(notes))
     for (const text of texts) {
-      expect(text.startsWith(clauseTag(id))).toBe(true);
-      expect(text.endsWith("</dotclaude_terms>")).toBe(true);
+      expect(text.startsWith(sectionTag(id))).toBe(true);
+      expect(text.endsWith("</dotclaude_spec>")).toBe(true);
     }
-  expect(TERMS_OF_USE).not.toContain(";");
 });
 
-test("the plugins use the tags of the clause list", () => {
-  expect(CLAUSE_TAG).toBe(clauseTag("browser"));
-  expect(
-    read("plugins/dotclaude-jev/hooks/session-start/second-opinion.md"),
-  ).toStartWith(clauseTag("second-opinion"));
+test("the handoff pointer names the note and the skill", () => {
+  const text = handoffPointer({ name: "n.md", meta: {} });
+  expect(text).toContain(".claude/handoffs/n.md");
+  expect(text).toContain("`dotclaude:handoff`");
+});
+
+test("the spec has no semicolon, and each section and rule id is unique", () => {
+  const ids = SECTIONS.flatMap((s) => s.rules.map((r) => r.id));
+  expect(new Set(ids).size).toBe(ids.length);
+  expect(new Set(SECTIONS.map((s) => s.id)).size).toBe(SECTIONS.length);
+  expect(SPEC).not.toContain(";");
+  for (const { id, rules: list } of SECTIONS)
+    expect(rules(id, { only: list.map((r) => r.id) })).not.toContain(";");
+});
+
+test("a rule number, its text, and its citation agree", () => {
+  SECTIONS.forEach(({ id, rules: list }, i) => {
+    expect(sectionTag(id)).toContain(`section="${i + 1}"`);
+    list.forEach((rule, j) => {
+      const no = `${i + 1}.${j + 1}`;
+      expect(ruleNo(rule.id)).toBe(no);
+      expect(ruleText(rule.id)).toStartWith(`${no} ${rule.level} `);
+      expect(cite(rule.id)).toBe(
+        `This is rule ${no} of the dotclaude operating spec.`,
+      );
+    });
+  });
+  expect(() => ruleNo("no-such-rule")).toThrow();
+  expect(() => sectionTag("no-such-section")).toThrow();
+});
+
+test("a section wraps text in its tag, and `rules` leaves out late rules and rules of the other audience", () => {
+  expect(section("working-rules", "x")).toBe(
+    `${sectionTag("working-rules")}\nx\n</dotclaude_spec>`,
+  );
+  expect(rules("working-rules")).not.toContain(ruleText("edit-tools"));
+  expect(rules("working-rules", { only: ["edit-tools"] })).toBe(
+    ruleText("edit-tools"),
+  );
+  expect(rules("handoffs", { audience: "main" })).toContain(
+    ruleText("handoff-write"),
+  );
+  expect(rules("handoffs", { audience: "subagent" })).not.toContain(
+    ruleText("handoff-write"),
+  );
+});
+
+test("the plugins use the tags and rules of the section list", () => {
+  expect(SECTION_TAG).toBe(sectionTag("browser"));
+  expect(LOAD_SKILL).toBe(ruleText("browser-skill"));
+  const opinion = read(
+    "plugins/dotclaude-jev/hooks/session-start/second-opinion.md",
+  );
+  expect(opinion).toStartWith(sectionTag("second-opinion"));
+  for (const { id, level } of SECTIONS.find((s) => s.id === "second-opinion")
+    .rules)
+    expect(opinion).toContain(`${ruleNo(id)} ${level} `);
   expect(
     read("plugins/dotclaude-modder/hooks/session-start/game-modding.md"),
-  ).toStartWith(clauseTag("game-modding"));
+  ).toBe(`${section("game-modding", rules("game-modding"))}\n`);
 });
 
-test("the wiki lists each clause with its number", () => {
-  const page = read("wiki/Terms-of-Use.md");
-  TERMS.forEach(({ title }, i) => {
-    expect(page).toContain(`| ${i + 1} | ${title} |`);
+test("the wiki lists each section with its number and title", () => {
+  const page = read("wiki/Operating-Spec.md");
+  SECTIONS.forEach(({ title }, i) => {
+    expect(page).toContain(`${i + 1}`);
+    expect(page).toContain(title);
   });
 });
 

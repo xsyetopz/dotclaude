@@ -4,6 +4,7 @@ import {
   autoModeText,
   writeFor,
 } from "../../plugins/dotclaude/lib/guards/bash.mjs";
+import { cite } from "../../plugins/dotclaude/lib/terms.mjs";
 
 const ctx = { project: "/work/app", cwd: "/work/app", home: "/home/u" };
 const asks = (command) => askFor(command, ctx).length > 0;
@@ -183,12 +184,12 @@ test.each([
   expect(writes(command)).toBe(false);
 });
 
-test("a write reason names the part, the tools to use, and the clause", () => {
+test("a write reason names the part, the tools to use, and the rule", () => {
   const [found] = writeFor("ls && sed -i '' 's/a/b/' a.md", wctx);
   expect(found.part).toBe("sed -i  s/a/b/ a.md");
   expect(found.reason).toContain("`Edit` or `Write`");
   expect(found.reason).toContain("If you have no `Edit` or `Write`");
-  expect(found.reason).toContain("clause 1 ");
+  expect(found.reason).toContain(cite("edit-tools"));
 });
 
 test("the auto-mode text gets the edit rule in place of its Bash edits", () => {

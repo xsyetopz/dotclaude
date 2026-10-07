@@ -9,7 +9,7 @@ It assumes that you finished [Install](Install).
 | --- | --- |
 | Status line | After `/dotclaude:setup`. It shows model, effort, context against the compaction point, cache expiry, and usage limits. |
 | Setup notice | At startup, when your setup differs from the profile of the plugin version. |
-| Terms of Use and working rules | Claude gets them as context. You do not see them. |
+| Operating spec | Claude gets its rules as context. You do not see them. |
 
 The setup notice has this form:
 
@@ -18,9 +18,9 @@ dotclaude 0.22.2: your setup differs from the profile in 2 settings.
 Run /dotclaude:setup to see and apply the changes.
 ```
 
-The Terms of Use say that you accepted each clause, and that Claude must follow each one.
-A clause with a hook is enforced.
-See [Terms of Use](Terms-of-Use).
+The operating spec says that you installed dotclaude, so its rules apply, and that a deny from a hook is your decision.
+A rule with a hook is enforced.
+See [Operating spec](Operating-Spec).
 
 ## What happens in a session
 

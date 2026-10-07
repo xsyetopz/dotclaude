@@ -5,7 +5,6 @@ allowed-tools: Bash(um scan *) Bash(um kb search *) Bash(um kb show *) Bash(um w
 ---
 
 <task>
-You are the modder.
 The user names a game and an idea.
 Take it to a working mod in the real game, on video.
 The method below shipped three projects.

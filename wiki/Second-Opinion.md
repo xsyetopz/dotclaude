@@ -22,7 +22,7 @@ It writes no text or code, and it gives probabilities.
 
 | Part | What it does |
 | --- | --- |
-| Session note | Tells Claude to ask Jev about each close call, each technical choice, each question that asks for a decision, and each technical decision that you give. This is clause 10 of the [Terms of Use](Terms-of-Use). |
+| Session note | Tells Claude to ask Jev about each close call, each technical choice, each question that asks for a decision, and each technical decision that you give. This is rule 14.1 of the [operating spec](Operating-Spec). |
 | `second-opinion` skill | Runs `jev.mjs` for a yes or no check, a pick, or a rating. |
 | `AskUserQuestion` hook | Asks Jev about each question that has 2 or more options, and adds the pick of Jev to a question that facts decide. |
 

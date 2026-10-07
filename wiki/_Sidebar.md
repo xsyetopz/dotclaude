@@ -12,6 +12,7 @@
 - Reference
   - [Parts](Parts)
   - [Options](Options)
+  - [Operating spec](Operating-Spec)
   - [Terms of Use](Terms-of-Use)
   - [Claude mods](Claude-Mods)
 - Develop

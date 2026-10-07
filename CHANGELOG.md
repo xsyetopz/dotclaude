@@ -12,6 +12,12 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 
 ## [0.26.0] - 2026-10-06
 
+### Migration from 0.25
+
+- Run `/dotclaude:setup` after the update.
+  The settings profile now sets `promptCacheTtl` to `"5m"`, and setup writes it over the earlier value.
+  The other options, the stored state, the status line, and the `CLAUDE.md` block need no change.
+
 ### Removed
 
 - The clause 18 prompt hook on `SubagentStop`.
@@ -22,20 +28,42 @@ The [Release History](https://github.com/xsyetopz/dotclaude/wiki/Release-History
 
 ### Changed
 
-- The session context is shorter.
+- The settings profile sets `promptCacheTtl: 5m` for the main conversation.
+  In 7 days of transcripts, 98.7% of the main-agent calls came 5 minutes or less after the call before them.
+  At API prices, the 5-minute cache would have cost 8.5% less than the 1-hour cache.
+- The section "Long runs" is now "Runs and subagents", and it has a new routing rule for the main agent.
+  The main agent does a chain of dependent steps itself, and gives long reads, long check runs, and bulk work to worker agents.
+  The main agent does a worker slice itself when its check failed twice.
+  In 7 days of transcripts, tool results in the main context cost about 15% of the main-agent cost, because each later turn reads them again.
+- The SessionStart context is about 2.5 KB, and the SubagentStart context is about 1 KB.
+  Each rule is one line, with a reason only where the rule needs one.
+  The rules that a hook teaches (Bash writes, line breaks, `AskUserQuestion`) are not in the context, because the hook message gives the rule when it fires.
+  The handoff rules move to the `handoff` skill, and the session context only points to an open note.
+  The project AI policy rules come with the ask of the policy guard, because Claude does not see an ask reason.
+  Subagents get one section of six rules, with their progress file.
+  The section "Known defects" is now "Checks", and the done-claim rule is now rule 12.1.
+  The line-break note gives the line numbers of each block, and not the sembr text.
+- The agent prompts are about half as long (66 KB to less than 32 KB), and a test keeps all agent files together at 32,000 bytes or less (`AGENTS_MAX_BYTES`).
+  They lose the rules that the SubagentStart context now gives each subagent: defects, checks, the turn budget, denies, and the report start.
+  They also lose examples and repeated points.
+  A new subagent rule tells each subagent to start its report with `Done` or `Not done`, and to list each part with no passing check under **Not verified**.
+- Text from outside (AI policy files, CodeGraph index data, and `um kb` field notes) goes to Claude in its own tag, with each `<` escaped, so that the text cannot close the tag.
+  The Stop prompt hook puts its input in a `hook_input` tag first, and asks for only the JSON object.
+  Wrapper tags around one short block are removed.
+- The `handoff` skill is 43% shorter (5.1 KB to 2.9 KB), and it also tells Claude how to read a note.
+  The rules removed in 0.26.0: wait-for-go, no-invented-steps, measure, deny-route, deny-final, lower-cost, no-extras, keep-safety, background, blocker, shared-runs, policy-subagent, the progress rules for the main agent, escalate, fix-own, run-checks, self-check, not-verified, and continue.
+- **Breaking:** the Terms of Use clauses are now the dotclaude operating spec (`wiki/Operating-Spec.md`).
+  Each rule has a number, such as 12.1, and an RFC 2119 level, and each hook reason ends with the number of its rule.
+  The text goes to Claude in `dotclaude_spec` tags, and not in `dotclaude_terms` tags.
   The working rules lose the `<verification>` block and the line about LSP, CodeGraph, and `grep`.
-  Clause 18 now has the two `<verification>` lines that it did not already say.
-  Clause 10 (Jev) loses the line about `AskUserQuestion`, because clause 16 says the same thing.
-- The rule about a deny moves from clause 1 to the Terms of Use preamble, which subagents also get.
-  It now tells the agent not to split, reword, or rebuild a denied command.
-  When the deny reason names a tool or a route, such as `Edit` for a Bash write, the agent uses it.
-  Otherwise the agent reports the deny and its reason.
+  The Jev section loses the line about `AskUserQuestion`, because rule 11.1 says the same thing.
+- The rule about a deny moves to the start of the spec, which subagents also get.
+  A hook deny is a decision of the user, so the agent does what its reason says, and does not get its result another way.
   A subagent got past a deny in 0.25.1 by rewording a command.
-- Clause 18 tells the agent to run each check that can run before it ends the turn.
-  A part goes in the **Not verified** list only when its check cannot run in this session, because agents listed checks that they could run.
-- Clause 1 tells the agent to ask the user about a change that it cannot attribute, and not to leave it with no question.
 - The Bash guard deny of a write to a project file tells an agent with no `Edit` or `Write`, such as a read-only subagent, to report the write that it needs.
   Before, the deny told it only to use tools that it did not have.
+- The cold-cache note counts the idle time from the last compaction of the main agent, and not only from the last turn.
+  A compaction writes a new cache, so after it the note does not say that the cache expired too early.
 
 ### Fixed
 

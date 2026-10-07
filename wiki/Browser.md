@@ -26,7 +26,7 @@ It adds the `drive-web-browser` skill.
 ## How it works
 
 At session start, a hook tells Claude to load `dotclaude-browser:drive-web-browser` before the first browser command.
-This is clause 9 of the [Terms of Use](Terms-of-Use).
+This is rule 13.1 of the [operating spec](Operating-Spec).
 The workflow is:
 
 ```bash

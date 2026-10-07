@@ -6,20 +6,21 @@ This page lists each guard, what to do when one fires, and how to turn one off.
 ## What each guard does
 
 All guards are in the `dotclaude` plugin.
-Clause numbers refer to the [Terms of Use](Terms-of-Use).
+Rule numbers refer to the [operating spec](Operating-Spec).
+Rule 1.7 names the Bash guard, and the Edit, secret, and subagent guards have no rule of their own.
 
-| Guard | Option | Event | What it does | Clause |
+| Guard | Option | Event | What it does | Rule |
 | --- | --- | --- | --- | --- |
-| Bash guard | `guard_bash` | `tool.call`, `PreToolUse` | Asks before `git push --force` (and `--force-with-lease`), `git reset --hard`, `git clean -f`, `git checkout` or `git restore` of files, `git branch -D`, `rm -r` outside the project or of the project or home folder, `dd` to a device, `mkfs`, `chmod -R 777`, `sudo`, and a read of `.env`, SSH key, or AWS credential files. | 1 |
-| Bash guard, side effects | `guard_bash` | `tool.call`, `PreToolUse` | Asks before a command that skips the git hooks (`--no-verify`, `git commit -n`, `core.hooksPath`, `HUSKY=0`, `LEFTHOOK=0`, `SKIP=`), a publish (`npm publish`, `cargo publish`, `docker push`, and similar, but not with `--dry-run`), a `gh` write (a verb that does not only read, or `gh api` with a method other than `GET` or with fields, but not a `gh api graphql` query without a mutation), and a database delete (`DROP`, `TRUNCATE`, `DELETE FROM`, `FLUSHALL`, `dropdb`, `prisma migrate reset`, `rails db:drop`, `manage.py flush`). It also reads the tool that `npx` or `bunx` runs. | 1 |
-| Bash guard, attribution | `guard_bash` | `tool.call`, `PreToolUse` | Denies a Claude `Co-Authored-By` line in a commit when your settings leave it out. Asks before a Claude attribution line in a repository of another owner. | 3 |
-| Bash guard, CodeGraph | `guard_bash` | `tool.call`, `PreToolUse` | Asks before `codegraph init` and `codegraph uninit`. | 12 |
-| Edit guard | `guard_edit` | `tool.call`, `PreToolUse` | Asks before an edit that removes test assertions, adds a skip, `xfail`, `todo`, or focus marker to a test file, writes a `[REDACTED:` marker, or changes a generated file, a lockfile, or a Claude Code settings file. | 1 |
-| Secret redaction | `guard_secrets` | `tool.call` | Replaces each secret in a tool result with `[REDACTED:<rule>]`. Needs `betterleaks` on `PATH`. | 1 |
-| Policy guard | `guard_policy` | `PreToolUse`, `tool.call`, `SessionStart`, `SubagentStart` | Asks before the first call of a session that reaches a project of another owner with a `CLAUDE.md`, `AGENTS.md`, or `AI_POLICY.md` file. Shows the policy to Claude after a GitHub fetch. | 14 |
-| Subagent guard | `guard_agents` | `agent.spawn` | Denies a subagent spawn that breaks the model and effort rules. | 1 |
-| Sembr hook | `sembr` | `tool.call` | Rewraps the message of a `git commit`, `gh pr`, or `gh issue` command before it runs. Adds a note after a `Write` or `Edit` of prose that breaks at a column. Needs `sembr` on `PATH`. | 11 |
-| CodeGraph augment | `codegraph` | `tool.call` | Adds callers and callees to a search for one symbol name. Does not deny or ask. | 8 |
+| Bash guard | `guard_bash` | `tool.call`, `PreToolUse` | Asks before `git push --force` (and `--force-with-lease`), `git reset --hard`, `git clean -f`, `git checkout` or `git restore` of files, `git branch -D`, `rm -r` outside the project or of the project or home folder, `dd` to a device, `mkfs`, `chmod -R 777`, `sudo`, and a read of `.env`, SSH key, or AWS credential files. | 1.7 |
+| Bash guard, side effects | `guard_bash` | `tool.call`, `PreToolUse` | Asks before a command that skips the git hooks (`--no-verify`, `git commit -n`, `core.hooksPath`, `HUSKY=0`, `LEFTHOOK=0`, `SKIP=`), a publish (`npm publish`, `cargo publish`, `docker push`, and similar, but not with `--dry-run`), a `gh` write (a verb that does not only read, or `gh api` with a method other than `GET` or with fields, but not a `gh api graphql` query without a mutation), and a database delete (`DROP`, `TRUNCATE`, `DELETE FROM`, `FLUSHALL`, `dropdb`, `prisma migrate reset`, `rails db:drop`, `manage.py flush`). It also reads the tool that `npx` or `bunx` runs. | 1.7 |
+| Bash guard, attribution | `guard_bash` | `tool.call`, `PreToolUse` | Denies a Claude `Co-Authored-By` line in a commit when your settings leave it out. Asks before a Claude attribution line in a repository of another owner. | 3.1, 3.2 |
+| Bash guard, CodeGraph | `guard_bash` | `tool.call`, `PreToolUse` | Asks before `codegraph init` and `codegraph uninit`. | 6.2 |
+| Edit guard | `guard_edit` | `tool.call`, `PreToolUse` | Asks before an edit that removes test assertions, adds a skip, `xfail`, `todo`, or focus marker to a test file, writes a `[REDACTED:` marker, or changes a generated file, a lockfile, or a Claude Code settings file. | none |
+| Secret redaction | `guard_secrets` | `tool.call` | Replaces each secret in a tool result with `[REDACTED:<rule>]`. Needs `betterleaks` on `PATH`. | none |
+| Policy guard | `guard_policy` | `PreToolUse`, `tool.call` | Asks before the first call of a session that reaches a project of another owner with a `CLAUDE.md`, `AGENTS.md`, or `AI_POLICY.md` file. Shows the policy to Claude after a GitHub fetch. | 9.1 |
+| Subagent guard | `guard_agents` | `agent.spawn` | Denies a subagent spawn that breaks the model and effort rules. | none |
+| Sembr hook | `sembr` | `tool.call` | Rewraps the message of a `git commit`, `gh pr`, or `gh issue` command before it runs. Adds a note after a `Write` or `Edit` of prose that breaks at a column. Needs `sembr` on `PATH`. | 7.1 |
+| CodeGraph augment | `codegraph` | `tool.call` | Adds callers and callees to a search for one symbol name. Does not deny or ask. | none |
 
 > **Note:** The two plugins that you can add, [Browser](Browser) and [Second opinion](Second-Opinion), have no guard.
 > The Jev hook only adds a pick to a question.
@@ -35,7 +36,7 @@ A deny is a decision of you.
 Claude must not get the same result in another way.
 
 1. Read the reason in the deny message.
-   It names the clause.
+   It names the rule.
 1. Change the call so that it follows the rule.
    For example, remove the Claude trailer, or pick the model of the agent file.
 1. If the rule is wrong for your project, turn the guard off (see below).

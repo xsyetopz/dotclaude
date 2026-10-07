@@ -57,5 +57,5 @@ The older text is in [Release history](Release-History).
 ## Related pages
 
 - [Guards](Guards): the policy guard asks before a call reaches a project with an AI policy.
-- [Terms of Use](Terms-of-Use): the project AI policy clause.
+- [Operating spec](Operating-Spec): section 9, the project AI policy.
 - [Install](Install): set up the profile that adds the ask rules.

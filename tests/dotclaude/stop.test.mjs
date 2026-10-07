@@ -8,6 +8,7 @@ import {
   decisionFor,
   REASON,
 } from "../../plugins/dotclaude/hooks/stop/block-plain-questions.mjs";
+import { cite } from "../../plugins/dotclaude/lib/terms.mjs";
 
 const SCRIPT = path.join(
   import.meta.dir,
@@ -46,9 +47,9 @@ test("the hook blocks once, and not when stop_hook_active is set", () => {
   expect(decisionFor(null)).toBeUndefined();
 });
 
-test("the reason names AskUserQuestion and clause 16, with no semicolons", () => {
+test("the reason names AskUserQuestion and its rule, with no semicolons", () => {
   expect(REASON).toContain("`AskUserQuestion`");
-  expect(REASON).toContain("clause 16");
+  expect(REASON).toContain(cite("ask-tool"));
   expect(REASON).not.toContain(";");
 });
 

@@ -20,6 +20,7 @@
   "fastModePerSessionOptIn": true,
   "maxEffortLevel": "high",
   "autoCompactWindow": 150000,
+  "promptCacheTtl": "5m",
   "cleanupPeriodDays": 14,
   "enableArtifact": false,
   "disableBundledSkills": true,

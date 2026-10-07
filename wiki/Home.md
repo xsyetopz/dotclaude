@@ -38,7 +38,8 @@ If Claude does something because of dotclaude and you ask "why did you do that?"
 | [Contributions](Contributions) | Draft work for projects that you do not own. |
 | [Options](Options) | Turn parts on and off. |
 | [Parts](Parts) | Find each part, its event, and its bound. |
-| [Terms of Use](Terms-of-Use) | Read the clauses that dotclaude gives to Claude. |
+| [Operating spec](Operating-Spec) | Read the rules that dotclaude gives to Claude. |
+| [Terms of Use](Terms-of-Use) | See how the spec reaches an agent and how each hook enforces a rule. |
 | [Development](Development) and [Sandbox](Sandbox) | Change dotclaude and test a checkout. |
 | [Attributions](Attributions) | See the projects whose ideas dotclaude reimplements. |
 

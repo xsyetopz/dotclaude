@@ -87,14 +87,15 @@ test("hooks.json names the module, PreToolUse, SessionStart, Stop, and SubagentS
   expect(typeof json.description).toBe("string");
 });
 
-test("a destructive Bash command gives an ask with its reason", async () => {
+// The PreToolUse hook `ask-guarded-calls.mjs` asks about Bash calls and
+// edits, so the module keeps the engine verdict for them.
+test("a destructive Bash command keeps the engine verdict", async () => {
   const { $ } = engine();
   const { verdict } = await call(load(), $, {
     tool: "Bash",
     command: "git push --force",
   });
-  expect(verdict.decision).toBe("ask");
-  expect(verdict.reason).toContain("`git push --force`");
+  expect(verdict.decision).toBe("allow");
 });
 
 test("a Bash write to a project file is denied before it runs", async () => {
@@ -147,7 +148,7 @@ test("the ask does not outlive the call", async () => {
   expect(after.decision).toBe("allow");
 });
 
-test("an edit of a settings file asks", async () => {
+test("an edit of a settings file keeps the engine verdict", async () => {
   const { $ } = engine();
   const { verdict } = await call(load(), $, {
     tool: "Edit",
@@ -155,7 +156,7 @@ test("an edit of a settings file asks", async () => {
     old_string: "a",
     new_string: "b",
   });
-  expect(verdict.decision).toBe("ask");
+  expect(verdict.decision).toBe("allow");
 });
 
 test("a PublishPlugin call asks, also with each guard option off", async () => {

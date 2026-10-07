@@ -58,11 +58,14 @@ export const SUBAGENT_EFFORTS = {
   "haiku-4-5": [],
 };
 
-/** Bytes of `templates/context/working-rules.md`. A test fails above this number. */
+/** Bytes of the rendered section 1 of the operating spec for the main agent. A test fails above this number. */
 export const RULES_MAX_BYTES = 2000;
 
-/** Bytes of `templates/context/minimal-code.md`. A test fails above this. */
+/** Bytes of the rendered section 2 of the operating spec. A test fails above this. */
 export const MINIMAL_CODE_MAX_BYTES = 800;
+
+/** Bytes of all agent files together, because each spawn sends its agent body. A test fails above this. */
+export const AGENTS_MAX_BYTES = 32000;
 
 /**
  * Time after the last turn at which the main prompt cache has expired. The

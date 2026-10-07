@@ -2,11 +2,9 @@
 // A question in `AskUserQuestion` has options that the user picks with one key,
 // and other hooks, such as the dotclaude-jev hook, can add facts to it.
 
-import { TERMS } from "../../lib/terms.mjs";
+import { cite } from "../../lib/terms.mjs";
 
-const CLAUSE = TERMS.findIndex((t) => t.id === "user-questions") + 1;
-
-export const REASON = `Your last message asks the user a question in plain text. Ask each question through \`AskUserQuestion\`, with options. The user can then pick an answer, and other hooks can add facts to the question. If the message has no question to the user, finish your turn again. This is clause ${CLAUSE} of the dotclaude Terms of Use.`;
+export const REASON = `Your last message asks the user a question in plain text. Ask each question through \`AskUserQuestion\`, with options. The user can then pick an answer, and other hooks can add facts to the question. If the message has no question to the user, finish your turn again. ${cite("ask-tool")}`;
 
 /** The lines of `text` without code blocks, inline code, headings, and quotes. */
 const proseLines = (text) =>
